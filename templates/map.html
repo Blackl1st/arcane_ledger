@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcane Ledger — Tabletop Battlemap Display</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000000;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            cursor: crosshair;
+        }
+
+        #map-stage {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #000000;
+            overflow: hidden;
+        }
+
+        #map-container {
+            position: relative;
+            transform-origin: center center;
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+            background: #000000;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
+        }
+
+        #map-img {
+            display: block;
+            pointer-events: none;
+            image-rendering: high-quality;
+            max-width: none;
+            max-height: none;
+        }
+
+        #grid-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #fog-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
+
+        #ping-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        /* Ping Ripple Animation */
+        @keyframes pingRipple {
+            0% {
+                transform: translate(-50%, -50%) scale(0.2);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(3.5);
+                opacity: 0;
+            }
+        }
+
+        .laser-ping-ring {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid #f59e0b;
+            box-shadow: 0 0 25px #fbbf24, inset 0 0 15px #f59e0b;
+            pointer-events: none;
+            animation: pingRipple 1.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+
+        .laser-ping-core {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 0 20px #fbbf24;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: pingFade 1.6s ease-out forwards;
+        }
+
+        @keyframes pingFade {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            70% { opacity: 0.8; transform: translate(-50%, -50%) scale(0.9); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        }
+
+        /* Monster & Character Tabletop Tokens */
+        .table-token {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.85), inset 0 0 10px rgba(0, 0, 0, 0.6);
+            transition: left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            overflow: visible;
+        }
+        .table-token-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #11141a;
+            display: block;
+        }
+        .table-token-label {
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 14, 20, 0.92);
+            color: #f1f5f9;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 9999px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.8);
+            letter-spacing: 0.02em;
+        }
+        .bloodied-aura {
+            box-shadow: 0 0 0 3px #ef4444, 0 0 25px #dc2626, inset 0 0 15px rgba(239, 68, 68, 0.6) !important;
+            animation: bloodiedPulse 1.6s infinite ease-in-out !important;
+        }
+        @keyframes bloodiedPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 3px #ef4444, 0 0 18px #ef4444, inset 0 0 12px rgba(239, 68, 68, 0.5);
+                filter: drop-shadow(0 0 6px #ef4444);
+            }
+            50% {
+                box-shadow: 0 0 0 5px #ff6b6b, 0 0 34px #dc2626, inset 0 0 22px rgba(239, 68, 68, 0.85);
+                filter: drop-shadow(0 0 16px #dc2626);
+            }
+        }
+
+        /* Concentration Golden Solar Ring */
+        .concentration-halo {
+            box-shadow: 0 0 0 3.5px #f59e0b, 0 0 22px #fbbf24, inset 0 0 12px rgba(245, 158, 11, 0.6) !important;
+            animation: concentrationPulse 2s infinite ease-in-out !important;
+        }
+        @keyframes concentrationPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 3.5px #f59e0b, 0 0 16px #f59e0b, inset 0 0 10px rgba(245, 158, 11, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 5.5px #fde68a, 0 0 30px #fbbf24, inset 0 0 18px rgba(245, 158, 11, 0.85);
+            }
+        }
+
+        /* Stunned / Paralyzed Electric Sparks */
+        .stunned-aura {
+            box-shadow: 0 0 0 3.5px #38bdf8, 0 0 24px #0284c7, inset 0 0 14px rgba(56, 189, 248, 0.6) !important;
+            animation: electricJolt 0.8s infinite alternate ease-in-out !important;
+        }
+        @keyframes electricJolt {
+            0% { box-shadow: 0 0 0 3px #38bdf8, 0 0 14px #0284c7; filter: brightness(1); }
+            100% { box-shadow: 0 0 0 5px #bae6fd, 0 0 30px #38bdf8, inset 0 0 20px rgba(56, 189, 248, 0.9); filter: brightness(1.2); }
+        }
+
+        /* Poisoned Toxic Lime Bubbling Aura */
+        .poisoned-aura {
+            box-shadow: 0 0 0 3.5px #84cc16, 0 0 22px #4d7c0f, inset 0 0 12px rgba(132, 204, 22, 0.6) !important;
+            animation: toxicBubble 1.8s infinite ease-in-out !important;
+        }
+        @keyframes toxicBubble {
+            0%, 100% { box-shadow: 0 0 0 3px #84cc16, 0 0 14px #65a30d; }
+            50% { box-shadow: 0 0 0 5px #bef264, 0 0 28px #84cc16, inset 0 0 18px rgba(132, 204, 22, 0.8); }
+        }
+
+        /* Frightened / Charmed Spectral Violet Aura */
+        .frightened-aura {
+            box-shadow: 0 0 0 3.5px #c084fc, 0 0 24px #9333ea, inset 0 0 14px rgba(192, 132, 252, 0.6) !important;
+            animation: fearShiver 1.4s infinite ease-in-out !important;
+        }
+        @keyframes fearShiver {
+            0%, 100% { box-shadow: 0 0 0 3.5px #c084fc, 0 0 16px #9333ea; }
+            50% { box-shadow: 0 0 0 5.5px #e9d5ff, 0 0 30px #a855f7; }
+        }
+
+        /* Prone Token */
+        .prone-token {
+            filter: brightness(0.75) contrast(0.9);
+            border-style: dotted !important;
+        }
+
+        /* Invisible Ethereal Ghost Token */
+        .invisible-aura {
+            opacity: 0.45 !important;
+            border-style: dashed !important;
+            box-shadow: 0 0 20px rgba(165, 243, 252, 0.6) !important;
+        }
+
+        /* Token Altitude Badge */
+        .table-token-elevation {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: rgba(8, 47, 73, 0.95);
+            color: #7dd3fc;
+            border: 1px solid #38bdf8;
+            font-family: monospace;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 9999px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.8), 0 0 10px rgba(56, 189, 248, 0.4);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            z-index: 20;
+        }
+
+        /* Token Condition Badges Container */
+        .table-token-conditions {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .table-token-condition-icon {
+            font-size: 13px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+        }
+
+        /* Cinematic Turn Banner */
+        .cinematic-turn-banner {
+            position: fixed;
+            top: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px) scale(0.92);
+            opacity: 0;
+            z-index: 99999;
+            pointer-events: auto;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cinematic-turn-banner.active {
+            transform: translateX(-50%) translateY(0) scale(1);
+            opacity: 1;
+        }
+        .cinematic-turn-banner.dismissing {
+            transform: translateX(-50%) translateY(-80px) scale(0.95);
+            opacity: 0;
+            transition: all 0.4s ease-in;
+        }
+
+        /* Minimal Discrete Status Pill */
+        #status-pill {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+
+        body.show-hud #status-pill {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="show-hud">
+
+    <!-- Cinematic Turn Announcement Banner (Tabletop Screen) -->
+    <div id="cinematic-turn-banner" class="cinematic-turn-banner">
+        <div id="cinematic-card" class="relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 min-w-[340px] sm:min-w-[420px] max-w-lg backdrop-blur-xl bg-ledger-950/95 transition-all duration-300">
+            <!-- Glow background overlay -->
+            <div id="cinematic-glow-bg" class="absolute inset-0 opacity-25 pointer-events-none"></div>
+
+            <!-- Left Avatar / Icon -->
+            <div id="cinematic-avatar-wrap" class="relative w-14 h-14 rounded-xl border-2 flex items-center justify-center shrink-0 shadow-lg overflow-hidden bg-neutral-950">
+                <img id="cinematic-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+                <span id="cinematic-avatar-icon" class="text-2xl">⚔️</span>
+            </div>
+
+            <!-- Center Text -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span id="cinematic-round-badge" class="px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-ledger-900 border border-ledger-700 text-amber-400">ROUND 1</span>
+                    <span id="cinematic-role-badge" class="text-[11px] font-mono text-slate-400">Adventurer</span>
+                </div>
+                <h2 id="cinematic-combatant-name" class="font-display font-black text-xl sm:text-2xl text-slate-100 tracking-wide truncate mt-0.5">
+                    Thorne Ironbreaker
+                </h2>
+                <div id="cinematic-next-turn" class="text-xs text-slate-400 font-mono mt-0.5 truncate flex items-center gap-1">
+                    <span>Up Next:</span> <span id="cinematic-next-name" class="text-slate-200 font-semibold">Lyra Moonwhisper</span>
+                </div>
+            </div>
+
+            <!-- Dismiss Button -->
+            <button onclick="dismissCinematicTurnBanner()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition text-sm cursor-pointer" title="Dismiss">✕</button>
+
+            <!-- Bottom Progress Countdown -->
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
+                <div id="cinematic-timer-bar" class="h-full bg-amber-400 transition-all duration-[3600ms] ease-linear w-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Map Stage -->
+    <div id="map-stage">
+        <div id="map-container">
+            <!-- Layer 1: Battlemap Base Image -->
+            <img id="map-img" src="/static/images/battlemaps/dungeon_crypt.svg" alt="Table Battlemap">
+            
+            <!-- Layer 2: Grid Lines -->
+            <canvas id="grid-canvas"></canvas>
+
+            <!-- Layer 3: Monster & Character Tokens Layer (Below fog so unrevealed tokens stay hidden!) -->
+            <div id="tokens-layer" class="absolute inset-0 pointer-events-none overflow-hidden" style="z-index: 15;"></div>
+            
+            <!-- Layer 4: Fog of War -->
+            <canvas id="fog-canvas"></canvas>
+
+            <!-- Layer 5: Ping Animation Overlay -->
+            <div id="ping-layer" class="absolute inset-0 pointer-events-none overflow-hidden z-30"></div>
+        </div>
+    </div>
+
+    <!-- Discrete Status Pill (Fades away after mouse movement stops) -->
+    <div id="status-pill" class="flex items-center gap-3 bg-neutral-900/90 backdrop-blur-md border border-neutral-700/80 px-4 py-2 rounded-full shadow-2xl text-xs font-mono">
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" id="status-dot"></span>
+            <span class="text-neutral-200 font-bold" id="status-map-name">Table Battlemap</span>
+        </div>
+        <span class="text-neutral-600">|</span>
+        <span class="text-amber-400 font-bold" id="status-grid-info">Grid: 50px (1")</span>
+        <span class="text-neutral-600">|</span>
+        <span class="text-neutral-400 text-[11px]"><kbd class="bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700 text-neutral-300">F</kbd> Fullscreen</span>
+    </div>
+
+    <script>
+        // Global Map State
+        let mapState = {
+            activeMapId: "dungeon_crypt",
+            activeMapUrl: "/static/images/battlemaps/dungeon_crypt.svg",
+            activeMapName: "Forgotten Dungeon Crypt",
+            gridSize: 50,
+            gridVisible: true,
+            gridColor: "rgba(255, 255, 255, 0.22)",
+            fogEnabled: true,
+            fogMask: null,
+            rotation: 0,
+            panX: 0,
+            panY: 0,
+            zoom: 1.0,
+            locked: false,
+            pings: [],
+            updatedAt: 0
+        };
+
+        const mapContainer = document.getElementById('map-container');
+        const mapImg = document.getElementById('map-img');
+        const gridCanvas = document.getElementById('grid-canvas');
+        const fogCanvas = document.getElementById('fog-canvas');
+        const pingLayer = document.getElementById('ping-layer');
+        const gridCtx = gridCanvas.getContext('2d');
+        const fogCtx = fogCanvas.getContext('2d');
+
+        let lastVersion = 0;
+        let activePingsSet = new Set();
+        let hudTimer = null;
+        let isImageLoaded = false;
+        let naturalWidth = 2000;
+        let naturalHeight = 1500;
+
+        // Auto-hide HUD pill after 3.5s of mouse inactivity
+        function pingHud() {
+            document.body.classList.add('show-hud');
+            clearTimeout(hudTimer);
+            hudTimer = setTimeout(() => {
+                document.body.classList.remove('show-hud');
+            }, 3500);
+        }
+        window.addEventListener('mousemove', pingHud);
+        window.addEventListener('mousedown', pingHud);
+
+        // Toggle Fullscreen on 'F' key or Double Click
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'f') {
+                toggleFullscreen();
+            }
+        });
+        window.addEventListener('dblclick', toggleFullscreen);
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        // Tap on glass to broadcast a ping to DM
+        mapContainer.addEventListener('click', (e) => {
+            const rect = mapContainer.getBoundingClientRect();
+            // Inverse transform to world coordinates
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            // Send ping
+            fetch('/api/battlemap/ping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    x: Math.round(clickX),
+                    y: Math.round(clickY),
+                    color: '#38bdf8' // Cyan for player tap
+                })
+            }).catch(console.error);
+        });
+
+        // Initialize Map
+        mapImg.onload = () => {
+            naturalWidth = mapImg.naturalWidth || 2000;
+            naturalHeight = mapImg.naturalHeight || 1500;
+            
+            mapContainer.style.width = `${naturalWidth}px`;
+            mapContainer.style.height = `${naturalHeight}px`;
+
+            gridCanvas.width = naturalWidth;
+            gridCanvas.height = naturalHeight;
+
+            fogCanvas.width = naturalWidth;
+            fogCanvas.height = naturalHeight;
+
+            isImageLoaded = true;
+            renderGrid();
+            renderFog();
+            renderTokens();
+            applyTransform();
+        };
+
+        // Render Physical 1-Inch Grid Lines
+        function renderGrid() {
+            if (!isImageLoaded) return;
+            gridCtx.clearRect(0, 0, naturalWidth, naturalHeight);
+
+            if (!mapState.gridVisible || !mapState.gridSize || mapState.gridSize <= 5) {
+                return;
+            }
+
+            const step = mapState.gridSize;
+            gridCtx.strokeStyle = mapState.gridColor || 'rgba(255, 255, 255, 0.22)';
+            gridCtx.lineWidth = 1.2;
+            gridCtx.beginPath();
+
+            // Vertical lines
+            for (let x = 0; x <= naturalWidth; x += step) {
+                gridCtx.moveTo(x + 0.5, 0);
+                gridCtx.lineTo(x + 0.5, naturalHeight);
+            }
+
+            // Horizontal lines
+            for (let y = 0; y <= naturalHeight; y += step) {
+                gridCtx.moveTo(0, y + 0.5);
+                gridCtx.lineTo(naturalWidth, y + 0.5);
+            }
+
+            gridCtx.stroke();
+        }
+
+        // Render Pitch-Black Fog of War
+        function renderFog() {
+            if (!isImageLoaded) return;
+
+            // If Fog is disabled or fully revealed
+            if (!mapState.fogEnabled || mapState.fogMask === "REVEALED_ALL") {
+                fogCanvas.style.opacity = '0';
+                return;
+            }
+
+            fogCanvas.style.opacity = '1';
+
+            // Initial full shroud (null fogMask)
+            if (!mapState.fogMask) {
+                fogCtx.fillStyle = '#000000';
+                fogCtx.fillRect(0, 0, naturalWidth, naturalHeight);
+                return;
+            }
+
+            // Custom fog mask image loaded from DM
+            const maskImg = new Image();
+            maskImg.onload = () => {
+                fogCtx.clearRect(0, 0, naturalWidth, naturalHeight);
+                fogCtx.drawImage(maskImg, 0, 0, naturalWidth, naturalHeight);
+            };
+            maskImg.src = mapState.fogMask;
+        }
+
+        // Apply Viewport Transforms (Pan, Zoom, 90°/180° Rotation)
+        function applyTransform() {
+            const rot = mapState.rotation || 0;
+            const panX = mapState.panX || 0;
+            const panY = mapState.panY || 0;
+            const zoom = mapState.zoom || 1.0;
+
+            mapContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom}) rotate(${rot}deg)`;
+        }
+
+        // Trigger Laser Ping Ripple
+        function triggerLaserPing(ping) {
+            const ring = document.createElement('div');
+            ring.className = 'laser-ping-ring';
+            ring.style.left = `${ping.x}px`;
+            ring.style.top = `${ping.y}px`;
+            if (ping.color) {
+                ring.style.borderColor = ping.color;
+                ring.style.boxShadow = `0 0 25px ${ping.color}, inset 0 0 15px ${ping.color}`;
+            }
+
+            const core = document.createElement('div');
+            core.className = 'laser-ping-core';
+            core.style.left = `${ping.x}px`;
+            core.style.top = `${ping.y}px`;
+            if (ping.color) {
+                core.style.boxShadow = `0 0 20px ${ping.color}`;
+            }
+
+            pingLayer.appendChild(ring);
+            pingLayer.appendChild(core);
+
+            setTimeout(() => {
+                ring.remove();
+                core.remove();
+            }, 1800);
+        }
+
+        // Update Minimal HUD
+        function updateHud() {
+            const nameEl = document.getElementById('status-map-name');
+            const gridEl = document.getElementById('status-grid-info');
+            if (nameEl) nameEl.textContent = mapState.activeMapName || "Table Battlemap";
+            if (gridEl) {
+                if (mapState.gridVisible) {
+                    gridEl.textContent = `Grid: ${mapState.gridSize}px (1")`;
+                } else {
+                    gridEl.textContent = `Grid: Hidden`;
+                }
+            }
+        }
+
+        // Condition & Aura Helper for Tabletop Tokens
+        function getPlayerTokenAuras(t) {
+            const auras = [];
+            const badges = [];
+
+            const isBloodied = t.currentHp > 0 && t.currentHp <= Math.floor(t.maxHp / 2);
+            if (isBloodied) auras.push('bloodied-aura');
+
+            if (t.concentrating === true) {
+                auras.push('concentration-halo');
+                badges.push({ emoji: '🧘', name: 'Concentrating' });
+            }
+
+            const conditions = Array.isArray(t.conditions) ? t.conditions : [];
+            const lowerConds = conditions.map(x => String(x).toLowerCase());
+
+            if (lowerConds.some(c => c.includes('stun') || c.includes('paralyz'))) {
+                auras.push('stunned-aura');
+                badges.push({ emoji: '⚡', name: 'Stunned' });
+            }
+            if (lowerConds.some(c => c.includes('poison'))) {
+                auras.push('poisoned-aura');
+                badges.push({ emoji: '🤢', name: 'Poisoned' });
+            }
+            if (lowerConds.some(c => c.includes('frighten') || c.includes('fear') || c.includes('charm'))) {
+                auras.push('frightened-aura');
+                badges.push({ emoji: '😱', name: 'Frightened / Charmed' });
+            }
+            if (lowerConds.some(c => c.includes('prone'))) {
+                auras.push('prone-token');
+                badges.push({ emoji: '💤', name: 'Prone' });
+            }
+            if (lowerConds.some(c => c.includes('invis'))) {
+                auras.push('invisible-aura');
+                badges.push({ emoji: '👻', name: 'Invisible' });
+            }
+            if (lowerConds.some(c => c.includes('blind'))) {
+                badges.push({ emoji: '🙈', name: 'Blinded' });
+            }
+            if (lowerConds.some(c => c.includes('restrain') || c.includes('grappl'))) {
+                badges.push({ emoji: '⛓️', name: 'Restrained' });
+            }
+
+            return { auras: auras.join(' '), badges };
+        }
+
+        // Render Monster & Hero Tabletop Tokens
+        function renderTokens() {
+            const container = document.getElementById('tokens-layer');
+            if (!container) return;
+            const tokens = mapState.tokens || [];
+            const gridSize = mapState.gridSize || 50;
+
+            container.innerHTML = tokens.filter(t => t.visibleToPlayers !== false).map(t => {
+                const sq = t.sizeSquares || 1.0;
+                const sizePx = Math.round(sq * gridSize);
+                const borderColor = t.color || '#ef4444';
+                const avatar = t.imageUrl || '';
+                const initials = t.name ? t.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() : 'M';
+                const elev = parseInt(t.elevation, 10) || 0;
+
+                const { auras, badges } = getPlayerTokenAuras(t);
+                const elevShadow = elev > 0 ? `filter: drop-shadow(0px ${Math.min(26, Math.round(elev * 0.7))}px ${Math.min(20, Math.round(elev * 0.5))}px rgba(0,0,0,0.85));` : '';
+
+                return `
+                    <div class="table-token ${auras}" 
+                         style="left: ${t.x}px; top: ${t.y}px; width: ${sizePx}px; height: ${sizePx}px; border: 3.5px solid ${borderColor}; ${elevShadow}">
+                        
+                        <!-- Elevation Altitude Badge -->
+                        ${elev !== 0 ? `
+                            <div class="table-token-elevation ${elev > 0 ? 'bg-sky-950/95 text-sky-300 border-sky-400' : 'bg-amber-950/95 text-amber-300 border-amber-600'}">
+                                ${elev > 0 ? '🪽 +' : '▼ '}${elev}ft
+                            </div>
+                        ` : ''}
+
+                        <!-- Condition Mini-Icons -->
+                        ${badges.length > 0 ? `
+                            <div class="table-token-conditions">
+                                ${badges.map(b => `<span title="${b.name}" class="table-token-condition-icon">${b.emoji}</span>`).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${avatar ? `
+                            <img src="${avatar}" alt="${t.name}" class="table-token-img" onerror="this.style.display='none'; if (this.nextElementSibling) { this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex'); }">
+                            <div class="table-token-img hidden items-center justify-center font-bold text-amber-300 font-serif text-sm bg-neutral-900">${initials}</div>
+                        ` : `
+                            <div class="table-token-img flex items-center justify-center font-bold text-amber-300 font-serif text-sm bg-neutral-900">${initials}</div>
+                        `}
+                        <div class="table-token-label">${t.name}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Cinematic Turn Announcement & Web Audio Chime
+        let turnBannerTimeout = null;
+        let lastAnnouncedTurnKey = null;
+        let audioCtx = null;
+
+        function playTurnFanfare(isPC, isShadow) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const now = audioCtx.currentTime;
+
+                if (isShadow) {
+                    [220, 223, 330].forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.08, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 1.8);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 2.0);
+                    });
+                } else if (isPC) {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.09);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 1.2);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.09);
+                        osc.stop(now + idx * 0.09 + 1.3);
+                    });
+                } else {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(146.83, now);
+                    osc.frequency.exponentialRampToValueAtTime(73.42, now + 0.4);
+                    gain.gain.setValueAtTime(0.14, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 1.2);
+                }
+            } catch (e) {
+                console.warn("Audio Context error:", e);
+            }
+        }
+
+        function showCinematicTurnBanner(active, next, round) {
+            if (!active) return;
+            const banner = document.getElementById('cinematic-turn-banner');
+            const card = document.getElementById('cinematic-card');
+            const glowBg = document.getElementById('cinematic-glow-bg');
+            const avatarWrap = document.getElementById('cinematic-avatar-wrap');
+            const avatarImg = document.getElementById('cinematic-avatar-img');
+            const avatarIcon = document.getElementById('cinematic-avatar-icon');
+            const roundBadge = document.getElementById('cinematic-round-badge');
+            const roleBadge = document.getElementById('cinematic-role-badge');
+            const nameEl = document.getElementById('cinematic-combatant-name');
+            const nextNameEl = document.getElementById('cinematic-next-name');
+            const timerBar = document.getElementById('cinematic-timer-bar');
+
+            if (!banner || !card) return;
+
+            if (turnBannerTimeout) {
+                clearTimeout(turnBannerTimeout);
+                turnBannerTimeout = null;
+            }
+
+            const isShadow = active.type === 'hidden';
+            const isPC = active.type === 'pc';
+
+            if (isShadow) {
+                card.className = "relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 border-purple-500/80 bg-neutral-950/95 backdrop-blur-xl min-w-[340px] sm:min-w-[420px] max-w-lg transition-all duration-300 shadow-purple-950/80";
+                glowBg.className = "absolute inset-0 bg-gradient-to-r from-purple-900/40 via-indigo-900/20 to-transparent pointer-events-none";
+                avatarWrap.className = "relative w-14 h-14 rounded-xl border-2 border-purple-400 bg-neutral-900 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-950/50";
+                avatarImg.classList.add('hidden');
+                avatarIcon.classList.remove('hidden');
+                avatarIcon.textContent = "👁️‍🗨️";
+                roleBadge.textContent = "Concealed Adversary";
+                roundBadge.className = "px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-purple-950 border border-purple-700 text-purple-300";
+                timerBar.className = "h-full bg-purple-500 w-full";
+            } else if (isPC) {
+                card.className = "relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 border-amber-400/90 bg-ledger-950/95 backdrop-blur-xl min-w-[340px] sm:min-w-[420px] max-w-lg transition-all duration-300 shadow-amber-950/70";
+                glowBg.className = "absolute inset-0 bg-gradient-to-r from-amber-600/30 via-amber-800/10 to-transparent pointer-events-none";
+                avatarWrap.className = "relative w-14 h-14 rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-500 to-amber-700 text-ledger-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-950/50";
+                if (active.imageUrl) {
+                    avatarImg.src = active.imageUrl;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                } else {
+                    avatarImg.classList.add('hidden');
+                    avatarIcon.classList.remove('hidden');
+                    avatarIcon.textContent = "⚔️";
+                }
+                roleBadge.textContent = "Adventurer";
+                roundBadge.className = "px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-ledger-900 border border-ledger-700 text-amber-400";
+                timerBar.className = "h-full bg-amber-400 w-full";
+            } else {
+                card.className = "relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 border-rose-500/90 bg-ledger-950/95 backdrop-blur-xl min-w-[340px] sm:min-w-[420px] max-w-lg transition-all duration-300 shadow-rose-950/80";
+                glowBg.className = "absolute inset-0 bg-gradient-to-r from-rose-700/30 via-rose-950/20 to-transparent pointer-events-none";
+                avatarWrap.className = "relative w-14 h-14 rounded-xl border-2 border-rose-400 bg-gradient-to-br from-rose-800 to-rose-950 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-950/50";
+                if (active.imageUrl) {
+                    avatarImg.src = active.imageUrl;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                } else {
+                    avatarImg.classList.add('hidden');
+                    avatarIcon.classList.remove('hidden');
+                    avatarIcon.textContent = "💀";
+                }
+                roleBadge.textContent = "Adversary";
+                roundBadge.className = "px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-rose-950 border border-rose-700 text-rose-300";
+                timerBar.className = "h-full bg-rose-500 w-full";
+            }
+
+            roundBadge.textContent = `ROUND ${round || 1}`;
+            nameEl.textContent = active.name;
+
+            if (next && next.name) {
+                nextNameEl.textContent = next.name;
+            } else {
+                nextNameEl.textContent = "—";
+            }
+
+            playTurnFanfare(isPC, isShadow);
+
+            timerBar.style.transition = 'none';
+            timerBar.style.width = '100%';
+            setTimeout(() => {
+                timerBar.style.transition = 'width 3600ms linear';
+                timerBar.style.width = '0%';
+            }, 50);
+
+            banner.classList.remove('dismissing');
+            banner.classList.add('active');
+
+            turnBannerTimeout = setTimeout(() => {
+                dismissCinematicTurnBanner();
+            }, 3800);
+        }
+
+        function dismissCinematicTurnBanner() {
+            const banner = document.getElementById('cinematic-turn-banner');
+            if (!banner) return;
+            banner.classList.add('dismissing');
+            setTimeout(() => {
+                banner.classList.remove('active', 'dismissing');
+            }, 400);
+        }
+
+        function checkTurnAnnouncement(combat) {
+            if (!combat || !combat.inCombat || !combat.active) {
+                lastAnnouncedTurnKey = null;
+                return;
+            }
+            const active = combat.active;
+            const turnKey = `${combat.round}_${active.id || active.name}`;
+            if (lastAnnouncedTurnKey !== null && lastAnnouncedTurnKey !== turnKey) {
+                showCinematicTurnBanner(active, combat.next, combat.round);
+            }
+            lastAnnouncedTurnKey = turnKey;
+        }
+
+        // Live State Polling (Every 600ms)
+        async function pollBattlemap() {
+            try {
+                const res = await fetch('/api/battlemap');
+                if (!res.ok) return;
+                const state = await res.json();
+
+                // Check for turn announcement
+                if (state.combat) {
+                    checkTurnAnnouncement(state.combat);
+                }
+
+                const version = state.updatedAt || 0;
+                const mapChanged = state.activeMapUrl !== mapState.activeMapUrl;
+                const fogChanged = state.fogMask !== mapState.fogMask || state.fogEnabled !== mapState.fogEnabled;
+                const gridChanged = state.gridSize !== mapState.gridSize || state.gridVisible !== mapState.gridVisible || state.gridColor !== mapState.gridColor;
+                const transformChanged = state.rotation !== mapState.rotation || state.panX !== mapState.panX || state.panY !== mapState.panY || state.zoom !== mapState.zoom;
+
+                // Check for new pings
+                if (state.pings && Array.isArray(state.pings)) {
+                    state.pings.forEach(p => {
+                        if (!activePingsSet.has(p.id)) {
+                            activePingsSet.add(p.id);
+                            triggerLaserPing(p);
+                        }
+                    });
+                }
+
+                if (version !== lastVersion) {
+                    lastVersion = version;
+                    mapState = state;
+                    updateHud();
+
+                    if (mapChanged) {
+                        isImageLoaded = false;
+                        mapImg.src = state.activeMapUrl;
+                    } else {
+                        if (gridChanged) renderGrid();
+                        if (fogChanged) renderFog();
+                        if (transformChanged) applyTransform();
+                        renderTokens();
+                    }
+                }
+            } catch (err) {
+                console.error("Battlemap sync error:", err);
+            }
+        }
+
+        window.onload = () => {
+            pollBattlemap();
+            setInterval(pollBattlemap, 600);
+            pingHud();
+            // Unlock Web Audio on first user interaction
+            document.addEventListener('click', () => {
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            }, { once: true });
+        };
+    </script>
+</body>
+</html>

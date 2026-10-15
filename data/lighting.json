@@ -1,0 +1,37 @@
+{
+  "connected": false,
+  "apiUrl": "ws://127.0.0.1:12345",
+  "brightness": 55,
+  "cct": 5000,
+  "rgb": [
+    130,
+    30,
+    250
+  ],
+  "effect": "solid",
+  "activePreset": "preset-arcane-sanctum",
+  "syncAudio": true,
+  "diceTriggers": true,
+  "overhead": {
+    "node_id": "400L5-13106A",
+    "name": "amaran 60d S #1",
+    "brightness": 50,
+    "enabled": true,
+    "linkFlashes": false
+  },
+  "atmosphere": {
+    "node_id": "400U5-52611A",
+    "name": "amaran Ace 25c #1",
+    "brightness": 65,
+    "cct": 5000,
+    "rgb": [
+      255,
+      160,
+      60
+    ],
+    "mode": "cct",
+    "effect": "solid",
+    "activePreset": "preset-tavern",
+    "enabled": true
+  }
+}

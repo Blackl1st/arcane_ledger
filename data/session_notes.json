@@ -1,0 +1,20 @@
+[
+  {
+    "id": "note-1",
+    "timestamp": "Day 1, 09:15",
+    "text": "Party accepted contract from Guildmaster Vance to inspect the Sunken Ward warehouse.",
+    "tag": "quest"
+  },
+  {
+    "id": "note-2",
+    "timestamp": "Day 1, 10:30",
+    "text": "Found a stamped brass coin marked with the Obsidian Syndicate cipher beneath a loose flagstone.",
+    "tag": "clue"
+  },
+  {
+    "id": "note-3",
+    "timestamp": "Day 1, 11:45",
+    "text": "Finnian bought 2x Potions of Healing (100 gp total) from the apothecary at Oakhaven Market.",
+    "tag": "loot"
+  }
+]

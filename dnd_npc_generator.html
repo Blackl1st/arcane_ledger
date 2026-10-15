@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcane Ledger — D&D On-the-Fly NPC Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ledger: {
+                            950: '#090c10',
+                            900: '#0f141c',
+                            800: '#171f2c',
+                            700: '#232f42',
+                            600: '#33435d',
+                            amber: '#f59e0b',
+                            gold: '#d97706',
+                            parchment: '#fef3c7'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f141c;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(217, 119, 6, 0.06) 0%, transparent 35%),
+                radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.04) 0%, transparent 35%);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f141c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #232f42;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d97706;
+        }
+        .trait-card {
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #232f42;
+            background: linear-gradient(180deg, rgba(23, 31, 44, 0.92) 0%, rgba(15, 20, 28, 0.96) 100%);
+        }
+        .trait-card:hover {
+            border-color: #33435d;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+        }
+        .trait-card.locked {
+            border-color: rgba(245, 158, 11, 0.55);
+            background: linear-gradient(180deg, rgba(41, 31, 22, 0.65) 0%, rgba(18, 22, 30, 0.95) 100%);
+            box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.08);
+        }
+        @keyframes pulseHighlight {
+            0% { border-color: #f59e0b; transform: translateY(-1px); }
+            100% { border-color: #232f42; transform: translateY(0); }
+        }
+        .rolled-flash {
+            animation: pulseHighlight 0.35s ease-out;
+        }
+        [contenteditable="true"]:focus {
+            outline: none;
+            background-color: rgba(15, 20, 28, 0.8);
+            box-shadow: 0 0 0 1px #f59e0b;
+            border-radius: 0.25rem;
+            padding: 2px 4px;
+            margin: -2px -4px;
+        }
+        [contenteditable="true"]:hover:not(:focus) {
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 0.25rem;
+            cursor: text;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
+
+    <!-- TOP NAVIGATION & FILTER BAR -->
+    <header class="sticky top-0 z-30 bg-ledger-950/95 backdrop-blur-md border-b border-ledger-700 px-3 sm:px-6 py-2.5 shadow-lg">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Brand Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-md shadow-amber-900/30 border border-amber-400/30">
+                    <svg class="w-5 h-5 text-ledger-950" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5l-6-3 6-3 6 3-6 3zm0 2.5l-10-5v10l10 5 10-5V7l-10 5z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-display font-bold text-lg sm:text-xl tracking-wider text-amber-400 leading-none">ARCANE LEDGER</h1>
+                        <span class="hidden sm:inline-block text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-ledger-800 text-amber-300/90 border border-ledger-700">DM Screen 5e</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden md:block">Instant On-the-Fly NPC Generator & Campaign Roster</p>
+                </div>
+            </div>
+
+            <!-- Generation Filter Controls -->
+            <div class="flex flex-wrap items-center gap-2 flex-1 justify-center max-w-3xl">
+                <!-- Species Filter -->
+                <div class="flex items-center bg-ledger-800 border border-ledger-700 rounded-lg px-2 py-1 text-xs">
+                    <span class="text-slate-400 mr-1.5 font-medium">Species:</span>
+                    <select id="filter-species" class="bg-transparent text-slate-100 font-medium focus:outline-none cursor-pointer">
+                        <option value="ANY" class="bg-ledger-900">Any Species</option>
+                    </select>
+                </div>
+
+                <!-- Role Archetype Filter -->
+                <div class="flex items-center bg-ledger-800 border border-ledger-700 rounded-lg px-2 py-1 text-xs">
+                    <span class="text-slate-400 mr-1.5 font-medium">Role:</span>
+                    <select id="filter-role" class="bg-transparent text-slate-100 font-medium focus:outline-none cursor-pointer">
+                        <option value="ANY" class="bg-ledger-900">Any Archetype</option>
+                        <option value="Commoner & Labor" class="bg-ledger-900">Commoner & Labor</option>
+                        <option value="Underworld & Criminal" class="bg-ledger-900">Underworld & Criminal</option>
+                        <option value="Martial & Watch" class="bg-ledger-900">Martial & Watch</option>
+                        <option value="Arcane & Scholar" class="bg-ledger-900">Arcane & Scholar</option>
+                        <option value="Noble & Merchant" class="bg-ledger-900">Noble & Merchant</option>
+                        <option value="Wilderness & Outlander" class="bg-ledger-900">Wilderness & Outlander</option>
+                    </select>
+                </div>
+
+                <!-- Faction Filter -->
+                <div class="flex items-center bg-ledger-800 border border-ledger-700 rounded-lg px-2 py-1 text-xs">
+                    <span class="text-slate-400 mr-1.5 font-medium">Faction:</span>
+                    <select id="filter-faction" class="bg-transparent text-slate-100 font-medium focus:outline-none cursor-pointer max-w-[140px] truncate">
+                        <option value="ANY" class="bg-ledger-900">Any Faction</option>
+                    </select>
+                </div>
+
+                <!-- Location Filter -->
+                <div class="flex items-center bg-ledger-800 border border-ledger-700 rounded-lg px-2 py-1 text-xs">
+                    <span class="text-slate-400 mr-1.5 font-medium">Location:</span>
+                    <select id="filter-location" class="bg-transparent text-slate-100 font-medium focus:outline-none cursor-pointer max-w-[140px] truncate">
+                        <option value="ANY" class="bg-ledger-900">Any Location</option>
+                    </select>
+                </div>
+
+                <!-- Unlock All Button -->
+                <button onclick="unlockAllTraits()" title="Unlock all locked traits (U)" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white border border-ledger-700 text-xs flex items-center gap-1 transition">
+                    <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="hidden xl:inline">Unlock All</span>
+                </button>
+            </div>
+
+            <!-- Primary Action Buttons -->
+            <div class="flex items-center gap-2">
+                <button onclick="rollFullNPC()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs sm:text-sm shadow-md shadow-amber-950/50 flex items-center gap-2 transition active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                    </svg>
+                    <span>Roll NPC</span>
+                    <kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-amber-900/30 text-ledger-950 rounded">Space</kbd>
+                </button>
+
+                <button onclick="openModal('campaign-modal')" class="px-3 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-300 border border-ledger-600 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition" title="Customize Factions & Locations">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span class="hidden md:inline">World Settings</span>
+                </button>
+
+                <button onclick="downloadStandaloneApp()" class="px-2.5 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white border border-ledger-700 text-xs flex items-center gap-1.5 transition" title="Download this app as a single offline HTML file">
+                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    <span class="hidden xl:inline">Save App (.html)</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE: LEFT/CENTER NPC SHEET + RIGHT ROSTER SIDEBAR -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+        <!-- ACTIVE NPC SHEET (8 Columns on Desktop) -->
+        <section class="lg:col-span-8 xl:col-span-9 flex flex-col gap-3">
+
+            <!-- HERO BANNER: NAME, SPECIES, OCCUPATION, STAT BLOCK & ACTIONS -->
+            <div id="card-identity" class="trait-card rounded-xl p-4 sm:p-5 relative overflow-hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    
+                    <!-- Left: Name, Epithet, Species/Role -->
+                    <div class="space-y-1.5 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="npc-species-badge" contenteditable="true" spellcheck="false" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">Human (he/him)</span>
+                            <span id="npc-role-badge" contenteditable="true" spellcheck="false" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30">Hedge Alchemist</span>
+                            <span id="npc-category-tag" class="text-[11px] font-mono text-slate-400">Arcane & Scholar</span>
+                        </div>
+
+                        <div class="flex items-baseline flex-wrap gap-x-2.5 gap-y-1 pt-0.5">
+                            <h2 id="npc-name" contenteditable="true" spellcheck="false" class="font-display font-bold text-2xl sm:text-3xl text-white tracking-wide">Bramwell Vance</h2>
+                            <span id="npc-epithet" contenteditable="true" spellcheck="false" class="text-sm sm:text-base font-medium text-amber-400/90 italic">"Ash-Thumb"</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            <span>Click any text on this sheet to edit directly before saving.</span>
+                        </p>
+                    </div>
+
+                    <!-- Right: Identity Controls & Quick Save/Copy -->
+                    <div class="flex flex-wrap items-center gap-2 self-start md:self-center">
+                        <!-- Reroll Identity -->
+                        <button onclick="rerollTrait('identity')" title="Reroll Name, Species & Role" class="p-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-amber-400 border border-ledger-700 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </button>
+                        <!-- Lock Identity -->
+                        <button id="lock-btn-identity" onclick="toggleLock('identity')" title="Lock Identity" class="p-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-400 border border-ledger-700 transition">
+                            <svg class="w-4 h-4 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                        </button>
+
+                        <div class="h-5 w-px bg-ledger-700 mx-0.5"></div>
+
+                        <!-- Copy Markdown -->
+                        <button onclick="copyNPCMarkdown()" class="px-3 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-600 text-xs font-semibold flex items-center gap-1.5 transition" title="Copy formatted Markdown (Shortcut: C)">
+                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                            <span>Copy MD</span>
+                        </button>
+
+                        <!-- Save to Roster -->
+                        <button onclick="saveCurrentNPCToRoster()" class="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/50 transition active:scale-95" title="Save NPC to Campaign Roster (Shortcut: S)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                            <span>Save to Roster</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8-CARD TRAIT GRID (Fits cleanly in desktop viewport) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+
+                <!-- 1. VOICE & MANNERISM CUE (Immediate DM Acting Prompt) -->
+                <div id="card-voice" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400">Voice & Acting Cue</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('voice')" title="Reroll Voice & Mannerism" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-voice" onclick="toggleLock('voice')" title="Lock Voice" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="npc-voice" contenteditable="true" spellcheck="false" class="text-sm text-slate-100 leading-relaxed font-medium"></p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ledger-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Immediate table roleplay direction</span>
+                        <span class="font-mono text-amber-400/80">Cue</span>
+                    </div>
+                </div>
+
+                <!-- 2. PHYSICAL APPEARANCE -->
+                <div id="card-appearance" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400">Physical Appearance</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('appearance')" title="Reroll Appearance" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-appearance" onclick="toggleLock('appearance')" title="Lock Appearance" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="npc-appearance" contenteditable="true" spellcheck="false" class="text-sm text-slate-200 leading-relaxed"></p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ledger-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Distinctive build + attire detail</span>
+                        <span class="font-mono text-sky-400/80">Visual</span>
+                    </div>
+                </div>
+
+                <!-- 3. PERSONALITY & IMMEDIATE MOTIVATION -->
+                <div id="card-personality" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400">Demeanor & Drive</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('personality')" title="Reroll Personality" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-personality" onclick="toggleLock('personality')" title="Lock Personality" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="npc-personality" contenteditable="true" spellcheck="false" class="text-sm text-slate-200 leading-relaxed"></p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ledger-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Attitude + what they want right now</span>
+                        <span class="font-mono text-purple-400/80">Motive</span>
+                    </div>
+                </div>
+
+                <!-- 4. SHORT BACKSTORY (Spans 2 cols on XL if needed, or balanced) -->
+                <div id="card-backstory" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Short Backstory</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('backstory')" title="Reroll Backstory" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-backstory" onclick="toggleLock('backstory')" title="Lock Backstory" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="npc-backstory" contenteditable="true" spellcheck="false" class="text-sm text-slate-200 leading-relaxed"></p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ledger-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>How they ended up where they are</span>
+                        <span class="font-mono text-emerald-400/80">History</span>
+                    </div>
+                </div>
+
+                <!-- 5. SECRET & PLAYABLE PLOT HOOK -->
+                <div id="card-secret" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-rose-400">Secret & Plot Hook</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('secret')" title="Reroll Secret & Hook" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-secret" onclick="toggleLock('secret')" title="Lock Secret" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="npc-secret" contenteditable="true" spellcheck="false" class="text-sm text-slate-200 leading-relaxed"></p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ledger-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Actionable adventure thread or leverage</span>
+                        <span class="font-mono text-rose-400/80">DM Eyes</span>
+                    </div>
+                </div>
+
+                <!-- 6. CAMPAIGN FACTION & LOCATION -->
+                <div id="card-world" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400">Faction & Location</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openModal('campaign-modal')" title="Edit Custom Campaign Factions & Locations" class="px-1.5 py-0.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-[10px] font-medium border border-indigo-500/20 transition">
+                                    Customize
+                                </button>
+                                <button onclick="rerollTrait('world')" title="Reroll Faction & Location" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-world" onclick="toggleLock('world')" title="Lock Faction & Location" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-ledger-950/60 p-2 rounded-lg border border-ledger-800">
+                                <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Faction Allegiance</span>
+                                <p id="npc-faction" contenteditable="true" spellcheck="false" class="text-slate-100 font-semibold mt-0.5 text-sm"></p>
+                                <p id="npc-faction-standing" contenteditable="true" spellcheck="false" class="text-indigo-300/90 text-xs mt-0.5"></p>
+                            </div>
+                            <div class="bg-ledger-950/60 p-2 rounded-lg border border-ledger-800 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Current Location / Origin</span>
+                                    <p id="npc-location" contenteditable="true" spellcheck="false" class="text-slate-100 font-medium text-xs sm:text-sm mt-0.5"></p>
+                                </div>
+                                <svg class="w-4 h-4 text-indigo-400/60 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. POCKET LOOT & TRINKETS (Spans 1.5 or 1 col) -->
+                <div id="card-loot" class="trait-card rounded-xl p-3.5 flex flex-col justify-between md:col-span-1 xl:col-span-2">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-yellow-500/15 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-yellow-400">Pocket Loot, Coin & Trinkets</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('loot')" title="Reroll Pocket Contents" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-loot" onclick="toggleLock('loot')" title="Lock Pocket Loot" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="npc-loot" contenteditable="true" spellcheck="false" class="text-sm text-slate-200 leading-relaxed"></p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ledger-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>For pickpocketing, looting, or bribery</span>
+                        <span class="font-mono text-yellow-400/80">Inventory</span>
+                    </div>
+                </div>
+
+                <!-- 8. 5E QUICK STAT ARCHETYPE REFERENCE -->
+                <div id="card-stats" class="trait-card rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                </span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-orange-400">5e Stat Reference</h3>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="rerollTrait('stats')" title="Cycle Combat Stat Block" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                                <button id="lock-btn-stats" onclick="toggleLock('stats')" title="Lock Stat Block" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 transition">
+                                    <svg class="w-3.5 h-3.5 lock-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-ledger-950/75 rounded-lg p-2.5 border border-ledger-800 space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span id="npc-stat-name" contenteditable="true" spellcheck="false" class="font-bold text-xs sm:text-sm text-amber-300">Spy (CR 1)</span>
+                                <span id="npc-stat-ac-hp" contenteditable="true" spellcheck="false" class="font-mono text-xs text-slate-200 bg-ledger-800 px-2 py-0.5 rounded">AC 12 | HP 27</span>
+                            </div>
+                            <p id="npc-stat-details" contenteditable="true" spellcheck="false" class="text-xs text-slate-300 font-mono leading-snug"></p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SESSION NOTES BAR FOR CURRENT NPC -->
+            <div class="trait-card rounded-xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <div class="flex items-center gap-2 text-xs font-semibold text-slate-300 shrink-0">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span>Live Session Notes:</span>
+                </div>
+                <input id="npc-session-notes" type="text" placeholder="Add quick DM notes (e.g., 'Party bribed him 15gp; promised to meet at midnight by the docks')..." class="flex-1 bg-ledger-950/80 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                <div class="hidden xl:flex items-center gap-2 text-[11px] text-slate-400 shrink-0 font-mono">
+                    <span>[Space] Roll</span>
+                    <span>•</span>
+                    <span>[S] Save</span>
+                    <span>•</span>
+                    <span>[C] Copy</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT SIDEBAR: SAVED CAMPAIGN ROSTER (4 Columns on Desktop) -->
+        <aside class="lg:col-span-4 xl:col-span-3 bg-ledger-900/90 border border-ledger-700 rounded-xl p-4 flex flex-col h-full max-h-[calc(100vh-5.5rem)] sticky top-16">
+            <div class="flex items-center justify-between gap-2 pb-3 border-b border-ledger-700">
+                <div class="flex items-center gap-2">
+                    <h2 class="font-display font-bold text-sm sm:text-base text-amber-400 tracking-wide">SAVED NPC ROSTER</h2>
+                    <span id="roster-count" class="px-2 py-0.5 text-xs font-mono font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">0</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button onclick="exportRosterMarkdown()" title="Copy Entire Roster as Markdown" class="px-2 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] border border-ledger-700 transition">
+                        Export MD
+                    </button>
+                    <button onclick="openModal('campaign-modal')" title="Backup or Restore JSON" class="px-2 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] border border-ledger-700 transition">
+                        JSON
+                    </button>
+                </div>
+            </div>
+
+            <!-- Roster Search & Filter -->
+            <div class="my-2.5 relative">
+                <input id="roster-search" oninput="renderRoster()" type="text" placeholder="Search saved NPCs by name, faction, place..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+
+            <!-- Saved NPC List Container -->
+            <div id="roster-list" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[260px]">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- CAMPAIGN CUSTOMIZER MODAL (FACTIONS, LOCATIONS, IMPORT/EXPORT) -->
+    <div id="campaign-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-ledger-600 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-ledger-950 border-b border-ledger-700 flex items-center justify-between">
+                <div>
+                    <h2 class="font-display font-bold text-lg text-amber-400">CAMPAIGN WORLD CUSTOMIZER</h2>
+                    <p class="text-xs text-slate-400">Add your own campaign factions and locations. Everything saves automatically to your browser.</p>
+                </div>
+                <button onclick="closeModal('campaign-modal')" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+                
+                <!-- Left Column: Custom Factions -->
+                <div class="flex flex-col bg-ledger-950/60 border border-ledger-800 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-sm text-indigo-300 uppercase tracking-wider">Campaign Factions</h3>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                            <input id="toggle-custom-factions-only" type="checkbox" onchange="toggleCustomPoolSettings()" class="rounded bg-ledger-800 border-ledger-600 text-amber-500 focus:ring-0">
+                            <span>Use ONLY my custom factions</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Include a short descriptor if you like, e.g., <span class="text-slate-300 italic">"The Obsidian Syndicate (Smugglers)"</span>.</p>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <input id="new-faction-input" type="text" placeholder="Add faction name..." onkeydown="if(event.key==='Enter') addCustomFaction()" class="flex-1 bg-ledger-900 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <button onclick="addCustomFaction()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">+ Add</button>
+                    </div>
+
+                    <div id="custom-factions-list" class="flex-1 overflow-y-auto space-y-1.5 max-h-60 pr-1"></div>
+                </div>
+
+                <!-- Right Column: Custom Locations -->
+                <div class="flex flex-col bg-ledger-950/60 border border-ledger-800 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-sm text-emerald-300 uppercase tracking-wider">Campaign Locations & Towns</h3>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                            <input id="toggle-custom-locations-only" type="checkbox" onchange="toggleCustomPoolSettings()" class="rounded bg-ledger-800 border-ledger-600 text-amber-500 focus:ring-0">
+                            <span>Use ONLY my custom locations</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Add cities, taverns, wards, or regions, e.g., <span class="text-slate-300 italic">"Oakhaven — The Sunken Ward"</span>.</p>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <input id="new-location-input" type="text" placeholder="Add town, ward, or landmark..." onkeydown="if(event.key==='Enter') addCustomLocation()" class="flex-1 bg-ledger-900 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                        <button onclick="addCustomLocation()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition">+ Add</button>
+                    </div>
+
+                    <div id="custom-locations-list" class="flex-1 overflow-y-auto space-y-1.5 max-h-60 pr-1"></div>
+                </div>
+
+                <!-- Bottom Full-Width: JSON Backup / Restore -->
+                <div class="md:col-span-2 bg-ledger-950/80 border border-ledger-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400">Campaign Data Backup (.JSON)</h4>
+                        <p class="text-xs text-slate-400">Export your custom factions, locations, and saved NPC roster to a file, or import an existing campaign file.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="exportCampaignJSON()" class="px-3 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-300 border border-ledger-600 text-xs font-semibold transition">
+                            Export Campaign JSON
+                        </button>
+                        <label class="px-3 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-sky-300 border border-ledger-600 text-xs font-semibold cursor-pointer transition">
+                            <span>Import Campaign JSON</span>
+                            <input type="file" accept=".json" onchange="importCampaignJSON(event)" class="hidden">
+                        </label>
+                        <button onclick="resetDefaultCampaignData()" class="px-3 py-2 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 text-xs transition">
+                            Reset Defaults
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-3 bg-ledger-950 border-t border-ledger-700 flex justify-end">
+                <button onclick="closeModal('campaign-modal')" class="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition">
+                    Done & Return to Generator
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- APPLICATION LOGIC & CURATED D&D TABLES -->
+    <script>
+        /**************************************************************
+         * 1. RICH PROCEDURAL D&D 5E DATA POOLS
+         **************************************************************/
+        const SPECIES_DATA = {
+            "Human": {
+                pronouns: ["he/him", "she/her", "they/them"],
+                first: ["Alden", "Bramwell", "Cora", "Darian", "Eliza", "Falk", "Garrick", "Helena", "idris", "Jorah", "Katerina", "Lucan", "Maren", "Nolan", "Orla", "Perrin", "Quinn", "Rowan", "Sabine", "Talia", "Ulric", "Vera", "Willem", "Yara", "Zane"],
+                last: ["Ashford", "Blackwood", "Crowley", "Dunne", "Fairchild", "Graves", "Holloway", "Ironwood", "Kendrick", "Locke", "Mercer", "Norwood", "Oakhart", "Pendleton", "Redfield", "Shaw", "Thorne", "Vance", "Warrick", "Yates"]
+            },
+            "Dwarf": {
+                pronouns: ["he/him", "she/her", "they/them"],
+                first: ["Baelor", "Brunhild", "Dain", "Dolgrin", "Eberk", "Fargrim", "Gilda", "Harbek", "Kathra", "Mardred", "Morgran", "Orsik", "agnoli", "Riswynn", "Torbera", "Thorin", "Vondal", "Yurgun"],
+                last: ["Amberhelm", "Brawnanvil", "Coppervein", "Deepdelver", "Fireforge", "Frostbeard", "Gorunn", "Hammerfast", "Ironfist", "Loderr", "oakenheart", "Rumnaheim", "Silveraxe", "Stonebrow", "Trueanvil"]
+            },
+            "Elf": {
+                pronouns: ["she/her", "he/him", "they/them"],
+                first: ["Aelar", "Ariawyn", "Caladrel", "Elenion", "Faelar", "Galinndan", "Ielenia", "Keyleth", "Leshanna", "Meriele", "Naivara", "Quarion", "Sariel", "Syllin", "Tharivol", "Vaeril", "Xanaphia", "Zylphira"],
+                last: ["Amakiir (Gemflower)", "Galanodel (Moonwhisper)", "Holimion (Diamonddew)", "Ilphelkiir (Gemblossom)", "Liadon (Silverfrond)", "Meliamne (Oakenheel)", "Naïlo (Nightbreeze)", "Siannodel (Moonbrook)", "Xiloscient (Goldpetal)"]
+            },
+            "Halfling": {
+                pronouns: ["she/her", "he/him", "they/them"],
+                first: ["Alton", "Ander", "Callie", "Chenna", "Corrin", "Eldon", "Euphemia", "Finnan", "Jillian", "Kithri", "Lavinia", "Lidda", "Merla", "Nedda", "Osborn", "Perrin", "Pip", "Roscoe", "Seraphina", "Verna"],
+                last: ["Brushgather", "Goodbarrel", "Greenbottle", "High-hill", "Hilltopple", "Leagallow", "Tealeaf", "Thorngage", "Tosscobble", "Underbough", "Warmwater"]
+            },
+            "Tiefling": {
+                pronouns: ["they/them", "she/her", "he/him"],
+                first: ["Akmenos", "Amnon", "Bryseis", "Criella", "Damakos", "Ekemon", "Kairon", "Leucis", "Makaria", "Morthos", "Nemeia", "Orianna", "Pelaios", "Phelaia", "Rieta", "Skamos", "Therai", "Valafar"],
+                last: ["Art", "Carrion", "Chant", "Creed", "Despair", "Excellence", "Fear", "Glory", "Hope", "Ideal", "Music", "Nowhere", "Open", "Poetry", "Quest", "Random", "Reverence", "Sorrow", "Temerity", "Torment"]
+            },
+            "Dragonborn": {
+                pronouns: ["he/him", "she/her", "they/them"],
+                first: ["Arjhan", "Balasar", "Bharash", "Donaar", "Farideh", "Ghesh", "Harann", "Kava", "Medrash", "Mehen", "Nadarr", "Pandjed", "Patrin", "Rhogar", "Shamash", "Sora", "Surina", "Tarhun", "Torinn"],
+                last: ["Clethtinthiallor", "Daardendrian", "Delmirev", "Drachedandion", "Fenkenkabradon", "Kepeshkmolik", "Kerrhylon", "Kimbatuul", "Linxakasendalor", "Myastan", "Nemmonis", "Norixius", "Ophinshtalajiir", "Turnuroth", "Verthisathurgiesh"]
+            },
+            "Half-Orc": {
+                pronouns: ["he/him", "she/her", "they/them"],
+                first: ["Baggi", "Dench", "Emen", "Engong", "Feng", "Gell", "Henk", "Holg", "Imsh", "Kansif", "Keth", "Krusk", "Mhurren", "Myev", "Neega", "Ovak", "Ownka", "Ront", "Shautha", "Sutha", "Thokk", "Volen"],
+                last: ["Bloodscar", "Brokenfang", "Craghorn", "Doomhammer", "Goretusk", "Grimeye", "Ironjaw", "Redhand", "Skullcleaver", "Steelgrip", "Stonebreaker", "Thunderfist", "Wolfbane"]
+            },
+            "Gnome": {
+                pronouns: ["he/him", "she/her", "they/them"],
+                first: ["Alston", "Alvyn", "Bimpnottin", "Breena", "Brocc", "Caramip", "Carlin", "Dimble", "Donella", "Eldon", "Erky", "Fonkin", "Frug", "Gerbo", "Gimble", "Glim", "Jebeddo", "Lilli", "Namfoodle", "Nyx", "Orryn", "Zook"],
+                last: ["Beren", "Daergel", "Folkor", "Garrick", "Nackle", "Murnig", "Ningel", "Raulnor", "Scheppen", "Timbers", "Turen", "Sparklegem", "Gearwhistle", "Cogsworth"]
+            },
+            "Goliath": {
+                pronouns: ["he/him", "she/her", "they/them"],
+                first: ["Aukan", "Eglath", "Gae-Al", "Gauthak", "Ilikan", "Keothi", "Kuori", "Lo-Kag", "Manneo", "Maveith", "Nalla", "Orilo", "Paavu", "Pethani", "Thalai", "Thotham", "Uthal", "Vaunea", "Vimak"],
+                last: ["Anakalathai", "Elanithino", "Gathakanathi", "Kalagiano", "Katho-Olavi", "Kolae-Gileana", "Ogolakanu", "Thuliaga", "Thunukalathi", "Vaimei-Laga"]
+            },
+            "Warforged / Construct": {
+                pronouns: ["they/them", "it/its", "he/him", "she/her"],
+                first: ["Anvil", "Bastion", "Bulwark", "Cadence", "Cipher", "Cog", "Crucible", "Echo", "Ember", "Forge", "Glaive", "Herald", "Ironclad", "Loom", "Mender", "Onyx", "Pillar", "Relic", "Sentinel", "Spark", "Vanguard", "Warden"],
+                last: ["Unit VII", "Mark IV", "of House Cannith", "the Unrusted", "of the Last Foundry", "Brass-Bound", "Soul-Forged", "of the Iron Watch", "Rune-Etched"]
+            }
+        };
+
+        const EPITHETS = [
+            '"Ash-Thumb"', '"Six-Fingers"', '"The Whisper"', '"Copper-Tongue"', '"Iron-Lung"', '"Half-Pint"', 
+            '"The Velvet Knife"', '"Crow-Eye"', '"Salt-Beard"', '"The Unforgiven"', '"Twice-Hanged"', '"Lantern-Jaw"', 
+            '"Silver-Smile"', '"Dead-Eye"', '"The Ledger"', '"Quick-Stitch"', '"Bitter-Cup"', '"Soot-Cloak"',
+            '"The Owl"', '"Lock-Jaw"', '"Glass-Eye"', '"Three-Coins"', '"No-Shadow"', '"The Hound"'
+        ];
+
+        const ROLES_BY_CATEGORY = {
+            "Commoner & Labor": [
+                { role: "Tavern Keeper", stat: "Commoner (CR 0)" },
+                { role: "Dockworker & Stevedore", stat: "Thug (CR 1/2)" },
+                { role: "Blacksmith's Apprentice", stat: "Commoner (CR 0)" },
+                { role: "Nightsoil Collector", stat: "Commoner (CR 0)" },
+                { role: "Gravedigger & Sexton", stat: "Commoner (CR 0)" },
+                { role: "Stable Master", stat: "Commoner (CR 0)" },
+                { role: "Ferryman", stat: "Commoner (CR 0)" },
+                { role: "Street Butcher", stat: "Commoner (CR 0)" },
+                { role: "Lamplighter", stat: "Commoner (CR 0)" },
+                { role: "Brewmaster", stat: "Commoner (CR 0)" }
+            ],
+            "Underworld & Criminal": [
+                { role: "Shady Fence & Pawnbroker", stat: "Spy (CR 1)" },
+                { role: "Smuggler Captain", stat: "Bandit Captain (CR 2)" },
+                { role: "Back-Alley Chirurgeon", stat: "Spy (CR 1)" },
+                { role: "Forger of Seals & Writs", stat: "Spy (CR 1)" },
+                { role: "Tavern Card Sharp", stat: "Bandit (CR 1/8)" },
+                { role: "Syndicate Enforcer", stat: "Thug (CR 1/2)" },
+                { role: "Information Broker", stat: "Spy (CR 1)" },
+                { role: "Cat Burglar", stat: "Spy (CR 1)" },
+                { role: "Pit Fight Promoter", stat: "Thug (CR 1/2)" },
+                { role: "Black-Market Poisoner", stat: "Assassin (CR 8)" }
+            ],
+            "Martial & Watch": [
+                { role: "Exhausted Watch Captain", stat: "Veteran (CR 3)" },
+                { role: "Tollbridge Gatekeeper", stat: "Guard (CR 1/8)" },
+                { role: "Caravan Outrider", stat: "Scout (CR 1/2)" },
+                { role: "Disgraced Knight-Errant", stat: "Knight (CR 3)" },
+                { role: "Bounty Hunter", stat: "Veteran (CR 3)" },
+                { role: "retired Siege Engineer", stat: "Veteran (CR 3)" },
+                { role: "Prison Turnkey", stat: "Guard (CR 1/8)" },
+                { role: "Mercenary Quartermaster", stat: "Thug (CR 1/2)" },
+                { role: "Bodyguard-for-Hire", stat: "Berserker (CR 2)" }
+            ],
+            "Arcane & Scholar": [
+                { role: "Hedge Alchemist", stat: "Mage (CR 6)" },
+                { role: "Relic Appraiser", stat: "Priest (CR 2)" },
+                { role: "Disgraced Astrologer", stat: "Cult Fanatic (CR 2)" },
+                { role: "Scriveners' Guild Archivist", stat: "Commoner (CR 0)" },
+                { role: "Apothecary & Herbalist", stat: "Druid (CR 2)" },
+                { role: "Wandering Monster Taxonomist", stat: "Scout (CR 1/2)" },
+                { role: "Shrine Caretaker", stat: "Acolyte (CR 1/4)" },
+                { role: "Clockwork Tinker", stat: "Commoner (CR 0)" },
+                { role: "Reluctant Cult Initiate", stat: "Cult Fanatic (CR 2)" }
+            ],
+            "Noble & Merchant": [
+                { role: "Spice & Silk Importer", stat: "Noble (CR 1/8)" },
+                { role: "Impoverished Aristocrat", stat: "Noble (CR 1/8)" },
+                { role: "Guild Tax Assessor", stat: "Noble (CR 1/8)" },
+                { role: "Diplomatic Envoy", stat: "Noble (CR 1/8)" },
+                { role: "Master Jeweler", stat: "Commoner (CR 0)" },
+                { role: "Auction House Proprietor", stat: "Noble (CR 1/8)" },
+                { role: "Rare Book Dealer", stat: "Noble (CR 1/8)" },
+                { role: "Magistrate's Clerk", stat: "Commoner (CR 0)" }
+            ],
+            "Wilderness & Outlander": [
+                { role: "Swamp Guide & Trapper", stat: "Scout (CR 1/2)" },
+                { role: "Monster Trophy Hunter", stat: "Veteran (CR 3)" },
+                { role: "Herbalist Hermit", stat: "Druid (CR 2)" },
+                { role: "Deep-Woods Charcoal Burner", stat: "Commoner (CR 0)" },
+                { role: "Ruins Prospector", stat: "Scout (CR 1/2)" },
+                { role: "Falconer & Houndmaster", stat: "Scout (CR 1/2)" },
+                { role: "Borderlands Signal-Keeper", stat: "Guard (CR 1/8)" }
+            ]
+        };
+
+        const STAT_ARCHETYPES = {
+            "Commoner (CR 0)": { acHp: "AC 10 | HP 4 (1d8)", details: "Spd 30ft | Club +2 (1d4) | Passive Perc 10 | All stats +0" },
+            "Bandit (CR 1/8)": { acHp: "AC 12 | HP 11 (2d8+2)", details: "Scimitar +3 (1d6+1) | Lt Crossbow +3 (1d8+1) | Dex +1" },
+            "Guard (CR 1/8)": { acHp: "AC 16 | HP 11 (2d8+2)", details: "Spear +3 (1d6+1) | Shield | Perception +2 (Passive 12)" },
+            "Noble (CR 1/8)": { acHp: "AC 15 | HP 9 (2d8)", details: "Rapier +3 (1d8+1) | Reaction: Parry (+2 AC) | Deception/Persuasion +4" },
+            "Acolyte (CR 1/4)": { acHp: "AC 10 | HP 9 (2d8)", details: "Spellcaster DC 12, +4 hit | Bless, Cure Wounds, Sanctuary | Med/Rel +4" },
+            "Thug (CR 1/2)": { acHp: "AC 11 | HP 32 (5d8+10)", details: "Multiattack x2 Mace +4 (1d6+2) | Pack Tactics | Intimidation +2" },
+            "Scout (CR 1/2)": { acHp: "AC 13 | HP 16 (3d8+3)", details: "Multiattack x2: Shortsword +4 (1d6+2) or Longbow +4 (1d8+2) | Perc/Stealth +5" },
+            "Spy (CR 1)": { acHp: "AC 12 | HP 27 (6d8)", details: "Cunning Action | Sneak Attack (+2d6) | Deception/Insight/Investigation +5" },
+            "Bandit Captain (CR 2)": { acHp: "AC 15 | HP 65 (10d8+20)", details: "Multiattack x3 (2 Scimitar +5, 1 Dagger +5) | Parry (+2 AC) | Athletics/Deception +4" },
+            "Cult Fanatic (CR 2)": { acHp: "AC 13 | HP 33 (6d8+6)", details: "Spellcaster DC 11, +3 hit | Hold Person, Spiritual Weapon, Inflict Wounds (+3d10)" },
+            "Priest (CR 2)": { acHp: "AC 13 | HP 27 (5d8+5)", details: "Spellcaster DC 13, +5 hit | Spirit Guardians, Dispel Magic, Guiding Bolt (4d6)" },
+            "Druid (CR 2)": { acHp: "AC 11 (16 Barkskin) | HP 27", details: "Spellcaster DC 12, +4 hit | Entangle, Thunderwave, Hold Person, Shillelagh" },
+            "Berserker (CR 2)": { acHp: "AC 13 | HP 67 (9d8+27)", details: "Greataxe +5 (1d12+3) | Reckless Attack (Adv on melee, attacks against have Adv)" },
+            "Veteran (CR 3)": { acHp: "AC 17 | HP 58 (9d8+18)", details: "Multiattack x2 Longsword +5 (1d8+3) + 1 Shortsword +5 (1d6+3) | Athletics +5" },
+            "Knight (CR 3)": { acHp: "AC 18 (Plate) | HP 52 (8d8+16)", details: "Multiattack x2 Greatsword +5 (2d6+3) | Leadership (+1d4 to allies) | Brave" },
+            "Mage (CR 6)": { acHp: "AC 12 (15 Mage Armor) | HP 40", details: "Spellcaster DC 14, +6 hit | Counterspell, Fireball (8d6), Fly, Misty Step, Shield" },
+            "Assassin (CR 8)": { acHp: "AC 15 | HP 78 (12d8+24)", details: "Multiattack x2 Shortsword +6 (1d6+3 + 7d6 poison) | Assassinate | Sneak Attack 4d6" }
+        };
+
+        const APPEARANCE_FEATURES = [
+            "Has a jagged lightning-bolt scar across one cheek and pale, sleepless eyes",
+            "Missing the tip of their left ring finger; knuckles are permanently stained with dark ink",
+            "Broad-shouldered and barrel-chested, with a booming laugh and a braided beard",
+            "Wiry and gaunt, with darting magpie eyes and a nose broken at least twice",
+            "Immaculately groomed hair streaked with premature silver and a faint smell of lavender",
+            "Singed eyebrows, soot-smudged cheekbones, and chemical burns dotting their forearms",
+            "A milky-white cataract in one eye that they squint through when judging someone's honesty",
+            "Towering posture with ritualistic geometric tattoos curling up their neck and jaw",
+            "Rosy-cheeked and deceptively cherubic, with a gold tooth that glints when they smirk",
+            "Weathered leathery skin from decades at sea, with a brass hoop pierced through one ear",
+            "Keeps their face half-hidden behind a high collar and wears tinted smoked-glass spectacles",
+            "Crooked posture from an old war wound, leaning heavily on an iron-shod ash walking stick"
+        ];
+
+        const APPEARANCE_ATTIRE = [
+            "wearing a heavy oilskin coat with dozens of secret interior pockets clinking with glass vials.",
+            "draped in a once-fine velvet cloak now frayed at the hem and patched with rough canvas.",
+            "wearing a blood-and-grease-stained leather apron over surprisingly expensive silk cuffs.",
+            "dressed in boiled watchman's leather with a tarnished badge pinned crookedly over the heart.",
+            "wearing a patchwork travel cloak held together by a silver Elven brooch they clearly didn't buy.",
+            "sporting a crisp merchant's doublet, three heavy signet rings, and mud-caked riding boots.",
+            "wrapped in layer upon layer of wool shawls smelling of pipeweed, cloves, and damp dog.",
+            "wearing practical dark woolen work clothes with a pair of brass calipers hanging from their belt."
+        ];
+
+        const VOICE_CADENCE = [
+            "Speaks in a gravelly, conspiratorial rasp, leaning in far too close",
+            "Talks at a rapid-fire auctioneer's pace, interrupting themselves mid-sentence",
+            "Slow, deliberate baritone; pauses for two full beats before answering any question",
+            "Overly theatrical and booming, addressing the party as 'my dearest friends'",
+            "Monotone, deadpan delivery with heavy sighs between every clause",
+            "Nasal, clipped aristocratic cadence, constantly clearing their throat politely",
+            "Warm, folksy drawl full of bizarre nautical or farming metaphors",
+            "Soft, breathless whisper that forces everyone at the table to lean in to hear",
+            "Hoarse and scratchy, as if they spent all of last night shouting in a tavern",
+            "Crisp, military bark—clips words short and refers to everyone by title or species"
+        ];
+
+        const VOICE_MANNERISM = [
+            "while methodically flipping a worn silver coin across their knuckles.",
+            "and compulsively taps glass vials or table edges in sets of three.",
+            "while whittling a small piece of cedar wood into nothing but shavings.",
+            "and never blinks when telling an obvious lie, maintaining unnerving eye contact.",
+            "while constantly glancing over their left shoulder toward the nearest exit.",
+            "and adjusts their spectacles or collar every time money is mentioned.",
+            "while chewing on a bitter root that stains their teeth faint red.",
+            "and jots down fragments of what the PCs say into a tiny leather ledger.",
+            "while cleaning beneath their fingernails with the tip of a stiletto dagger.",
+            "and absentmindedly polishes the same pewter mug with a dirty rag."
+        ];
+
+        const PERSONALITY_DEMEANOR = [
+            "Fiercely protective of their underlings and prickly toward armed strangers",
+            "Cynical, mercenary, and amused by heroic idealism",
+            "Nervous, superstitious, and convinced a bad omen follows the party",
+            "Jovial and hospitable on the surface, but ruthlessly calculating underneath",
+            "Arrogant and pedantic, correcting everyone's grammar and local history",
+            "Weary, pragmatic, and just trying to survive until the end of the week",
+            "Wide-eyed, gossipy, and thrilled to finally meet 'real adventurers'",
+            "Stoic, honor-bound, and deeply uncomfortable with deception"
+        ];
+
+        const PERSONALITY_MOTIVATION = [
+            "wants to scrape together 200 gp before the new moon to pay off a syndicate blood-debt.",
+            "is desperately looking for discrete muscle to escort a locked crate out of the district tonight.",
+            "wants to clear their sibling's name after they were framed for a warehouse arson.",
+            "is trying to sell a stolen map before the original owner's bounty hunters track them down.",
+            "wants revenge on a corrupt Watch officer who confiscated their family heirloom.",
+            "is searching for a rare monster reagent to cure a creeping curse afflicting their mentor.",
+            "wants to buy passage on the next outbound caravan and vanish under a new identity.",
+            "is quietly gathering blackmail on a local guildmaster to secure a seat on the council."
+        ];
+
+        const BACKSTORIES = [
+            "Once served as a quartermaster for a disastrous border campaign; walked away as the sole survivor of their company and swore never to pick up a spear again.",
+            "Grew up as an urchin running messages for the local thieves' guild before buying a legitimate storefront with money from a heist gone wrong.",
+            "Trained at an arcane academy until they were expelled for experimenting with forbidden necromantic texts; now plies their trade in back alleys.",
+            "Was a respected guild artisan in a neighboring city until a political coup forced their family to flee with only what they could carry.",
+            "Spent seven years aboard a privateer vessel in the southern Isles before losing a leg to a reef drake and settling down ashore.",
+            "Inherited their current post after their predecessor mysteriously vanished three weeks ago—along with the guild's quarterly tax chest.",
+            "Former temple acolyte who lost their faith after witnessing high priests cover up a noble's crime for a hefty donation.",
+            "Raised in a remote frontier outpost that was swallowed by a planar rift; still suffers nightmares and collects maps of anomalous zones."
+        ];
+
+        const SECRETS_AND_HOOKS = [
+            "Hiding a stolen noble signet ring melted inside a brass weight on their counter—the noble's hounds are sniffing around the ward.",
+            "Secretly feeding patrol schedules to an opposing faction in exchange for enchanted medicine keeping their spouse alive.",
+            "Their basement cellar breaks through into an ancient, unmapped smuggling tunnel leading directly beneath the magistrate's manor.",
+            "They accidentally bought a cursed dagger from a wild-eyed adventurer yesterday; strange whispers now echo from their lockbox at midnight.",
+            "They witnessed a high-ranking city official meeting a hooded cultist in the rain two nights ago and sketched the symbol they exchanged.",
+            "They are actually a polymorphed or disguised agent of a rival power observing the party's movements.",
+            "They hold the only surviving key to an abandoned dwarven vault three miles outside town, hidden inside a hollowed-out boot heel.",
+            "The friendly apprentice working beside them is actually a runaway noble heir with a 500 gp reward on their head."
+        ];
+
+        const LOOT_POOLS = [
+            "14 sp, 6 cp, a brass ring etched with an unfamiliar guild cipher, and a crumpled debt ledger with three names crossed out in red ink.",
+            "3 gp, 8 sp, a tin of strong mint snuff, a wax-sealed love letter they haven't dared to open, and an iron skeleton key.",
+            "22 sp, a carved bone die weighted to always roll sixes, a dried sprig of wolfsbane, and a pawn ticket for a silver locket.",
+            "1 gp, 19 cp, a half-empty vial of antitoxin, a charcoal sketch of a wanted fugitive, and a clockwork beetle missing one leg.",
+            "4 gp, 11 sp, a bloodstained handkerchief monogrammed with a noble crest, a whetstone, and two doses of sleeping draught.",
+            "9 sp, 14 cp, a copper token granting safe passage through the sewer grates, a dog-eared prayer book with hollowed-out pages, and a silver thimble.",
+            "2 gp, 5 sp, a glass eye that faintly glows near illusions, a receipt from an apothecary for 'nightshade extract', and a salted jerky strip.",
+            "17 sp, a set of thieves' picks hidden inside a quill case, a forged travel writ signed by the Lord Mayor, and a chipped obsidian coin."
+        ];
+
+        const FACTION_STANDINGS = [
+            "Devout Loyalist (trusted insider)",
+            "Reluctant Member (bound by debt or blackmail)",
+            "Paid Informant (sells rumors for coin)",
+            "Disillusioned Defector (looking for a way out)",
+            "Ambitious Earner (trying to climb the ranks)",
+            "Bitter Rival (actively undermining their operations)",
+            "Unwitting Pawn (doesn't realize who really pulls the strings)"
+        ];
+
+        const DEFAULT_FACTIONS = [
+            "Unaligned / Independent Local",
+            "The Obsidian Syndicate (Smugglers & Thieves)",
+            "Order of the Silver Gauntlet (Chivalric Watch)",
+            "The Gilded Scales Consortium (Merchant Guild)",
+            "Circle of the Pale Moon (Arcane Cabal)",
+            "The Ironbound Union (Artisans & Dockworkers)",
+            "Whispering Court (Spy Network)"
+        ];
+
+        const DEFAULT_LOCATIONS = [
+            "The Sunken Ward (Dockside Slums)",
+            "Oakhaven Market Square",
+            "The Cinder-Forge District",
+            "Highspire Noble Quarter",
+            "The Rusted Anchor Tavern",
+            "Crossroads Caravan Waystation",
+            "Ironpeak Citadel Outskirts"
+        ];
+
+        /**************************************************************
+         * 2. STATE MANAGEMENT & LOCAL STORAGE PERSISTENCE
+         **************************************************************/
+        const STORAGE_KEY = "ARCANE_LEDGER_CAMPAIGN_V1";
+
+        let appState = {
+            customFactions: [...DEFAULT_FACTIONS],
+            customLocations: [...DEFAULT_LOCATIONS],
+            useOnlyCustomFactions: false,
+            useOnlyCustomLocations: false,
+            savedRoster: [],
+            locks: {
+                identity: false,
+                voice: false,
+                appearance: false,
+                personality: false,
+                backstory: false,
+                secret: false,
+                world: false,
+                loot: false,
+                stats: false
+            },
+            currentNPC: {
+                id: null,
+                name: "Bramwell Vance",
+                epithet: '"Ash-Thumb"',
+                species: "Human (he/him)",
+                role: "Hedge Alchemist",
+                category: "Arcane & Scholar",
+                voice: "Speaks at a rapid-fire auctioneer's pace, interrupting themselves mid-sentence while compulsively tapping glass vials or table edges in sets of three.",
+                appearance: "Singed eyebrows, soot-smudged cheekbones, and chemical burns dotting their forearms, wearing a heavy oilskin coat with dozens of secret interior pockets clinking with glass vials.",
+                personality: "Fiercely protective of their underlings and prickly toward armed strangers; is searching for a rare monster reagent to cure a creeping curse afflicting their mentor.",
+                backstory: "Trained at an arcane academy until they were expelled for experimenting with forbidden necromantic texts; now plies their trade in back alleys.",
+                secret: "Hiding a stolen noble signet ring melted inside a brass weight on their counter—the noble's hounds are sniffing around the ward.",
+                faction: "Circle of the Pale Moon (Arcane Cabal)",
+                factionStanding: "Disillusioned Defector (looking for a way out)",
+                location: "The Cinder-Forge District",
+                loot: "1 gp, 19 cp, a half-empty vial of antitoxin, a charcoal sketch of a wanted fugitive, and a clockwork beetle missing one leg.",
+                statName: "Mage (CR 6)",
+                statAcHp: "AC 12 (15 Mage Armor) | HP 40",
+                statDetails: "Spellcaster DC 14, +6 hit | Counterspell, Fireball (8d6), Fly, Misty Step, Shield",
+                notes: ""
+            }
+        };
+
+        function loadStateFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed.customFactions)) appState.customFactions = parsed.customFactions;
+                    if (Array.isArray(parsed.customLocations)) appState.customLocations = parsed.customLocations;
+                    if (typeof parsed.useOnlyCustomFactions === 'boolean') appState.useOnlyCustomFactions = parsed.useOnlyCustomFactions;
+                    if (typeof parsed.useOnlyCustomLocations === 'boolean') appState.useOnlyCustomLocations = parsed.useOnlyCustomLocations;
+                    if (Array.isArray(parsed.savedRoster)) appState.savedRoster = parsed.savedRoster;
+                } else {
+                    // Seed with 2 starter NPCs in Roster so the DM sees how it works immediately
+                    appState.savedRoster = [
+                        {
+                            id: "seed-1",
+                            name: "Maren 'The Velvet Knife' Vance",
+                            epithet: '"The Velvet Knife"',
+                            species: "Tiefling (she/her)",
+                            role: "Shady Fence & Pawnbroker",
+                            category: "Underworld & Criminal",
+                            voice: "Speaks in a gravelly, conspiratorial rasp, leaning in far too close while methodically flipping a worn silver coin across their knuckles.",
+                            appearance: "Immaculately groomed hair streaked with premature silver and a faint smell of lavender, wearing a blood-and-grease-stained leather apron over surprisingly expensive silk cuffs.",
+                            personality: "Cynical, mercenary, and amused by heroic idealism; wants to scrape together 200 gp before the new moon to pay off a syndicate blood-debt.",
+                            backstory: "Grew up as an urchin running messages for the local thieves' guild before buying a legitimate storefront with money from a heist gone wrong.",
+                            secret: "Their basement cellar breaks through into an ancient, unmapped smuggling tunnel leading directly beneath the magistrate's manor.",
+                            faction: "The Obsidian Syndicate (Smugglers & Thieves)",
+                            factionStanding: "Reluctant Member (bound by debt or blackmail)",
+                            location: "The Sunken Ward (Dockside Slums)",
+                            loot: "14 sp, 6 cp, a brass ring etched with an unfamiliar guild cipher, and a crumpled debt ledger with three names crossed out in red ink.",
+                            statName: "Spy (CR 1)",
+                            statAcHp: "AC 12 | HP 27 (6d8)",
+                            statDetails: "Cunning Action | Sneak Attack (+2d6) | Deception/Insight/Investigation +5",
+                            notes: "Runs 'The Tarnished Crown' pawnshop. Bought a silver goblet from the Rogue in Session 1."
+                        }
+                    ];
+                    saveStateToStorage();
+                }
+            } catch (e) {
+                console.warn("Could not read localStorage:", e);
+            }
+        }
+
+        function saveStateToStorage() {
+            try {
+                const payload = {
+                    customFactions: appState.customFactions,
+                    customLocations: appState.customLocations,
+                    useOnlyCustomFactions: appState.useOnlyCustomFactions,
+                    useOnlyCustomLocations: appState.useOnlyCustomLocations,
+                    savedRoster: appState.savedRoster
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch (e) {
+                console.warn("Could not save to localStorage:", e);
+            }
+        }
+
+        /**************************************************************
+         * 3. RANDOM HELPER & GENERATION FUNCTIONS
+         **************************************************************/
+        function pickRandom(arr) {
+            if (!arr || arr.length === 0) return "";
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function getActiveFactionsPool() {
+            if (appState.useOnlyCustomFactions && appState.customFactions.length > 0) {
+                return appState.customFactions;
+            }
+            return Array.from(new Set([...DEFAULT_FACTIONS, ...appState.customFactions]));
+        }
+
+        function getActiveLocationsPool() {
+            if (appState.useOnlyCustomLocations && appState.customLocations.length > 0) {
+                return appState.customLocations;
+            }
+            return Array.from(new Set([...DEFAULT_LOCATIONS, ...appState.customLocations]));
+        }
+
+        // Sync edits made directly in contenteditable DOM elements back into appState.currentNPC
+        function syncDOMToCurrentNPC() {
+            appState.currentNPC.name = document.getElementById('npc-name').innerText.trim();
+            appState.currentNPC.epithet = document.getElementById('npc-epithet').innerText.trim();
+            appState.currentNPC.species = document.getElementById('npc-species-badge').innerText.trim();
+            appState.currentNPC.role = document.getElementById('npc-role-badge').innerText.trim();
+            appState.currentNPC.category = document.getElementById('npc-category-tag').innerText.trim();
+            appState.currentNPC.voice = document.getElementById('npc-voice').innerText.trim();
+            appState.currentNPC.appearance = document.getElementById('npc-appearance').innerText.trim();
+            appState.currentNPC.personality = document.getElementById('npc-personality').innerText.trim();
+            appState.currentNPC.backstory = document.getElementById('npc-backstory').innerText.trim();
+            appState.currentNPC.secret = document.getElementById('npc-secret').innerText.trim();
+            appState.currentNPC.faction = document.getElementById('npc-faction').innerText.trim();
+            appState.currentNPC.factionStanding = document.getElementById('npc-faction-standing').innerText.trim();
+            appState.currentNPC.location = document.getElementById('npc-location').innerText.trim();
+            appState.currentNPC.loot = document.getElementById('npc-loot').innerText.trim();
+            appState.currentNPC.statName = document.getElementById('npc-stat-name').innerText.trim();
+            appState.currentNPC.statAcHp = document.getElementById('npc-stat-ac-hp').innerText.trim();
+            appState.currentNPC.statDetails = document.getElementById('npc-stat-details').innerText.trim();
+            appState.currentNPC.notes = document.getElementById('npc-session-notes').value.trim();
+        }
+
+        function rollIdentity() {
+            const speciesFilter = document.getElementById('filter-species').value;
+            const roleFilter = document.getElementById('filter-role').value;
+
+            const speciesList = Object.keys(SPECIES_DATA);
+            const chosenSpecies = (speciesFilter !== "ANY" && SPECIES_DATA[speciesFilter])
+                ? speciesFilter
+                : pickRandom(speciesList);
+
+            const spPool = SPECIES_DATA[chosenSpecies];
+            const pronoun = pickRandom(spPool.pronouns);
+            const firstName = pickRandom(spPool.first);
+            const lastName = pickRandom(spPool.last);
+            const epithet = Math.random() < 0.78 ? pickRandom(EPITHETS) : "";
+
+            const categories = Object.keys(ROLES_BY_CATEGORY);
+            const chosenCategory = (roleFilter !== "ANY" && ROLES_BY_CATEGORY[roleFilter])
+                ? roleFilter
+                : pickRandom(categories);
+
+            const roleObj = pickRandom(ROLES_BY_CATEGORY[chosenCategory]);
+
+            appState.currentNPC.name = `${firstName} ${lastName}`;
+            appState.currentNPC.epithet = epithet;
+            appState.currentNPC.species = `${chosenSpecies} (${pronoun})`;
+            appState.currentNPC.role = roleObj.role;
+            appState.currentNPC.category = chosenCategory;
+
+            // If stats aren't locked, pair the stat block naturally with the role
+            if (!appState.locks.stats && STAT_ARCHETYPES[roleObj.stat]) {
+                appState.currentNPC.statName = roleObj.stat;
+                appState.currentNPC.statAcHp = STAT_ARCHETYPES[roleObj.stat].acHp;
+                appState.currentNPC.statDetails = STAT_ARCHETYPES[roleObj.stat].details;
+            }
+        }
+
+        function rollVoice() {
+            appState.currentNPC.voice = `${pickRandom(VOICE_CADENCE)} ${pickRandom(VOICE_MANNERISM)}`;
+        }
+
+        function rollAppearance() {
+            appState.currentNPC.appearance = `${pickRandom(APPEARANCE_FEATURES)}, ${pickRandom(APPEARANCE_ATTIRE)}`;
+        }
+
+        function rollPersonality() {
+            appState.currentNPC.personality = `${pickRandom(PERSONALITY_DEMEANOR)}; ${pickRandom(PERSONALITY_MOTIVATION)}`;
+        }
+
+        function rollBackstory() {
+            appState.currentNPC.backstory = pickRandom(BACKSTORIES);
+        }
+
+        function rollSecret() {
+            appState.currentNPC.secret = pickRandom(SECRETS_AND_HOOKS);
+        }
+
+        function rollWorld() {
+            const factionFilter = document.getElementById('filter-faction').value;
+            const locationFilter = document.getElementById('filter-location').value;
+
+            const factions = getActiveFactionsPool();
+            const locations = getActiveLocationsPool();
+
+            appState.currentNPC.faction = (factionFilter !== "ANY") ? factionFilter : pickRandom(factions);
+            appState.currentNPC.factionStanding = pickRandom(FACTION_STANDINGS);
+            appState.currentNPC.location = (locationFilter !== "ANY") ? locationFilter : pickRandom(locations);
+        }
+
+        function rollLoot() {
+            appState.currentNPC.loot = pickRandom(LOOT_POOLS);
+        }
+
+        function rollStats() {
+            const statKeys = Object.keys(STAT_ARCHETYPES);
+            const chosenStat = pickRandom(statKeys);
+            appState.currentNPC.statName = chosenStat;
+            appState.currentNPC.statAcHp = STAT_ARCHETYPES[chosenStat].acHp;
+            appState.currentNPC.statDetails = STAT_ARCHETYPES[chosenStat].details;
+        }
+
+        function rerollTrait(traitKey) {
+            syncDOMToCurrentNPC();
+            switch (traitKey) {
+                case 'identity': rollIdentity(); break;
+                case 'voice': rollVoice(); break;
+                case 'appearance': rollAppearance(); break;
+                case 'personality': rollPersonality(); break;
+                case 'backstory': rollBackstory(); break;
+                case 'secret': rollSecret(); break;
+                case 'world': rollWorld(); break;
+                case 'loot': rollLoot(); break;
+                case 'stats': rollStats(); break;
+            }
+            renderCurrentNPC([traitKey]);
+        }
+
+        function rollFullNPC() {
+            syncDOMToCurrentNPC();
+            const updatedTraits = [];
+
+            if (!appState.locks.identity) { rollIdentity(); updatedTraits.push('identity'); }
+            if (!appState.locks.voice) { rollVoice(); updatedTraits.push('voice'); }
+            if (!appState.locks.appearance) { rollAppearance(); updatedTraits.push('appearance'); }
+            if (!appState.locks.personality) { rollPersonality(); updatedTraits.push('personality'); }
+            if (!appState.locks.backstory) { rollBackstory(); updatedTraits.push('backstory'); }
+            if (!appState.locks.secret) { rollSecret(); updatedTraits.push('secret'); }
+            if (!appState.locks.world) { rollWorld(); updatedTraits.push('world'); }
+            if (!appState.locks.loot) { rollLoot(); updatedTraits.push('loot'); }
+            if (!appState.locks.stats && appState.locks.identity) {
+                rollStats();
+                updatedTraits.push('stats');
+            } else if (!appState.locks.stats) {
+                updatedTraits.push('stats');
+            }
+
+            // Clear session notes only if identity wasn't locked
+            if (!appState.locks.identity) {
+                appState.currentNPC.id = null;
+                appState.currentNPC.notes = "";
+            }
+
+            renderCurrentNPC(updatedTraits);
+        }
+
+        /**************************************************************
+         * 4. UI RENDERING & LOCK CONTROLS
+         **************************************************************/
+        function renderCurrentNPC(flashCards = []) {
+            const npc = appState.currentNPC;
+            document.getElementById('npc-name').innerText = npc.name;
+            document.getElementById('npc-epithet').innerText = npc.epithet;
+            document.getElementById('npc-species-badge').innerText = npc.species;
+            document.getElementById('npc-role-badge').innerText = npc.role;
+            document.getElementById('npc-category-tag').innerText = npc.category;
+            document.getElementById('npc-voice').innerText = npc.voice;
+            document.getElementById('npc-appearance').innerText = npc.appearance;
+            document.getElementById('npc-personality').innerText = npc.personality;
+            document.getElementById('npc-backstory').innerText = npc.backstory;
+            document.getElementById('npc-secret').innerText = npc.secret;
+            document.getElementById('npc-faction').innerText = npc.faction;
+            document.getElementById('npc-faction-standing').innerText = npc.factionStanding;
+            document.getElementById('npc-location').innerText = npc.location;
+            document.getElementById('npc-loot').innerText = npc.loot;
+            document.getElementById('npc-stat-name').innerText = npc.statName;
+            document.getElementById('npc-stat-ac-hp').innerText = npc.statAcHp;
+            document.getElementById('npc-stat-details').innerText = npc.statDetails;
+            document.getElementById('npc-session-notes').value = npc.notes || "";
+
+            // Flash animation on updated cards
+            flashCards.forEach(key => {
+                const card = document.getElementById(`card-${key}`);
+                if (card) {
+                    card.classList.remove('rolled-flash');
+                    void card.offsetWidth; // trigger reflow
+                    card.classList.add('rolled-flash');
+                }
+            });
+        }
+
+        function toggleLock(traitKey) {
+            appState.locks[traitKey] = !appState.locks[traitKey];
+            updateLockUI(traitKey);
+        }
+
+        function unlockAllTraits() {
+            Object.keys(appState.locks).forEach(key => {
+                appState.locks[key] = false;
+                updateLockUI(key);
+            });
+            showToast("Unlocked all trait cards", "info");
+        }
+
+        function updateLockUI(traitKey) {
+            const isLocked = appState.locks[traitKey];
+            const card = document.getElementById(`card-${traitKey}`);
+            const btn = document.getElementById(`lock-btn-${traitKey}`);
+
+            if (!card || !btn) return;
+
+            if (isLocked) {
+                card.classList.add('locked');
+                btn.classList.remove('text-slate-400');
+                btn.classList.add('text-amber-400', 'bg-amber-500/15', 'border-amber-500/40');
+                btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>`;
+            } else {
+                card.classList.remove('locked');
+                btn.classList.add('text-slate-400');
+                btn.classList.remove('text-amber-400', 'bg-amber-500/15', 'border-amber-500/40');
+                btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>`;
+            }
+        }
+
+        /**************************************************************
+         * 5. SAVED ROSTER & MARKDOWN EXPORT
+         **************************************************************/
+        function saveCurrentNPCToRoster() {
+            syncDOMToCurrentNPC();
+            const npcCopy = JSON.parse(JSON.stringify(appState.currentNPC));
+
+            if (npcCopy.id) {
+                const existingIdx = appState.savedRoster.findIndex(item => item.id === npcCopy.id);
+                if (existingIdx !== -1) {
+                    appState.savedRoster[existingIdx] = npcCopy;
+                    saveStateToStorage();
+                    renderRoster();
+                    showToast(`Updated "${npcCopy.name}" in Roster`, "success");
+                    return;
+                }
+            }
+
+            npcCopy.id = "npc-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+            appState.currentNPC.id = npcCopy.id;
+            appState.savedRoster.unshift(npcCopy);
+            saveStateToStorage();
+            renderRoster();
+            showToast(`Saved "${npcCopy.name}" to Roster!`, "success");
+        }
+
+        function loadNPCFromRoster(id) {
+            const found = appState.savedRoster.find(item => item.id === id);
+            if (!found) return;
+            appState.currentNPC = JSON.parse(JSON.stringify(found));
+            renderCurrentNPC(['identity', 'voice', 'appearance', 'personality', 'backstory', 'secret', 'world', 'loot', 'stats']);
+            showToast(`Loaded "${found.name}"`, "info");
+        }
+
+        function deleteNPCFromRoster(id, event) {
+            if (event) event.stopPropagation();
+            const idx = appState.savedRoster.findIndex(item => item.id === id);
+            if (idx === -1) return;
+            const removed = appState.savedRoster.splice(idx, 1)[0];
+            if (appState.currentNPC.id === id) appState.currentNPC.id = null;
+            saveStateToStorage();
+            renderRoster();
+            showToast(`Removed "${removed.name}"`, "info");
+        }
+
+        function renderRoster() {
+            const listEl = document.getElementById('roster-list');
+            const countEl = document.getElementById('roster-count');
+            const query = (document.getElementById('roster-search').value || "").toLowerCase().trim();
+
+            countEl.innerText = appState.savedRoster.length;
+
+            const filtered = appState.savedRoster.filter(npc => {
+                if (!query) return true;
+                return (
+                    (npc.name && npc.name.toLowerCase().includes(query)) ||
+                    (npc.epithet && npc.epithet.toLowerCase().includes(query)) ||
+                    (npc.role && npc.role.toLowerCase().includes(query)) ||
+                    (npc.species && npc.species.toLowerCase().includes(query)) ||
+                    (npc.faction && npc.faction.toLowerCase().includes(query)) ||
+                    (npc.location && npc.location.toLowerCase().includes(query)) ||
+                    (npc.notes && npc.notes.toLowerCase().includes(query))
+                );
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-10 px-3 border border-dashed border-ledger-700 rounded-xl text-slate-400 text-xs space-y-1">
+                        <p class="font-semibold text-slate-300">No Saved NPCs Found</p>
+                        <p>Click "Save to Roster" (or press S) on any generated NPC to keep them for your campaign.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(npc => `
+                <div onclick="loadNPCFromRoster('${npc.id}')" class="group p-3 rounded-xl bg-ledger-950/90 hover:bg-ledger-800 border border-ledger-800 hover:border-amber-500/40 cursor-pointer transition relative">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h4 class="font-bold text-xs sm:text-sm text-white group-hover:text-amber-300 transition">
+                                ${escapeHTML(npc.name)} <span class="text-amber-400/80 italic font-normal">${escapeHTML(npc.epithet || '')}</span>
+                            </h4>
+                            <p class="text-[11px] text-sky-300 font-medium mt-0.5">${escapeHTML(npc.species)} • ${escapeHTML(npc.role)}</p>
+                        </div>
+                        <button onclick="deleteNPCFromRoster('${npc.id}', event)" title="Delete from Roster" class="opacity-60 group-hover:opacity-100 p-1 rounded hover:bg-rose-950/80 text-slate-400 hover:text-rose-400 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                        <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-indigo-300 truncate max-w-[140px]">${escapeHTML(npc.faction)}</span>
+                        <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-emerald-300 truncate max-w-[140px]">${escapeHTML(npc.location)}</span>
+                    </div>
+                    ${npc.notes ? `<p class="mt-1.5 text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 italic line-clamp-2">"${escapeHTML(npc.notes)}"</p>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function formatNPCMarkdown(npc) {
+            return [
+                `### ${npc.name} ${npc.epithet ? `*${npc.epithet}*` : ''}`,
+                `**${npc.species} — ${npc.role}** *(${npc.category})*`,
+                `- **Faction:** ${npc.faction} — *${npc.factionStanding}*`,
+                `- **Location:** ${npc.location}`,
+                `- **Voice & Mannerism:** ${npc.voice}`,
+                `- **Appearance:** ${npc.appearance}`,
+                `- **Personality & Motivation:** ${npc.personality}`,
+                `- **Backstory:** ${npc.backstory}`,
+                `- **Secret / Plot Hook:** ${npc.secret}`,
+                `- **Pocket Loot:** ${npc.loot}`,
+                `- **5e Stat Reference:** **${npc.statName}** (${npc.statAcHp}) — \`${npc.statDetails}\``,
+                npc.notes ? `- **Session Notes:** ${npc.notes}` : ''
+            ].filter(Boolean).join('\n');
+        }
+
+        function copyNPCMarkdown() {
+            syncDOMToCurrentNPC();
+            const md = formatNPCMarkdown(appState.currentNPC);
+            copyTextToClipboard(md, `Copied "${appState.currentNPC.name}" as Markdown!`);
+        }
+
+        function exportRosterMarkdown() {
+            if (appState.savedRoster.length === 0) {
+                showToast("Your Roster is currently empty.", "info");
+                return;
+            }
+            const md = `# Campaign NPC Roster (${appState.savedRoster.length})\n\n` +
+                appState.savedRoster.map(formatNPCMarkdown).join('\n\n---\n\n');
+            copyTextToClipboard(md, `Copied all ${appState.savedRoster.length} Roster NPCs as Markdown!`);
+        }
+
+        /**************************************************************
+         * 6. CAMPAIGN CUSTOMIZER (FACTIONS, LOCATIONS & JSON)
+         **************************************************************/
+        function populateTopFilterDropdowns() {
+            const spSelect = document.getElementById('filter-species');
+            const currentSp = spSelect.value || "ANY";
+            spSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Species</option>` +
+                Object.keys(SPECIES_DATA).map(s => `<option value="${escapeHTML(s)}" class="bg-ledger-900">${escapeHTML(s)}</option>`).join('');
+            spSelect.value = currentSp;
+
+            const facSelect = document.getElementById('filter-faction');
+            const currentFac = facSelect.value || "ANY";
+            const factions = getActiveFactionsPool();
+            facSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Faction</option>` +
+                factions.map(f => `<option value="${escapeHTML(f)}" class="bg-ledger-900">${escapeHTML(f)}</option>`).join('');
+            facSelect.value = factions.includes(currentFac) ? currentFac : "ANY";
+
+            const locSelect = document.getElementById('filter-location');
+            const currentLoc = locSelect.value || "ANY";
+            const locations = getActiveLocationsPool();
+            locSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Location</option>` +
+                locations.map(l => `<option value="${escapeHTML(l)}" class="bg-ledger-900">${escapeHTML(l)}</option>`).join('');
+            locSelect.value = locations.includes(currentLoc) ? currentLoc : "ANY";
+        }
+
+        function renderCustomizerLists() {
+            document.getElementById('toggle-custom-factions-only').checked = appState.useOnlyCustomFactions;
+            document.getElementById('toggle-custom-locations-only').checked = appState.useOnlyCustomLocations;
+
+            const facContainer = document.getElementById('custom-factions-list');
+            facContainer.innerHTML = appState.customFactions.map((fac, idx) => `
+                <div class="flex items-center justify-between gap-2 bg-ledger-900 border border-ledger-800 px-3 py-1.5 rounded-lg text-xs">
+                    <span class="text-slate-200 truncate">${escapeHTML(fac)}</span>
+                    <button onclick="removeCustomFaction(${idx})" class="text-slate-400 hover:text-rose-400 transition shrink-0">✕</button>
+                </div>
+            `).join('');
+
+            const locContainer = document.getElementById('custom-locations-list');
+            locContainer.innerHTML = appState.customLocations.map((loc, idx) => `
+                <div class="flex items-center justify-between gap-2 bg-ledger-900 border border-ledger-800 px-3 py-1.5 rounded-lg text-xs">
+                    <span class="text-slate-200 truncate">${escapeHTML(loc)}</span>
+                    <button onclick="removeCustomLocation(${idx})" class="text-slate-400 hover:text-rose-400 transition shrink-0">✕</button>
+                </div>
+            `).join('');
+
+            populateTopFilterDropdowns();
+        }
+
+        function addCustomFaction() {
+            const input = document.getElementById('new-faction-input');
+            const val = input.value.trim();
+            if (!val) return;
+            if (!appState.customFactions.includes(val)) {
+                appState.customFactions.unshift(val);
+                saveStateToStorage();
+                renderCustomizerLists();
+                showToast(`Added faction: ${val}`, "success");
+            }
+            input.value = "";
+        }
+
+        function removeCustomFaction(idx) {
+            appState.customFactions.splice(idx, 1);
+            saveStateToStorage();
+            renderCustomizerLists();
+        }
+
+        function addCustomLocation() {
+            const input = document.getElementById('new-location-input');
+            const val = input.value.trim();
+            if (!val) return;
+            if (!appState.customLocations.includes(val)) {
+                appState.customLocations.unshift(val);
+                saveStateToStorage();
+                renderCustomizerLists();
+                showToast(`Added location: ${val}`, "success");
+            }
+            input.value = "";
+        }
+
+        function removeCustomLocation(idx) {
+            appState.customLocations.splice(idx, 1);
+            saveStateToStorage();
+            renderCustomizerLists();
+        }
+
+        function toggleCustomPoolSettings() {
+            appState.useOnlyCustomFactions = document.getElementById('toggle-custom-factions-only').checked;
+            appState.useOnlyCustomLocations = document.getElementById('toggle-custom-locations-only').checked;
+            saveStateToStorage();
+            populateTopFilterDropdowns();
+        }
+
+        function exportCampaignJSON() {
+            const dataStr = JSON.stringify({
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                customFactions: appState.customFactions,
+                customLocations: appState.customLocations,
+                useOnlyCustomFactions: appState.useOnlyCustomFactions,
+                useOnlyCustomLocations: appState.useOnlyCustomLocations,
+                savedRoster: appState.savedRoster
+            }, null, 2);
+
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `arcane-ledger-campaign-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Downloaded Campaign JSON backup!", "success");
+        }
+
+        function importCampaignJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed.customFactions)) appState.customFactions = parsed.customFactions;
+                    if (Array.isArray(parsed.customLocations)) appState.customLocations = parsed.customLocations;
+                    if (typeof parsed.useOnlyCustomFactions === 'boolean') appState.useOnlyCustomFactions = parsed.useOnlyCustomFactions;
+                    if (typeof parsed.useOnlyCustomLocations === 'boolean') appState.useOnlyCustomLocations = parsed.useOnlyCustomLocations;
+                    if (Array.isArray(parsed.savedRoster)) appState.savedRoster = parsed.savedRoster;
+                    saveStateToStorage();
+                    renderCustomizerLists();
+                    renderRoster();
+                    showToast("Imported Campaign JSON successfully!", "success");
+                } catch (err) {
+                    showToast("Invalid JSON file format.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function resetDefaultCampaignData() {
+            appState.customFactions = [...DEFAULT_FACTIONS];
+            appState.customLocations = [...DEFAULT_LOCATIONS];
+            appState.useOnlyCustomFactions = false;
+            appState.useOnlyCustomLocations = false;
+            saveStateToStorage();
+            renderCustomizerLists();
+            showToast("Reset factions and locations to defaults.", "info");
+        }
+
+        /**************************************************************
+         * 7. STANDALONE SINGLE-FILE HTML DOWNLOAD & UTILITIES
+         **************************************************************/
+        function downloadStandaloneApp() {
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "dnd_npc_generator.html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Saved standalone dnd_npc_generator.html!", "success");
+        }
+
+        function openModal(id) {
+            const m = document.getElementById(id);
+            if (!m) return;
+            renderCustomizerLists();
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeModal(id) {
+            const m = document.getElementById(id);
+            if (!m) return;
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function copyTextToClipboard(text, successMsg) {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMsg || "Copied to clipboard!", "success");
+            } catch (err) {
+                showToast("Failed to copy to clipboard", "error");
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function escapeHTML(str) {
+            if (!str) return "";
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: "bg-emerald-950/95 border-emerald-500/50 text-emerald-200",
+                error: "bg-rose-950/95 border-rose-500/50 text-rose-200",
+                info: "bg-ledger-800/95 border-amber-500/50 text-amber-200"
+            };
+            toast.className = `px-3.5 py-2 rounded-lg border text-xs font-medium shadow-xl backdrop-blur-md transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transform = "translateY(6px)";
+                setTimeout(() => toast.remove(), 300);
+            }, 2400);
+        }
+
+        /**************************************************************
+         * 8. KEYBOARD SHORTCUTS & INITIALIZATION
+         **************************************************************/
+        document.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            const isTyping = active && (
+                active.tagName === 'INPUT' ||
+                active.tagName === 'TEXTAREA' ||
+                active.tagName === 'SELECT' ||
+                active.isContentEditable
+            );
+            if (isTyping) return;
+
+            const modalOpen = !document.getElementById('campaign-modal').classList.contains('hidden');
+            if (modalOpen) {
+                if (e.key === 'Escape') closeModal('campaign-modal');
+                return;
+            }
+
+            if (e.code === 'Space' || e.key.toLowerCase() === 'g') {
+                e.preventDefault();
+                rollFullNPC();
+            } else if (e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                saveCurrentNPCToRoster();
+            } else if (e.key.toLowerCase() === 'c') {
+                e.preventDefault();
+                copyNPCMarkdown();
+            } else if (e.key.toLowerCase() === 'u') {
+                e.preventDefault();
+                unlockAllTraits();
+            }
+        });
+
+        window.onload = function() {
+            loadStateFromStorage();
+            populateTopFilterDropdowns();
+            renderCurrentNPC();
+            renderRoster();
+        };
+    </script>
+</body>
+</html>

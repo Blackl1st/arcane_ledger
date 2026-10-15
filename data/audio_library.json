@@ -1,0 +1,110 @@
+[
+  {
+    "id": "track-fireplace",
+    "name": "Cozy Fireplace & Hearth",
+    "category": "Ambiance",
+    "icon": "🔥",
+    "url": "/static/audio/fireplace.ogg",
+    "volume": 0.7,
+    "active": false
+  },
+  {
+    "id": "track-campfire",
+    "name": "Wilderness Campfire",
+    "category": "Ambiance",
+    "icon": "🏕️",
+    "url": "/static/audio/campfire.ogg",
+    "volume": 0.65,
+    "active": false
+  },
+  {
+    "id": "track-forest-rain",
+    "name": "Gentle Forest Rain",
+    "category": "Weather",
+    "icon": "🌧️",
+    "url": "/static/audio/forest-rain.ogg",
+    "volume": 0.6,
+    "active": false
+  },
+  {
+    "id": "track-heavy-rain",
+    "name": "Torrential Downpour",
+    "category": "Weather",
+    "icon": "⛈️",
+    "url": "/static/audio/heavy-rain.ogg",
+    "volume": 0.65,
+    "active": false
+  },
+  {
+    "id": "track-thunderstorm",
+    "name": "Distant Thunderstorm",
+    "category": "Weather",
+    "icon": "⚡",
+    "url": "/static/audio/thunderstorm.ogg",
+    "volume": 0.5,
+    "active": false
+  },
+  {
+    "id": "track-wind",
+    "name": "Howling Mountain Wind",
+    "category": "Weather",
+    "icon": "💨",
+    "url": "/static/audio/wind.ogg",
+    "volume": 0.5,
+    "active": false
+  },
+  {
+    "id": "track-stream",
+    "name": "Babbling River Stream",
+    "category": "Ambiance",
+    "icon": "🌊",
+    "url": "/static/audio/stream.ogg",
+    "volume": 0.55,
+    "active": false
+  },
+  {
+    "id": "track-tavern-murmur",
+    "name": "Tavern Crowd & Glasses",
+    "category": "Ambiance",
+    "icon": "🍻",
+    "url": "/static/audio/tavern_murmur.wav",
+    "volume": 0.5,
+    "active": false
+  },
+  {
+    "id": "track-cavern-drone",
+    "name": "Deep Crypt Cavern Drone",
+    "category": "Dungeon",
+    "icon": "🗝️",
+    "url": "/static/audio/cavern_drone.wav",
+    "volume": 0.6,
+    "active": false
+  },
+  {
+    "id": "track-war-drums",
+    "name": "War Drums Cadence",
+    "category": "Combat",
+    "icon": "🥁",
+    "url": "/static/audio/war_drums.wav",
+    "volume": 0.7,
+    "active": false
+  },
+  {
+    "id": "track-mystic-pad",
+    "name": "Arcane Sanctuary Pad",
+    "category": "Music",
+    "icon": "🔮",
+    "url": "/static/audio/mystic_pad.wav",
+    "volume": 0.6,
+    "active": false
+  },
+  {
+    "id": "track-heartbeat",
+    "name": "Heartbeat Suspense",
+    "category": "Tension",
+    "icon": "💓",
+    "url": "/static/audio/heartbeat_suspense.wav",
+    "volume": 0.7,
+    "active": false
+  }
+]

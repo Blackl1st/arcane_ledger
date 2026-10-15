@@ -1,0 +1,138 @@
+[
+  {
+    "id": "preset-tavern",
+    "name": "Cozy Tavern Common Room",
+    "icon": "🍻",
+    "description": "Crackling hearth, friendly murmur of patrons, and clinking ale tankards.",
+    "layers": {
+      "track-fireplace": 0.65,
+      "track-tavern-murmur": 0.55
+    },
+    "lighting": {
+      "overhead": {
+        "brightness": 45
+      },
+      "atmosphere": {
+        "brightness": 70,
+        "color": "#FFA03C",
+        "cct": 2500,
+        "mode": "rgb",
+        "effect": "fire"
+      }
+    }
+  },
+  {
+    "id": "preset-camp",
+    "name": "Wilderness Night Camp",
+    "icon": "🏕️",
+    "description": "Crackling wood fire, gentle nocturnal stream, and soft night breeze.",
+    "layers": {
+      "track-campfire": 0.7,
+      "track-stream": 0.45,
+      "track-wind": 0.25
+    },
+    "lighting": {
+      "overhead": {
+        "brightness": 30
+      },
+      "atmosphere": {
+        "brightness": 55,
+        "color": "#FF7714",
+        "cct": 2700,
+        "mode": "rgb",
+        "effect": "fire"
+      }
+    }
+  },
+  {
+    "id": "preset-stormy-crypt",
+    "name": "Stormy Dungeon / Crypt",
+    "icon": "⚡",
+    "description": "Distant raging thunderstorm outside, with a deep subterranean cavern echo.",
+    "layers": {
+      "track-cavern-drone": 0.65,
+      "track-thunderstorm": 0.45,
+      "track-heavy-rain": 0.35
+    },
+    "lighting": {
+      "overhead": {
+        "brightness": 25
+      },
+      "atmosphere": {
+        "brightness": 50,
+        "color": "#4488FF",
+        "cct": 6500,
+        "mode": "rgb",
+        "effect": "lightning"
+      }
+    }
+  },
+  {
+    "id": "preset-combat-boss",
+    "name": "Boss Fight / Martial Clash",
+    "icon": "🩸",
+    "description": "Pounding war drums, tense adrenaline heartbeat, and howling storm.",
+    "layers": {
+      "track-war-drums": 0.8,
+      "track-heartbeat": 0.55,
+      "track-thunderstorm": 0.4
+    },
+    "lighting": {
+      "overhead": {
+        "brightness": 60
+      },
+      "atmosphere": {
+        "brightness": 85,
+        "color": "#FF1414",
+        "cct": 4000,
+        "mode": "rgb",
+        "effect": "pulsing"
+      }
+    }
+  },
+  {
+    "id": "preset-arcane-sanctum",
+    "name": "Arcane Tower & Sanctum",
+    "icon": "🔮",
+    "description": "Ethereal mystical harmony, gentle soothing rain outside the stained-glass windows.",
+    "layers": {
+      "track-mystic-pad": 0.7,
+      "track-forest-rain": 0.4
+    },
+    "lighting": {
+      "overhead": {
+        "brightness": 50
+      },
+      "atmosphere": {
+        "brightness": 65,
+        "color": "#8C1EFF",
+        "cct": 5000,
+        "mode": "rgb",
+        "effect": "solid"
+      }
+    }
+  },
+  {
+    "id": "preset-creeping-dread",
+    "name": "Creeping Dread & Ambush",
+    "icon": "👁️",
+    "description": "Eerie crypt drone, solitary creeping heartbeat, cold wind whispering.",
+    "layers": {
+      "track-cavern-drone": 0.55,
+      "track-heartbeat": 0.65,
+      "track-wind": 0.35
+    },
+    "lighting": {
+      "overhead": {
+        "brightness": 15
+      },
+      "atmosphere": {
+        "brightness": 45,
+        "color": "#3B1154",
+        "cct": 7500,
+        "mode": "rgb",
+        "effect": "pulse"
+      }
+    }
+  }
+]

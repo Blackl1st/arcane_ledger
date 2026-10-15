@@ -1,0 +1,156 @@
+{
+  "quests": [
+    {
+      "id": "qst-sunken-bell",
+      "title": "The Drowned Bell of St. Jude",
+      "giver": "Sister Andrea / Father Alistair",
+      "location": "The Sunken Ward Catacombs",
+      "status": "Active",
+      "reward": "350 GP + 1x Potion of Water Breathing & Silver Reliquary",
+      "summary": "Recover the consecrated silver bell sunken in the flooded catacombs before cultists defile it with necromantic ichor.",
+      "objectives": [
+        {
+          "id": "obj-1",
+          "text": "Locate the submerged entrance beneath the Sunken Ward boardwalks",
+          "completed": true
+        },
+        {
+          "id": "obj-2",
+          "text": "Navigate the flooded crypts and defeat the drowned undead",
+          "completed": false
+        },
+        {
+          "id": "obj-3",
+          "text": "Retrieve the Silver Bell from the altar of the drowned martyr",
+          "completed": false
+        },
+        {
+          "id": "obj-4",
+          "text": "Return the relic to the Chapel of the Dawn without Syndicate interference",
+          "completed": false
+        }
+      ],
+      "notes": "Watch out for deep water currents; Sister Andrea warned that necrotic energy may animate skeletons with grasping claws."
+    },
+    {
+      "id": "qst-smuggler-manifest",
+      "title": "Intercepting the Red-Wax Manifest",
+      "giver": "Commander Sarah Drake",
+      "location": "The Rusted Anchor Tavern",
+      "status": "Active",
+      "reward": "500 GP + Favor of the Silver Gauntlet (Reputation +1)",
+      "summary": "Acquire the ledger detailing the Syndicate's corrupt harbor contacts before it is handed off at midnight.",
+      "objectives": [
+        {
+          "id": "obj-5",
+          "text": "Stake out The Rusted Anchor taproom before 11:00 PM",
+          "completed": true
+        },
+        {
+          "id": "obj-6",
+          "text": "Identify the courier carrying the red-wax seal",
+          "completed": true
+        },
+        {
+          "id": "obj-7",
+          "text": "Secure the manifest via stealth, charm, or force",
+          "completed": false
+        },
+        {
+          "id": "obj-8",
+          "text": "Deliver the ledger to Highspire Bastion untouched",
+          "completed": false
+        }
+      ],
+      "notes": "The courier is rumored to travel with two disguised veterans."
+    },
+    {
+      "id": "qst-cinder-sabotage",
+      "title": "Sabotage at Forge #4",
+      "giver": "Forgemaster Hrogar Stonebrow",
+      "location": "The Cinder-Forge District",
+      "status": "Active",
+      "reward": "300 GP + 1x Masterwork Weapon (+1 to Attack or Damage)",
+      "summary": "Investigate why the grand blast furnace has been misfiring and threatening to explode the ironworks.",
+      "objectives": [
+        {
+          "id": "obj-9",
+          "text": "Inspect the fuel intake line for alchemical tampering",
+          "completed": false
+        },
+        {
+          "id": "obj-10",
+          "text": "Interrogate the night-shift apprentice",
+          "completed": false
+        },
+        {
+          "id": "obj-11",
+          "text": "Apprehend the saboteur hired by rival merchants",
+          "completed": false
+        }
+      ],
+      "notes": "Hrogar suspects a Gilded Scales merchant bribed someone to delay shipments."
+    },
+    {
+      "id": "qst-bounty-goblin-chief",
+      "title": "Bounty: Gnasher the Bone-Splitter",
+      "giver": "Bounty Board at Oakhaven Market",
+      "location": "Ironpeak Citadel Outskirts",
+      "status": "Completed",
+      "reward": "250 GP",
+      "summary": "Clear out the goblin raiders ambushing flour wagons along the north highway.",
+      "objectives": [
+        {
+          "id": "obj-12",
+          "text": "Track the raiding party to their ravine hideout",
+          "completed": true
+        },
+        {
+          "id": "obj-13",
+          "text": "Defeat Chief Gnasher and his wolf pack",
+          "completed": true
+        },
+        {
+          "id": "obj-14",
+          "text": "Recover stolen caravan flour sacks",
+          "completed": true
+        }
+      ],
+      "notes": "Completed on Day 2. The town bailiff paid the bounty in silver crowns."
+    }
+  ],
+  "rumors": [
+    {
+      "id": "rum-1",
+      "text": "Fishermen swear they saw green witchfire glowing under the water by the old sunken bell tower at low tide.",
+      "source": "Old Salty Pete (The Rusted Anchor)",
+      "location": "The Sunken Ward",
+      "veracity": "True",
+      "active": true
+    },
+    {
+      "id": "rum-2",
+      "text": "The Gilded Scales are funding an expedition to buy out all silver mines in the Ironpeaks, planning a cartel monopoly.",
+      "source": "Apprentice Blacksmith (Cinder-Forge)",
+      "location": "The Cinder-Forge District",
+      "veracity": "Exaggerated",
+      "active": true
+    },
+    {
+      "id": "rum-3",
+      "text": "A nobleman's daughter was seen visiting the Pale Moon apothecary in the dead of night disguised in a velvet cowl.",
+      "source": "City Guard Patrolman",
+      "location": "Highspire Noble Quarter",
+      "veracity": "True",
+      "active": true
+    },
+    {
+      "id": "rum-4",
+      "text": "The sewer rats under the bazaar have doubled in size and now walk on two legs like men.",
+      "source": "Bazaar Fruit Peddler",
+      "location": "Oakhaven Market Square",
+      "veracity": "False",
+      "active": true
+    }
+  ]
+}

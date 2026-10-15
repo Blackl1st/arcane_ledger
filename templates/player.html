@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcane Ledger — Player Display Screen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ledger: {
+                            950: '#07090e',
+                            900: '#0d1117',
+                            850: '#121720',
+                            800: '#18202c',
+                            700: '#232f42',
+                            600: '#33435c',
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #07090e;
+            color: #f1f5f9;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.05) 0%, transparent 60%),
+                radial-gradient(circle at 100% 100%, rgba(30, 58, 138, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 0% 100%, rgba(136, 19, 55, 0.05) 0%, transparent 50%);
+            background-attachment: fixed;
+        }
+        .parchment-border {
+            border-color: rgba(245, 158, 11, 0.35);
+            background: linear-gradient(180deg, rgba(24, 32, 44, 0.95) 0%, rgba(13, 17, 23, 0.98) 100%);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(245, 158, 11, 0.05);
+        }
+        .active-turn-pulse {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.35), inset 0 0 15px rgba(245, 158, 11, 0.15);
+            animation: pulseGlow 2.5s infinite ease-in-out;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { border-color: rgba(245, 158, 11, 0.7); transform: scale(1); }
+            50% { border-color: rgba(251, 191, 36, 1); transform: scale(1.01); }
+        }
+
+        /* Cinematic Turn Banner */
+        .cinematic-turn-banner {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-140px) scale(0.92);
+            opacity: 0;
+            z-index: 99999;
+            pointer-events: auto;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cinematic-turn-banner.active {
+            transform: translateX(-50%) translateY(0) scale(1);
+            opacity: 1;
+        }
+        .cinematic-turn-banner.dismissing {
+            transform: translateX(-50%) translateY(-80px) scale(0.95);
+            opacity: 0;
+            transition: all 0.4s ease-in;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
+
+    <!-- Cinematic Turn Announcement Banner (Player Screen) -->
+    <div id="player-cinematic-banner" class="cinematic-turn-banner">
+        <div id="player-cinematic-card" class="relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 min-w-[340px] sm:min-w-[440px] max-w-lg backdrop-blur-xl bg-ledger-950/95 transition-all duration-300">
+            <!-- Glow background overlay -->
+            <div id="player-cinematic-glow-bg" class="absolute inset-0 opacity-25 pointer-events-none"></div>
+
+            <!-- Left Avatar / Icon -->
+            <div id="player-cinematic-avatar-wrap" class="relative w-14 h-14 rounded-xl border-2 flex items-center justify-center shrink-0 shadow-lg overflow-hidden bg-neutral-950">
+                <img id="player-cinematic-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+                <span id="player-cinematic-avatar-icon" class="text-2xl">⚔️</span>
+            </div>
+
+            <!-- Center Text -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span id="player-cinematic-round-badge" class="px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-ledger-900 border border-ledger-700 text-amber-400">ROUND 1</span>
+                    <span id="player-cinematic-role-badge" class="text-[11px] font-mono text-slate-400">Adventurer</span>
+                </div>
+                <h2 id="player-cinematic-name" class="font-display font-black text-xl sm:text-2xl text-slate-100 tracking-wide truncate mt-0.5">
+                    Thorne Ironbreaker
+                </h2>
+                <div id="player-cinematic-next-turn" class="text-xs text-slate-400 font-mono mt-0.5 truncate flex items-center gap-1">
+                    <span>Up Next:</span> <span id="player-cinematic-next-name" class="text-slate-200 font-semibold">Lyra Moonwhisper</span>
+                </div>
+            </div>
+
+            <!-- Dismiss Button -->
+            <button onclick="dismissPlayerCinematicTurnBanner()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition text-sm cursor-pointer" title="Dismiss">✕</button>
+
+            <!-- Bottom Progress Countdown -->
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
+                <div id="player-cinematic-timer-bar" class="h-full bg-amber-400 transition-all duration-[3600ms] ease-linear w-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP CINEMATIC RIBBON -->
+    <header class="bg-ledger-900/90 backdrop-blur-md border-b border-ledger-700 px-6 py-3.5 shadow-2xl flex items-center justify-between gap-4">
+        
+        <!-- Logo & Campaign Branding -->
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-lg shadow-amber-900/40 border border-amber-400/40">
+                <svg class="w-6 h-6 text-ledger-950" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5l-6-3 6-3 6 3-6 3zm0 2.5l-10-5v10l10 5 10-5V7l-10 5z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="font-display font-extrabold text-lg sm:text-xl tracking-wider text-amber-400 leading-tight">ARCANE LEDGER</h1>
+                <p class="text-[11px] text-slate-400 font-mono tracking-widest uppercase">Tabletop Player Display • D&D 5.5e</p>
+            </div>
+        </div>
+
+        <!-- In-Game Clock, Moon & Weather -->
+        <div class="flex items-center gap-4 bg-ledger-950/80 border border-ledger-800 rounded-xl px-4 py-2 font-mono text-xs">
+            <div class="flex items-center gap-2">
+                <span class="text-amber-400 text-sm">📅</span>
+                <span id="player-time-day" class="font-bold text-slate-200">Day 1</span>
+                <span class="text-slate-500">•</span>
+                <span id="player-time-clock" class="text-amber-300 font-bold">09:00</span>
+            </div>
+            <div class="h-4 w-px bg-ledger-800 hidden sm:block"></div>
+            <div class="hidden sm:flex items-center gap-1.5 text-slate-300">
+                <span id="player-time-moon-icon">🌙</span>
+                <span id="player-time-moon">Waxing Crescent</span>
+            </div>
+            <div class="h-4 w-px bg-ledger-800 hidden md:block"></div>
+            <div class="hidden md:flex items-center gap-1.5 text-sky-300">
+                <span>🌦️</span>
+                <span id="player-time-weather">Clear Skies (Mild)</span>
+            </div>
+        </div>
+
+        <!-- Encounter Status & Fullscreen Toggle -->
+        <div class="flex items-center gap-3">
+            <div id="combat-status-badge" class="px-3.5 py-1.5 rounded-lg bg-ledger-800 border border-ledger-700 text-slate-300 font-mono text-xs font-bold flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                <span>Exploration Mode</span>
+            </div>
+            <button id="player-audio-toggle-btn" onclick="togglePlayerAudio()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 hover:border-amber-400 text-slate-300 hover:text-amber-300 font-mono text-xs flex items-center gap-1.5 transition cursor-pointer" title="Toggle Turn Fanfare Audio">
+                <span id="player-audio-icon">🔔</span>
+                <span id="player-audio-label" class="hidden sm:inline">Sound</span>
+            </button>
+            <button onclick="toggleFullScreen()" title="Toggle Fullscreen (F11)" class="w-9 h-9 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white border border-ledger-700 flex items-center justify-center transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                </svg>
+            </button>
+        </div>
+
+    </header>
+
+    <!-- MAIN VIEW AREA -->
+    <main class="flex-1 max-w-[1700px] w-full mx-auto px-6 py-6 flex flex-col justify-between space-y-6">
+        
+        <!-- COMBAT SECTION (VISIBLE DURING COMBAT) -->
+        <section id="player-combat-view" class="space-y-6 hidden">
+            
+            <!-- CURRENT TURN SPOTLIGHT BANNER -->
+            <div id="player-turn-spotlight" class="parchment-border rounded-2xl p-6 border-2 border-amber-500/60 active-turn-pulse flex flex-wrap items-center justify-between gap-4 transition-all">
+                <!-- Populated dynamically via renderPlayerCombat() -->
+            </div>
+
+            <!-- INITIATIVE ORDER CARDS -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="font-display font-bold text-sm tracking-widest text-amber-400 uppercase">Initiative Order</span>
+                    <span id="player-round-counter" class="font-mono text-xs font-bold px-3 py-1 rounded-lg bg-ledger-900 border border-ledger-700 text-amber-300">Round 1</span>
+                </div>
+                
+                <div id="player-initiative-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- EXPLORATION / PARTY SECTION (ALWAYS VISIBLE AT BOTTOM OR WHEN OUT OF COMBAT) -->
+        <section id="player-party-view" class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="font-display font-bold text-sm tracking-widest text-slate-300 uppercase flex items-center gap-2">
+                    <span>🛡️</span> Adventuring Party
+                </span>
+                <span class="text-xs text-slate-400 font-mono">Real-time status</span>
+            </div>
+
+            <div id="player-party-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Populated dynamically via renderPlayerParty() -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- LIVE BROADCAST / ART & HANDOUT POPUP MODAL -->
+    <div id="player-broadcast-overlay" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4 sm:p-8 transition-all duration-300">
+        <div id="broadcast-card" class="parchment-border border-2 border-amber-500/70 rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4">
+            
+            <!-- Glow background elements -->
+            <div class="absolute -top-16 -right-16 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-16 -left-16 w-64 h-64 bg-rose-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Header with close button -->
+            <div class="flex items-center justify-between relative z-10 border-b border-amber-500/20 pb-3">
+                <span id="broadcast-type-badge" class="text-[11px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1.5 shadow-sm">
+                    📜 Tabletop Discovery
+                </span>
+                <button onclick="dismissPlayerOverlayLocal()" class="text-slate-400 hover:text-rose-400 transition text-lg px-2 py-0.5 rounded-lg bg-ledger-900/60 border border-ledger-700">✕</button>
+            </div>
+
+            <!-- Content Area: Responsive Grid (Art on Left/Center, Text on Right) -->
+            <div id="broadcast-body-grid" class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative z-10">
+                
+                <!-- Left: Artwork Column -->
+                <div id="broadcast-image-col" class="md:col-span-5 flex flex-col items-center justify-center">
+                    <div class="relative group max-w-sm w-full">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-amber-500 to-rose-600 rounded-2xl blur-md opacity-40 group-hover:opacity-75 transition duration-500"></div>
+                        <div class="relative bg-ledger-950 rounded-2xl p-2 border-2 border-amber-400/60 shadow-2xl overflow-hidden flex items-center justify-center">
+                            <img id="broadcast-image" src="" alt="Handout Art" class="w-full max-h-[380px] object-contain rounded-xl shadow-inner transition duration-300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Lore & Handout Typography Column -->
+                <div id="broadcast-text-col" class="md:col-span-7 flex flex-col justify-center space-y-3">
+                    <div>
+                        <h2 id="broadcast-title" class="font-display font-extrabold text-2xl sm:text-4xl text-amber-300 tracking-wide leading-tight drop-shadow-md">
+                            Handout Title
+                        </h2>
+                        <p id="broadcast-subtitle" class="text-xs sm:text-sm text-amber-200/80 font-serif italic mt-1 leading-snug">
+                            Handout Subtitle or Creature Classification
+                        </p>
+                    </div>
+
+                    <!-- Content Parchment Box -->
+                    <div class="bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-5 shadow-inner max-h-[360px] overflow-y-auto">
+                        <p id="broadcast-content" class="text-sm sm:text-base text-slate-200 leading-relaxed font-serif whitespace-pre-line">
+                            Content text goes here...
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT CONTROLLER -->
+    <script>
+        let playerState = {
+            combat: { inCombat: false, round: 1, currentTurnIndex: 0, combatants: [] },
+            party: [],
+            timeWeather: {},
+            broadcast: { active: false }
+        };
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        async function pollPlayerState() {
+            try {
+                const res = await fetch('/api/player-state');
+                if (res.ok) {
+                    playerState = await res.json();
+                    renderPlayerView();
+                }
+            } catch (e) {
+                console.warn("Polling player state...", e);
+            }
+        }
+
+        function renderPlayerView() {
+            renderTimeAndWeather();
+            renderBroadcastOverlay();
+
+            const combat = playerState.combat || {};
+            const combatView = document.getElementById('player-combat-view');
+            const statusBadge = document.getElementById('combat-status-badge');
+
+            if (combat.inCombat && combat.combatants && combat.combatants.length > 0) {
+                combatView.classList.remove('hidden');
+                statusBadge.className = "px-3.5 py-1.5 rounded-lg bg-rose-950/80 border border-rose-600 text-rose-300 font-mono text-xs font-bold flex items-center gap-2 animate-pulse";
+                statusBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>ENCOUNTER ACTIVE</span>`;
+                renderPlayerCombat();
+            } else {
+                combatView.classList.add('hidden');
+                statusBadge.className = "px-3.5 py-1.5 rounded-lg bg-ledger-800 border border-ledger-700 text-slate-300 font-mono text-xs font-bold flex items-center gap-2";
+                statusBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Exploration Mode</span>`;
+            }
+
+            renderPlayerParty();
+        }
+
+        function renderTimeAndWeather() {
+            const tw = playerState.timeWeather || {};
+            const dayEl = document.getElementById('player-time-day');
+            const clockEl = document.getElementById('player-time-clock');
+            const moonEl = document.getElementById('player-time-moon');
+            const weatherEl = document.getElementById('player-time-weather');
+
+            if (dayEl) dayEl.innerText = `Day ${tw.day || 1}`;
+            if (clockEl) {
+                const hh = String(tw.hour || 9).padStart(2, '0');
+                const mm = String(tw.minute || 0).padStart(2, '0');
+                clockEl.innerText = `${hh}:${mm}`;
+            }
+            if (moonEl) moonEl.innerText = tw.moonPhase || 'Waxing Crescent';
+            if (weatherEl) {
+                const w = tw.weather || {};
+                weatherEl.innerText = `${w.precipitation || 'Clear Skies'} (${w.temperature || 'Mild'})`;
+            }
+        }
+
+        function renderPlayerCombat() {
+            const combat = playerState.combat || {};
+            const combatants = combat.combatants || [];
+            const turnIdx = combat.currentTurnIndex || 0;
+            const activeIsHidden = combat.activeIsHidden || false;
+            const hiddenSpotlight = combat.hiddenSpotlight;
+            const current = activeIsHidden ? hiddenSpotlight : (combatants[turnIdx] || combatants[0]);
+
+            // Check for Cinematic Turn Announcement
+            if (combat.inCombat && current) {
+                const turnKey = `${combat.round || 1}_${current.id || current.name}_${activeIsHidden ? 'hidden' : 'vis'}`;
+                if (lastPlayerTurnKey !== null && lastPlayerTurnKey !== turnKey) {
+                    const nextCombatant = combatants.length > 1 ? combatants[(turnIdx + 1) % combatants.length] : null;
+                    showPlayerCinematicTurnBanner(current, nextCombatant, combat.round || 1);
+                }
+                lastPlayerTurnKey = turnKey;
+            } else if (!combat.inCombat) {
+                lastPlayerTurnKey = null;
+            }
+
+            const spotlightEl = document.getElementById('player-turn-spotlight');
+            const listEl = document.getElementById('player-initiative-list');
+            const roundEl = document.getElementById('player-round-counter');
+
+            if (roundEl) roundEl.innerText = `Round ${combat.round || 1}`;
+
+            // Spotlight Banner
+            if (spotlightEl && current) {
+                if (current.type === 'hidden') {
+                    spotlightEl.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-extrabold text-2xl shadow-xl bg-gradient-to-br from-neutral-800 to-neutral-950 text-amber-400 border-2 border-neutral-700 animate-pulse">
+                                👁️‍🗨️
+                            </div>
+                            <div>
+                                <span class="text-xs font-mono font-bold uppercase tracking-widest text-amber-400 block mb-0.5">CURRENT TURN</span>
+                                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-neutral-300 tracking-wide italic">Something in the Shadows...</h2>
+                                <p class="text-xs text-neutral-500 font-mono mt-0.5">
+                                    An unseen adversary acts from beyond the veil
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="px-3.5 py-1.5 rounded-xl border border-neutral-700 bg-neutral-900/80 text-amber-400 text-xs font-bold font-mono">
+                                Concealed
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    const isPC = current.type === 'pc';
+                    spotlightEl.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-2xl flex items-center justify-center font-display font-extrabold text-2xl shadow-xl ${isPC ? 'bg-gradient-to-br from-amber-500 to-amber-700 text-ledger-950 border-2 border-amber-300' : 'bg-gradient-to-br from-rose-700 to-rose-900 text-white border-2 border-rose-500'}">
+                                ${isPC ? '⚔️' : '💀'}
+                            </div>
+                            <div>
+                                <span class="text-xs font-mono font-bold uppercase tracking-widest text-amber-400 block mb-0.5">CURRENT TURN</span>
+                                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-slate-100 tracking-wide">${escapeHTML(current.name)}</h2>
+                                <p class="text-xs text-slate-400 font-mono mt-0.5">
+                                    ${isPC ? `${escapeHTML(current.classRole || 'Adventurer')} • Initiative Roll: ${current.initiative}` : `Creature • Initiative Roll: ${current.initiative}`}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            ${isPC ? `
+                                <div class="text-right">
+                                    <span class="text-[10px] font-mono text-slate-400 block">HIT POINTS</span>
+                                    <span class="font-mono font-extrabold text-xl text-emerald-400">${current.currentHp} / ${current.maxHp}</span>
+                                </div>
+                            ` : `
+                                <span class="px-3.5 py-1.5 rounded-xl border text-xs font-bold font-mono ${current.statusColor === 'rose' ? 'bg-rose-950 text-rose-300 border-rose-600' : (current.statusColor === 'amber' ? 'bg-amber-950 text-amber-300 border-amber-600' : 'bg-emerald-950 text-emerald-300 border-emerald-600')}">
+                                    ${current.healthStatus || 'Healthy'}
+                                </span>
+                            `}
+                        </div>
+                    `;
+                }
+            }
+
+            // Initiative List
+            if (listEl) {
+                listEl.innerHTML = combatants.map((c, i) => {
+                    const isActive = i === turnIdx;
+                    const isPC = c.type === 'pc';
+
+                    return `
+                        <div class="parchment-border rounded-xl p-4 transition-all duration-300 flex flex-col justify-between space-y-3 ${isActive ? 'border-amber-400 active-turn-pulse' : 'border-ledger-700/80 opacity-85 hover:opacity-100'}">
+                            
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="w-5 h-5 rounded-md bg-ledger-900 border border-ledger-700 flex items-center justify-center font-mono font-bold text-[11px] text-amber-400">${i + 1}</span>
+                                        <h4 class="font-bold text-sm ${isActive ? 'text-amber-300 font-extrabold' : 'text-slate-200'} truncate">${escapeHTML(c.name)}</h4>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
+                                        ${isPC ? (c.player ? `(${escapeHTML(c.player)})` : 'PC') : 'Adversary'} • Init: ${c.initiative}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    ${isPC ? (c.heroicInspiration ? `<span class="px-1.5 py-0.5 rounded bg-amber-500 text-ledger-950 font-bold text-[10px]">INSPIRED</span>` : '') : `
+                                        <span class="px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${c.statusColor === 'rose' ? 'bg-rose-950 text-rose-300 border-rose-600' : (c.statusColor === 'amber' ? 'bg-amber-950 text-amber-300 border-amber-600' : 'bg-emerald-950 text-emerald-300 border-emerald-600')}">
+                                            ${c.healthStatus || 'Healthy'}
+                                        </span>
+                                    `}
+                                </div>
+                            </div>
+
+                            ${isPC ? `
+                                <div class="space-y-1">
+                                    <div class="flex items-center justify-between font-mono text-[11px]">
+                                        <span class="text-slate-400">HP</span>
+                                        <span class="font-bold text-slate-200">${c.currentHp} / ${c.maxHp} ${c.tempHp ? `<span class="text-sky-400 font-normal">(+${c.tempHp})</span>` : ''}</span>
+                                    </div>
+                                    <div class="w-full h-2 bg-ledger-950 rounded-full overflow-hidden border border-ledger-800">
+                                        <div class="h-full ${c.currentHp <= Math.floor(c.maxHp / 2) ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${Math.max(0, Math.min(100, Math.round((c.currentHp / c.maxHp) * 100)))}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${c.conditions && c.conditions.length > 0 ? `
+                                <div class="flex flex-wrap gap-1 pt-1 border-t border-ledger-800">
+                                    ${c.conditions.map(cd => `<span class="px-1.5 py-0.5 rounded bg-rose-950/70 border border-rose-700 text-rose-300 font-mono text-[9px] font-semibold">${escapeHTML(cd.name)}</span>`).join('')}
+                                </div>
+                            ` : ''}
+
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function renderPlayerParty() {
+            const container = document.getElementById('player-party-grid');
+            if (!container) return;
+
+            const party = playerState.party || [];
+            if (party.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full p-6 text-center border border-dashed border-ledger-800 rounded-xl text-slate-500 text-xs italic">
+                        No characters enrolled in party.
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = party.map(pc => {
+                const hpPct = Math.max(0, Math.min(100, Math.round((pc.currentHp / pc.maxHp) * 100)));
+                const isBloodied = pc.currentHp > 0 && pc.currentHp <= Math.floor(pc.maxHp / 2);
+                const isDown = pc.currentHp === 0;
+
+                return `
+                    <div class="parchment-border rounded-xl p-4 flex flex-col justify-between space-y-3 transition">
+                        
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-sm text-slate-100 truncate">${escapeHTML(pc.name)}</h4>
+                                <p class="text-[11px] text-amber-400 font-medium truncate">${escapeHTML(pc.classRole)} • Lvl ${pc.level}</p>
+                                ${pc.player ? `<span class="text-[10px] text-slate-400 font-mono">Player: ${escapeHTML(pc.player)}</span>` : ''}
+                            </div>
+                            ${pc.heroicInspiration ? `
+                                <span class="px-2 py-1 rounded-md bg-amber-500 text-ledger-950 font-bold text-[10px] flex items-center gap-1 shadow-md shadow-amber-500/30">
+                                    ★ INSPIRATION
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        <!-- HP Gauge -->
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between font-mono text-xs">
+                                <span class="text-slate-400">Vitality</span>
+                                <span class="font-bold ${isDown ? 'text-rose-400' : (isBloodied ? 'text-amber-400' : 'text-emerald-400')}">
+                                    ${pc.currentHp} / ${pc.maxHp} HP ${pc.tempHp ? `<span class="text-sky-300 font-normal text-[10px]">(+${pc.tempHp})</span>` : ''}
+                                </span>
+                            </div>
+                            <div class="w-full h-2.5 bg-ledger-950 rounded-full overflow-hidden border border-ledger-800">
+                                <div class="h-full ${isDown ? 'bg-rose-700' : (isBloodied ? 'bg-amber-500' : 'bg-emerald-500')} transition-all duration-300" style="width: ${hpPct}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Passive Senses -->
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-ledger-800 text-[10px] font-mono text-slate-400 text-center">
+                            <div class="bg-ledger-950/60 p-1 rounded border border-ledger-800">
+                                <span>Passive Perc:</span> <span class="text-slate-200 font-bold">${pc.passivePerception}</span>
+                            </div>
+                            <div class="bg-ledger-950/60 p-1 rounded border border-ledger-800">
+                                <span>Speed:</span> <span class="text-slate-200 font-bold">${pc.speed} ft</span>
+                            </div>
+                        </div>
+
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function dismissPlayerOverlayLocal() {
+            const overlay = document.getElementById('player-broadcast-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        function renderBroadcastOverlay() {
+            const overlay = document.getElementById('player-broadcast-overlay');
+            const card = document.getElementById('broadcast-card');
+            const b = playerState.broadcast || {};
+
+            if (b && b.active) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+                document.getElementById('broadcast-title').innerText = b.title || 'Tabletop Discovery';
+                document.getElementById('broadcast-subtitle').innerText = b.subtitle || '';
+                document.getElementById('broadcast-content').innerText = b.content || '';
+
+                const badge = document.getElementById('broadcast-type-badge');
+                if (badge) {
+                    if (b.type === 'monster') badge.innerHTML = `<span>🐉</span> <span>Bestiary Encounter</span>`;
+                    else if (b.type === 'npc') badge.innerHTML = `<span>🎭</span> <span>Character Encounter</span>`;
+                    else if (b.type === 'location') badge.innerHTML = `<span>🗺️</span> <span>Landmark Discovery</span>`;
+                    else if (b.type === 'lore') badge.innerHTML = `<span>📜</span> <span>Rumor & Lore</span>`;
+                    else if (b.type === 'quest') badge.innerHTML = `<span>⚔️</span> <span>Quest Bounty</span>`;
+                    else badge.innerHTML = `<span>📜</span> <span>Tabletop Handout</span>`;
+                }
+
+                const imgCol = document.getElementById('broadcast-image-col');
+                const textCol = document.getElementById('broadcast-text-col');
+                const img = document.getElementById('broadcast-image');
+
+                if (b.imageUrl) {
+                    imgCol.classList.remove('hidden');
+                    textCol.className = "md:col-span-7 flex flex-col justify-center space-y-3";
+                    card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
+                    img.src = b.imageUrl;
+                } else {
+                    imgCol.classList.add('hidden');
+                    textCol.className = "col-span-12 flex flex-col justify-center space-y-3 text-center";
+                    card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
+                }
+            } else {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        }
+
+        // Cinematic Turn Announcement Banner & Web Audio Fanfare
+        let lastPlayerTurnKey = null;
+        let playerBannerTimeout = null;
+        let playerAudioCtx = null;
+        let isPlayerAudioMuted = localStorage.getItem('player_turn_sound_muted') === 'true';
+
+        function updatePlayerAudioBtnUI() {
+            const icon = document.getElementById('player-audio-icon');
+            const label = document.getElementById('player-audio-label');
+            const btn = document.getElementById('player-audio-toggle-btn');
+            if (icon) icon.textContent = isPlayerAudioMuted ? '🔕' : '🔔';
+            if (label) label.textContent = isPlayerAudioMuted ? 'Muted' : 'Sound';
+            if (btn) {
+                if (isPlayerAudioMuted) {
+                    btn.classList.add('opacity-60');
+                } else {
+                    btn.classList.remove('opacity-60');
+                }
+            }
+        }
+
+        function togglePlayerAudio() {
+            isPlayerAudioMuted = !isPlayerAudioMuted;
+            localStorage.setItem('player_turn_sound_muted', String(isPlayerAudioMuted));
+            updatePlayerAudioBtnUI();
+            if (!isPlayerAudioMuted) {
+                if (!playerAudioCtx) playerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (playerAudioCtx.state === 'suspended') playerAudioCtx.resume();
+                playPlayerTurnFanfare(true, false);
+            }
+        }
+
+        function playPlayerTurnFanfare(isPC, isShadow) {
+            if (isPlayerAudioMuted) return;
+            try {
+                if (!playerAudioCtx) {
+                    playerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (playerAudioCtx.state === 'suspended') {
+                    playerAudioCtx.resume();
+                }
+
+                const now = playerAudioCtx.currentTime;
+
+                if (isShadow) {
+                    [220, 223, 330].forEach((freq, idx) => {
+                        const osc = playerAudioCtx.createOscillator();
+                        const gain = playerAudioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.08, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 1.8);
+                        osc.connect(gain);
+                        gain.connect(playerAudioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 2.0);
+                    });
+                } else if (isPC) {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = playerAudioCtx.createOscillator();
+                        const gain = playerAudioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.09);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 1.2);
+                        osc.connect(gain);
+                        gain.connect(playerAudioCtx.destination);
+                        osc.start(now + idx * 0.09);
+                        osc.stop(now + idx * 0.09 + 1.3);
+                    });
+                } else {
+                    const osc = playerAudioCtx.createOscillator();
+                    const gain = playerAudioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(146.83, now);
+                    osc.frequency.exponentialRampToValueAtTime(73.42, now + 0.4);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+                    osc.connect(gain);
+                    gain.connect(playerAudioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 1.2);
+                }
+            } catch (e) {
+                console.warn("Player Web Audio error:", e);
+            }
+        }
+
+        function showPlayerCinematicTurnBanner(active, next, round) {
+            if (!active) return;
+            const banner = document.getElementById('player-cinematic-banner');
+            const card = document.getElementById('player-cinematic-card');
+            const glowBg = document.getElementById('player-cinematic-glow-bg');
+            const avatarWrap = document.getElementById('player-cinematic-avatar-wrap');
+            const avatarImg = document.getElementById('player-cinematic-avatar-img');
+            const avatarIcon = document.getElementById('player-cinematic-avatar-icon');
+            const roundBadge = document.getElementById('player-cinematic-round-badge');
+            const roleBadge = document.getElementById('player-cinematic-role-badge');
+            const nameEl = document.getElementById('player-cinematic-name');
+            const nextNameEl = document.getElementById('player-cinematic-next-name');
+            const timerBar = document.getElementById('player-cinematic-timer-bar');
+
+            if (!banner || !card) return;
+
+            if (playerBannerTimeout) {
+                clearTimeout(playerBannerTimeout);
+                playerBannerTimeout = null;
+            }
+
+            const isShadow = active.type === 'hidden';
+            const isPC = active.type === 'pc';
+
+            if (isShadow) {
+                card.className = "relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 border-purple-500/80 bg-neutral-950/95 backdrop-blur-xl min-w-[340px] sm:min-w-[440px] max-w-lg transition-all duration-300 shadow-purple-950/80";
+                glowBg.className = "absolute inset-0 bg-gradient-to-r from-purple-900/40 via-indigo-900/20 to-transparent pointer-events-none";
+                avatarWrap.className = "relative w-14 h-14 rounded-xl border-2 border-purple-400 bg-neutral-900 text-purple-400 flex items-center justify-center shrink-0 shadow-lg shadow-purple-950/50";
+                avatarImg.classList.add('hidden');
+                avatarIcon.classList.remove('hidden');
+                avatarIcon.textContent = "👁️‍🗨️";
+                roleBadge.textContent = "Concealed Adversary";
+                roundBadge.className = "px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-purple-950 border border-purple-700 text-purple-300";
+                timerBar.className = "h-full bg-purple-500 w-full";
+            } else if (isPC) {
+                card.className = "relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 border-amber-400/90 bg-ledger-950/95 backdrop-blur-xl min-w-[340px] sm:min-w-[440px] max-w-lg transition-all duration-300 shadow-amber-950/70";
+                glowBg.className = "absolute inset-0 bg-gradient-to-r from-amber-600/30 via-amber-800/10 to-transparent pointer-events-none";
+                avatarWrap.className = "relative w-14 h-14 rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-500 to-amber-700 text-ledger-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-950/50";
+                if (active.imageUrl) {
+                    avatarImg.src = active.imageUrl;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                } else {
+                    avatarImg.classList.add('hidden');
+                    avatarIcon.classList.remove('hidden');
+                    avatarIcon.textContent = "⚔️";
+                }
+                roleBadge.textContent = active.classRole || "Adventurer";
+                roundBadge.className = "px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-ledger-900 border border-ledger-700 text-amber-400";
+                timerBar.className = "h-full bg-amber-400 w-full";
+            } else {
+                card.className = "relative overflow-hidden rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-5 border-2 border-rose-500/90 bg-ledger-950/95 backdrop-blur-xl min-w-[340px] sm:min-w-[440px] max-w-lg transition-all duration-300 shadow-rose-950/80";
+                glowBg.className = "absolute inset-0 bg-gradient-to-r from-rose-700/30 via-rose-950/20 to-transparent pointer-events-none";
+                avatarWrap.className = "relative w-14 h-14 rounded-xl border-2 border-rose-400 bg-gradient-to-br from-rose-800 to-rose-950 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-950/50";
+                if (active.imageUrl) {
+                    avatarImg.src = active.imageUrl;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                } else {
+                    avatarImg.classList.add('hidden');
+                    avatarIcon.classList.remove('hidden');
+                    avatarIcon.textContent = "💀";
+                }
+                roleBadge.textContent = "Adversary";
+                roundBadge.className = "px-2 py-0.5 rounded font-mono font-bold text-[10px] tracking-wider uppercase bg-rose-950 border border-rose-700 text-rose-300";
+                timerBar.className = "h-full bg-rose-500 w-full";
+            }
+
+            roundBadge.textContent = `ROUND ${round || 1}`;
+            nameEl.textContent = active.name;
+
+            if (next && next.name) {
+                nextNameEl.textContent = next.name;
+            } else {
+                nextNameEl.textContent = "—";
+            }
+
+            playPlayerTurnFanfare(isPC, isShadow);
+
+            timerBar.style.transition = 'none';
+            timerBar.style.width = '100%';
+            setTimeout(() => {
+                timerBar.style.transition = 'width 3600ms linear';
+                timerBar.style.width = '0%';
+            }, 50);
+
+            banner.classList.remove('dismissing');
+            banner.classList.add('active');
+
+            playerBannerTimeout = setTimeout(() => {
+                dismissPlayerCinematicTurnBanner();
+            }, 3800);
+        }
+
+        function dismissPlayerCinematicTurnBanner() {
+            const banner = document.getElementById('player-cinematic-banner');
+            if (!banner) return;
+            banner.classList.add('dismissing');
+            setTimeout(() => {
+                banner.classList.remove('active', 'dismissing');
+            }, 400);
+        }
+
+        window.onload = function() {
+            updatePlayerAudioBtnUI();
+            pollPlayerState();
+            setInterval(pollPlayerState, 1500);
+            // Unlock Web Audio on first user interaction
+            document.addEventListener('click', () => {
+                if (playerAudioCtx && playerAudioCtx.state === 'suspended') playerAudioCtx.resume();
+            }, { once: true });
+        };
+    </script>
+</body>
+</html>

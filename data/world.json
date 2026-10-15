@@ -1,0 +1,22 @@
+{
+  "customFactions": [
+    "Unaligned / Independent Local",
+    "The Obsidian Syndicate (Smugglers & Thieves)",
+    "Order of the Silver Gauntlet (Chivalric Watch)",
+    "The Gilded Scales Consortium (Merchant Guild)",
+    "Circle of the Pale Moon (Arcane Cabal)",
+    "The Ironbound Union (Artisans & Dockworkers)",
+    "Whispering Court (Spy Network)"
+  ],
+  "customLocations": [
+    "The Sunken Ward (Dockside Slums)",
+    "Oakhaven Market Square",
+    "The Cinder-Forge District",
+    "Highspire Noble Quarter",
+    "The Rusted Anchor Tavern",
+    "Crossroads Caravan Waystation",
+    "Ironpeak Citadel Outskirts"
+  ],
+  "useOnlyCustomFactions": false,
+  "useOnlyCustomLocations": false
+}

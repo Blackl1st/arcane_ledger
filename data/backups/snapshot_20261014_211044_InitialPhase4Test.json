@@ -1,0 +1,1745 @@
+{
+  "timestamp": "20261014_211044",
+  "label": "Initial Phase 4 Test",
+  "party": [
+    {
+      "id": "pc-1",
+      "name": "Thorne Ironbreaker",
+      "player": "Dave",
+      "species": "Dwarf",
+      "classRole": "Fighter (Battle Master)",
+      "level": 5,
+      "ac": 18,
+      "speed": 25,
+      "currentHp": 44,
+      "maxHp": 44,
+      "tempHp": 0,
+      "initiativeMod": 1,
+      "passivePerception": 12,
+      "passiveInsight": 11,
+      "passiveInvestigation": 10,
+      "spellDc": null,
+      "heroicInspiration": true,
+      "deathSaves": {
+        "successes": 0,
+        "failures": 0
+      },
+      "notes": "Second Wind, Action Surge, 4 Superiority Dice (d8). Weapon: Heavy Warhammer (Push mastery)."
+    },
+    {
+      "id": "pc-2",
+      "name": "Lyra Moonwhisper",
+      "player": "Sarah",
+      "species": "High Elf",
+      "classRole": "Wizard (Evoker)",
+      "level": 5,
+      "ac": 13,
+      "speed": 30,
+      "currentHp": 28,
+      "maxHp": 28,
+      "tempHp": 0,
+      "initiativeMod": 2,
+      "passivePerception": 14,
+      "passiveInsight": 12,
+      "passiveInvestigation": 16,
+      "spellDc": 15,
+      "heroicInspiration": false,
+      "deathSaves": {
+        "successes": 0,
+        "failures": 0
+      },
+      "notes": "Sculpt Spells. Familiar: Barn Owl (Pip). Slots: 4/3/2."
+    },
+    {
+      "id": "pc-3",
+      "name": "Finnian Quickfoot",
+      "player": "Alex",
+      "species": "Halfling",
+      "classRole": "Rogue (Thief)",
+      "level": 5,
+      "ac": 16,
+      "speed": 30,
+      "currentHp": 33,
+      "maxHp": 33,
+      "tempHp": 0,
+      "initiativeMod": 4,
+      "passivePerception": 17,
+      "passiveInsight": 15,
+      "passiveInvestigation": 18,
+      "spellDc": null,
+      "heroicInspiration": true,
+      "deathSaves": {
+        "successes": 0,
+        "failures": 0
+      },
+      "notes": "Cunning Action, Fast Hands (Utilize as Bonus Action), Sneak Attack (3d6), Halfling Nimbleness."
+    },
+    {
+      "id": "pc-4",
+      "name": "Sister Andrea",
+      "player": "Elena",
+      "species": "Human",
+      "classRole": "Cleric (Life Domain)",
+      "level": 5,
+      "ac": 18,
+      "speed": 30,
+      "currentHp": 38,
+      "maxHp": 38,
+      "tempHp": 0,
+      "initiativeMod": 0,
+      "passivePerception": 16,
+      "passiveInsight": 16,
+      "passiveInvestigation": 11,
+      "spellDc": 14,
+      "heroicInspiration": false,
+      "deathSaves": {
+        "successes": 0,
+        "failures": 0
+      },
+      "notes": "Disciple of Life, Preserve Life, Channel Divinity 2/rest. War Caster feat (Adv on Con saves)."
+    }
+  ],
+  "combat": {
+    "inCombat": false,
+    "round": 1,
+    "currentTurnIndex": 3,
+    "combatants": [
+      {
+        "id": "combat-pc-3",
+        "name": "Finnian Quickfoot",
+        "type": "pc",
+        "initiative": 21.0,
+        "tieBreaker": 4.0,
+        "ac": 16,
+        "currentHp": 33,
+        "maxHp": 33,
+        "tempHp": 0,
+        "conditions": [],
+        "isConcentrating": false,
+        "concentratingSpell": "",
+        "notes": "Rogue (Thief)",
+        "statDetails": "Speed: 30ft | PP: 17",
+        "sourceId": "pc-3"
+      },
+      {
+        "id": "combat-pc-2",
+        "name": "Lyra Moonwhisper",
+        "type": "pc",
+        "initiative": 21.0,
+        "tieBreaker": 2.0,
+        "ac": 13,
+        "currentHp": 28,
+        "maxHp": 28,
+        "tempHp": 0,
+        "conditions": [],
+        "isConcentrating": false,
+        "concentratingSpell": "",
+        "notes": "Wizard (Evoker)",
+        "statDetails": "Speed: 30ft | PP: 14",
+        "sourceId": "pc-2"
+      },
+      {
+        "id": "combat-pc-1",
+        "name": "Thorne Ironbreaker",
+        "type": "pc",
+        "initiative": 8.0,
+        "tieBreaker": 1.0,
+        "ac": 18,
+        "currentHp": 44,
+        "maxHp": 44,
+        "tempHp": 0,
+        "conditions": [],
+        "isConcentrating": false,
+        "concentratingSpell": "",
+        "notes": "Fighter (Battle Master)",
+        "statDetails": "Speed: 25ft | PP: 12",
+        "sourceId": "pc-1"
+      },
+      {
+        "id": "combat-pc-4",
+        "name": "Sister Andrea",
+        "type": "pc",
+        "initiative": 1.0,
+        "tieBreaker": 0.0,
+        "ac": 18,
+        "currentHp": 38,
+        "maxHp": 38,
+        "tempHp": 0,
+        "conditions": [],
+        "isConcentrating": false,
+        "concentratingSpell": "",
+        "notes": "Cleric (Life Domain)",
+        "statDetails": "Speed: 30ft | PP: 16",
+        "sourceId": "pc-4"
+      }
+    ]
+  },
+  "roster": [
+    {
+      "id": "seed-1",
+      "name": "Maren Vance",
+      "epithet": "\"The Velvet Knife\"",
+      "species": "Tiefling (she/her)",
+      "role": "Shady Fence & Pawnbroker",
+      "category": "Underworld & Criminal",
+      "voice": "Speaks in a gravelly, conspiratorial rasp, leaning in far too close while methodically flipping a worn silver coin across their knuckles.",
+      "appearance": "Immaculately groomed hair streaked with premature silver and a faint smell of lavender, wearing a blood-and-grease-stained leather apron over surprisingly expensive silk cuffs.",
+      "personality": "Cynical, mercenary, and amused by heroic idealism; wants to scrape together 200 gp before the new moon to pay off a syndicate blood-debt.",
+      "backstory": "Grew up as an urchin running messages for the local thieves' guild before buying a legitimate storefront with money from a heist gone wrong.",
+      "secret": "Their basement cellar breaks through into an ancient, unmapped smuggling tunnel leading directly beneath the magistrate's manor.",
+      "faction": "The Obsidian Syndicate (Smugglers & Thieves)",
+      "factionStanding": "Reluctant Member (bound by debt or blackmail)",
+      "location": "The Sunken Ward (Dockside Slums)",
+      "loot": "14 sp, 6 cp, a brass ring etched with an unfamiliar guild cipher, and a crumpled debt ledger with three names crossed out in red ink.",
+      "statName": "Spy (CR 1)",
+      "statAcHp": "AC 12 | HP 27 (6d8)",
+      "statDetails": "Cunning Action | Sneak Attack (+2d6) | Deception/Insight/Investigation +5",
+      "notes": "Runs 'The Tarnished Crown' pawnshop. Bought a silver goblet from the Rogue in Session 1."
+    },
+    {
+      "id": "seed-2",
+      "name": "Bramwell Vance",
+      "epithet": "\"Ash-Thumb\"",
+      "species": "Human (he/him)",
+      "role": "Hedge Alchemist",
+      "category": "Arcane & Scholar",
+      "voice": "Speaks at a rapid-fire auctioneer's pace, interrupting themselves mid-sentence while compulsively tapping glass vials or table edges in sets of three.",
+      "appearance": "Singed eyebrows, soot-smudged cheekbones, and chemical burns dotting their forearms, wearing a heavy oilskin coat with dozens of secret interior pockets clinking with glass vials.",
+      "personality": "Fiercely protective of their underlings and prickly toward armed strangers; is searching for a rare monster reagent to cure a creeping curse afflicting their mentor.",
+      "backstory": "Trained at an arcane academy until they were expelled for experimenting with forbidden necromantic texts; now plies their trade in back alleys.",
+      "secret": "Hiding a stolen noble signet ring melted inside a brass weight on their counter\u2014the noble's hounds are sniffing around the ward.",
+      "faction": "Circle of the Pale Moon (Arcane Cabal)",
+      "factionStanding": "Disillusioned Defector (looking for a way out)",
+      "location": "The Cinder-Forge District",
+      "loot": "1 gp, 19 cp, a half-empty vial of antitoxin, a charcoal sketch of a wanted fugitive, and a clockwork beetle missing one leg.",
+      "statName": "Mage (CR 6)",
+      "statAcHp": "AC 12 (15 Mage Armor) | HP 40",
+      "statDetails": "Spellcaster DC 14, +6 hit | Counterspell, Fireball (8d6), Fly, Misty Step, Shield",
+      "notes": "Supplied the party with alchemist fire. Owes money to the Obsidian Syndicate."
+    }
+  ],
+  "world": {
+    "customFactions": [
+      "Unaligned / Independent Local",
+      "The Obsidian Syndicate (Smugglers & Thieves)",
+      "Order of the Silver Gauntlet (Chivalric Watch)",
+      "The Gilded Scales Consortium (Merchant Guild)",
+      "Circle of the Pale Moon (Arcane Cabal)",
+      "The Ironbound Union (Artisans & Dockworkers)",
+      "Whispering Court (Spy Network)"
+    ],
+    "customLocations": [
+      "The Sunken Ward (Dockside Slums)",
+      "Oakhaven Market Square",
+      "The Cinder-Forge District",
+      "Highspire Noble Quarter",
+      "The Rusted Anchor Tavern",
+      "Crossroads Caravan Waystation",
+      "Ironpeak Citadel Outskirts"
+    ],
+    "useOnlyCustomFactions": false,
+    "useOnlyCustomLocations": false
+  },
+  "rules": {
+    "edition": "D&D 5.5e (2024 Core Rules)",
+    "conditions": [
+      {
+        "name": "Blinded",
+        "summary": "Can't see; attacks against have Advantage, own attacks have Disadvantage.",
+        "effects": [
+          "You can't see and automatically fail any ability check that requires sight.",
+          "Attack rolls against you have Advantage.",
+          "Your attack rolls have Disadvantage."
+        ]
+      },
+      {
+        "name": "Charmed",
+        "summary": "Can't harm charmer; charmer has Advantage on social checks.",
+        "effects": [
+          "You can't attack the charmer or target the charmer with harmful abilities or magical effects.",
+          "The charmer has Advantage on any ability check to interact socially with you."
+        ]
+      },
+      {
+        "name": "Deafened",
+        "summary": "Can't hear; fail hearing checks; Disadvantage on Initiative.",
+        "effects": [
+          "You can't hear and automatically fail any ability check that requires hearing.",
+          "You have Disadvantage on Initiative rolls."
+        ]
+      },
+      {
+        "name": "Exhaustion",
+        "summary": "Levels 1\u20136. -2 per level to D20 Tests, -5 ft Speed per level. Level 6 = Death.",
+        "effects": [
+          "Exhaustion is measured in six levels.",
+          "Level 1: -2 penalty to D20 Tests, Speed reduced by 5 ft.",
+          "Level 2: -4 penalty to D20 Tests, Speed reduced by 10 ft.",
+          "Level 3: -6 penalty to D20 Tests, Speed reduced by 15 ft.",
+          "Level 4: -8 penalty to D20 Tests, Speed reduced by 20 ft.",
+          "Level 5: -10 penalty to D20 Tests, Speed reduced by 25 ft.",
+          "Level 6: You die immediately.",
+          "Completing a Long Rest removes 1 level of Exhaustion (provided food and water are consumed)."
+        ]
+      },
+      {
+        "name": "Frightened",
+        "summary": "Disadvantage on checks/attacks while source is in sight; can't move closer.",
+        "effects": [
+          "You have Disadvantage on ability checks and attack rolls while the source of fear is in line of sight.",
+          "You can't willingly move closer to the source of fear."
+        ]
+      },
+      {
+        "name": "Grappled",
+        "summary": "Speed 0; Disadvantage on attacks against targets other than the grappler.",
+        "effects": [
+          "Your Speed becomes 0 and can't increase.",
+          "You have Disadvantage on attack rolls against any target other than the grappler.",
+          "The grappler can drag or carry you when moving, moving at half Speed unless you are two or more sizes smaller.",
+          "Escape: You can use an Action to make a Strength (Athletics) or Dexterity (Acrobatics) check against the grapple escape DC."
+        ]
+      },
+      {
+        "name": "Incapacitated",
+        "summary": "No Actions/Reactions; Concentration broken; Disadvantage on Initiative; Surprised = Incapacitated.",
+        "effects": [
+          "You can't take Actions, Bonus Actions, or Reactions.",
+          "Your Concentration and readied actions are immediately broken.",
+          "You have Disadvantage on Initiative rolls.",
+          "Surprise (2024 Rule): If surprised when combat begins, you have the Incapacitated condition until your first turn ends."
+        ]
+      },
+      {
+        "name": "Invisible",
+        "summary": "Concealed; attacks against have Disadvantage, own attacks have Advantage; no Opportunity Attacks.",
+        "effects": [
+          "You are impossible to see without magical sight or special senses.",
+          "Attack rolls against you have Disadvantage.",
+          "Your attack rolls have Advantage.",
+          "Equipment worn or carried is also concealed while on your person.",
+          "Creatures cannot take Opportunity Attacks against you."
+        ]
+      },
+      {
+        "name": "Paralyzed",
+        "summary": "Incapacitated; can't move/speak; auto-fail Str/Dex saves; melee hits are crits.",
+        "effects": [
+          "You have the Incapacitated condition.",
+          "You can't move or speak.",
+          "You automatically fail Strength and Dexterity saving throws.",
+          "Attack rolls against you have Advantage.",
+          "Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you."
+        ]
+      },
+      {
+        "name": "Petrified",
+        "summary": "Turned to stone; Incapacitated; resist all damage; immune to poison/disease.",
+        "effects": [
+          "You are transformed into an inanimate solid substance (usually stone).",
+          "Your weight increases tenfold and you cease aging.",
+          "You have the Incapacitated condition and can't move or speak.",
+          "You automatically fail Strength and Dexterity saving throws.",
+          "Attack rolls against you have Advantage.",
+          "You have Resistance to all damage and are Immune to poison and disease."
+        ]
+      },
+      {
+        "name": "Poisoned",
+        "summary": "Disadvantage on attack rolls and ability checks.",
+        "effects": [
+          "You have Disadvantage on attack rolls and ability checks."
+        ]
+      },
+      {
+        "name": "Prone",
+        "summary": "Crawl only (stand costs half movement); disadv on attacks; melee hits have adv, ranged disadv.",
+        "effects": [
+          "Your only movement option is crawling, unless you stand up (costs half your Speed).",
+          "You have Disadvantage on attack rolls.",
+          "An attack roll against you has Advantage if the attacker is within 5 feet of you; otherwise, the attack roll has Disadvantage."
+        ]
+      },
+      {
+        "name": "Restrained",
+        "summary": "Speed 0; attacks against have Adv, own attacks have Disadv; Disadv on Dex saves.",
+        "effects": [
+          "Your Speed becomes 0 and can't increase.",
+          "Attack rolls against you have Advantage.",
+          "Your attack rolls have Disadvantage.",
+          "You have Disadvantage on Dexterity saving throws."
+        ]
+      },
+      {
+        "name": "Stunned",
+        "summary": "Incapacitated; can't move; speak only falteringly; auto-fail Str/Dex saves; attacks against have Adv.",
+        "effects": [
+          "You have the Incapacitated condition.",
+          "You can't move and can speak only falteringly.",
+          "You automatically fail Strength and Dexterity saving throws.",
+          "Attack rolls against you have Advantage."
+        ]
+      },
+      {
+        "name": "Unconscious",
+        "summary": "Incapacitated and Prone; drop items; unaware; auto-fail Str/Dex saves; melee hits are crits.",
+        "effects": [
+          "You have the Incapacitated and Prone conditions.",
+          "You drop whatever you are holding.",
+          "You are unaware of your surroundings.",
+          "You automatically fail Strength and Dexterity saving throws.",
+          "Attack rolls against you have Advantage.",
+          "Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you."
+        ]
+      },
+      {
+        "name": "Bloodied",
+        "summary": "50% Max HP or lower. Triggers various monster traits, feats, and spell effects.",
+        "effects": [
+          "A creature is Bloodied when its current Hit Points are at or below half of its Hit Point maximum.",
+          "Used as a trigger for monster abilities, special tactical reactions, and player abilities."
+        ]
+      }
+    ],
+    "actions_in_combat": [
+      {
+        "name": "Attack",
+        "type": "Action",
+        "description": "Make one or more melee or ranged attacks with weapons or unarmed strikes (dependent on Extra Attack features). Includes Grappling and Shoving in 2024 as part of the Attack action."
+      },
+      {
+        "name": "Cast a Spell",
+        "type": "Action / Bonus Action / Reaction",
+        "description": "Cast a spell with a casting time of 1 Action (or Bonus Action / Reaction). Note 2024 Spell Slot rule: On your turn, you can expend only one spell slot to cast a spell."
+      },
+      {
+        "name": "Dash",
+        "type": "Action",
+        "description": "Gain extra movement equal to your Speed (after applying any active modifiers) for the current turn."
+      },
+      {
+        "name": "Disengage",
+        "type": "Action",
+        "description": "Your movement doesn't provoke Opportunity Attacks for the rest of the current turn."
+      },
+      {
+        "name": "Dodge",
+        "type": "Action",
+        "description": "Until the start of your next turn, any attack roll made against you has Disadvantage if you can see the attacker, and you make Dexterity saving throws with Advantage. You lose this benefit if Incapacitated or Speed drops to 0."
+      },
+      {
+        "name": "Help",
+        "type": "Action",
+        "description": "Give an ally Advantage on their next ability check before the start of your next turn, or give Advantage on the next attack roll against a creature within 5 feet of you."
+      },
+      {
+        "name": "Hide",
+        "type": "Action",
+        "description": "Make a Dexterity (Stealth) check (DC 15). On success, you gain the Invisible condition until you make noise louder than a whisper, make an attack roll, or cast a spell with verbal components."
+      },
+      {
+        "name": "Influence",
+        "type": "Action",
+        "description": "Make a Charisma check (Persuasion, Deception, or Intimidation) to shift a creature's attitude (Hostile -> Indifferent -> Friendly) or compel them to take a specific course of action."
+      },
+      {
+        "name": "Ready",
+        "type": "Action",
+        "description": "Wait for a perceivable circumstance before acting. Choose the trigger and the action you will take in response as a Reaction."
+      },
+      {
+        "name": "Search",
+        "type": "Action",
+        "description": "Devote attention to finding something. Make a Wisdom check (Perception, Insight, or Survival) to locate hidden creatures, objects, tracks, or motives."
+      },
+      {
+        "name": "Study",
+        "type": "Action",
+        "description": "Study a creature, object, or puzzle. Make an Intelligence check (Arcana, History, Nature, Religion, or Investigation) to recall lore, uncover monster weaknesses, or decipher clues."
+      },
+      {
+        "name": "Utilize",
+        "type": "Action",
+        "description": "Interact with an object or feature that requires your action (drinking a potion, pulling a heavy lever, deploying a hunting trap, opening a locked door)."
+      }
+    ],
+    "rules_cheat_sheet": {
+      "cover": [
+        {
+          "type": "Half Cover",
+          "effect": "+2 bonus to AC and Dexterity saving throws (low wall, fallen tree, another creature)."
+        },
+        {
+          "type": "Three-Quarters Cover",
+          "effect": "+5 bonus to AC and Dexterity saving throws (portcullis, arrow slit, thick oak trunk)."
+        },
+        {
+          "type": "Total Cover",
+          "effect": "Cannot be targeted directly by attacks or spells (unless the spell specifies it spreads around corners)."
+        }
+      ],
+      "resting": [
+        {
+          "type": "Short Rest (1 Hour)",
+          "effect": "Spend Hit Dice to regain HP (roll die + Con modifier per die). Recharges short-rest class features."
+        },
+        {
+          "type": "Long Rest (8 Hours)",
+          "effect": "At least 6 hours sleeping, up to 2 hours light activity. Regain all lost HP, half total Hit Dice (minimum 1), reduce Exhaustion by 1 level. Interrupted if 1 hour of combat/casting occurs."
+        }
+      ],
+      "concentration": [
+        {
+          "rule": "Taking Damage",
+          "dc": "DC 10 or half damage taken (whichever is higher). Must make Constitution saving throw."
+        },
+        {
+          "rule": "Incapacitated",
+          "dc": "Immediately loses concentration if Incapacitated or killed."
+        },
+        {
+          "rule": "Casting another Concentration spell",
+          "dc": "Concentration on the earlier spell ends immediately."
+        }
+      ],
+      "death_saves": [
+        {
+          "roll": "Natural 20",
+          "result": "Regain 1 Hit Point immediately and wake up conscious!"
+        },
+        {
+          "roll": "10\u201319",
+          "result": "1 Success (3 Successes = Stabilized at 0 HP)."
+        },
+        {
+          "roll": "2\u20139",
+          "result": "1 Failure (3 Failures = Death)."
+        },
+        {
+          "roll": "Natural 1",
+          "result": "Counts as 2 Failures."
+        },
+        {
+          "roll": "Damage at 0 HP",
+          "result": "Suffers 1 Failure (or 2 Failures if from a Critical Hit within 5 ft)."
+        }
+      ],
+      "common_dcs": [
+        {
+          "difficulty": "Very Easy",
+          "dc": 5
+        },
+        {
+          "difficulty": "Easy",
+          "dc": 10
+        },
+        {
+          "difficulty": "Moderate",
+          "dc": 15
+        },
+        {
+          "difficulty": "Hard",
+          "dc": 20
+        },
+        {
+          "difficulty": "Very Hard",
+          "dc": 25
+        },
+        {
+          "difficulty": "Nearly Impossible",
+          "dc": 30
+        }
+      ],
+      "fall_damage": "1d6 bludgeoning damage for every 10 feet fallen (maximum 20d6). Lands Prone unless creature avoids taking all damage."
+    }
+  },
+  "notes": [
+    {
+      "id": "note-1",
+      "timestamp": "Day 1, 09:15",
+      "text": "Party accepted contract from Guildmaster Vance to inspect the Sunken Ward warehouse.",
+      "tag": "quest"
+    },
+    {
+      "id": "note-2",
+      "timestamp": "Day 1, 10:30",
+      "text": "Found a stamped brass coin marked with the Obsidian Syndicate cipher beneath a loose flagstone.",
+      "tag": "clue"
+    },
+    {
+      "id": "note-3",
+      "timestamp": "Day 1, 11:45",
+      "text": "Finnian bought 2x Potions of Healing (100 gp total) from the apothecary at Oakhaven Market.",
+      "tag": "loot"
+    }
+  ],
+  "timeWeather": {
+    "day": 1,
+    "hour": 11,
+    "minute": 0,
+    "weather": {
+      "temperature": "Mild & Pleasant",
+      "wind": "Light Breeze",
+      "precipitation": "Overcast & Gloomy",
+      "tacticalEffect": "None. Normal conditions."
+    },
+    "moonPhase": "New Moon",
+    "activeTimers": []
+  },
+  "monsters": [
+    {
+      "id": "goblin",
+      "name": "Goblin",
+      "size": "Small",
+      "type": "Humanoid (Goblinoid)",
+      "alignment": "Neutral Evil",
+      "cr": "1/4",
+      "xp": 50,
+      "ac": 15,
+      "hp": 7,
+      "hitDice": "2d6",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 8,
+        "dex": 14,
+        "con": 10,
+        "int": 10,
+        "wis": 8,
+        "cha": 8
+      },
+      "skills": "Stealth +6",
+      "senses": "Darkvision 60 ft., Passive Perception 9",
+      "languages": "Common, Goblin",
+      "traits": [
+        {
+          "name": "Nimble Escape",
+          "desc": "The goblin can take the Disengage or Hide action as a bonus action on each of its turns."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Scimitar",
+          "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage. Mastery: Nick"
+        },
+        {
+          "name": "Shortbow",
+          "desc": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage. Mastery: Vex"
+        }
+      ]
+    },
+    {
+      "id": "skeleton",
+      "name": "Skeleton",
+      "size": "Medium",
+      "type": "Undead",
+      "alignment": "Lawful Evil",
+      "cr": "1/4",
+      "xp": 50,
+      "ac": 13,
+      "hp": 13,
+      "hitDice": "2d8 + 4",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 10,
+        "dex": 14,
+        "con": 15,
+        "int": 6,
+        "wis": 8,
+        "cha": 5
+      },
+      "vulnerabilities": "Bludgeoning",
+      "immunities": "Poison; Exhaustion, Poisoned",
+      "senses": "Darkvision 60 ft., Passive Perception 9",
+      "languages": "Understands languages it knew in life but can't speak",
+      "traits": [],
+      "actions": [
+        {
+          "name": "Shortsword",
+          "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+        },
+        {
+          "name": "Shortbow",
+          "desc": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+        }
+      ]
+    },
+    {
+      "id": "zombie",
+      "name": "Zombie",
+      "size": "Medium",
+      "type": "Undead",
+      "alignment": "Neutral Evil",
+      "cr": "1/4",
+      "xp": 50,
+      "ac": 8,
+      "hp": 22,
+      "hitDice": "3d8 + 9",
+      "speed": "20 ft.",
+      "stats": {
+        "str": 13,
+        "dex": 6,
+        "con": 16,
+        "int": 3,
+        "wis": 6,
+        "cha": 5
+      },
+      "saves": "Wis +0",
+      "immunities": "Poison; Poisoned",
+      "senses": "Darkvision 60 ft., Passive Perception 8",
+      "languages": "Understands languages it knew in life but can't speak",
+      "traits": [
+        {
+          "name": "Undead Fortitude",
+          "desc": "If damage reduces the zombie to 0 HP, it makes a Con saving throw with a DC of 5 + the damage taken, unless the damage is radiant or from a critical hit. On success, the zombie drops to 1 HP instead."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Slam",
+          "desc": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) bludgeoning damage."
+        }
+      ]
+    },
+    {
+      "id": "bandit",
+      "name": "Bandit",
+      "size": "Medium",
+      "type": "Humanoid (Any)",
+      "alignment": "Any Non-Lawful",
+      "cr": "1/8",
+      "xp": 25,
+      "ac": 12,
+      "hp": 11,
+      "hitDice": "2d8 + 2",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 11,
+        "dex": 12,
+        "con": 12,
+        "int": 10,
+        "wis": 10,
+        "cha": 10
+      },
+      "senses": "Passive Perception 10",
+      "languages": "Common",
+      "traits": [],
+      "actions": [
+        {
+          "name": "Scimitar",
+          "desc": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) slashing damage."
+        },
+        {
+          "name": "Light Crossbow",
+          "desc": "Ranged Weapon Attack: +3 to hit, range 80/320 ft., one target. Hit: 5 (1d8 + 1) piercing damage."
+        }
+      ]
+    },
+    {
+      "id": "guard",
+      "name": "Guard",
+      "size": "Medium",
+      "type": "Humanoid (Any)",
+      "alignment": "Any",
+      "cr": "1/8",
+      "xp": 25,
+      "ac": 16,
+      "hp": 11,
+      "hitDice": "2d8 + 2",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 13,
+        "dex": 12,
+        "con": 12,
+        "int": 10,
+        "wis": 11,
+        "cha": 10
+      },
+      "skills": "Perception +2",
+      "senses": "Passive Perception 12",
+      "languages": "Common",
+      "traits": [],
+      "actions": [
+        {
+          "name": "Spear",
+          "desc": "Melee or Ranged Weapon Attack: +3 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 4 (1d6 + 1) piercing damage, or 5 (1d8 + 1) piercing damage if used two-handed."
+        }
+      ]
+    },
+    {
+      "id": "thug",
+      "name": "Thug",
+      "size": "Medium",
+      "type": "Humanoid (Any)",
+      "alignment": "Any Non-Good",
+      "cr": "1/2",
+      "xp": 100,
+      "ac": 11,
+      "hp": 32,
+      "hitDice": "5d8 + 10",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 15,
+        "dex": 11,
+        "con": 14,
+        "int": 10,
+        "wis": 10,
+        "cha": 11
+      },
+      "skills": "Intimidation +2",
+      "senses": "Passive Perception 10",
+      "languages": "Common",
+      "traits": [
+        {
+          "name": "Pack Tactics",
+          "desc": "The thug has advantage on an attack roll against a creature if at least one of the thug's allies is within 5 ft. of the creature and the ally isn't incapacitated."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Multiattack",
+          "desc": "The thug makes two melee attacks."
+        },
+        {
+          "name": "Mace",
+          "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) bludgeoning damage."
+        },
+        {
+          "name": "Heavy Crossbow",
+          "desc": "Ranged Weapon Attack: +2 to hit, range 100/400 ft., one target. Hit: 5 (1d10) piercing damage."
+        }
+      ]
+    },
+    {
+      "id": "cult-fanatic",
+      "name": "Cult Fanatic",
+      "size": "Medium",
+      "type": "Humanoid (Any)",
+      "alignment": "Any Non-Good",
+      "cr": "2",
+      "xp": 450,
+      "ac": 13,
+      "hp": 33,
+      "hitDice": "6d8 + 6",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 11,
+        "dex": 14,
+        "con": 12,
+        "int": 10,
+        "wis": 13,
+        "cha": 14
+      },
+      "skills": "Deception +4, Persuasion +4, Religion +2",
+      "senses": "Passive Perception 11",
+      "languages": "Any one language (usually Common)",
+      "traits": [
+        {
+          "name": "Dark Devotion",
+          "desc": "The fanatic has advantage on saving throws against being charmed or frightened."
+        },
+        {
+          "name": "Spellcasting",
+          "desc": "4th-level spellcaster (Wisdom, DC 11, +3 to hit). Cantrips: Light, Sacred Flame, Thaumaturgy. 1st level (4 slots): Command, Inflict Wounds, Shield of Faith. 2nd level (3 slots): Hold Person, Spiritual Weapon."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Multiattack",
+          "desc": "The fanatic makes two melee attacks."
+        },
+        {
+          "name": "Dagger",
+          "desc": "Melee or Ranged Weapon Attack: +4 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 4 (1d4 + 2) piercing damage."
+        }
+      ]
+    },
+    {
+      "id": "owlbear",
+      "name": "Owlbear",
+      "size": "Large",
+      "type": "Monstrosity",
+      "alignment": "Unaligned",
+      "cr": "3",
+      "xp": 700,
+      "ac": 13,
+      "hp": 59,
+      "hitDice": "7d10 + 21",
+      "speed": "40 ft.",
+      "stats": {
+        "str": 20,
+        "dex": 12,
+        "con": 17,
+        "int": 3,
+        "wis": 12,
+        "cha": 7
+      },
+      "skills": "Perception +3",
+      "senses": "Darkvision 60 ft., Passive Perception 13",
+      "languages": "\u2014",
+      "traits": [
+        {
+          "name": "Keen Sight and Smell",
+          "desc": "The owlbear has advantage on Wisdom (Perception) checks that rely on sight or smell."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Multiattack",
+          "desc": "The owlbear makes two attacks: one with its beak and one with its claws."
+        },
+        {
+          "name": "Beak",
+          "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 10 (1d10 + 5) piercing damage."
+        },
+        {
+          "name": "Claws",
+          "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) slashing damage."
+        }
+      ]
+    },
+    {
+      "id": "veteran",
+      "name": "Veteran",
+      "size": "Medium",
+      "type": "Humanoid (Any)",
+      "alignment": "Any",
+      "cr": "3",
+      "xp": 700,
+      "ac": 17,
+      "hp": 58,
+      "hitDice": "9d8 + 18",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 16,
+        "dex": 13,
+        "con": 14,
+        "int": 10,
+        "wis": 11,
+        "cha": 10
+      },
+      "skills": "Athletics +5, Perception +2",
+      "senses": "Passive Perception 12",
+      "languages": "Common",
+      "traits": [],
+      "actions": [
+        {
+          "name": "Multiattack",
+          "desc": "The veteran makes two longsword attacks and one shortsword attack."
+        },
+        {
+          "name": "Longsword",
+          "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) slashing damage, or 8 (1d10 + 3) if used two-handed."
+        },
+        {
+          "name": "Shortsword",
+          "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) piercing damage."
+        },
+        {
+          "name": "Heavy Crossbow",
+          "desc": "Ranged Weapon Attack: +3 to hit, range 100/400 ft., one target. Hit: 6 (1d10 + 1) piercing damage."
+        }
+      ]
+    },
+    {
+      "id": "mage",
+      "name": "Mage",
+      "size": "Medium",
+      "type": "Humanoid (Any)",
+      "alignment": "Any",
+      "cr": "6",
+      "xp": 2300,
+      "ac": 12,
+      "hp": 40,
+      "hitDice": "9d8",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 9,
+        "dex": 14,
+        "con": 11,
+        "int": 17,
+        "wis": 12,
+        "cha": 11
+      },
+      "saves": "Int +6, Wis +4",
+      "skills": "Arcana +6, History +6",
+      "senses": "Passive Perception 11",
+      "languages": "Any four languages",
+      "traits": [
+        {
+          "name": "Spellcasting",
+          "desc": "9th-level spellcaster (Intelligence, DC 14, +6 to hit). Cantrips: Fire Bolt, Light, Mage Hand, Prestidigitation. 1st level (4 slots): Detect Magic, Mage Armor, Magic Missile, Shield. 2nd level (3 slots): Misty Step, Suggestion. 3rd level (3 slots): Counterspell, Fireball (8d6), Fly. 4th level (3 slots): Greater Invisibility, Ice Storm. 5th level (1 slot): Cone of Cold."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Dagger",
+          "desc": "Melee or Ranged Weapon Attack: +5 to hit, reach 5 ft. or range 20/60 ft., one target. Hit: 4 (1d4 + 2) piercing damage."
+        }
+      ]
+    },
+    {
+      "id": "young-green-dragon",
+      "name": "Young Green Dragon",
+      "size": "Large",
+      "type": "Dragon",
+      "alignment": "Lawful Evil",
+      "cr": "8",
+      "xp": 3900,
+      "ac": 18,
+      "hp": 136,
+      "hitDice": "16d10 + 48",
+      "speed": "40 ft., fly 80 ft., swim 40 ft.",
+      "stats": {
+        "str": 19,
+        "dex": 12,
+        "con": 17,
+        "int": 16,
+        "wis": 13,
+        "cha": 15
+      },
+      "saves": "Dex +4, Con +6, Wis +4, Cha +5",
+      "skills": "Deception +5, Perception +7, Stealth +4",
+      "immunities": "Poison; Poisoned",
+      "senses": "Blindsight 30 ft., Darkvision 120 ft., Passive Perception 17",
+      "languages": "Common, Draconic",
+      "traits": [
+        {
+          "name": "Amphibious",
+          "desc": "The dragon can breathe air and water."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Multiattack",
+          "desc": "The dragon makes three attacks: one with its bite and two with its claws."
+        },
+        {
+          "name": "Bite",
+          "desc": "Melee Weapon Attack: +7 to hit, reach 10 ft., one target. Hit: 15 (2d10 + 4) piercing damage plus 7 (2d6) poison damage."
+        },
+        {
+          "name": "Claw",
+          "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) slashing damage."
+        },
+        {
+          "name": "Poison Breath (Recharge 5\u20136)",
+          "desc": "The dragon exhales poisonous gas in a 30-foot cone. Each creature in that area must make a DC 14 Constitution saving throw, taking 42 (12d6) poison damage on a failed save, or half as much damage on a successful one."
+        }
+      ]
+    },
+    {
+      "id": "wolf",
+      "name": "Wolf",
+      "size": "Medium",
+      "type": "Beast",
+      "alignment": "Unaligned",
+      "cr": "1/4",
+      "xp": 50,
+      "ac": 13,
+      "hp": 11,
+      "hitDice": "2d8 + 2",
+      "speed": "40 ft.",
+      "stats": {
+        "str": 12,
+        "dex": 15,
+        "con": 12,
+        "int": 3,
+        "wis": 12,
+        "cha": 6
+      },
+      "skills": "Perception +3, Stealth +4",
+      "senses": "Passive Perception 13",
+      "languages": "\u2014",
+      "traits": [
+        {
+          "name": "Keen Hearing and Smell",
+          "desc": "The wolf has advantage on Wisdom (Perception) checks that rely on hearing or smell."
+        },
+        {
+          "name": "Pack Tactics",
+          "desc": "The wolf has advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 ft. of the creature and the ally isn't incapacitated."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Bite",
+          "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) piercing damage. If the target is a creature, it must succeed on a DC 11 Strength saving throw or be knocked prone. Mastery: Topple"
+        }
+      ]
+    },
+    {
+      "id": "bugbear",
+      "name": "Bugbear",
+      "size": "Medium",
+      "type": "Humanoid (Goblinoid)",
+      "alignment": "Chaotic Evil",
+      "cr": "1",
+      "xp": 200,
+      "ac": 16,
+      "hp": 27,
+      "hitDice": "5d8 + 5",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 15,
+        "dex": 14,
+        "con": 13,
+        "int": 8,
+        "wis": 11,
+        "cha": 9
+      },
+      "skills": "Stealth +6, Survival +2",
+      "senses": "Darkvision 60 ft., Passive Perception 10",
+      "languages": "Common, Goblin",
+      "traits": [
+        {
+          "name": "Brute",
+          "desc": "A melee weapon deals one extra die of its damage when the bugbear hits with it (included in attack)."
+        },
+        {
+          "name": "Surprise Attack",
+          "desc": "If the bugbear surprises a creature and hits it with an attack during the first round of combat, the target takes an extra 7 (2d6) damage from the attack."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Morningstar",
+          "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 11 (2d8 + 2) piercing damage."
+        },
+        {
+          "name": "Javelin",
+          "desc": "Melee or Ranged Weapon Attack: +4 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 9 (2d6 + 2) piercing damage in melee or 5 (1d6 + 2) piercing damage at range."
+        }
+      ]
+    },
+    {
+      "id": "ghoul",
+      "name": "Ghoul",
+      "size": "Medium",
+      "type": "Undead",
+      "alignment": "Chaotic Evil",
+      "cr": "1",
+      "xp": 200,
+      "ac": 12,
+      "hp": 22,
+      "hitDice": "5d8",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 13,
+        "dex": 15,
+        "con": 10,
+        "int": 7,
+        "wis": 10,
+        "cha": 6
+      },
+      "immunities": "Poison; Charmed, Exhaustion, Poisoned",
+      "senses": "Darkvision 60 ft., Passive Perception 10",
+      "languages": "Common",
+      "traits": [],
+      "actions": [
+        {
+          "name": "Bite",
+          "desc": "Melee Weapon Attack: +2 to hit, reach 5 ft., one creature. Hit: 9 (2d6 + 2) piercing damage."
+        },
+        {
+          "name": "Claws",
+          "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) slashing damage. If the target is a creature other than an elf or undead, it must succeed on a DC 10 Constitution saving throw or be Paralyzed for 1 minute."
+        }
+      ]
+    },
+    {
+      "id": "mimic",
+      "name": "Mimic",
+      "size": "Medium",
+      "type": "Monstrosity (Shapechanger)",
+      "alignment": "Neutral",
+      "cr": "2",
+      "xp": 450,
+      "ac": 12,
+      "hp": 58,
+      "hitDice": "9d8 + 18",
+      "speed": "15 ft.",
+      "stats": {
+        "str": 17,
+        "dex": 12,
+        "con": 15,
+        "int": 5,
+        "wis": 13,
+        "cha": 8
+      },
+      "skills": "Stealth +5",
+      "immunities": "Prone; Acid",
+      "senses": "Darkvision 60 ft., Passive Perception 11",
+      "languages": "\u2014",
+      "traits": [
+        {
+          "name": "Shapechanger",
+          "desc": "The mimic can use its action to polymorph into an object or back into its true, amorphous form."
+        },
+        {
+          "name": "Adhesive (Object Form Only)",
+          "desc": "The mimic adheres to anything that touches it. A Huge or smaller creature adhered to the mimic is also Grappled (escape DC 13)."
+        },
+        {
+          "name": "False Appearance",
+          "desc": "While the mimic remains motionless, it is indistinguishable from an ordinary object."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Pseudopod",
+          "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) bludgeoning damage. If the mimic is in object form, the target is subjected to its Adhesive trait."
+        },
+        {
+          "name": "Bite",
+          "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) piercing damage plus 4 (1d8) acid damage."
+        }
+      ]
+    },
+    {
+      "id": "wraith",
+      "name": "Wraith",
+      "size": "Medium",
+      "type": "Undead",
+      "alignment": "Neutral Evil",
+      "cr": "5",
+      "xp": 1800,
+      "ac": 13,
+      "hp": 67,
+      "hitDice": "9d8 + 27",
+      "speed": "0 ft., fly 60 ft. (hover)",
+      "stats": {
+        "str": 6,
+        "dex": 16,
+        "con": 16,
+        "int": 12,
+        "wis": 14,
+        "cha": 15
+      },
+      "resistances": "Acid, Cold, Fire, Lightning, Thunder; Bludgeoning, Piercing, and Slashing from Nonmagical Attacks",
+      "immunities": "Necrotic, Poison; Charmed, Exhaustion, Grappled, Paralyzed, Petrified, Poisoned, Prone, Restrained",
+      "senses": "Darkvision 60 ft., Passive Perception 12",
+      "languages": "Common, Infernal",
+      "traits": [
+        {
+          "name": "Incorporeal Movement",
+          "desc": "The wraith can move through other creatures and objects as if they were difficult terrain. It takes 5 (1d10) force damage if it ends its turn inside an object."
+        },
+        {
+          "name": "Sunlight Sensitivity",
+          "desc": "While in sunlight, the wraith has disadvantage on attack rolls, as well as on Wisdom (Perception) checks that rely on sight."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Life Drain",
+          "desc": "Melee Weapon Attack: +6 to hit, reach 5 ft., one creature. Hit: 21 (4d8 + 3) necrotic damage. The target must succeed on a DC 14 Constitution saving throw or its hit point maximum is reduced by an amount equal to the damage taken."
+        },
+        {
+          "name": "Create Specter",
+          "desc": "The wraith targets a humanoid within 10 ft. of it that has been dead for no longer than 1 min and died violently. The target's spirit rises as a Specter in the space of its corpse or the nearest unoccupied space."
+        }
+      ]
+    },
+    {
+      "id": "troll",
+      "name": "Troll",
+      "size": "Large",
+      "type": "Giant",
+      "alignment": "Chaotic Evil",
+      "cr": "5",
+      "xp": 1800,
+      "ac": 15,
+      "hp": 84,
+      "hitDice": "8d10 + 40",
+      "speed": "30 ft.",
+      "stats": {
+        "str": 18,
+        "dex": 13,
+        "con": 20,
+        "int": 7,
+        "wis": 9,
+        "cha": 7
+      },
+      "skills": "Perception +2",
+      "senses": "Darkvision 60 ft., Passive Perception 12",
+      "languages": "Giant",
+      "traits": [
+        {
+          "name": "Keen Smell",
+          "desc": "The troll has advantage on Wisdom (Perception) checks that rely on smell."
+        },
+        {
+          "name": "Regeneration",
+          "desc": "The troll regains 10 hit points at the start of its turn. If the troll takes acid or fire damage, this trait doesn't function at the start of the troll's next turn. The troll dies only if it starts its turn with 0 hit points and doesn't regenerate."
+        }
+      ],
+      "actions": [
+        {
+          "name": "Multiattack",
+          "desc": "The troll makes three attacks: one with its bite and two with its claws."
+        },
+        {
+          "name": "Bite",
+          "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 7 (1d6 + 4) piercing damage."
+        },
+        {
+          "name": "Claw",
+          "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) slashing damage."
+        }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-sunken-ward",
+      "name": "The Sunken Ward",
+      "type": "District",
+      "danger": "Moderate",
+      "summary": "Flooded dockside slums infested with cutpurses and smugglers.",
+      "description": "Perched on rotting piers and half-submerged stone foundations, the Sunken Ward smells of brine and gutter-oil. Wooden walkways crisscross tidal mudflats, and lantern smoke hangs thick in the evening fog.",
+      "factions": [
+        "The Obsidian Syndicate",
+        "The Ironbound Union"
+      ],
+      "notableNpcs": [
+        "Brog the Tender",
+        "Whisperer Varek"
+      ],
+      "secrets": "Submerged drainage tunnels lead directly beneath the Highspire vault. Access is guarded by giant crabs and syndicate lookout boys.",
+      "tags": [
+        "Docks",
+        "Slums",
+        "Crime",
+        "Waterfront"
+      ]
+    },
+    {
+      "id": "loc-oakhaven-market",
+      "name": "Oakhaven Market Square",
+      "type": "Settlement",
+      "danger": "Safe",
+      "summary": "The bustling economic heartbeat of the city centered around an ancient Iron-Oak.",
+      "description": "Dozens of colorful silk awnings shelter merchants selling spices, enchanted trinkets, and masterwork steel. Town criers shout imperial decrees while silver-armored guards patrol in orderly pairs.",
+      "factions": [
+        "The Gilded Scales Consortium",
+        "Order of the Silver Gauntlet"
+      ],
+      "notableNpcs": [
+        "Master Trader Silas",
+        "Sergeant Valora"
+      ],
+      "secrets": "A hollow in the ancient Iron-Oak serves as a dead-drop for informants delivering reports to the Whispering Court.",
+      "tags": [
+        "Market",
+        "Commerce",
+        "Crowded",
+        "Guarded"
+      ]
+    },
+    {
+      "id": "loc-rusted-anchor",
+      "name": "The Rusted Anchor Tavern",
+      "type": "Tavern / Inn",
+      "danger": "Low",
+      "summary": "A salty, weathered watering hole popular with sailors, bounty hunters, and mercenaries.",
+      "description": "Constructed from the salvaged rib-timbers of a galleon, this dim tavern serves bitter stout and peppery stew. A massive rusted anchor hangs above the hearth, etched with sailor warding runes.",
+      "factions": [
+        "The Ironbound Union",
+        "The Obsidian Syndicate"
+      ],
+      "notableNpcs": [
+        "Barnaby Old-Shoe (Barkeeper)",
+        "Kaelen Swift"
+      ],
+      "secrets": "The taproom cellar houses a false wine barrel hiding a concealed hatch down to the smuggler slipway.",
+      "tags": [
+        "Tavern",
+        "Rumors",
+        "Bounties",
+        "Social"
+      ]
+    },
+    {
+      "id": "loc-cinder-forge",
+      "name": "The Cinder-Forge District",
+      "type": "District",
+      "danger": "Low",
+      "summary": "Industrial quarter echoing with hammer strikes and glowing with coal-fired blast furnaces.",
+      "description": "Soot stains the stone towers of this bustling guild quarter. Dwarven and human smiths forge armor, siege weapons, and fine gears day and night beneath plumes of sparks.",
+      "factions": [
+        "The Ironbound Union",
+        "The Gilded Scales Consortium"
+      ],
+      "notableNpcs": [
+        "Master Smith Hrogar",
+        "Apprentice Mira"
+      ],
+      "secrets": "The Master Smith is secretly experimenting with celestial silver smuggled past the Guild tax collectors.",
+      "tags": [
+        "Industrial",
+        "Crafting",
+        "Guilds",
+        "Smithy"
+      ]
+    },
+    {
+      "id": "loc-highspire-quarter",
+      "name": "Highspire Noble Quarter",
+      "type": "Settlement",
+      "danger": "Safe",
+      "summary": "Pristine white marble estates, manicured gardens, and private magical libraries.",
+      "description": "Gilded gates and arcane wards insulate the city's aristocracy from the grime of the lower wards. Griffon-riders occasionally take wing from the watch towers above.",
+      "factions": [
+        "Order of the Silver Gauntlet",
+        "Circle of the Pale Moon"
+      ],
+      "notableNpcs": [
+        "Lady Genevieve Highspire",
+        "Archmage Eldrin"
+      ],
+      "secrets": "The Highspire family crypt contains a cursed sarcophagus that vibrates whenever the blood moon rises.",
+      "tags": [
+        "Nobility",
+        "Magic",
+        "High Class",
+        "Strict Law"
+      ]
+    },
+    {
+      "id": "loc-sunken-catacombs",
+      "name": "The Sunken Ward Catacombs",
+      "type": "Dungeon / Ruins",
+      "danger": "Deadly",
+      "summary": "Ancient pre-cataclysm crypts flooded with black water and walking dead.",
+      "description": "A forgotten labyrinth of vaulted tombs and sacrificial altars beneath the sea level. Green phosphor fungus coats damp skull niches, and the air tastes of sulfur and ancient decay.",
+      "factions": [
+        "Circle of the Pale Moon"
+      ],
+      "notableNpcs": [
+        "The Pale Necromancer (Hostile)"
+      ],
+      "secrets": "The central sanctum holds an obsidian key that can break any planar binding ritual.",
+      "tags": [
+        "Dungeon",
+        "Undead",
+        "Ruins",
+        "Loot"
+      ]
+    }
+  ],
+  "factions": [
+    {
+      "id": "fac-obsidian-syndicate",
+      "name": "The Obsidian Syndicate",
+      "leader": "Varek 'Night-Eyes' Malor",
+      "influence": "Regional",
+      "reputationScore": -1,
+      "reputation": "Suspicious",
+      "headquarters": "The Salt Vaults (Sunken Ward)",
+      "goals": "Monopolize black-market arcane relics and illicit contraband throughout the harbor.",
+      "allies": [
+        "Corrupt Guard Factions",
+        "Smuggler Crews"
+      ],
+      "rivals": [
+        "Order of the Silver Gauntlet",
+        "The Ironbound Union"
+      ],
+      "description": "A cutthroat syndicate of fence brokers, pickpockets, and shadow-dancers operating out of forgotten harbor cisterns.",
+      "clocks": [
+        {
+          "id": "clk-syndicate-heist",
+          "title": "Arcane Vault Infiltration",
+          "totalTicks": 6,
+          "currentTicks": 4,
+          "outcome": "The Syndicate breaches the Highspire treasury and steals the Sun-Crest Amulet, sending the city into martial lockdown.",
+          "active": true
+        },
+        {
+          "id": "clk-syndicate-smuggle",
+          "title": "Black Market Shipment Arrival",
+          "totalTicks": 4,
+          "currentTicks": 2,
+          "outcome": "A boatload of banned necrotic focus crystals lands at the docks unchecked.",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "fac-silver-gauntlet",
+      "name": "Order of the Silver Gauntlet",
+      "leader": "Commander Sarah Drake",
+      "influence": "Major",
+      "reputationScore": 1,
+      "reputation": "Friendly",
+      "headquarters": "Highspire Bastion of the Dawn",
+      "goals": "Purge supernatural corruption, stamp out smuggling, and enforce royal justice across the city wards.",
+      "allies": [
+        "The Gilded Scales Consortium",
+        "Highspire Council"
+      ],
+      "rivals": [
+        "The Obsidian Syndicate",
+        "Circle of the Pale Moon"
+      ],
+      "description": "An elite paladin and marshal military order dedicated to celestial law, order, and citizen safety.",
+      "clocks": [
+        {
+          "id": "clk-gauntlet-raid",
+          "title": "Martial Sweep of the Sunken Ward",
+          "totalTicks": 6,
+          "currentTicks": 4,
+          "outcome": "The Gauntlet places the lower docks under 24-hour curfew and arrests all suspected smugglers.",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "fac-gilded-scales",
+      "name": "The Gilded Scales Consortium",
+      "leader": "High Merchant Silas Goldspire",
+      "influence": "Continental",
+      "reputationScore": 0,
+      "reputation": "Neutral",
+      "headquarters": "The Grand Exchange Plaza",
+      "goals": "Maximize trade profits, control tariff exemptions, and secure new maritime shipping routes.",
+      "allies": [
+        "Order of the Silver Gauntlet",
+        "Caravan Masters"
+      ],
+      "rivals": [
+        "The Obsidian Syndicate"
+      ],
+      "description": "The wealthiest guild federation in the realm, governing trade pacts, banking, and precious metal assaying.",
+      "clocks": [
+        {
+          "id": "clk-scales-monopoly",
+          "title": "Buyout of Ironbound Foundries",
+          "totalTicks": 4,
+          "currentTicks": 1,
+          "outcome": "Consortium secures majority stake in all weapon forges, raising gear prices by 25%.",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "fac-pale-moon",
+      "name": "Circle of the Pale Moon",
+      "leader": "Archmage Vespera the Veiled",
+      "influence": "Regional",
+      "reputationScore": -2,
+      "reputation": "Hostile",
+      "headquarters": "The Sunken Ward Catacombs / Tower of Mist",
+      "goals": "Unearth forbidden Netherese artifacts and pierce the veil separating the Prime Material from the Shadowfell.",
+      "allies": [
+        "Cult of the Weave Eater"
+      ],
+      "rivals": [
+        "Order of the Silver Gauntlet"
+      ],
+      "description": "A secretive esoteric cabal of arcanists, necromancers, and occult scholars willing to sacrifice everything for cosmic insight.",
+      "clocks": [
+        {
+          "id": "clk-eclipse-ritual",
+          "title": "Shadowfell Eclipse Awakening Ritual",
+          "totalTicks": 8,
+          "currentTicks": 5,
+          "outcome": "A rift to the Shadowfell tears open beneath the city fountain, unleashing specters into the night.",
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "fac-ironbound-union",
+      "name": "The Ironbound Union",
+      "leader": "Forgemaster Hrogar Stonebrow",
+      "influence": "Local",
+      "reputationScore": 1,
+      "reputation": "Friendly",
+      "headquarters": "Great Hearth Hall (Cinder-Forge)",
+      "goals": "Protect craftsmen wages, prevent noble exploitation, and defend working-class neighborhoods.",
+      "allies": [
+        "Local Mercenaries",
+        "Dwarven Clans"
+      ],
+      "rivals": [
+        "The Gilded Scales Consortium"
+      ],
+      "description": "A rugged fraternal fellowship of blacksmiths, stonemasons, and dockworkers who stick together against tyrannical laws.",
+      "clocks": [
+        {
+          "id": "clk-labor-strike",
+          "title": "General Dockworkers Strike",
+          "totalTicks": 4,
+          "currentTicks": 2,
+          "outcome": "Dockworkers shut down all cargo handling, stranding noble galleons in port.",
+          "active": true
+        }
+      ]
+    }
+  ],
+  "quests": {
+    "quests": [
+      {
+        "id": "qst-sunken-bell",
+        "title": "The Drowned Bell of St. Jude",
+        "giver": "Sister Andrea / Father Alistair",
+        "location": "The Sunken Ward Catacombs",
+        "status": "Active",
+        "reward": "350 GP + 1x Potion of Water Breathing & Silver Reliquary",
+        "summary": "Recover the consecrated silver bell sunken in the flooded catacombs before cultists defile it with necromantic ichor.",
+        "objectives": [
+          {
+            "id": "obj-1",
+            "text": "Locate the submerged entrance beneath the Sunken Ward boardwalks",
+            "completed": true
+          },
+          {
+            "id": "obj-2",
+            "text": "Navigate the flooded crypts and defeat the drowned undead",
+            "completed": false
+          },
+          {
+            "id": "obj-3",
+            "text": "Retrieve the Silver Bell from the altar of the drowned martyr",
+            "completed": false
+          },
+          {
+            "id": "obj-4",
+            "text": "Return the relic to the Chapel of the Dawn without Syndicate interference",
+            "completed": false
+          }
+        ],
+        "notes": "Watch out for deep water currents; Sister Andrea warned that necrotic energy may animate skeletons with grasping claws."
+      },
+      {
+        "id": "qst-smuggler-manifest",
+        "title": "Intercepting the Red-Wax Manifest",
+        "giver": "Commander Sarah Drake",
+        "location": "The Rusted Anchor Tavern",
+        "status": "Active",
+        "reward": "500 GP + Favor of the Silver Gauntlet (Reputation +1)",
+        "summary": "Acquire the ledger detailing the Syndicate's corrupt harbor contacts before it is handed off at midnight.",
+        "objectives": [
+          {
+            "id": "obj-5",
+            "text": "Stake out The Rusted Anchor taproom before 11:00 PM",
+            "completed": true
+          },
+          {
+            "id": "obj-6",
+            "text": "Identify the courier carrying the red-wax seal",
+            "completed": true
+          },
+          {
+            "id": "obj-7",
+            "text": "Secure the manifest via stealth, charm, or force",
+            "completed": false
+          },
+          {
+            "id": "obj-8",
+            "text": "Deliver the ledger to Highspire Bastion untouched",
+            "completed": false
+          }
+        ],
+        "notes": "The courier is rumored to travel with two disguised veterans."
+      },
+      {
+        "id": "qst-cinder-sabotage",
+        "title": "Sabotage at Forge #4",
+        "giver": "Forgemaster Hrogar Stonebrow",
+        "location": "The Cinder-Forge District",
+        "status": "Active",
+        "reward": "300 GP + 1x Masterwork Weapon (+1 to Attack or Damage)",
+        "summary": "Investigate why the grand blast furnace has been misfiring and threatening to explode the ironworks.",
+        "objectives": [
+          {
+            "id": "obj-9",
+            "text": "Inspect the fuel intake line for alchemical tampering",
+            "completed": false
+          },
+          {
+            "id": "obj-10",
+            "text": "Interrogate the night-shift apprentice",
+            "completed": false
+          },
+          {
+            "id": "obj-11",
+            "text": "Apprehend the saboteur hired by rival merchants",
+            "completed": false
+          }
+        ],
+        "notes": "Hrogar suspects a Gilded Scales merchant bribed someone to delay shipments."
+      },
+      {
+        "id": "qst-bounty-goblin-chief",
+        "title": "Bounty: Gnasher the Bone-Splitter",
+        "giver": "Bounty Board at Oakhaven Market",
+        "location": "Ironpeak Citadel Outskirts",
+        "status": "Completed",
+        "reward": "250 GP",
+        "summary": "Clear out the goblin raiders ambushing flour wagons along the north highway.",
+        "objectives": [
+          {
+            "id": "obj-12",
+            "text": "Track the raiding party to their ravine hideout",
+            "completed": true
+          },
+          {
+            "id": "obj-13",
+            "text": "Defeat Chief Gnasher and his wolf pack",
+            "completed": true
+          },
+          {
+            "id": "obj-14",
+            "text": "Recover stolen caravan flour sacks",
+            "completed": true
+          }
+        ],
+        "notes": "Completed on Day 2. The town bailiff paid the bounty in silver crowns."
+      }
+    ],
+    "rumors": [
+      {
+        "id": "rum-1",
+        "text": "Fishermen swear they saw green witchfire glowing under the water by the old sunken bell tower at low tide.",
+        "source": "Old Salty Pete (The Rusted Anchor)",
+        "location": "The Sunken Ward",
+        "veracity": "True",
+        "active": true
+      },
+      {
+        "id": "rum-2",
+        "text": "The Gilded Scales are funding an expedition to buy out all silver mines in the Ironpeaks, planning a cartel monopoly.",
+        "source": "Apprentice Blacksmith (Cinder-Forge)",
+        "location": "The Cinder-Forge District",
+        "veracity": "Exaggerated",
+        "active": true
+      },
+      {
+        "id": "rum-3",
+        "text": "A nobleman's daughter was seen visiting the Pale Moon apothecary in the dead of night disguised in a velvet cowl.",
+        "source": "City Guard Patrolman",
+        "location": "Highspire Noble Quarter",
+        "veracity": "True",
+        "active": true
+      },
+      {
+        "id": "rum-4",
+        "text": "The sewer rats under the bazaar have doubled in size and now walk on two legs like men.",
+        "source": "Bazaar Fruit Peddler",
+        "location": "Oakhaven Market Square",
+        "veracity": "False",
+        "active": true
+      }
+    ]
+  },
+  "broadcast": {
+    "active": false,
+    "title": "",
+    "subtitle": "",
+    "content": "",
+    "type": "text",
+    "imageUrl": ""
+  }
+}

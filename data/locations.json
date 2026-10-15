@@ -1,0 +1,138 @@
+[
+  {
+    "id": "loc-sunken-ward",
+    "name": "The Sunken Ward",
+    "type": "District",
+    "danger": "Moderate",
+    "summary": "Flooded dockside slums infested with cutpurses and smugglers.",
+    "description": "Perched on rotting piers and half-submerged stone foundations, the Sunken Ward smells of brine and gutter-oil. Wooden walkways crisscross tidal mudflats, and lantern smoke hangs thick in the evening fog.",
+    "factions": [
+      "The Obsidian Syndicate",
+      "The Ironbound Union"
+    ],
+    "notableNpcs": [
+      "Brog the Tender",
+      "Whisperer Varek"
+    ],
+    "secrets": "Submerged drainage tunnels lead directly beneath the Highspire vault. Access is guarded by giant crabs and syndicate lookout boys.",
+    "tags": [
+      "Docks",
+      "Slums",
+      "Crime",
+      "Waterfront"
+    ]
+  },
+  {
+    "id": "loc-oakhaven-market",
+    "name": "Oakhaven Market Square",
+    "type": "Settlement",
+    "danger": "Safe",
+    "summary": "The bustling economic heartbeat of the city centered around an ancient Iron-Oak.",
+    "description": "Dozens of colorful silk awnings shelter merchants selling spices, enchanted trinkets, and masterwork steel. Town criers shout imperial decrees while silver-armored guards patrol in orderly pairs.",
+    "factions": [
+      "The Gilded Scales Consortium",
+      "Order of the Silver Gauntlet"
+    ],
+    "notableNpcs": [
+      "Master Trader Silas",
+      "Sergeant Valora"
+    ],
+    "secrets": "A hollow in the ancient Iron-Oak serves as a dead-drop for informants delivering reports to the Whispering Court.",
+    "tags": [
+      "Market",
+      "Commerce",
+      "Crowded",
+      "Guarded"
+    ]
+  },
+  {
+    "id": "loc-rusted-anchor",
+    "name": "The Rusted Anchor Tavern",
+    "type": "Tavern / Inn",
+    "danger": "Low",
+    "summary": "A salty, weathered watering hole popular with sailors, bounty hunters, and mercenaries.",
+    "description": "Constructed from the salvaged rib-timbers of a galleon, this dim tavern serves bitter stout and peppery stew. A massive rusted anchor hangs above the hearth, etched with sailor warding runes.",
+    "factions": [
+      "The Ironbound Union",
+      "The Obsidian Syndicate"
+    ],
+    "notableNpcs": [
+      "Barnaby Old-Shoe (Barkeeper)",
+      "Kaelen Swift"
+    ],
+    "secrets": "The taproom cellar houses a false wine barrel hiding a concealed hatch down to the smuggler slipway.",
+    "tags": [
+      "Tavern",
+      "Rumors",
+      "Bounties",
+      "Social"
+    ]
+  },
+  {
+    "id": "loc-cinder-forge",
+    "name": "The Cinder-Forge District",
+    "type": "District",
+    "danger": "Low",
+    "summary": "Industrial quarter echoing with hammer strikes and glowing with coal-fired blast furnaces.",
+    "description": "Soot stains the stone towers of this bustling guild quarter. Dwarven and human smiths forge armor, siege weapons, and fine gears day and night beneath plumes of sparks.",
+    "factions": [
+      "The Ironbound Union",
+      "The Gilded Scales Consortium"
+    ],
+    "notableNpcs": [
+      "Master Smith Hrogar",
+      "Apprentice Mira"
+    ],
+    "secrets": "The Master Smith is secretly experimenting with celestial silver smuggled past the Guild tax collectors.",
+    "tags": [
+      "Industrial",
+      "Crafting",
+      "Guilds",
+      "Smithy"
+    ]
+  },
+  {
+    "id": "loc-highspire-quarter",
+    "name": "Highspire Noble Quarter",
+    "type": "Settlement",
+    "danger": "Safe",
+    "summary": "Pristine white marble estates, manicured gardens, and private magical libraries.",
+    "description": "Gilded gates and arcane wards insulate the city's aristocracy from the grime of the lower wards. Griffon-riders occasionally take wing from the watch towers above.",
+    "factions": [
+      "Order of the Silver Gauntlet",
+      "Circle of the Pale Moon"
+    ],
+    "notableNpcs": [
+      "Lady Genevieve Highspire",
+      "Archmage Eldrin"
+    ],
+    "secrets": "The Highspire family crypt contains a cursed sarcophagus that vibrates whenever the blood moon rises.",
+    "tags": [
+      "Nobility",
+      "Magic",
+      "High Class",
+      "Strict Law"
+    ]
+  },
+  {
+    "id": "loc-sunken-catacombs",
+    "name": "The Sunken Ward Catacombs",
+    "type": "Dungeon / Ruins",
+    "danger": "Deadly",
+    "summary": "Ancient pre-cataclysm crypts flooded with black water and walking dead.",
+    "description": "A forgotten labyrinth of vaulted tombs and sacrificial altars beneath the sea level. Green phosphor fungus coats damp skull niches, and the air tastes of sulfur and ancient decay.",
+    "factions": [
+      "Circle of the Pale Moon"
+    ],
+    "notableNpcs": [
+      "The Pale Necromancer (Hostile)"
+    ],
+    "secrets": "The central sanctum holds an obsidian key that can break any planar binding ritual.",
+    "tags": [
+      "Dungeon",
+      "Undead",
+      "Ruins",
+      "Loot"
+    ]
+  }
+]

@@ -1,0 +1,151 @@
+[
+  {
+    "id": "fac-obsidian-syndicate",
+    "name": "The Obsidian Syndicate",
+    "leader": "Varek 'Night-Eyes' Malor",
+    "influence": "Regional",
+    "reputationScore": -1,
+    "reputation": "Suspicious",
+    "headquarters": "The Salt Vaults (Sunken Ward)",
+    "goals": "Monopolize black-market arcane relics and illicit contraband throughout the harbor.",
+    "allies": [
+      "Corrupt Guard Factions",
+      "Smuggler Crews"
+    ],
+    "rivals": [
+      "Order of the Silver Gauntlet",
+      "The Ironbound Union"
+    ],
+    "description": "A cutthroat syndicate of fence brokers, pickpockets, and shadow-dancers operating out of forgotten harbor cisterns.",
+    "clocks": [
+      {
+        "id": "clk-syndicate-heist",
+        "title": "Arcane Vault Infiltration",
+        "totalTicks": 6,
+        "currentTicks": 4,
+        "outcome": "The Syndicate breaches the Highspire treasury and steals the Sun-Crest Amulet, sending the city into martial lockdown.",
+        "active": true
+      },
+      {
+        "id": "clk-syndicate-smuggle",
+        "title": "Black Market Shipment Arrival",
+        "totalTicks": 4,
+        "currentTicks": 2,
+        "outcome": "A boatload of banned necrotic focus crystals lands at the docks unchecked.",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": "fac-silver-gauntlet",
+    "name": "Order of the Silver Gauntlet",
+    "leader": "Commander Sarah Drake",
+    "influence": "Major",
+    "reputationScore": 1,
+    "reputation": "Friendly",
+    "headquarters": "Highspire Bastion of the Dawn",
+    "goals": "Purge supernatural corruption, stamp out smuggling, and enforce royal justice across the city wards.",
+    "allies": [
+      "The Gilded Scales Consortium",
+      "Highspire Council"
+    ],
+    "rivals": [
+      "The Obsidian Syndicate",
+      "Circle of the Pale Moon"
+    ],
+    "description": "An elite paladin and marshal military order dedicated to celestial law, order, and citizen safety.",
+    "clocks": [
+      {
+        "id": "clk-gauntlet-raid",
+        "title": "Martial Sweep of the Sunken Ward",
+        "totalTicks": 6,
+        "currentTicks": 4,
+        "outcome": "The Gauntlet places the lower docks under 24-hour curfew and arrests all suspected smugglers.",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": "fac-gilded-scales",
+    "name": "The Gilded Scales Consortium",
+    "leader": "High Merchant Silas Goldspire",
+    "influence": "Continental",
+    "reputationScore": 0,
+    "reputation": "Neutral",
+    "headquarters": "The Grand Exchange Plaza",
+    "goals": "Maximize trade profits, control tariff exemptions, and secure new maritime shipping routes.",
+    "allies": [
+      "Order of the Silver Gauntlet",
+      "Caravan Masters"
+    ],
+    "rivals": [
+      "The Obsidian Syndicate"
+    ],
+    "description": "The wealthiest guild federation in the realm, governing trade pacts, banking, and precious metal assaying.",
+    "clocks": [
+      {
+        "id": "clk-scales-monopoly",
+        "title": "Buyout of Ironbound Foundries",
+        "totalTicks": 4,
+        "currentTicks": 1,
+        "outcome": "Consortium secures majority stake in all weapon forges, raising gear prices by 25%.",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": "fac-pale-moon",
+    "name": "Circle of the Pale Moon",
+    "leader": "Archmage Vespera the Veiled",
+    "influence": "Regional",
+    "reputationScore": -2,
+    "reputation": "Hostile",
+    "headquarters": "The Sunken Ward Catacombs / Tower of Mist",
+    "goals": "Unearth forbidden Netherese artifacts and pierce the veil separating the Prime Material from the Shadowfell.",
+    "allies": [
+      "Cult of the Weave Eater"
+    ],
+    "rivals": [
+      "Order of the Silver Gauntlet"
+    ],
+    "description": "A secretive esoteric cabal of arcanists, necromancers, and occult scholars willing to sacrifice everything for cosmic insight.",
+    "clocks": [
+      {
+        "id": "clk-eclipse-ritual",
+        "title": "Shadowfell Eclipse Awakening Ritual",
+        "totalTicks": 8,
+        "currentTicks": 5,
+        "outcome": "A rift to the Shadowfell tears open beneath the city fountain, unleashing specters into the night.",
+        "active": true
+      }
+    ]
+  },
+  {
+    "id": "fac-ironbound-union",
+    "name": "The Ironbound Union",
+    "leader": "Forgemaster Hrogar Stonebrow",
+    "influence": "Local",
+    "reputationScore": 1,
+    "reputation": "Friendly",
+    "headquarters": "Great Hearth Hall (Cinder-Forge)",
+    "goals": "Protect craftsmen wages, prevent noble exploitation, and defend working-class neighborhoods.",
+    "allies": [
+      "Local Mercenaries",
+      "Dwarven Clans"
+    ],
+    "rivals": [
+      "The Gilded Scales Consortium"
+    ],
+    "description": "A rugged fraternal fellowship of blacksmiths, stonemasons, and dockworkers who stick together against tyrannical laws.",
+    "clocks": [
+      {
+        "id": "clk-labor-strike",
+        "title": "General Dockworkers Strike",
+        "totalTicks": 4,
+        "currentTicks": 2,
+        "outcome": "Dockworkers shut down all cargo handling, stranding noble galleons in port.",
+        "active": true
+      }
+    ]
+  }
+]
