@@ -286,6 +286,46 @@ class RumorItem(BaseModel):
     veracity: str = "Unverified"
     active: bool = True
 
+class SecretModel(BaseModel):
+    id: Optional[str] = None
+    text: str
+    status: str = "unrevealed"  # "unrevealed" | "revealed" | "archived"
+    category: str = "Plot"      # "Plot" | "Lore" | "NPC" | "Location" | "Faction" | "Danger"
+    tiedLocation: Optional[str] = ""
+    tiedNpc: Optional[str] = ""
+    tiedFaction: Optional[str] = ""
+    sessionNotes: Optional[str] = ""
+    revealedAt: Optional[float] = None
+    createdAt: Optional[float] = None
+
+class HandoutModel(BaseModel):
+    id: Optional[str] = None
+    title: str = "Untitled Handout"
+    type: str = "letter"  # "letter" | "journal" | "bounty" | "cipher" | "scroll"
+    theme: str = "parchment"  # "parchment" | "burnt" | "vellum" | "blood" | "arcane"
+    fontStyle: str = "cursive"  # "cursive" | "blackletter" | "serif" | "chisel" | "typewriter"
+    author: Optional[str] = ""
+    recipient: Optional[str] = ""
+    dateString: Optional[str] = ""
+    content: str = ""
+    seal: Optional[str] = "crown"  # "none" | "crown" | "skull" | "arcane" | "scales" | "daggers" | "dragon" | "tree"
+    sealColor: Optional[str] = "red"  # "red" | "gold" | "black" | "green" | "purple"
+    isCoded: bool = False
+    cipherType: Optional[str] = "runic"  # "runic" | "caesar" | "redacted" | "scramble" | "none"
+    cipherShift: Optional[int] = 3
+    cipherHint: Optional[str] = ""
+    investigationDC: Optional[int] = 14
+    isDeciphered: bool = False
+    bountyReward: Optional[str] = ""
+    bountyCrimes: Optional[str] = ""
+    imageUrl: Optional[str] = ""
+    tiedLocation: Optional[str] = ""
+    tiedNpc: Optional[str] = ""
+    sessionNotes: Optional[str] = ""
+    status: str = "ready"  # "draft" | "ready" | "delivered"
+    createdAt: Optional[float] = None
+    updatedAt: Optional[float] = None
+
 # Phase 4 Models
 class BroadcastPayload(BaseModel):
     active: bool = True
@@ -294,6 +334,8 @@ class BroadcastPayload(BaseModel):
     content: str = ""
     type: str = "text"
     imageUrl: str = ""
+    items: Optional[List[Dict[str, Any]]] = None
+    handout: Optional[Dict[str, Any]] = None
 
 class SnapshotCreate(BaseModel):
     label: str = ""
@@ -312,6 +354,31 @@ class BattlemapStateUpdate(BaseModel):
     panY: Optional[float] = None
     zoom: Optional[float] = None
     locked: Optional[bool] = None
+    templates: Optional[List[Dict[str, Any]]] = None
+    activeRuler: Optional[Dict[str, Any]] = None
+
+class BattlemapRuler(BaseModel):
+    startX: float
+    startY: float
+    endX: float
+    endY: float
+    distanceFeet: float
+    distanceSquares: Optional[float] = None
+    visibleToPlayers: Optional[bool] = True
+    active: Optional[bool] = True
+
+class BattlemapTemplate(BaseModel):
+    id: Optional[str] = None
+    type: str = "circle" # circle, cone, line, cube
+    x: float
+    y: float
+    radiusFeet: Optional[float] = 20.0
+    lengthFeet: Optional[float] = 60.0
+    widthFeet: Optional[float] = 5.0
+    rotation: Optional[float] = 0.0 # degrees
+    color: Optional[str] = "#f97316"
+    label: Optional[str] = "Spell AoE"
+    visibleToPlayers: Optional[bool] = True
 
 class BattlemapFogUpdate(BaseModel):
     fogMask: Optional[str] = None
@@ -343,6 +410,7 @@ class BattlemapTokenCreate(BaseModel):
     elevation: Optional[int] = 0
     conditions: Optional[List[Any]] = []
     concentrating: Optional[bool] = False
+    strideActive: Optional[bool] = False
 
 class BattlemapTokenBatchCreate(BaseModel):
     tokens: List[BattlemapTokenCreate]
@@ -364,27 +432,45 @@ class BattlemapTokenUpdate(BaseModel):
     elevation: Optional[int] = None
     conditions: Optional[List[Any]] = None
     concentrating: Optional[bool] = None
+    strideActive: Optional[bool] = None
+
+class ItemModel(BaseModel):
+    id: Optional[str] = None
+    name: str
+    type: str = "Wondrous Item"
+    rarity: str = "Common"
+    attunement: Any = False
+    cost: Optional[str] = ""
+    weight: Optional[str] = ""
+    description: Optional[str] = ""
+    damage: Optional[str] = None
+    damageType: Optional[str] = None
+    properties: Optional[List[str]] = None
+    ac: Optional[str] = None
+    strengthReq: Optional[str] = None
+    stealthDisadv: Optional[bool] = None
+    isCustom: Optional[bool] = True
 
 # Routes
 @app.get("/")
 async def root():
     index_file = TEMPLATES_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "Arcane Ledger 5.5e DM Dashboard backend is running"}
 
 @app.get("/player")
 async def player_view():
     player_file = TEMPLATES_DIR / "player.html"
     if player_file.exists():
-        return FileResponse(str(player_file))
+        return FileResponse(str(player_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "Player screen template not found"}
 
 @app.get("/map")
 async def battlemap_view():
     map_file = TEMPLATES_DIR / "map.html"
     if map_file.exists():
-        return FileResponse(str(map_file))
+        return FileResponse(str(map_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "Battlemap screen template not found"}
 
 @app.get("/api/state")
@@ -428,7 +514,10 @@ async def get_full_state():
     audio_library = read_json("audio_library.json", [])
     audio_presets = read_json("audio_presets.json", [])
     spells = read_json("spells.json", [])
+    items = read_json("items.json", [])
     encounters = read_json("encounters.json", [])
+    secrets = read_json("secrets.json", [])
+    handouts = read_json("handouts.json", [])
     lighting = read_json("lighting.json", {
         "connected": False,
         "apiUrl": "ws://localhost:12345",
@@ -454,10 +543,13 @@ async def get_full_state():
         "factions": factions,
         "quests": quests_list,
         "rumors": rumors_list,
+        "secrets": secrets,
+        "handouts": handouts,
         "broadcast": broadcast,
         "audioLibrary": audio_library,
         "audioPresets": audio_presets,
         "spells": spells,
+        "items": items,
         "encounters": encounters,
         "lighting": lighting
     }
@@ -1182,6 +1274,264 @@ async def delete_rumor(rumor_id: str):
     return {"status": "success", "rumors": data["rumors"]}
 
 # -------------------------------------------------------------
+# SECRETS & CLUES ENGINE (LAZY DM PREP & DISCOVERY)
+# -------------------------------------------------------------
+@app.get("/api/secrets")
+async def get_secrets():
+    return read_json("secrets.json", [])
+
+@app.post("/api/secrets")
+async def save_secret(payload: SecretModel):
+    secrets = read_json("secrets.json", [])
+    sec_id = payload.id or f"sec-{uuid.uuid4().hex[:8]}"
+    sec_dict = payload.dict()
+    sec_dict["id"] = sec_id
+    if not sec_dict.get("createdAt"):
+        sec_dict["createdAt"] = time.time()
+        
+    existing_idx = next((i for i, s in enumerate(secrets) if s.get("id") == sec_id), None)
+    if existing_idx is not None:
+        secrets[existing_idx] = sec_dict
+    else:
+        secrets.insert(0, sec_dict)
+        
+    write_json("secrets.json", secrets)
+    return {"status": "success", "secret": sec_dict, "secrets": secrets}
+
+@app.delete("/api/secrets/{secret_id}")
+async def delete_secret(secret_id: str):
+    secrets = read_json("secrets.json", [])
+    secrets = [s for s in secrets if s.get("id") != secret_id]
+    write_json("secrets.json", secrets)
+    return {"status": "success", "secrets": secrets}
+
+@app.post("/api/secrets/{secret_id}/toggle")
+async def toggle_secret_revealed(secret_id: str):
+    secrets = read_json("secrets.json", [])
+    secret = next((s for s in secrets if s.get("id") == secret_id), None)
+    if not secret:
+        raise HTTPException(status_code=404, detail="Secret not found")
+        
+    if secret.get("status") == "revealed":
+        secret["status"] = "unrevealed"
+        secret["revealedAt"] = None
+    else:
+        secret["status"] = "revealed"
+        secret["revealedAt"] = time.time()
+        
+    write_json("secrets.json", secrets)
+    return {"status": "success", "secret": secret, "secrets": secrets}
+
+@app.post("/api/secrets/{secret_id}/to-rumor")
+async def convert_secret_to_rumor(secret_id: str):
+    secrets = read_json("secrets.json", [])
+    secret = next((s for s in secrets if s.get("id") == secret_id), None)
+    if not secret:
+        raise HTTPException(status_code=404, detail="Secret not found")
+        
+    # Mark secret as revealed
+    secret["status"] = "revealed"
+    secret["revealedAt"] = time.time()
+    write_json("secrets.json", secrets)
+    
+    # Add to quests.json rumors
+    data = read_json("quests.json", {"quests": [], "rumors": []})
+    if isinstance(data, list):
+        data = {"quests": data, "rumors": []}
+    rumors = data.get("rumors", [])
+    
+    rumor_dict = {
+        "id": f"rum-{uuid.uuid4().hex[:8]}",
+        "text": secret.get("text", ""),
+        "source": secret.get("tiedNpc") or "Discovered Secret",
+        "location": secret.get("tiedLocation") or "Campaign Discovery",
+        "veracity": "True",
+        "active": True
+    }
+    rumors.insert(0, rumor_dict)
+    data["rumors"] = rumors
+    write_json("quests.json", data)
+    
+    return {"status": "success", "secret": secret, "rumor": rumor_dict}
+
+@app.post("/api/secrets/batch-template")
+async def generate_secrets_batch_template():
+    secrets = read_json("secrets.json", [])
+    templates = [
+        ("Plot", "A prominent faction is secretly preparing a midnight operation."),
+        ("Lore", "An ancient magical relic is hidden beneath the foundations of the oldest building in town."),
+        ("NPC", "A seemingly friendly merchant has a secret criminal alias and informant debt."),
+        ("Location", "A hidden subterranean passageway bypasses the heavily guarded main entrance."),
+        ("Danger", "An elite assassin or monster stalker has arrived in the settlement tracking the party.")
+    ]
+    new_items = []
+    now = time.time()
+    for cat, prompt in templates:
+        item = {
+            "id": f"sec-{uuid.uuid4().hex[:8]}",
+            "text": prompt,
+            "status": "unrevealed",
+            "category": cat,
+            "tiedLocation": "",
+            "tiedNpc": "",
+            "tiedFaction": "",
+            "sessionNotes": "Prep note: customize this prompt for upcoming session.",
+            "revealedAt": None,
+            "createdAt": now
+        }
+        new_items.append(item)
+    
+    # Prepend new templates
+    secrets = new_items + secrets
+    write_json("secrets.json", secrets)
+    return {"status": "success", "added": len(new_items), "secrets": secrets}
+
+# -------------------------------------------------------------
+# IN-WORLD HANDOUTS & LETTERS ENGINE
+# -------------------------------------------------------------
+@app.get("/api/handouts")
+async def get_handouts():
+    return read_json("handouts.json", [])
+
+@app.get("/api/handouts/{handout_id}")
+async def get_handout(handout_id: str):
+    handouts = read_json("handouts.json", [])
+    handout = next((h for h in handouts if h.get("id") == handout_id), None)
+    if not handout:
+        raise HTTPException(status_code=404, detail="Handout not found")
+    return handout
+
+@app.post("/api/handouts")
+async def save_handout(payload: HandoutModel):
+    handouts = read_json("handouts.json", [])
+    h_id = payload.id or f"hnd-{uuid.uuid4().hex[:8]}"
+    h_dict = payload.dict()
+    h_dict["id"] = h_id
+    now = time.time()
+    if not h_dict.get("createdAt"):
+        h_dict["createdAt"] = now
+    h_dict["updatedAt"] = now
+
+    existing_idx = next((i for i, h in enumerate(handouts) if h.get("id") == h_id), None)
+    if existing_idx is not None:
+        handouts[existing_idx] = h_dict
+    else:
+        handouts.insert(0, h_dict)
+
+    write_json("handouts.json", handouts)
+    return {"status": "success", "handout": h_dict, "handouts": handouts}
+
+@app.delete("/api/handouts/{handout_id}")
+async def delete_handout(handout_id: str):
+    handouts = read_json("handouts.json", [])
+    handouts = [h for h in handouts if h.get("id") != handout_id]
+    write_json("handouts.json", handouts)
+    return {"status": "success", "handouts": handouts}
+
+@app.post("/api/handouts/{handout_id}/toggle-decipher")
+async def toggle_handout_decipher(handout_id: str):
+    handouts = read_json("handouts.json", [])
+    handout = next((h for h in handouts if h.get("id") == handout_id), None)
+    if not handout:
+        raise HTTPException(status_code=404, detail="Handout not found")
+
+    handout["isDeciphered"] = not handout.get("isDeciphered", False)
+    handout["updatedAt"] = time.time()
+    write_json("handouts.json", handouts)
+
+    # If this handout is currently broadcast on the player screen, update live broadcast
+    broadcast = read_json("broadcast.json", {})
+    if broadcast.get("active") and broadcast.get("type") == "handout":
+        b_handout = broadcast.get("handout")
+        if b_handout and b_handout.get("id") == handout_id:
+            broadcast["handout"] = handout
+            write_json("broadcast.json", broadcast)
+
+    return {"status": "success", "handout": handout, "handouts": handouts}
+
+@app.post("/api/handouts/{handout_id}/broadcast")
+async def broadcast_handout_endpoint(handout_id: str):
+    handouts = read_json("handouts.json", [])
+    handout = next((h for h in handouts if h.get("id") == handout_id), None)
+    if not handout:
+        raise HTTPException(status_code=404, detail="Handout not found")
+
+    broadcast_data = {
+        "active": True,
+        "title": handout.get("title", "In-World Handout"),
+        "subtitle": f"{handout.get('type', 'Letter').capitalize()} • {handout.get('author') or 'Unknown Author'}",
+        "content": handout.get("content", ""),
+        "type": "handout",
+        "imageUrl": handout.get("imageUrl", ""),
+        "handout": handout
+    }
+    write_json("broadcast.json", broadcast_data)
+    return {"status": "success", "broadcast": broadcast_data}
+
+@app.post("/api/handouts/batch-preset")
+async def generate_handouts_batch_preset():
+    presets = [
+        {
+            "id": f"hnd-preset-{uuid.uuid4().hex[:6]}",
+            "title": "Intercepted Cultist Cypher",
+            "type": "cipher",
+            "theme": "burnt",
+            "fontStyle": "chisel",
+            "author": "The Pale Hand",
+            "recipient": "Watcher at the Threshold",
+            "dateString": "Night of the Shrouded Sun",
+            "content": "The sacrificial relic was successfully unearthed from the ossuary. Assemble at the flooded watergate when the bells toll three. Bring the vial of wyrm blood.",
+            "seal": "skull",
+            "sealColor": "purple",
+            "isCoded": True,
+            "cipherType": "runic",
+            "cipherShift": 4,
+            "cipherHint": "Runic glyph transposition practiced by the sunken cult.",
+            "investigationDC": 15,
+            "isDeciphered": False,
+            "bountyReward": "",
+            "bountyCrimes": "",
+            "tiedLocation": "Flooded Crypts of St. Jude",
+            "tiedNpc": "Drake",
+            "sessionNotes": "Found dropped near the broken crypt grating.",
+            "status": "ready",
+            "createdAt": time.time(),
+            "updatedAt": time.time()
+        },
+        {
+            "id": f"hnd-preset-{uuid.uuid4().hex[:6]}",
+            "title": "Official Guild Promissory Note",
+            "type": "letter",
+            "theme": "parchment",
+            "fontStyle": "cursive",
+            "author": "Gilded Scales Consortium",
+            "recipient": "Master Silas",
+            "dateString": "Fourth of Marpenoth",
+            "content": "To Silas the Scribe,\n\nWe acknowledge receipt of three crates of deep-mine salvage. Upon delivery to Warehouse Four, our factor will release the agreed sum of 300 silver ingots.\n\nAny interference by the Town Watch must be resolved through your established channels.\n\nSigned,\nConsortium Factor Vance",
+            "seal": "scales",
+            "sealColor": "gold",
+            "isCoded": False,
+            "cipherType": "none",
+            "cipherShift": 0,
+            "cipherHint": "",
+            "investigationDC": 10,
+            "isDeciphered": True,
+            "bountyReward": "",
+            "bountyCrimes": "",
+            "tiedLocation": "Oakhaven Market Square",
+            "tiedNpc": "Silas the Scribe",
+            "sessionNotes": "Proof of Silas's commercial connection to the Gilded Consortium.",
+            "status": "ready",
+            "createdAt": time.time(),
+            "updatedAt": time.time()
+        }
+    ]
+    handouts = read_json("handouts.json", [])
+    handouts = presets + handouts
+    write_json("handouts.json", handouts)
+    return {"status": "success", "added": len(presets), "handouts": handouts}
+
+# -------------------------------------------------------------
 # PHASE 4: PLAYER DISPLAY SCREEN & BROADCAST HANDOUTS
 # -------------------------------------------------------------
 @app.get("/api/player-state")
@@ -1511,7 +1861,10 @@ async def create_snapshot(payload: SnapshotCreate = None):
         "audioLibrary": read_json("audio_library.json", []),
         "audioPresets": read_json("audio_presets.json", []),
         "spells": read_json("spells.json", []),
+        "items": read_json("items.json", []),
         "encounters": read_json("encounters.json", []),
+        "secrets": read_json("secrets.json", []),
+        "handouts": read_json("handouts.json", []),
         "lighting": read_json("lighting.json", {})
     }
 
@@ -1545,10 +1898,13 @@ async def restore_snapshot(payload: Dict[str, Any]):
     if "locations" in data: write_json("locations.json", data["locations"])
     if "factions" in data: write_json("factions.json", data["factions"])
     if "quests" in data: write_json("quests.json", data["quests"])
+    if "secrets" in data: write_json("secrets.json", data["secrets"])
+    if "handouts" in data: write_json("handouts.json", data["handouts"])
     if "broadcast" in data: write_json("broadcast.json", data["broadcast"])
     if "audioLibrary" in data: write_json("audio_library.json", data["audioLibrary"])
     if "audioPresets" in data: write_json("audio_presets.json", data["audioPresets"])
     if "spells" in data: write_json("spells.json", data["spells"])
+    if "items" in data: write_json("items.json", data["items"])
     if "encounters" in data: write_json("encounters.json", data["encounters"])
     if "lighting" in data: write_json("lighting.json", data["lighting"])
 
@@ -1638,6 +1994,47 @@ async def get_spell(spell_id: str):
     if not spell:
         raise HTTPException(status_code=404, detail="Spell not found")
     return spell
+
+# -----------------------------------------------------------------------------
+# ITEMS & EQUIPMENT (2024 / 5E SRD & CUSTOM HOMEBREW)
+# -----------------------------------------------------------------------------
+@app.get("/api/items")
+async def get_items():
+    return read_json("items.json", [])
+
+@app.get("/api/items/{item_id}")
+async def get_item(item_id: str):
+    items = read_json("items.json", [])
+    item = next((i for i in items if i.get("id") == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item
+
+@app.post("/api/items")
+async def save_item(payload: ItemModel):
+    items = read_json("items.json", [])
+    item_id = payload.id or f"custom_{uuid.uuid4().hex[:8]}"
+    item_dict = payload.dict()
+    item_dict["id"] = item_id
+    if item_dict.get("isCustom") is None:
+        item_dict["isCustom"] = True
+    
+    existing_idx = next((idx for idx, i in enumerate(items) if i.get("id") == item_id), None)
+    if existing_idx is not None:
+        items[existing_idx] = item_dict
+    else:
+        # Prepend new custom items so they appear at the top
+        items.insert(0, item_dict)
+        
+    write_json("items.json", items)
+    return {"status": "success", "item": item_dict}
+
+@app.delete("/api/items/{item_id}")
+async def delete_item(item_id: str):
+    items = read_json("items.json", [])
+    items = [i for i in items if i.get("id") != item_id]
+    write_json("items.json", items)
+    return {"status": "success", "deleted": item_id}
 
 # -----------------------------------------------------------------------------
 # ENCOUNTERS (2024 BUILDER & CALCULATOR)
@@ -1941,6 +2338,8 @@ def get_default_battlemap_state():
         "locked": False,
         "pings": [],
         "tokens": [],
+        "templates": [],
+        "activeRuler": None,
         "maps": [
             {
                 "id": "dungeon_crypt",
@@ -2087,6 +2486,75 @@ async def create_battlemap_ping(ping: BattlemapPing):
     write_json("battlemap.json", state)
     return {"status": "success", "ping": new_ping}
 
+@app.post("/api/battlemap/ruler")
+async def update_battlemap_ruler(payload: Dict[str, Any]):
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    active = payload.get("active", True)
+    if not active:
+        state["activeRuler"] = None
+    else:
+        state["activeRuler"] = {
+            "startX": payload.get("startX", 0.0),
+            "startY": payload.get("startY", 0.0),
+            "endX": payload.get("endX", 0.0),
+            "endY": payload.get("endY", 0.0),
+            "distanceFeet": payload.get("distanceFeet", 0.0),
+            "distanceSquares": payload.get("distanceSquares", 0.0),
+            "visibleToPlayers": payload.get("visibleToPlayers", True),
+            "active": True
+        }
+    state["updatedAt"] = time.time()
+    write_json("battlemap.json", state)
+    return {"status": "success", "ruler": state.get("activeRuler")}
+
+@app.post("/api/battlemap/templates")
+async def add_or_update_battlemap_template(payload: BattlemapTemplate):
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    templates = state.get("templates", [])
+    tpl_id = payload.id or f"tpl_{uuid.uuid4().hex[:8]}"
+    existing = next((t for t in templates if t["id"] == tpl_id), None)
+    
+    tpl_data = {
+        "id": tpl_id,
+        "type": payload.type or "circle",
+        "x": payload.x,
+        "y": payload.y,
+        "radiusFeet": payload.radiusFeet or 20.0,
+        "lengthFeet": payload.lengthFeet or 60.0,
+        "widthFeet": payload.widthFeet or 5.0,
+        "rotation": payload.rotation or 0.0,
+        "color": payload.color or "#f97316",
+        "label": payload.label or "Spell AoE",
+        "visibleToPlayers": payload.visibleToPlayers if payload.visibleToPlayers is not None else True
+    }
+    
+    if existing:
+        existing.update(tpl_data)
+    else:
+        templates.append(tpl_data)
+        
+    state["templates"] = templates
+    state["updatedAt"] = time.time()
+    write_json("battlemap.json", state)
+    return {"status": "success", "template": tpl_data, "templates": templates}
+
+@app.delete("/api/battlemap/templates/{template_id}")
+async def delete_battlemap_template(template_id: str):
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    templates = state.get("templates", [])
+    state["templates"] = [t for t in templates if t["id"] != template_id]
+    state["updatedAt"] = time.time()
+    write_json("battlemap.json", state)
+    return {"status": "success", "templates": state["templates"]}
+
+@app.post("/api/battlemap/templates/clear")
+async def clear_battlemap_templates():
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    state["templates"] = []
+    state["updatedAt"] = time.time()
+    write_json("battlemap.json", state)
+    return {"status": "success", "templates": []}
+
 @app.post("/api/battlemap/select")
 async def select_battlemap(payload: BattlemapSelect):
     state = read_json("battlemap.json", get_default_battlemap_state())
@@ -2173,7 +2641,8 @@ async def add_battlemap_token(payload: BattlemapTokenCreate):
         "visibleToPlayers": payload.visibleToPlayers if payload.visibleToPlayers is not None else True,
         "elevation": payload.elevation if payload.elevation is not None else 0,
         "conditions": payload.conditions or [],
-        "concentrating": payload.concentrating or False
+        "concentrating": payload.concentrating or False,
+        "strideActive": payload.strideActive or False
     }
     tokens.append(new_token)
     state["tokens"] = tokens
@@ -2208,7 +2677,8 @@ async def add_battlemap_tokens_batch(payload: BattlemapTokenBatchCreate):
             "visibleToPlayers": t_payload.visibleToPlayers if t_payload.visibleToPlayers is not None else False,
             "elevation": t_payload.elevation if t_payload.elevation is not None else 0,
             "conditions": t_payload.conditions or [],
-            "concentrating": t_payload.concentrating or False
+            "concentrating": t_payload.concentrating or False,
+            "strideActive": t_payload.strideActive or False
         }
         tokens.append(new_token)
         added_tokens.append(new_token)
@@ -2248,6 +2718,7 @@ async def update_battlemap_token(payload: BattlemapTokenUpdate):
     if payload.elevation is not None: token["elevation"] = payload.elevation
     if payload.conditions is not None: token["conditions"] = payload.conditions
     if payload.concentrating is not None: token["concentrating"] = payload.concentrating
+    if payload.strideActive is not None: token["strideActive"] = payload.strideActive
     state["updatedAt"] = time.time()
     write_json("battlemap.json", state)
     return {"status": "success", "token": token}

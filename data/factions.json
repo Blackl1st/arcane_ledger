@@ -22,7 +22,7 @@
         "id": "clk-syndicate-heist",
         "title": "Arcane Vault Infiltration",
         "totalTicks": 6,
-        "currentTicks": 4,
+        "currentTicks": 5,
         "outcome": "The Syndicate breaches the Highspire treasury and steals the Sun-Crest Amulet, sending the city into martial lockdown.",
         "active": true
       },

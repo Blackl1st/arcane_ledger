@@ -15,21 +15,21 @@
   "overhead": {
     "node_id": "400L5-13106A",
     "name": "amaran 60d S #1",
-    "brightness": 50,
+    "brightness": 30,
     "enabled": true,
     "linkFlashes": false
   },
   "atmosphere": {
     "node_id": "400U5-52611A",
     "name": "amaran Ace 25c #1",
-    "brightness": 65,
-    "cct": 5000,
+    "brightness": 55,
+    "cct": 2700,
     "rgb": [
       255,
-      160,
-      60
+      119,
+      20
     ],
-    "mode": "cct",
+    "mode": "rgb",
     "effect": "solid",
     "activePreset": "preset-tavern",
     "enabled": true

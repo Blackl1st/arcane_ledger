@@ -67,6 +67,22 @@
             transition: opacity 0.3s ease;
         }
 
+        #overlay-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 28;
+        }
+
+        #ruler-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 32;
+        }
+
         #ping-canvas {
             position: absolute;
             top: 0;
@@ -350,12 +366,18 @@
 
             <!-- Layer 3: Monster & Character Tokens Layer (Below fog so unrevealed tokens stay hidden!) -->
             <div id="tokens-layer" class="absolute inset-0 pointer-events-none overflow-hidden" style="z-index: 15;"></div>
+
+            <!-- Layer 3.5: Spell AoE Templates & Stride Overlays -->
+            <canvas id="overlay-canvas"></canvas>
             
             <!-- Layer 4: Fog of War -->
             <canvas id="fog-canvas"></canvas>
 
             <!-- Layer 5: Ping Animation Overlay -->
             <div id="ping-layer" class="absolute inset-0 pointer-events-none overflow-hidden z-30"></div>
+
+            <!-- Layer 6: Tactical Ruler Measurement Canvas -->
+            <canvas id="ruler-canvas"></canvas>
         </div>
     </div>
 
@@ -395,9 +417,13 @@
         const mapImg = document.getElementById('map-img');
         const gridCanvas = document.getElementById('grid-canvas');
         const fogCanvas = document.getElementById('fog-canvas');
+        const overlayCanvas = document.getElementById('overlay-canvas');
+        const rulerCanvas = document.getElementById('ruler-canvas');
         const pingLayer = document.getElementById('ping-layer');
         const gridCtx = gridCanvas.getContext('2d');
         const fogCtx = fogCanvas.getContext('2d');
+        const overlayCtx = overlayCanvas ? overlayCanvas.getContext('2d') : null;
+        const rulerCtx = rulerCanvas ? rulerCanvas.getContext('2d') : null;
 
         let lastVersion = 0;
         let activePingsSet = new Set();
@@ -466,12 +492,26 @@
             fogCanvas.width = naturalWidth;
             fogCanvas.height = naturalHeight;
 
+            if (overlayCanvas) {
+                overlayCanvas.width = naturalWidth;
+                overlayCanvas.height = naturalHeight;
+            }
+            if (rulerCanvas) {
+                rulerCanvas.width = naturalWidth;
+                rulerCanvas.height = naturalHeight;
+            }
+
             isImageLoaded = true;
             renderGrid();
             renderFog();
             renderTokens();
+            renderOverlays();
+            renderRuler();
             applyTransform();
         };
+        if (mapImg.complete && mapImg.naturalWidth) {
+            mapImg.onload();
+        }
 
         // Render Physical 1-Inch Grid Lines
         function renderGrid() {
@@ -674,6 +714,321 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // =====================================================================
+        // TACTICAL OVERLAYS ENGINE (SPELL AOE TEMPLATES & MEASUREMENT RULER)
+        // =====================================================================
+        function renderOverlays() {
+            if (!isImageLoaded || !overlayCtx) return;
+            overlayCtx.clearRect(0, 0, naturalWidth, naturalHeight);
+
+            const gridSize = mapState.gridSize || 50;
+            const templates = mapState.templates || [];
+
+            // 1. Render active Token Stride Ranges (Walk / Dash circles)
+            const tokens = mapState.tokens || [];
+            tokens.forEach(t => {
+                if (t.strideActive && t.visibleToPlayers !== false) {
+                    drawTokenStride(overlayCtx, t, gridSize);
+                }
+            });
+
+            // 2. Render active Spell AoE Templates
+            templates.forEach(tpl => {
+                if (tpl.visibleToPlayers !== false) {
+                    drawAoETemplate(overlayCtx, tpl, gridSize);
+                }
+            });
+        }
+
+        function renderRuler() {
+            if (!isImageLoaded || !rulerCtx) return;
+            rulerCtx.clearRect(0, 0, naturalWidth, naturalHeight);
+
+            const ruler = mapState.activeRuler;
+            if (!ruler || !ruler.active || ruler.visibleToPlayers === false) return;
+
+            const gridSize = mapState.gridSize || 50;
+            drawRuler(rulerCtx, ruler, gridSize);
+        }
+
+        function drawRuler(ctx, ruler, gridSize) {
+            const x1 = ruler.startX;
+            const y1 = ruler.startY;
+            const x2 = ruler.endX;
+            const y2 = ruler.endY;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const distPx = Math.hypot(dx, dy);
+            if (distPx < 3) return;
+
+            const sq = distPx / gridSize;
+            const feet = typeof ruler.distanceFeet === 'number' ? ruler.distanceFeet : Math.round(sq * 5);
+
+            ctx.save();
+            // Outer glow line
+            ctx.strokeStyle = 'rgba(2, 132, 199, 0.45)';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // Core glowing line
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // 5ft / 1 square tick marks
+            const unitX = dx / distPx;
+            const unitY = dy / distPx;
+            const perpX = -unitY;
+            const perpY = unitX;
+            const tickHalf = 6;
+
+            ctx.strokeStyle = '#bae6fd';
+            ctx.lineWidth = 2;
+            for (let d = gridSize; d < distPx - 4; d += gridSize) {
+                const tx = x1 + unitX * d;
+                const ty = y1 + unitY * d;
+                ctx.beginPath();
+                ctx.moveTo(tx - perpX * tickHalf, ty - perpY * tickHalf);
+                ctx.lineTo(tx + perpX * tickHalf, ty + perpY * tickHalf);
+                ctx.stroke();
+            }
+
+            // Start & End Rings
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(x1, y1, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(x2, y2, 8, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Distance Pill Badge at Midpoint
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+            const labelText = `📏 ${feet} ft (${sq.toFixed(1)} sq)`;
+
+            ctx.font = 'bold 12px "JetBrains Mono", monospace, sans-serif';
+            const metrics = ctx.measureText(labelText);
+            const padX = 8;
+            const padY = 4;
+            const pillW = metrics.width + padX * 2;
+            const pillH = 22;
+
+            ctx.fillStyle = 'rgba(7, 9, 14, 0.92)';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(midX - pillW / 2, midY - pillH / 2 - 12, pillW, pillH, 8);
+            } else {
+                ctx.rect(midX - pillW / 2, midY - pillH / 2 - 12, pillW, pillH);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(labelText, midX, midY - 12);
+
+            ctx.restore();
+        }
+
+        function drawAoETemplate(ctx, tpl, gridSize) {
+            const type = tpl.type || 'circle';
+            const x = tpl.x;
+            const y = tpl.y;
+            const color = tpl.color || '#f97316';
+            const label = tpl.label || 'Spell Effect';
+            const rotationDeg = tpl.rotation || 0;
+            const theta = rotationDeg * Math.PI / 180;
+
+            ctx.save();
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 14;
+
+            if (type === 'circle') {
+                const radiusFeet = tpl.radiusFeet || 20;
+                const rPx = (radiusFeet / 5) * gridSize;
+
+                // Fill with semi-transparent tint
+                ctx.fillStyle = hexToRgba(color, 0.28);
+                ctx.beginPath();
+                ctx.arc(x, y, rPx, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Concentric guide ring
+                ctx.strokeStyle = hexToRgba(color, 0.45);
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(x, y, rPx * 0.5, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Outer border
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([8, 4]);
+                ctx.beginPath();
+                ctx.arc(x, y, rPx, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Centered Label Badge
+                drawAoEBadge(ctx, x, y, `${label} • ${radiusFeet}ft r`, color);
+
+            } else if (type === 'cone') {
+                const lengthFeet = tpl.lengthFeet || 60;
+                const lenPx = (lengthFeet / 5) * gridSize;
+                const alpha = 0.4636; // 26.565 deg (5e cone 53.13 deg arc)
+
+                ctx.fillStyle = hexToRgba(color, 0.30);
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.arc(x, y, lenPx, theta - alpha, theta + alpha);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([8, 4]);
+                ctx.stroke();
+
+                // Central direction line
+                ctx.strokeStyle = hexToRgba(color, 0.5);
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + Math.cos(theta) * lenPx, y + Math.sin(theta) * lenPx);
+                ctx.stroke();
+
+                // Badge positioned midway along cone axis
+                const badgeX = x + Math.cos(theta) * (lenPx * 0.55);
+                const badgeY = y + Math.sin(theta) * (lenPx * 0.55);
+                drawAoEBadge(ctx, badgeX, badgeY, `${label} • ${lengthFeet}ft cone`, color);
+
+            } else if (type === 'cube') {
+                const sizeFeet = tpl.radiusFeet || tpl.lengthFeet || 20;
+                const sPx = (sizeFeet / 5) * gridSize;
+
+                ctx.translate(x, y);
+                ctx.rotate(theta);
+
+                ctx.fillStyle = hexToRgba(color, 0.28);
+                ctx.beginPath();
+                ctx.rect(-sPx / 2, -sPx / 2, sPx, sPx);
+                ctx.fill();
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([8, 4]);
+                ctx.stroke();
+
+                drawAoEBadge(ctx, 0, 0, `${label} • ${sizeFeet}ft cube`, color);
+
+            } else if (type === 'line') {
+                const lengthFeet = tpl.lengthFeet || 60;
+                const widthFeet = tpl.widthFeet || 5;
+                const lenPx = (lengthFeet / 5) * gridSize;
+                const widthPx = Math.max(8, (widthFeet / 5) * gridSize);
+
+                ctx.translate(x, y);
+                ctx.rotate(theta);
+
+                ctx.fillStyle = hexToRgba(color, 0.32);
+                ctx.beginPath();
+                ctx.rect(0, -widthPx / 2, lenPx, widthPx);
+                ctx.fill();
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([6, 3]);
+                ctx.stroke();
+
+                drawAoEBadge(ctx, lenPx / 2, 0, `${label} • ${lengthFeet}×${widthFeet}ft`, color);
+            }
+
+            ctx.restore();
+        }
+
+        function drawAoEBadge(ctx, bx, by, text, color) {
+            ctx.save();
+            ctx.font = 'bold 11px sans-serif';
+            const m = ctx.measureText(text);
+            const w = m.width + 16;
+            const h = 20;
+
+            ctx.fillStyle = 'rgba(10, 14, 20, 0.94)';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(bx - w / 2, by - h / 2, w, h, 6);
+            } else {
+                ctx.rect(bx - w / 2, by - h / 2, w, h);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, bx, by);
+            ctx.restore();
+        }
+
+        function drawTokenStride(ctx, token, gridSize) {
+            const speed = token.speed || 30;
+            const walkPx = (speed / 5) * gridSize;
+            const dashPx = walkPx * 2;
+            const x = token.x;
+            const y = token.y;
+
+            ctx.save();
+            // Walk circle
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+            ctx.beginPath();
+            ctx.arc(x, y, walkPx, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 4]);
+            ctx.stroke();
+
+            // Dash circle
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 5]);
+            ctx.beginPath();
+            ctx.arc(x, y, dashPx, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Walk tag
+            drawAoEBadge(ctx, x, y - walkPx, `Walk ${speed}ft`, '#10b981');
+            ctx.restore();
+        }
+
+        function hexToRgba(hex, alpha) {
+            if (!hex) return `rgba(245, 158, 11, ${alpha})`;
+            let c = hex.replace('#', '');
+            if (c.length === 3) c = c.split('').map(x => x + x).join('');
+            const r = parseInt(c.substring(0, 2), 16) || 245;
+            const g = parseInt(c.substring(2, 4), 16) || 158;
+            const b = parseInt(c.substring(4, 6), 16) || 11;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
         // Cinematic Turn Announcement & Web Audio Chime
@@ -894,6 +1249,8 @@
                         if (fogChanged) renderFog();
                         if (transformChanged) applyTransform();
                         renderTokens();
+                        renderOverlays();
+                        renderRuler();
                     }
                 }
             } catch (err) {

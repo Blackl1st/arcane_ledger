@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=MedievalSharp&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -28,13 +28,101 @@
                     fontFamily: {
                         display: ['Cinzel', 'serif'],
                         sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace']
+                        mono: ['JetBrains Mono', 'monospace'],
+                        cursive: ['"Great Vibes"', 'cursive'],
+                        blackletter: ['"MedievalSharp"', 'serif'],
+                        typewriter: ['"Courier Prime"', 'monospace']
                     }
                 }
             }
         }
     </script>
     <style>
+        /* In-World Handouts & Typography */
+        .font-handout-cursive { font-family: 'Great Vibes', 'Brush Script MT', 'Apple Chancery', cursive; }
+        .font-handout-blackletter { font-family: 'MedievalSharp', 'Cinzel', 'Palatino', serif; }
+        .font-handout-serif { font-family: 'Cinzel', Georgia, serif; }
+        .font-handout-chisel { font-family: 'MedievalSharp', 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+        .font-handout-typewriter { font-family: 'Courier Prime', 'Courier New', monospace; }
+
+        /* Authentic Parchment Styles */
+        .handout-paper-parchment {
+            background: radial-gradient(circle at center, #fbf6ec 0%, #eddcc3 70%, #d8be98 100%);
+            color: #1c1917;
+            border: 2px solid #b39775;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 35px rgba(120,70,20,0.18);
+        }
+        .handout-paper-burnt {
+            background: radial-gradient(circle at center, #ecdcc4 0%, #caa67b 55%, #5a3821 85%, #24140a 100%);
+            color: #1a0f07;
+            border: 2px dashed #452410;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9), inset 0 0 50px rgba(25,10,0,0.55);
+        }
+        .handout-paper-vellum {
+            background: radial-gradient(circle at center, #ffffff 0%, #f9f6ef 70%, #efe7d6 100%);
+            color: #0f172a;
+            border: 3px double #d97706;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 30px rgba(217,119,6,0.12);
+        }
+        .handout-paper-blood {
+            background: radial-gradient(circle at center, #f5efe6 0%, #dfd3c0 60%, #b3837c 85%, #6b1414 100%);
+            color: #200808;
+            border: 2px solid #881337;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 50px rgba(159,18,57,0.3);
+        }
+        .handout-paper-arcane {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 70%, #020617 100%);
+            color: #e0e7ff;
+            border: 2px solid #6366f1;
+            box-shadow: 0 0 35px rgba(99,102,241,0.35), inset 0 0 40px rgba(99,102,241,0.25);
+        }
+
+        /* Wax Seal 3D Styling */
+        .wax-seal {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.5);
+            border: 3px double rgba(255,255,255,0.25);
+            transform: rotate(-6deg);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .wax-seal:hover {
+            transform: rotate(0deg) scale(1.06);
+        }
+        .wax-seal-inner {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px dashed rgba(255,255,255,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .wax-seal-red {
+            background: radial-gradient(circle at 35% 35%, #dc2626, #991b1b 70%, #450a0a);
+        }
+        .wax-seal-gold {
+            background: radial-gradient(circle at 35% 35%, #fbbf24, #d97706 70%, #78350f);
+        }
+        .wax-seal-black {
+            background: radial-gradient(circle at 35% 35%, #475569, #0f172a 70%, #020617);
+        }
+        .wax-seal-green {
+            background: radial-gradient(circle at 35% 35%, #22c55e, #15803d 70%, #052e16);
+        }
+        .wax-seal-purple {
+            background: radial-gradient(circle at 35% 35%, #a855f7, #6b21a8 70%, #3b0764);
+        }
+
         body {
             background-color: #0f141c;
             color: #e2e8f0;
@@ -115,6 +203,9 @@
             border-radius: 0.25rem;
             padding: 2px 4px;
             margin: -2px -4px;
+        }
+        #dm-tokens-layer.tokens-tool-mode * {
+            pointer-events: none !important;
         }
         [contenteditable="true"]:hover:not(:focus) {
             background-color: rgba(255, 255, 255, 0.03);
@@ -361,6 +452,12 @@
                     <span class="sidebar-tooltip">Spells (360+) <kbd class="ml-1 text-[9px] text-slate-400 font-mono">Alt+0</kbd></span>
                 </button>
 
+                <button id="tab-btn-items" onclick="switchTab('items')" class="tab-btn w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-ledger-900 border border-transparent transition relative group/nav" title="Items & Equipment Compendium (Alt+I)">
+                    <span class="text-base shrink-0 w-6 text-center">⚔️</span>
+                    <span class="sidebar-text hidden text-xs font-semibold whitespace-nowrap">Items</span>
+                    <span class="sidebar-tooltip">Items Compendium <kbd class="ml-1 text-[9px] text-slate-400 font-mono">Alt+I</kbd></span>
+                </button>
+
                 <button id="tab-btn-rules" onclick="switchTab('rules')" class="tab-btn w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-ledger-900 border border-transparent transition relative group/nav" title="2024 Rules Engine (Alt+3)">
                     <span class="text-base shrink-0 w-6 text-center">📜</span>
                     <span class="sidebar-text hidden text-xs font-semibold whitespace-nowrap">2024 Rules</span>
@@ -513,8 +610,8 @@
                 <!-- Active Broadcast Status Pill (Pops up when broadcasting) -->
                 <div id="active-broadcast-pill" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-950 border border-sky-500/70 text-sky-300 text-xs font-semibold shadow">
                     <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
-                    <span class="truncate max-w-[100px]" id="active-broadcast-title">Live Art</span>
-                    <button onclick="dismissBroadcast()" class="text-slate-400 hover:text-rose-400 ml-1">✕</button>
+                    <span class="truncate max-w-[150px]" id="active-broadcast-title">Live Art</span>
+                    <button onclick="dismissBroadcast()" class="text-slate-400 hover:text-rose-400 ml-1 font-bold text-sm leading-none transition" title="Cancel / Dismiss Live Broadcast">✕</button>
                 </div>
 
                 <!-- Audio Preset Pill -->
@@ -1198,9 +1295,12 @@
                         </div>
 
                         <!-- Actions -->
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <button onclick="generateShop()" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-ledger-950 font-bold text-xs shadow flex items-center gap-1.5 transition active:scale-95">
                                 <span>🎲 Reroll Stock</span>
+                            </button>
+                            <button onclick="broadcastShopInventory()" class="px-3 py-1.5 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800 hover:border-sky-600 text-sky-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 shadow transition" title="Broadcast Shop Catalog to Player Screen">
+                                <span>📺</span> <span>Broadcast Shop</span>
                             </button>
                             <button onclick="copyShopMarkdown()" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-600 text-xs font-semibold flex items-center gap-1 transition">
                                 <span>Copy MD</span>
@@ -1437,7 +1537,7 @@
                 </div>
 
                 <!-- Subtab Switcher -->
-                <div class="flex items-center bg-ledger-900 border border-ledger-700 rounded-lg p-1 text-xs">
+                <div class="flex items-center bg-ledger-900 border border-ledger-700 rounded-lg p-1 text-xs flex-wrap gap-1">
                     <button id="world-subtab-locations" onclick="switchWorldSubtab('locations')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold bg-amber-500 text-ledger-950 transition">
                         🗺️ Locations
                     </button>
@@ -1446,6 +1546,14 @@
                     </button>
                     <button id="world-subtab-quests" onclick="switchWorldSubtab('quests')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition">
                         📜 Quests & Rumors
+                    </button>
+                    <button id="world-subtab-secrets" onclick="switchWorldSubtab('secrets')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5">
+                        <span>🔍</span> <span>Secrets & Clues</span>
+                        <span id="secrets-nav-badge" class="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">10</span>
+                    </button>
+                    <button id="world-subtab-handouts" onclick="switchWorldSubtab('handouts')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5">
+                        <span>📜</span> <span>Handouts & Letters</span>
+                        <span id="handouts-nav-badge" class="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">5</span>
                     </button>
                 </div>
             </div>
@@ -1545,6 +1653,161 @@
                     <div id="rumors-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <!-- Populated dynamically via renderRumors() -->
                     </div>
+                </div>
+
+            </div>
+
+            <!-- SUB-VIEW D: SECRETS & CLUES (LAZY DM PREP ENGINE) -->
+            <div id="world-panel-secrets" class="world-panel space-y-4 hidden">
+
+                <!-- Header & Progress Meter Bar -->
+                <div class="bg-ledger-900 border border-ledger-700/80 rounded-2xl p-4 shadow-lg space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-display font-bold text-base text-amber-400 flex items-center gap-2">
+                                    <span>🔍</span> Secrets & Clues Engine
+                                </h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                                    Lazy DM Prep
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Prepare revelations, lore discoveries, and plot clues without forcing a single path. Drop them whenever players investigate or succeed on skill checks.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button onclick="rollRandomSecret()" class="px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700 hover:border-purple-500 text-purple-200 text-xs font-semibold flex items-center gap-1.5 shadow transition" title="Pick a random unrevealed secret to drop right now!">
+                                <span>🎲</span> <span>Improv: Drop Clue</span>
+                            </button>
+                            <button onclick="generateSecretsBatch()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 border border-ledger-600 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Add 5 template prompts for session prep">
+                                <span>⚡</span> <span>+5 Prep Prompts</span>
+                            </button>
+                            <button onclick="openCustomSecretModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-ledger-950 font-bold text-xs shadow flex items-center gap-1.5 transition">
+                                <span>✨</span> <span>+ Add Secret</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar & Active Counters -->
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2 border-t border-ledger-800 items-center">
+                        <div class="sm:col-span-5 flex items-center gap-4 text-xs font-mono">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                                <span class="text-slate-400">Unrevealed:</span>
+                                <span id="secrets-stat-unrevealed" class="font-bold text-amber-300">0</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                                <span class="text-slate-400">Discovered:</span>
+                                <span id="secrets-stat-revealed" class="font-bold text-emerald-400">0</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-slate-500">Total:</span>
+                                <span id="secrets-stat-total" class="font-bold text-slate-300">0</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar Visual -->
+                        <div class="sm:col-span-7 flex items-center gap-3">
+                            <div class="flex-1 bg-ledger-950 rounded-full h-2.5 overflow-hidden border border-ledger-800">
+                                <div id="secrets-progress-bar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <span id="secrets-progress-percent" class="text-[11px] font-mono text-slate-400 font-semibold w-10 text-right">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Search, Status Filter & Category Filters -->
+                    <div class="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-ledger-800 text-xs">
+                        <div class="flex items-center gap-2 flex-wrap flex-1 min-w-[240px]">
+                            <input id="secret-search-input" oninput="filterSecrets()" type="text" placeholder="Search clues, NPCs, locations, or notes..." class="flex-1 min-w-[180px] bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                            <select id="secret-category-filter" onchange="filterSecrets()" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                                <option value="all">All Categories</option>
+                                <option value="Plot">Plot & Conspiracy</option>
+                                <option value="Lore">Lore & History</option>
+                                <option value="NPC">NPC Secrets</option>
+                                <option value="Location">Location & Dungeons</option>
+                                <option value="Faction">Faction Schemes</option>
+                                <option value="Danger">Threats & Hazards</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center bg-ledger-950 border border-ledger-800 rounded-lg p-0.5 text-[11px]">
+                            <button id="secret-filter-btn-all" onclick="setSecretStatusFilter('all')" class="secret-status-filter-btn px-2.5 py-1 rounded font-bold bg-amber-500 text-ledger-950 transition">All</button>
+                            <button id="secret-filter-btn-unrevealed" onclick="setSecretStatusFilter('unrevealed')" class="secret-status-filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">⏳ Unrevealed</button>
+                            <button id="secret-filter-btn-revealed" onclick="setSecretStatusFilter('revealed')" class="secret-status-filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">✓ Discovered</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Secrets Cards Grid -->
+                <div id="secrets-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Populated dynamically via renderSecrets() -->
+                </div>
+
+            </div>
+
+            <!-- SUB-VIEW E: IN-WORLD HANDOUTS & LETTERS GENERATOR -->
+            <div id="world-panel-handouts" class="world-panel space-y-4 hidden">
+
+                <!-- Header & Controls Banner -->
+                <div class="bg-ledger-900 border border-ledger-700/80 rounded-2xl p-4 shadow-lg space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">📜</span>
+                                <h3 class="font-display font-bold text-base text-amber-300">In-World Handout & Letter Generator</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Parchment & Ciphers</span>
+                            </div>
+                            <p class="text-xs text-slate-400">
+                                Forge authentic missives, burned journals, bounties, and decipherable coded notes. Broadcast with authentic parchment styling directly to player screens.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button onclick="openCustomHandoutModal()" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs flex items-center gap-1.5 shadow-lg transition">
+                                <span>+</span> <span>New Handout</span>
+                            </button>
+                            <button onclick="generateHandoutBatchPresets()" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition" title="Add 2 campaign-specific lore presets">
+                                <span>⚡</span> <span>+2 Lore Presets</span>
+                            </button>
+                            <button onclick="rollQuickMissive()" class="px-3 py-1.5 rounded-lg bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-700/60 text-xs font-semibold flex items-center gap-1.5 transition" title="Generate an improv tavern letter or mysterious clue">
+                                <span>🎲</span> <span>Quick Missive</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar & Search -->
+                    <div class="pt-3 border-t border-ledger-800 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-2 flex-1 flex-wrap">
+                            <div class="relative flex-1 min-w-[200px] max-w-sm">
+                                <input id="handout-search" oninput="filterHandouts()" type="text" placeholder="Search handouts, authors, content..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                                <span class="absolute left-2.5 top-2 text-slate-500">🔍</span>
+                            </div>
+                            <select id="handout-type-filter" onchange="filterHandouts()" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+                                <option value="all">All Document Types</option>
+                                <option value="letter">✉️ Sealed Letters & Missives</option>
+                                <option value="journal">📖 Torn Journal Pages</option>
+                                <option value="bounty">⚔️ Wanted Bounties</option>
+                                <option value="cipher">🔒 Coded Ciphers & Runes</option>
+                                <option value="scroll">✨ Magic Sigil Scrolls</option>
+                            </select>
+                            <select id="handout-theme-filter" onchange="filterHandouts()" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+                                <option value="all">All Paper Themes</option>
+                                <option value="parchment">📜 Aged Parchment</option>
+                                <option value="vellum">👑 Royal Vellum</option>
+                                <option value="burnt">🔥 Burnt Ash</option>
+                                <option value="blood">🩸 Bloodstained</option>
+                                <option value="arcane">🔮 Arcane Void</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-800 rounded-lg p-1">
+                            <button id="handout-filter-btn-all" onclick="setHandoutStatusFilter('all')" class="handout-status-filter-btn px-2.5 py-1 rounded bg-amber-500 text-ledger-950 font-bold transition">All (<span id="handout-count-all">0</span>)</button>
+                            <button id="handout-filter-btn-ready" onclick="setHandoutStatusFilter('ready')" class="handout-status-filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Ready</button>
+                            <button id="handout-filter-btn-delivered" onclick="setHandoutStatusFilter('delivered')" class="handout-status-filter-btn px-2.5 py-1 rounded text-slate-400 hover:text-white transition">Discovered</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Handouts Cards Grid -->
+                <div id="handouts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Populated dynamically via renderHandouts() -->
                 </div>
 
             </div>
@@ -2060,154 +2323,297 @@
         </section>
 
         <!-- ===============================================================
+             VIEW 10B: ITEMS & EQUIPMENT COMPENDIUM (SRD & CUSTOM HOMEBREW)
+             =============================================================== -->
+        <section id="view-items" class="tab-view hidden space-y-6">
+
+            <!-- Items Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-ledger-900/90 border border-ledger-700/80 p-4 rounded-2xl shadow-lg">
+                <div>
+                    <h2 class="font-display font-bold text-xl text-amber-400 flex items-center gap-2">
+                        <span>⚔️</span> Items & Equipment Compendium
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Official SRD weapons, armor, adventuring gear, potions, and magic items with 2024 masteries, plus full custom homebrew item support.</p>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <button type="button" id="btn-new-custom-item" onclick="openCustomItemModal()" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs flex items-center gap-1.5 shadow transition cursor-pointer">
+                        <span>✨</span> + New Custom Item
+                    </button>
+                    <span id="items-total-count" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 text-amber-300 font-mono text-xs border border-ledger-700">128 Items</span>
+                </div>
+            </div>
+
+            <!-- Search, Type, Rarity & Source Filter Bar -->
+            <div class="bg-ledger-900 border border-ledger-700 rounded-xl p-4 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Search Items</label>
+                        <input id="item-search-input" oninput="filterItemsList()" type="text" placeholder="e.g. Longsword, Flame Tongue, Healing..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Item Category</label>
+                        <select id="item-type-filter" onchange="filterItemsList()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
+                            <option value="all">All Categories</option>
+                            <option value="Weapon">Weapons</option>
+                            <option value="Armor">Armor & Shields</option>
+                            <option value="Potion">Potions & Oils</option>
+                            <option value="Ring">Rings</option>
+                            <option value="Rod">Rods</option>
+                            <option value="Staff">Staffs</option>
+                            <option value="Wand">Wands</option>
+                            <option value="Wondrous Item">Wondrous Items</option>
+                            <option value="Adventuring Gear">Adventuring Gear</option>
+                            <option value="Tool">Tools & Kits</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Rarity</label>
+                        <select id="item-rarity-filter" onchange="filterItemsList()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
+                            <option value="all">All Rarities</option>
+                            <option value="Mundane">Mundane / Standard</option>
+                            <option value="Common">Common</option>
+                            <option value="Uncommon">Uncommon</option>
+                            <option value="Rare">Rare</option>
+                            <option value="Very Rare">Very Rare</option>
+                            <option value="Legendary">Legendary</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-4 pt-5">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
+                            <input id="item-attunement-filter" onchange="filterItemsList()" type="checkbox" class="rounded border-ledger-700 text-amber-500 focus:ring-amber-500/30">
+                            <span>🔮 Attunement</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
+                            <input id="item-custom-only-filter" onchange="filterItemsList()" type="checkbox" class="rounded border-ledger-700 text-amber-500 focus:ring-amber-500/30">
+                            <span>⭐ Custom Only</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Category Quick Pills -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-ledger-800">
+                    <button onclick="setItemTypeFilter('all')" class="item-type-pill px-2.5 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold text-[11px] transition">All Items</button>
+                    <button onclick="setItemTypeFilter('Weapon')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">⚔️ Weapons</button>
+                    <button onclick="setItemTypeFilter('Armor')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">🛡️ Armor</button>
+                    <button onclick="setItemTypeFilter('Potion')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">🧪 Potions</button>
+                    <button onclick="setItemTypeFilter('Ring')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">💍 Rings</button>
+                    <button onclick="setItemTypeFilter('Wand')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">🪄 Wands & Staffs</button>
+                    <button onclick="setItemTypeFilter('Wondrous Item')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">✨ Wondrous</button>
+                    <button onclick="setItemTypeFilter('Adventuring Gear')" class="item-type-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">🎒 Gear & Tools</button>
+                </div>
+            </div>
+
+            <!-- Two-Column Layout: Items Directory & Selected Item Card -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Items Directory (7 cols) -->
+                <div class="lg:col-span-7 bg-ledger-900/90 border border-ledger-700 rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                    <div class="px-4 py-3 bg-ledger-950 border-b border-ledger-700 flex items-center justify-between text-xs font-semibold text-slate-300">
+                        <span>Item Name & Category</span>
+                        <div class="flex items-center gap-6 text-slate-400">
+                            <span>Cost / Weight</span>
+                            <span>Rarity</span>
+                        </div>
+                    </div>
+                    <div id="items-list-container" class="divide-y divide-ledger-800 max-h-[680px] overflow-y-auto">
+                        <!-- Populated dynamically via renderItemsDirectory() -->
+                    </div>
+                </div>
+
+                <!-- Selected Item Card Detail (5 cols) -->
+                <div class="lg:col-span-5">
+                    <div id="item-detail-card" class="bg-ledger-900 border border-ledger-700 rounded-2xl p-6 shadow-2xl sticky top-20 space-y-4 text-xs">
+                        <div class="text-center py-12 text-slate-500">
+                            <span class="text-4xl block mb-2">⚔️</span>
+                            <p>Select any item from the directory to inspect its stats, 2024 masteries, full description, and broadcasting options.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ===============================================================
              VIEW 11: TABLETOP BATTLEMAP & FOG OF WAR (3RD SCREEN IN-TABLE TV)
              =============================================================== -->
         <section id="view-battlemap" class="tab-view hidden space-y-4">
 
-            <!-- Top Header & Map Library Bar -->
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-ledger-900/90 border border-ledger-700/80 p-4 rounded-2xl shadow-lg">
-                <div>
-                    <h2 class="font-display font-bold text-xl text-amber-400 flex items-center gap-2">
-                        <span>🗺️</span> In-Table Battlemap & Fog of War
+            <!-- Top Header & Map Library Bar (Compact, Streamlined) -->
+            <div class="flex items-center justify-between gap-3 bg-ledger-900/90 border border-ledger-700/80 px-4 py-2.5 rounded-xl shadow-md">
+                <div class="flex items-center gap-3">
+                    <h2 class="font-display font-bold text-base text-amber-400 flex items-center gap-2">
+                        <span class="text-lg">🗺️</span>
+                        <span>Battlemap & Fog of War</span>
                     </h2>
-                    <p class="text-xs text-slate-400 mt-1">Dedicated 3rd-screen display for horizontal in-table TV. Dual-canvas God-mode masking, 1-inch physical miniature grid calibration, table rotation, and instant laser pings.</p>
+                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                        5.5e Table TV Engine
+                    </span>
                 </div>
                 
-                <div class="flex items-center gap-2.5 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
                     <!-- Map Selector -->
-                    <div class="flex items-center gap-1.5 bg-ledger-950 border border-ledger-700 px-3 py-1.5 rounded-xl text-xs">
-                        <span class="text-slate-400">Map:</span>
-                        <select id="dm-map-select" onchange="window.BattlemapController.onMapSelect(this.value)" class="bg-transparent text-amber-300 font-semibold focus:outline-none cursor-pointer">
+                    <div class="flex items-center gap-1.5 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs">
+                        <span class="text-slate-400 text-[11px]">Map:</span>
+                        <select id="dm-map-select" onchange="window.BattlemapController.onMapSelect(this.value)" class="bg-transparent text-amber-300 font-semibold focus:outline-none cursor-pointer text-xs">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
 
                     <!-- Upload Custom Map -->
                     <input type="file" id="dm-map-file-input" accept="image/*,.svg" class="hidden" onchange="window.BattlemapController.handleFileInput(this)">
-                    <button onclick="document.getElementById('dm-map-file-input').click()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition">
+                    <button onclick="document.getElementById('dm-map-file-input').click()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition" title="Upload custom map image (.jpg, .png, .webp, .svg)">
                         <span>📁</span>
-                        <span>Upload Map</span>
+                        <span class="hidden md:inline">Upload Map</span>
                     </button>
 
                     <!-- Launch Table Display -->
-                    <button onclick="openTabletopMapWindow()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition">
+                    <button onclick="openTabletopMapWindow()" class="px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition" title="Open player battlemap view in a separate window for your table TV">
                         <span>📺</span>
-                        <span>Launch Table Window (/map)</span>
+                        <span>Launch Table (/map)</span>
                     </button>
                 </div>
             </div>
 
-            <!-- DM Tactical Control Ribbon -->
-            <div class="bg-ledger-900 border border-ledger-700 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <!-- DM Tactical Control Ribbon (Single Clean Row) -->
+            <div class="bg-ledger-900 border border-ledger-700 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
                 
-                <!-- Left: Tools & Brush Controls -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <!-- Reveal Brush Tool -->
-                    <button id="dm-tool-btn-brush" onclick="window.BattlemapController.setTool('brush')" class="dm-tool-btn px-3 py-1.5 rounded-lg bg-amber-500 text-ledger-950 font-bold text-xs flex items-center gap-1.5 transition" title="Freehand brush to reveal fog">
+                <!-- Left: Segmented Tool Tabs -->
+                <div class="flex items-center bg-ledger-950 border border-ledger-800 p-0.5 rounded-xl shadow-inner">
+                    <!-- Reveal Brush -->
+                    <button id="dm-tool-btn-brush" onclick="window.BattlemapController.setTool('brush')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Reveal Fog Brush (Hotkey: B)">
                         <span>🖌️</span>
-                        <span>Reveal Brush</span>
+                        <span>Reveal</span>
                     </button>
 
-                    <!-- Brush Size Slider -->
-                    <div class="flex items-center gap-2 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs font-mono">
-                        <span class="text-slate-400 text-[11px]">Size:</span>
-                        <input type="range" id="dm-brush-size-slider" min="15" max="250" value="50" oninput="window.BattlemapController.setBrushRadius(this.value)" class="w-20 h-1 bg-ledger-700 accent-amber-500 cursor-pointer" title="Adjust Reveal/Shroud Brush Radius">
-                        <span id="dm-brush-size-label" class="text-amber-400 font-bold w-9 text-right text-[11px]">50px</span>
-                    </div>
-
-                    <!-- Room Box Reveal Tool -->
-                    <button id="dm-tool-btn-box" onclick="window.BattlemapController.setTool('box')" class="dm-tool-btn px-3 py-1.5 rounded-lg bg-ledger-800 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition" title="Drag a rectangle to instantly reveal a whole room">
+                    <!-- Room Box -->
+                    <button id="dm-tool-btn-box" onclick="window.BattlemapController.setTool('box')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Room Box Reveal (Hotkey: X)">
                         <span>🔲</span>
-                        <span>Room Box</span>
+                        <span>Box</span>
                     </button>
 
-                    <!-- Re-Shroud Tool -->
-                    <button id="dm-tool-btn-shroud" onclick="window.BattlemapController.setTool('shroud')" class="dm-tool-btn px-3 py-1.5 rounded-lg bg-ledger-800 text-slate-300 hover:text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition" title="Repaint pitch-black darkness over areas">
+                    <!-- Re-Shroud -->
+                    <button id="dm-tool-btn-shroud" onclick="window.BattlemapController.setTool('shroud')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Re-Shroud Fog (Hotkey: S)">
                         <span>⬛</span>
-                        <span>Re-Shroud</span>
+                        <span>Shroud</span>
                     </button>
 
-                    <!-- Laser Ping Tool -->
-                    <button id="dm-tool-btn-ping" onclick="window.BattlemapController.setTool('ping')" class="dm-tool-btn px-3 py-1.5 rounded-lg bg-ledger-800 text-slate-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Click to pulse an animated laser ping on DM and Table screens (Shortcut: Shift+Click)">
+                    <div class="h-4 w-px bg-ledger-800 mx-0.5"></div>
+
+                    <!-- Distance Ruler -->
+                    <button id="dm-tool-btn-ruler" onclick="window.BattlemapController.setTool('ruler')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Tactical Distance Ruler (Hotkey: M)">
+                        <span>📏</span>
+                        <span>Ruler</span>
+                    </button>
+
+                    <!-- Spell AoE -->
+                    <button id="dm-tool-btn-template" onclick="window.BattlemapController.setTool('template')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Spell AoE Overlays (Hotkey: T)">
+                        <span>✨</span>
+                        <span>Spell AoE</span>
+                    </button>
+
+                    <div class="h-4 w-px bg-ledger-800 mx-0.5"></div>
+
+                    <!-- Laser Ping -->
+                    <button id="dm-tool-btn-ping" onclick="window.BattlemapController.setTool('ping')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Laser Ping (Shortcut: Shift+Click)">
                         <span>🔴</span>
-                        <span>Laser Ping</span>
+                        <span>Ping</span>
                     </button>
+                </div>
 
-                    <div class="h-5 w-px bg-ledger-700 mx-1 hidden sm:block"></div>
-
-                    <!-- Quick Fog Actions -->
-                    <button onclick="window.BattlemapController.undo()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition" title="Undo last fog reveal/shroud stroke">
-                        <span>↩️</span>
-                        <span class="hidden sm:inline">Undo</span>
-                    </button>
-
-                    <button onclick="window.BattlemapController.revealAll()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold flex items-center gap-1 transition" title="Reveal entire map (for safe zones / towns)">
-                        <span>👁️</span>
-                        <span>Reveal All</span>
-                    </button>
-
-                    <button onclick="window.BattlemapController.resetFog()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-rose-900/40 text-rose-300 text-xs font-semibold flex items-center gap-1 transition" title="Reset entire map back to darkness">
-                        <span>🌑</span>
-                        <span>Shroud All</span>
-                    </button>
-
-                    <div class="h-5 w-px bg-ledger-700 mx-1 hidden sm:block"></div>
-
-                    <!-- Monster Token Spawner & Active Tokens Drawer Buttons -->
-                    <button onclick="window.BattlemapController.openTokenSpawnerModal()" class="px-3 py-1.5 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-700/80 text-xs font-bold flex items-center gap-1.5 shadow transition" title="Spawn monster token from the Bestiary onto battlemap">
+                <!-- Center: Token Spawner & Active Count -->
+                <div class="flex items-center gap-2">
+                    <button onclick="window.BattlemapController.openTokenSpawnerModal()" class="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-300 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow transition" title="Spawn monster token from Bestiary">
                         <span>👾</span>
-                        <span>+ Monster Token</span>
+                        <span>+ Monster</span>
                     </button>
 
-                    <button id="dm-tokens-drawer-btn" onclick="window.BattlemapController.toggleTokensDrawer()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-ledger-700 transition" title="View & manage active tokens">
+                    <button id="dm-tokens-drawer-btn" onclick="window.BattlemapController.toggleTokensDrawer()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-ledger-700 transition" title="Manage active tokens">
                         <span>👥</span>
                         <span>Tokens (<span id="dm-tokens-count">0</span>)</span>
                     </button>
                 </div>
 
-                <!-- Right: Table Screen Calibration (Grid, Rotation, Viewport Lock) -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <!-- Physical Grid Scale Slider -->
-                    <div class="flex items-center gap-2 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs font-mono" title="Calibrate grid square size to match 1-inch miniature bases on the glass">
-                        <label class="flex items-center gap-1 cursor-pointer">
-                            <input type="checkbox" id="dm-grid-visible-toggle" onchange="window.BattlemapController.toggleGrid(this.checked)" checked class="rounded bg-ledger-900 border-ledger-700 text-amber-500 focus:ring-0">
-                            <span class="text-slate-300 text-[11px] font-sans font-semibold">1" Grid:</span>
-                        </label>
-                        <input type="range" id="dm-grid-size-slider" min="25" max="150" value="50" oninput="window.BattlemapController.setGridSize(this.value)" class="w-18 h-1 bg-ledger-700 accent-amber-500 cursor-pointer">
-                        <span id="dm-grid-size-label" class="text-amber-400 font-bold w-9 text-right text-[11px]">50px</span>
-                    </div>
-
-                    <!-- Rotation Selector -->
-                    <div class="flex items-center gap-0.5 bg-ledger-950 border border-ledger-700 p-0.5 rounded-lg text-xs font-mono">
-                        <span class="text-[10px] text-slate-400 px-1">Rotate:</span>
-                        <button id="dm-rot-btn-0" onclick="window.BattlemapController.setRotation(0)" class="dm-rot-btn px-2 py-0.5 rounded bg-amber-500 text-ledger-950 font-bold">0°</button>
-                        <button id="dm-rot-btn-90" onclick="window.BattlemapController.setRotation(90)" class="dm-rot-btn px-2 py-0.5 rounded bg-ledger-800 text-slate-300">90°</button>
-                        <button id="dm-rot-btn-180" onclick="window.BattlemapController.setRotation(180)" class="dm-rot-btn px-2 py-0.5 rounded bg-ledger-800 text-slate-300">180°</button>
-                        <button id="dm-rot-btn-270" onclick="window.BattlemapController.setRotation(270)" class="dm-rot-btn px-2 py-0.5 rounded bg-ledger-800 text-slate-300">270°</button>
-                    </div>
-
-                    <!-- Viewport Lock -->
-                    <button id="dm-lock-viewport-btn" onclick="window.BattlemapController.toggleLock()" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-ledger-700 transition" title="Lock Table Viewport to prevent miniatures from shifting">
-                        <span>🔓</span>
-                        <span>Table Viewport Free</span>
-                    </button>
-
-                    <!-- Sync to Table -->
-                    <button onclick="window.BattlemapController.syncViewportToTable()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition" title="Center the table TV on your current DM view">
+                <!-- Right: Viewport Controls, Table Viewport Lock & Calibration Popover -->
+                <div class="flex items-center gap-2">
+                    <!-- Sync View to Table -->
+                    <button onclick="window.BattlemapController.syncViewportToTable()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition" title="Center table TV on current DM view">
                         <span>🧭</span>
-                        <span>Sync View</span>
+                        <span class="hidden sm:inline">Sync View</span>
                     </button>
 
-                    <!-- Fit to Workspace -->
-                    <button onclick="window.BattlemapController.fitMapToWorkspace()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition" title="Fit map to DM workspace">
+                    <!-- Fit to Workspace & Zoom Indicator -->
+                    <button onclick="window.BattlemapController.fitMapToWorkspace()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition" title="Fit map to workspace">
                         <span>🔍</span>
-                        <span>Fit</span>
+                        <span id="dm-zoom-display" class="font-mono text-[11px]">41%</span>
                     </button>
 
-                    <!-- Zoom Percentage -->
-                    <span id="dm-zoom-display" class="text-slate-400 font-mono text-[11px] px-1">55%</span>
+                    <!-- Table Viewport Lock -->
+                    <button id="dm-lock-viewport-btn" onclick="window.BattlemapController.toggleLock()" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border transition">
+                        <span>🔓</span>
+                        <span>Table Free</span>
+                    </button>
+
+                    <!-- Table Setup Popover Toggle Button -->
+                    <div class="relative">
+                        <button id="dm-table-settings-btn" onclick="window.BattlemapController.toggleTableSettingsModal()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition" title="Calibrate 1-inch physical grid, TV rotation, and screen settings">
+                            <span>⚙️</span>
+                            <span>Table Setup</span>
+                        </button>
+
+                        <!-- Table Calibration Dropdown Popover -->
+                        <div id="dm-table-calibration-popover" class="absolute right-0 top-10 z-50 w-72 bg-ledger-950/98 backdrop-blur-md border border-ledger-700 rounded-xl shadow-2xl p-3.5 hidden">
+                            <div class="flex items-center justify-between pb-2 border-b border-ledger-800 mb-3">
+                                <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                    <span>📺</span>
+                                    <span>Tabletop TV Calibration</span>
+                                </span>
+                                <button onclick="window.BattlemapController.toggleTableSettingsModal()" class="text-slate-400 hover:text-white text-xs px-1">✕</button>
+                            </div>
+                            
+                            <!-- 1" Physical Grid Scale -->
+                            <div class="mb-3">
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <label class="flex items-center gap-1.5 cursor-pointer">
+                                        <input type="checkbox" id="dm-grid-visible-toggle" onchange="window.BattlemapController.toggleGrid(this.checked)" checked class="rounded bg-ledger-900 border-ledger-700 text-amber-500 focus:ring-0">
+                                        <span class="text-slate-300 text-[11px] font-semibold">1" Grid Lines:</span>
+                                    </label>
+                                    <span id="dm-grid-size-label" class="text-amber-400 font-mono font-bold text-xs">50px</span>
+                                </div>
+                                <input type="range" id="dm-grid-size-slider" min="25" max="150" value="50" oninput="window.BattlemapController.setGridSize(this.value)" class="w-full h-1.5 bg-ledger-800 accent-amber-500 cursor-pointer">
+                                <p class="text-[10px] text-slate-500 mt-1">Match grid pixel size to 1" miniature bases on your TV glass.</p>
+                            </div>
+
+                            <!-- Table Screen Rotation -->
+                            <div class="mb-3">
+                                <span class="text-[11px] text-slate-300 font-semibold block mb-1.5">TV Orientation (Rotation):</span>
+                                <div class="grid grid-cols-4 gap-1.5 font-mono text-xs">
+                                    <button id="dm-rot-btn-0" onclick="window.BattlemapController.setRotation(0)" class="dm-rot-btn py-1 rounded bg-amber-500 text-ledger-950 font-bold">0°</button>
+                                    <button id="dm-rot-btn-90" onclick="window.BattlemapController.setRotation(90)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">90°</button>
+                                    <button id="dm-rot-btn-180" onclick="window.BattlemapController.setRotation(180)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">180°</button>
+                                    <button id="dm-rot-btn-270" onclick="window.BattlemapController.setRotation(270)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">270°</button>
+                                </div>
+                            </div>
+
+                            <!-- Quick Launch Link -->
+                            <div class="pt-2 border-t border-ledger-800">
+                                <button onclick="openTabletopMapWindow()" class="w-full py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                    <span>📺 Launch Table Window (/map)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
+            </div>
+
+            <!-- Dynamic Tool Context Inspector Bar (Auto-updates based on selected tool) -->
+            <div id="dm-aoe-ruler-toolbar" class="bg-ledger-900 border border-ledger-700/80 rounded-xl px-3 py-2 flex items-center shadow-md">
+                <!-- Dynamic Controls Container -->
+                <div id="dm-overlay-controls" class="w-full">
+                    <!-- Dynamic Tool Controls Injected Here by JavaScript -->
+                </div>
             </div>
 
             <!-- DM Dual-Canvas Interactive Workspace -->
@@ -3846,6 +4252,417 @@
         </div>
     </div>
 
+    <!-- 23. CREATE / EDIT CUSTOM ITEM MODAL -->
+    <div id="custom-item-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 id="custom-item-modal-title" class="font-display font-bold text-base text-amber-400 flex items-center gap-2">
+                    <span>✨</span> <span id="custom-item-modal-header-text">Create Custom Item</span>
+                </h3>
+                <button onclick="closeCustomItemModal()" class="text-slate-400 hover:text-white text-xs px-2 py-1">✕</button>
+            </div>
+
+            <form id="custom-item-form" onsubmit="saveCustomItem(event)" class="space-y-3.5 text-xs">
+                <input type="hidden" id="custom-item-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Item Name *</label>
+                        <input type="text" id="custom-item-name" required placeholder="e.g. Moonweaver's Blade" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Category *</label>
+                        <select id="custom-item-type" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <option value="Weapon">Weapon</option>
+                            <option value="Armor">Armor</option>
+                            <option value="Potion">Potion</option>
+                            <option value="Ring">Ring</option>
+                            <option value="Rod">Rod</option>
+                            <option value="Staff">Staff</option>
+                            <option value="Wand">Wand</option>
+                            <option value="Wondrous Item" selected>Wondrous Item</option>
+                            <option value="Adventuring Gear">Adventuring Gear</option>
+                            <option value="Tool">Tool / Kit</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Rarity</label>
+                        <select id="custom-item-rarity" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <option value="Mundane">Mundane</option>
+                            <option value="Common">Common</option>
+                            <option value="Uncommon" selected>Uncommon</option>
+                            <option value="Rare">Rare</option>
+                            <option value="Very Rare">Very Rare</option>
+                            <option value="Legendary">Legendary</option>
+                            <option value="Artifact">Artifact</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Cost</label>
+                        <input type="text" id="custom-item-cost" placeholder="e.g. 500 gp" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Weight</label>
+                        <input type="text" id="custom-item-weight" placeholder="e.g. 2 lb." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Attunement Requirement</label>
+                    <input type="text" id="custom-item-attunement" placeholder="Leave blank if none, or 'Requires Attunement by a Spellcaster'" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                </div>
+
+                <!-- Weapon/Armor Specific Fields -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-ledger-950/60 p-2.5 rounded-xl border border-ledger-800">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Damage (Weapons)</label>
+                        <input type="text" id="custom-item-damage" placeholder="e.g. 1d8 + 2" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Damage Type</label>
+                        <input type="text" id="custom-item-damage-type" placeholder="e.g. Slashing / Radiant" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">AC (Armor)</label>
+                        <input type="text" id="custom-item-ac" placeholder="e.g. AC 15 + Dex or +1 AC" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Properties & Mastery</label>
+                    <input type="text" id="custom-item-properties" placeholder="e.g. Finesse, Light, Vex (Mastery)" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Description & Magical Properties *</label>
+                    <textarea id="custom-item-desc" rows="4" required placeholder="Full mechanics, active abilities, lore, and spell charge details..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-3 text-white leading-relaxed font-serif"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-ledger-800">
+                    <button type="button" onclick="closeCustomItemModal()" class="px-4 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold transition flex items-center gap-1.5 shadow">
+                        <span>💾</span> Save Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 24. CREATE / EDIT SECRET & CLUE MODAL -->
+    <div id="custom-secret-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 id="custom-secret-modal-title" class="font-display font-bold text-base text-amber-400 flex items-center gap-2">
+                    <span>🔍</span> <span id="custom-secret-modal-header-text">Add Secret & Clue</span>
+                </h3>
+                <button type="button" onclick="closeCustomSecretModal()" class="text-slate-400 hover:text-white text-xs px-2 py-1">✕</button>
+            </div>
+
+            <form id="custom-secret-form" onsubmit="saveCustomSecret(event)" class="space-y-3.5 text-xs">
+                <input type="hidden" id="custom-secret-id">
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Secret or Clue *</label>
+                    <textarea id="custom-secret-text" rows="3" required placeholder="What piece of lore, hidden motive, ancient mystery, or vulnerability can players learn?" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-3 text-white leading-relaxed font-serif"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Category</label>
+                        <select id="custom-secret-category" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <option value="Plot" selected>Plot & Conspiracy</option>
+                            <option value="Lore">Lore & History</option>
+                            <option value="NPC">NPC Secret</option>
+                            <option value="Location">Location & Dungeon</option>
+                            <option value="Faction">Faction Scheme</option>
+                            <option value="Danger">Threat & Danger</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Status</label>
+                        <select id="custom-secret-status" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <option value="unrevealed" selected>⏳ Unrevealed</option>
+                            <option value="revealed">✓ Discovered by Players</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tied NPC</label>
+                        <input type="text" id="custom-secret-npc" placeholder="e.g. Bramwell Vance" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tied Location</label>
+                        <input type="text" id="custom-secret-location" placeholder="e.g. The Sunken Ward" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tied Faction</label>
+                        <input type="text" id="custom-secret-faction" placeholder="e.g. Obsidian Syndicate" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Discovery & Delivery Notes</label>
+                    <input type="text" id="custom-secret-notes" placeholder="e.g. DC 13 Investigation on the floodgate bronze gears, or tavern banter check" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-ledger-800">
+                    <button type="button" onclick="closeCustomSecretModal()" class="px-4 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold transition flex items-center gap-1.5 shadow">
+                        <span>💾</span> Save Secret
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 25. IMPROV RANDOM SECRET MODAL -->
+    <div id="random-secret-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-purple-500/70 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs relative overflow-hidden">
+            <div class="flex items-center justify-between border-b border-purple-500/30 pb-3">
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                    <span>🎲</span> Improv Clue: Drop to Players
+                </span>
+                <button type="button" onclick="closeModal('random-secret-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <div id="random-secret-content" class="space-y-3">
+                <!-- Dynamically populated -->
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-ledger-800 flex-wrap gap-2">
+                <button type="button" onclick="rollRandomSecret()" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-purple-300 font-semibold flex items-center gap-1 transition">
+                    <span>🎲</span> Reroll Another
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="random-secret-mark-discovered-btn" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">
+                        ✓ Mark Discovered
+                    </button>
+                    <button type="button" onclick="closeModal('random-secret-modal')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 transition">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 26. IN-WORLD HANDOUT FORGE & LIVE PREVIEW MODAL -->
+    <div id="custom-handout-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-3xl max-w-5xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 text-lg">📜</span>
+                    <div>
+                        <h3 id="custom-handout-modal-title" class="font-display font-bold text-base text-amber-400">In-World Handout Forge</h3>
+                        <p class="text-[11px] text-slate-400">Craft parchment letters, burned journals, bounties, and decipherable coded notes</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCustomHandoutModal()" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 transition">✕</button>
+            </div>
+
+            <form id="custom-handout-form" onsubmit="saveCustomHandout(event)" class="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
+                <input type="hidden" id="custom-handout-id">
+
+                <!-- LEFT COLUMN: Handout Settings & Text Form (7 cols) -->
+                <div class="lg:col-span-7 space-y-3.5 pr-1">
+                    
+                    <!-- Document Title & Type -->
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                        <div class="sm:col-span-7">
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Handout Title *</label>
+                            <input id="custom-handout-title" oninput="updateHandoutPreview()" type="text" required placeholder="e.g. Silas's Smuggling Ledger" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-amber-500 font-semibold">
+                        </div>
+                        <div class="sm:col-span-5">
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Document Type</label>
+                            <select id="custom-handout-type" onchange="onHandoutTypeChanged(true); updateHandoutPreview();" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-amber-500">
+                                <option value="letter">✉️ Sealed Letter</option>
+                                <option value="journal">📖 Torn Journal Page</option>
+                                <option value="bounty">⚔️ Wanted Bounty Poster</option>
+                                <option value="cipher">🔒 Coded Cipher & Runes</option>
+                                <option value="scroll">✨ Magic Sigil Scroll</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Theme, Typography & Wax Seal -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-ledger-950/70 border border-ledger-800 p-2.5 rounded-xl">
+                        <div>
+                            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Paper Theme</label>
+                            <select id="custom-handout-theme" onchange="updateHandoutPreview()" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-xs text-white">
+                                <option value="parchment">📜 Aged Parchment</option>
+                                <option value="vellum">👑 Royal Vellum</option>
+                                <option value="burnt">🔥 Burnt Ash</option>
+                                <option value="blood">🩸 Bloodstained</option>
+                                <option value="arcane">🔮 Arcane Void</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Font Style</label>
+                            <select id="custom-handout-font" onchange="updateHandoutPreview()" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-xs text-white">
+                                <option value="cursive">🖋️ Handwritten Cursive</option>
+                                <option value="blackletter">📜 Gothic Blackletter</option>
+                                <option value="serif">🏛️ Classic Serif</option>
+                                <option value="chisel">⛏️ Dwarven Runes / Chisel</option>
+                                <option value="typewriter">⌨️ Ledger Typewriter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Wax Seal Emblem</label>
+                            <div class="flex items-center gap-1.5">
+                                <select id="custom-handout-seal" onchange="updateHandoutPreview()" class="flex-1 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-xs text-white">
+                                    <option value="crown">👑 Crown</option>
+                                    <option value="skull">💀 Skull</option>
+                                    <option value="arcane">👁️ Arcane</option>
+                                    <option value="scales">⚖️ Scales</option>
+                                    <option value="daggers">🗡️ Daggers</option>
+                                    <option value="dragon">🐉 Dragon</option>
+                                    <option value="tree">🌳 Tree</option>
+                                    <option value="none">None</option>
+                                </select>
+                                <select id="custom-handout-seal-color" onchange="updateHandoutPreview()" class="w-20 bg-ledger-900 border border-ledger-700 rounded-lg px-1.5 py-1 text-[11px] text-white">
+                                    <option value="red">🔴 Red</option>
+                                    <option value="gold">🟡 Gold</option>
+                                    <option value="black">⚫ Black</option>
+                                    <option value="green">🟢 Green</option>
+                                    <option value="purple">🟣 Purple</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Author, Recipient & Date -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Author / Signer</label>
+                            <input id="custom-handout-author" oninput="updateHandoutPreview()" type="text" placeholder="e.g. Lady Cynthia" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Recipient</label>
+                            <input id="custom-handout-recipient" oninput="updateHandoutPreview()" type="text" placeholder="e.g. Captain Drake" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">In-World Date / Stamp</label>
+                            <input id="custom-handout-date" oninput="updateHandoutPreview()" type="text" placeholder="e.g. 22nd of Flamerule" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        </div>
+                    </div>
+
+                    <!-- Main Document Content -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[11px] font-semibold text-slate-300">Handout Body Text *</label>
+                            <span class="text-[10px] text-slate-500 font-mono">Use paragraphs or line breaks</span>
+                        </div>
+                        <textarea id="custom-handout-content" oninput="updateHandoutPreview()" rows="6" required placeholder="Compose the missive, confession, decree, or journal entry..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-3 text-white leading-relaxed font-serif text-xs"></textarea>
+                    </div>
+
+                    <!-- Optional Coded Cypher Settings Box -->
+                    <div id="custom-handout-cipher-settings" class="bg-ledger-950/90 border border-purple-800/60 rounded-xl p-3 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="custom-handout-is-coded" onchange="updateHandoutPreview()" class="rounded border-slate-700 text-purple-600 focus:ring-0 w-3.5 h-3.5">
+                                <span class="font-bold text-purple-300 text-[11px]">🔒 Encrypt as Decipherable Cipher / Runes</span>
+                            </label>
+                            <span class="text-[10px] text-slate-400">Players see encrypted runes until deciphered</span>
+                        </div>
+                        <div id="custom-handout-cipher-fields" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 border-t border-purple-900/40">
+                            <div>
+                                <label class="block text-[10px] text-slate-300 mb-1">Cipher Type</label>
+                                <select id="custom-handout-cipher-type" onchange="updateHandoutPreview()" class="w-full bg-ledger-900 border border-purple-800/80 rounded px-2 py-1 text-xs text-white">
+                                    <option value="runic">Elder Runes (ᚠᚢᚦᚬ)</option>
+                                    <option value="caesar">Caesar Shift</option>
+                                    <option value="redacted">Redacted (████)</option>
+                                    <option value="scramble">Anagram Scramble</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-300 mb-1">Investigation DC</label>
+                                <input id="custom-handout-cipher-dc" oninput="updateHandoutPreview()" type="number" min="5" max="30" value="14" class="w-full bg-ledger-900 border border-purple-800/80 rounded px-2 py-1 text-xs text-white font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-300 mb-1">Decipher Hint / Clue</label>
+                                <input id="custom-handout-cipher-hint" oninput="updateHandoutPreview()" type="text" placeholder="e.g. Futhark runes..." class="w-full bg-ledger-900 border border-purple-800/80 rounded px-2 py-1 text-xs text-white">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optional Bounty Settings Box -->
+                    <div id="custom-handout-bounty-settings" class="hidden bg-ledger-950/90 border border-amber-800/60 rounded-xl p-3 space-y-2.5">
+                        <div class="font-bold text-amber-300 text-[11px] flex items-center gap-1.5">
+                            <span>⚔️</span> <span>Wanted Bounty Details</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[10px] text-slate-300 mb-1">Reward Bounty Sum</label>
+                                <input id="custom-handout-bounty-reward" oninput="updateHandoutPreview()" type="text" placeholder="e.g. 500 Gold Dragons" class="w-full bg-ledger-900 border border-amber-800/80 rounded px-2.5 py-1 text-xs text-white font-mono font-bold text-amber-300">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-300 mb-1">Alleged Crimes</label>
+                                <input id="custom-handout-bounty-crimes" oninput="updateHandoutPreview()" type="text" placeholder="e.g. High Treason, Arson, Theft" class="w-full bg-ledger-900 border border-amber-800/80 rounded px-2.5 py-1 text-xs text-white">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Associated Setting Ties -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tied Location</label>
+                            <input id="custom-handout-location" type="text" placeholder="e.g. St. Jude's Crypt" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tied NPC</label>
+                            <input id="custom-handout-npc" type="text" placeholder="e.g. Silas the Scribe" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">DM Prep & Discovery Notes</label>
+                        <input id="custom-handout-notes" type="text" placeholder="e.g. Found in locked drawer after DC 15 Thieves' Tools check" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN: Real-Time WYSIWYG Handout Preview (5 cols) -->
+                <div class="lg:col-span-5 flex flex-col justify-between space-y-3 bg-ledger-950/80 p-3.5 rounded-2xl border border-ledger-800">
+                    <div>
+                        <div class="flex items-center justify-between pb-2 border-b border-ledger-800 mb-3">
+                            <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                                <span>👁️</span> <span>Live In-World Preview</span>
+                            </span>
+                            <button type="button" onclick="togglePreviewDecipherState()" id="preview-decipher-btn" class="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-800 transition">
+                                Decipher: Plaintext
+                            </button>
+                        </div>
+
+                        <!-- WYSIWYG Document Card Container -->
+                        <div id="handout-wysiwyg-container" class="rounded-2xl p-5 shadow-2xl relative overflow-hidden transition-all duration-300 min-h-[360px] flex flex-col justify-between">
+                            <!-- Populated dynamically via updateHandoutPreview() -->
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Buttons -->
+                    <div class="pt-3 border-t border-ledger-800 flex items-center justify-between gap-2 flex-wrap">
+                        <button type="button" onclick="closeCustomHandoutModal()" class="px-3.5 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">
+                            Cancel
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold shadow-lg transition">
+                                💾 Save Handout
+                            </button>
+                            <button type="button" onclick="saveAndBroadcastHandout(event)" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold shadow-lg transition flex items-center gap-1.5">
+                                <span>📡</span> <span>Save & Broadcast</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
     <!-- FLOATING DICE ROLL HUD OVERLAY -->
     <div id="dice-roll-overlay" onclick="dismissDiceOverlay()" class="overlay-hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#0b0f17]/95 border-2 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_30px_rgba(245,158,11,0.35)] backdrop-blur-xl transition cursor-pointer select-none">
         <!-- Animated Polyhedral Die Icon -->
@@ -3880,11 +4697,11 @@
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- SCRIPTS -->
-    <script src="/static/js/audio_engine.js"></script>
-    <script src="/static/js/lighting_engine.js"></script>
-    <script src="/static/js/npc_data.js"></script>
-    <script src="/static/js/loot_data.js"></script>
-    <script src="/static/js/dashboard.js"></script>
-    <script src="/static/js/battlemap_controller.js"></script>
+    <script src="/static/js/audio_engine.js?v=2.5"></script>
+    <script src="/static/js/lighting_engine.js?v=2.5"></script>
+    <script src="/static/js/npc_data.js?v=2.5"></script>
+    <script src="/static/js/loot_data.js?v=2.5"></script>
+    <script src="/static/js/dashboard.js?v=2.7"></script>
+    <script src="/static/js/battlemap_controller.js?v=2.5"></script>
 </body>
 </html>

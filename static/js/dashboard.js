@@ -79,6 +79,16 @@ let appState = {
     factions: [],
     quests: [],
     rumors: [],
+    secrets: [],
+    secretStatusFilter: 'all',
+    secretCategoryFilter: 'all',
+    secretSearchQuery: '',
+    handouts: [],
+    handoutTypeFilter: 'all',
+    handoutThemeFilter: 'all',
+    handoutStatusFilter: 'all',
+    handoutSearchQuery: '',
+    previewDecipherState: false,
     worldActiveSubtab: 'locations',
     revealedSecrets: {},
     bestiarySearchQuery: '',
@@ -108,7 +118,15 @@ let appState = {
     encounterSearchQuery: '',
     encounterCrFilter: 'all',
     encounterTypeFilter: 'all',
-    lighting: null
+    lighting: null,
+    // Compendium: Items & Equipment state
+    items: [],
+    selectedItemId: null,
+    itemFilterType: 'all',
+    itemFilterRarity: 'all',
+    itemFilterAttunement: false,
+    itemFilterCustomOnly: false,
+    itemSearchQuery: ''
 };
 window.appState = appState;
 
@@ -178,6 +196,8 @@ async function fetchFullState() {
             if (data.factions) appState.factions = data.factions;
             if (data.quests) appState.quests = data.quests;
             if (data.rumors) appState.rumors = data.rumors;
+            if (data.secrets) appState.secrets = data.secrets;
+            if (data.handouts) appState.handouts = data.handouts;
             if (data.broadcast !== undefined) {
                 appState.broadcast = data.broadcast;
                 renderBroadcastPill();
@@ -192,6 +212,10 @@ async function fetchFullState() {
             if (data.spells && data.spells.length > 0) {
                 appState.spells = data.spells;
                 if (!appState.selectedSpellId) appState.selectedSpellId = data.spells[0].id;
+            }
+            if (data.items && data.items.length > 0) {
+                appState.items = data.items;
+                if (!appState.selectedItemId) appState.selectedItemId = data.items[0].id;
             }
             if (data.encounters) {
                 appState.encounters = data.encounters;
@@ -307,6 +331,7 @@ const TAB_TITLES = {
     'bestiary': { icon: '🐉', title: '5.5e Bestiary' },
     'encounters': { icon: '⚖️', title: 'Encounter Builder' },
     'spells': { icon: '📖', title: 'Spells Compendium' },
+    'items': { icon: '⚔️', title: 'Items Compendium' },
     'rules': { icon: '📜', title: '2024 Rules Engine' },
     'world': { icon: '🏰', title: 'World, Factions & Quests' },
     'npcs': { icon: '👤', title: 'NPC Generator & Roster' },
@@ -362,6 +387,8 @@ function switchTab(tab) {
         renderEncountersView();
     } else if (tab === 'spells') {
         renderSpellsView();
+    } else if (tab === 'items') {
+        renderItemsView();
     } else if (tab === 'battlemap') {
         if (window.BattlemapController) {
             window.BattlemapController.init();
@@ -2735,6 +2762,56 @@ function copyShopMarkdown() {
     copyTextToClipboard(md, `Copied ${shop.name} inventory as Markdown!`);
 }
 
+async function broadcastShopInventory() {
+    const shop = appState.currentShop;
+    if (!shop || !shop.items || shop.items.length === 0) {
+        showToast("No active shop inventory to broadcast. Reroll or load a shop first!", "warning");
+        return;
+    }
+
+    const sub = `${shop.desc} • Settlement: ${shop.tier.toUpperCase()} (${Math.round(shop.multiplier * 100)}% Pricing)`;
+    const textLines = [
+        `Merchant Catalog: ${shop.name}`,
+        sub,
+        '',
+        ...shop.items.map((item, idx) => 
+            `${idx + 1}. ${item.name} (${item.type}) — ${item.finalCost} ${item.unit} (Stock: ${item.qty})\n   ${item.desc || 'Standard merchant ware'}`
+        )
+    ].join('\n\n');
+
+    const payload = {
+        active: true,
+        title: shop.name || 'Merchant Shop',
+        subtitle: sub,
+        content: textLines,
+        type: 'shop',
+        imageUrl: '',
+        items: shop.items
+    };
+
+    try {
+        const res = await fetch('/api/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            appState.broadcast = data.broadcast || payload;
+            renderBroadcastPill();
+            showToast(`🛒 Broadcasted "${shop.name}" inventory to player display!`, "success");
+            if (window.TabletopAudio) {
+                TabletopAudio.playSecret();
+            }
+        } else {
+            showToast("Failed to broadcast shop inventory.", "error");
+        }
+    } catch (e) {
+        console.error("Error broadcasting shop inventory:", e);
+        showToast("Error broadcasting shop inventory.", "error");
+    }
+}
+
 function generateIndividualLoot(crTier) {
     const table = INDIVIDUAL_LOOT_TABLES[crTier];
     if (!table) return;
@@ -3635,6 +3712,8 @@ function switchWorldSubtab(subtab) {
     if (subtab === 'locations') renderLocations();
     else if (subtab === 'factions') renderFactions();
     else if (subtab === 'quests') renderQuests();
+    else if (subtab === 'secrets') renderSecrets();
+    else if (subtab === 'handouts') renderHandouts();
 }
 
 function renderWorldView() {
@@ -4533,6 +4612,1305 @@ async function deleteRumor(id) {
         showToast("Error removing rumor.", "error");
     }
 }
+
+// -----------------------------------------------------------------------------
+// SECRETS & CLUES CONTROLLER (LAZY DM ENGINE)
+// -----------------------------------------------------------------------------
+
+function getSecretCategoryBadge(cat) {
+    const c = (cat || 'Plot').toLowerCase();
+    switch (c) {
+        case 'plot':
+            return 'bg-amber-950/80 text-amber-300 border-amber-600/60';
+        case 'lore':
+            return 'bg-sky-950/80 text-sky-300 border-sky-600/60';
+        case 'npc':
+            return 'bg-purple-950/80 text-purple-300 border-purple-600/60';
+        case 'location':
+            return 'bg-emerald-950/80 text-emerald-300 border-emerald-600/60';
+        case 'faction':
+            return 'bg-indigo-950/80 text-indigo-300 border-indigo-600/60';
+        case 'danger':
+            return 'bg-rose-950/80 text-rose-300 border-rose-600/60';
+        default:
+            return 'bg-slate-800 text-slate-300 border-slate-700';
+    }
+}
+
+async function renderSecrets() {
+    if (!appState.secrets || appState.secrets.length === 0) {
+        try {
+            const res = await fetch('/api/secrets');
+            if (res.ok) {
+                appState.secrets = await res.json();
+            }
+        } catch (e) {
+            console.error("Error fetching secrets:", e);
+        }
+    }
+
+    const secrets = appState.secrets || [];
+    const container = document.getElementById('secrets-grid');
+    if (!container) return;
+
+    // Update stats counters
+    const unrevealedCount = secrets.filter(s => s.status === 'unrevealed').length;
+    const revealedCount = secrets.filter(s => s.status === 'revealed').length;
+    const totalCount = secrets.length;
+    const pct = totalCount > 0 ? Math.round((revealedCount / totalCount) * 100) : 0;
+
+    const unrevEl = document.getElementById('secrets-stat-unrevealed');
+    const revEl = document.getElementById('secrets-stat-revealed');
+    const totEl = document.getElementById('secrets-stat-total');
+    const barEl = document.getElementById('secrets-progress-bar');
+    const pctEl = document.getElementById('secrets-progress-percent');
+    const navBadge = document.getElementById('secrets-nav-badge');
+
+    if (unrevEl) unrevEl.textContent = unrevealedCount;
+    if (revEl) revEl.textContent = revealedCount;
+    if (totEl) totEl.textContent = totalCount;
+    if (barEl) barEl.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (navBadge) navBadge.textContent = `${unrevealedCount} left`;
+
+    // Filter list
+    let list = secrets;
+    if (appState.secretStatusFilter === 'unrevealed') {
+        list = list.filter(s => s.status === 'unrevealed');
+    } else if (appState.secretStatusFilter === 'revealed') {
+        list = list.filter(s => s.status === 'revealed');
+    }
+
+    if (appState.secretCategoryFilter && appState.secretCategoryFilter !== 'all') {
+        list = list.filter(s => (s.category || '').toLowerCase() === appState.secretCategoryFilter.toLowerCase());
+    }
+
+    if (appState.secretSearchQuery) {
+        const q = appState.secretSearchQuery.toLowerCase();
+        list = list.filter(s => 
+            (s.text || '').toLowerCase().includes(q) ||
+            (s.tiedNpc || '').toLowerCase().includes(q) ||
+            (s.tiedLocation || '').toLowerCase().includes(q) ||
+            (s.tiedFaction || '').toLowerCase().includes(q) ||
+            (s.sessionNotes || '').toLowerCase().includes(q)
+        );
+    }
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full py-12 px-4 text-center border-2 border-dashed border-ledger-800 rounded-2xl space-y-2 text-slate-500 text-xs">
+                <span class="text-3xl block">🔍</span>
+                <p class="font-semibold text-slate-400">No secrets found matching filters.</p>
+                <p>Click <strong class="text-amber-400">+ Add Secret</strong> or <strong class="text-amber-400">+5 Prep Prompts</strong> to prepare revelations for this session.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = list.map(sec => {
+        const isRevealed = sec.status === 'revealed';
+        const badgeClass = getSecretCategoryBadge(sec.category);
+        const tags = [
+            sec.tiedLocation ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-emerald-300 text-[10px]">📍 ${escapeHTML(sec.tiedLocation)}</span>` : '',
+            sec.tiedNpc ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-purple-300 text-[10px]">👤 ${escapeHTML(sec.tiedNpc)}</span>` : '',
+            sec.tiedFaction ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-indigo-300 text-[10px]">⚖️ ${escapeHTML(sec.tiedFaction)}</span>` : ''
+        ].filter(Boolean).join('');
+
+        return `
+            <div class="rounded-2xl p-4 flex flex-col justify-between space-y-3 transition border ${isRevealed ? 'bg-ledger-950/70 border-emerald-900/60 opacity-90' : 'bg-ledger-900/90 border-ledger-700/80 hover:border-amber-500/50 shadow-lg'}">
+                <div class="space-y-2">
+                    <!-- Top Badge Bar -->
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider border ${badgeClass}">
+                                ${escapeHTML(sec.category || 'Plot')}
+                            </span>
+                            ${isRevealed ? `
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-emerald-950 text-emerald-300 border border-emerald-700 flex items-center gap-1">
+                                    <span>✓</span> <span>Discovered</span>
+                                </span>
+                            ` : `
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-amber-950/60 text-amber-300 border border-amber-800/60 flex items-center gap-1">
+                                    <span>⏳</span> <span>Unrevealed</span>
+                                </span>
+                            `}
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="toggleSecretStatus('${sec.id}')" title="${isRevealed ? 'Mark as Unrevealed' : 'Mark as Discovered by Party'}" class="px-2 py-1 rounded-lg text-xs font-semibold transition ${isRevealed ? 'bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800' : 'bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold'}">
+                                ${isRevealed ? '✓ Revealed' : '👁️ Reveal'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Secret Revelation Text -->
+                    <p class="font-serif text-sm leading-relaxed ${isRevealed ? 'text-slate-300' : 'text-slate-100 font-medium'}">
+                        “${escapeHTML(sec.text)}”
+                    </p>
+
+                    <!-- Associated Tags -->
+                    ${tags ? `<div class="flex items-center gap-1.5 flex-wrap pt-1">${tags}</div>` : ''}
+
+                    <!-- Discovery Notes (if any) -->
+                    ${sec.sessionNotes ? `
+                        <div class="bg-ledger-950/80 p-2 rounded-xl border border-ledger-800/80 text-[11px] text-slate-400 flex items-start gap-1.5">
+                            <span class="text-amber-400 font-bold">💡</span>
+                            <span class="leading-snug">${escapeHTML(sec.sessionNotes)}</span>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Card Actions Toolbar -->
+                <div class="flex items-center justify-between gap-1.5 pt-2 border-t border-ledger-800/80 text-[11px] flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="convertSecretToRumor('${sec.id}')" title="Copy to Tavern Rumors corkboard" class="px-2.5 py-1 rounded-lg bg-ledger-950 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 flex items-center gap-1 transition">
+                            <span>📜</span> <span>Pin Rumor</span>
+                        </button>
+                        <button onclick="broadcastSecretCard('${sec.id}')" title="Broadcast as Handout to Player Screen" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-300 flex items-center gap-1 transition">
+                            <span>📺</span> <span>Broadcast</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="openCustomSecretModal('${sec.id}')" title="Edit Secret" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-ledger-800 transition">
+                            ✏️
+                        </button>
+                        <button onclick="deleteCustomSecret('${sec.id}')" title="Delete Secret" class="px-2 py-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-ledger-800 transition">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterSecrets() {
+    appState.secretSearchQuery = document.getElementById('secret-search-input')?.value.trim() || '';
+    appState.secretCategoryFilter = document.getElementById('secret-category-filter')?.value || 'all';
+    renderSecrets();
+}
+
+function setSecretStatusFilter(status) {
+    appState.secretStatusFilter = status;
+    document.querySelectorAll('.secret-status-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold');
+        btn.classList.add('text-slate-400');
+    });
+    const btn = document.getElementById(`secret-filter-btn-${status}`);
+    if (btn) {
+        btn.classList.remove('text-slate-400');
+        btn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold');
+    }
+    renderSecrets();
+}
+
+async function toggleSecretStatus(secretId) {
+    try {
+        const res = await fetch(`/api/secrets/${secretId}/toggle`, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            const s = (appState.secrets || []).find(x => x.id === secretId);
+            if (s) {
+                s.status = data.secret.status;
+                s.revealedAt = data.secret.revealedAt;
+            }
+            renderSecrets();
+            showToast(data.secret.status === 'revealed' ? "✓ Secret marked as discovered!" : "⏳ Secret marked as unrevealed", "info");
+        }
+    } catch (e) {
+        showToast("Error updating secret status", "error");
+    }
+}
+
+function openCustomSecretModal(secretId = null) {
+    const modal = document.getElementById('custom-secret-modal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('custom-secret-modal-header-text');
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val !== undefined && val !== null ? val : '';
+    };
+
+    if (secretId) {
+        const s = (appState.secrets || []).find(x => x.id === secretId);
+        if (s) {
+            if (titleEl) titleEl.textContent = "Edit Secret & Clue";
+            setVal('custom-secret-id', s.id);
+            setVal('custom-secret-text', s.text);
+            setVal('custom-secret-category', s.category || 'Plot');
+            setVal('custom-secret-status', s.status || 'unrevealed');
+            setVal('custom-secret-npc', s.tiedNpc || '');
+            setVal('custom-secret-location', s.tiedLocation || '');
+            setVal('custom-secret-faction', s.tiedFaction || '');
+            setVal('custom-secret-notes', s.sessionNotes || '');
+        }
+    } else {
+        if (titleEl) titleEl.textContent = "Add Secret & Clue";
+        setVal('custom-secret-id', '');
+        document.getElementById('custom-secret-form')?.reset();
+        setVal('custom-secret-category', 'Plot');
+        setVal('custom-secret-status', 'unrevealed');
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeCustomSecretModal() {
+    const modal = document.getElementById('custom-secret-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+async function saveCustomSecret(e) {
+    if (e) e.preventDefault();
+    const id = document.getElementById('custom-secret-id')?.value.trim();
+    const text = document.getElementById('custom-secret-text')?.value.trim();
+    if (!text) {
+        showToast("Please enter secret text", "error");
+        return;
+    }
+
+    const payload = {
+        text: text,
+        category: document.getElementById('custom-secret-category')?.value || 'Plot',
+        status: document.getElementById('custom-secret-status')?.value || 'unrevealed',
+        tiedNpc: document.getElementById('custom-secret-npc')?.value.trim() || '',
+        tiedLocation: document.getElementById('custom-secret-location')?.value.trim() || '',
+        tiedFaction: document.getElementById('custom-secret-faction')?.value.trim() || '',
+        sessionNotes: document.getElementById('custom-secret-notes')?.value.trim() || ''
+    };
+    if (id) payload.id = id;
+
+    try {
+        const res = await fetch('/api/secrets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const saved = data.secret;
+            if (!appState.secrets) appState.secrets = [];
+            const idx = appState.secrets.findIndex(x => x.id === saved.id);
+            if (idx !== -1) {
+                appState.secrets[idx] = saved;
+            } else {
+                appState.secrets.unshift(saved);
+            }
+            closeCustomSecretModal();
+            renderSecrets();
+            showToast("Saved secret & clue!", "success");
+        }
+    } catch (err) {
+        showToast("Error saving secret", "error");
+    }
+}
+
+async function deleteCustomSecret(secretId) {
+    if (!confirm("Are you sure you want to delete this secret?")) return;
+    try {
+        const res = await fetch(`/api/secrets/${secretId}`, { method: 'DELETE' });
+        if (res.ok) {
+            appState.secrets = (appState.secrets || []).filter(s => s.id !== secretId);
+            renderSecrets();
+            showToast("Secret deleted.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting secret", "error");
+    }
+}
+
+async function convertSecretToRumor(secretId) {
+    try {
+        const res = await fetch(`/api/secrets/${secretId}/to-rumor`, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            const s = (appState.secrets || []).find(x => x.id === secretId);
+            if (s) s.status = 'revealed';
+            if (!appState.rumors) appState.rumors = [];
+            appState.rumors.unshift(data.rumor);
+            renderSecrets();
+            renderRumors();
+            showToast("📜 Pinned secret as a Tavern Rumor & marked as discovered!", "success");
+        }
+    } catch (e) {
+        showToast("Error pinning secret to rumors", "error");
+    }
+}
+
+async function broadcastSecretCard(secretId) {
+    const s = (appState.secrets || []).find(x => x.id === secretId);
+    if (!s) return;
+
+    let sub = `Discovery • ${s.category || 'Clue'}`;
+    if (s.tiedLocation) sub += ` — ${s.tiedLocation}`;
+
+    await broadcastHandout("Campaign Clue & Discovery", sub, s.text, 'lore');
+}
+
+function rollRandomSecret() {
+    const unrevealed = (appState.secrets || []).filter(s => s.status === 'unrevealed');
+    if (unrevealed.length === 0) {
+        showToast("All secrets have been discovered! Add new secrets to prep your session.", "info");
+        return;
+    }
+
+    const picked = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+    const modal = document.getElementById('random-secret-modal');
+    const content = document.getElementById('random-secret-content');
+    const btn = document.getElementById('random-secret-mark-discovered-btn');
+    if (!modal || !content) return;
+
+    const badgeClass = getSecretCategoryBadge(picked.category);
+    content.innerHTML = `
+        <div class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border ${badgeClass}">
+                    ${escapeHTML(picked.category || 'Plot')}
+                </span>
+                ${picked.tiedLocation ? `<span class="text-[11px] text-slate-400 font-mono">📍 ${escapeHTML(picked.tiedLocation)}</span>` : ''}
+            </div>
+
+            <div class="bg-ledger-950 p-4 rounded-xl border border-purple-500/40 shadow-inner">
+                <p class="font-serif text-sm text-slate-100 leading-relaxed font-medium">
+                    “${escapeHTML(picked.text)}”
+                </p>
+            </div>
+
+            ${picked.sessionNotes ? `
+                <div class="bg-ledger-950/60 p-2.5 rounded-xl border border-ledger-800 text-[11px] text-slate-400">
+                    <strong class="text-amber-400">DM Prep Advice:</strong> ${escapeHTML(picked.sessionNotes)}
+                </div>
+            ` : ''}
+
+            <div class="flex items-center gap-2 pt-1">
+                <button onclick="broadcastSecretCard('${picked.id}')" class="px-3 py-1.5 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-300 text-xs font-semibold flex items-center gap-1 transition">
+                    <span>📺</span> Broadcast Handout
+                </button>
+                <button onclick="convertSecretToRumor('${picked.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-950 hover:bg-ledger-800 border border-ledger-700 text-amber-300 text-xs font-semibold flex items-center gap-1 transition">
+                    <span>📜</span> Pin as Rumor
+                </button>
+            </div>
+        </div>
+    `;
+
+    if (btn) {
+        btn.onclick = async () => {
+            await toggleSecretStatus(picked.id);
+            closeModal('random-secret-modal');
+        };
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+async function generateSecretsBatch() {
+    try {
+        const res = await fetch('/api/secrets/batch-template', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            appState.secrets = data.secrets;
+            renderSecrets();
+            showToast(`Added ${data.added} prompt templates for session prep!`, "success");
+        }
+    } catch (e) {
+        showToast("Error generating secret templates", "error");
+    }
+}
+
+// Global window exposure for Secrets & Clues Engine
+window.renderSecrets = renderSecrets;
+window.filterSecrets = filterSecrets;
+window.setSecretStatusFilter = setSecretStatusFilter;
+window.toggleSecretStatus = toggleSecretStatus;
+window.openCustomSecretModal = openCustomSecretModal;
+window.closeCustomSecretModal = closeCustomSecretModal;
+window.saveCustomSecret = saveCustomSecret;
+window.deleteCustomSecret = deleteCustomSecret;
+window.convertSecretToRumor = convertSecretToRumor;
+window.broadcastSecretCard = broadcastSecretCard;
+window.rollRandomSecret = rollRandomSecret;
+window.generateSecretsBatch = generateSecretsBatch;
+window.getSecretCategoryBadge = getSecretCategoryBadge;
+
+// =============================================================================
+// IN-WORLD HANDOUTS & LETTERS ENGINE (PARCHMENT, CIPHERS, BOUNTIES & SEALS)
+// =============================================================================
+
+const RUNIC_MAP = {
+    'A': 'ᚪ', 'B': 'ᛒ', 'C': 'ᚳ', 'D': 'ᛞ', 'E': 'ᛖ', 'F': 'ᚠ', 'G': 'ᚷ',
+    'H': 'ᚻ', 'I': 'ᛁ', 'J': 'ᛃ', 'K': 'ᚲ', 'L': 'ᛚ', 'M': 'ᛗ', 'N': 'ᚾ',
+    'O': 'ᚩ', 'P': 'ᛈ', 'Q': 'ᛩ', 'R': 'ᚱ', 'S': 'ᛋ', 'T': 'ᛏ', 'U': 'ᚢ',
+    'V': 'ᚡ', 'W': 'ᚹ', 'X': 'ᛪ', 'Y': 'ᚣ', 'Z': 'ᛉ',
+    'a': 'ᚪ', 'b': 'ᛒ', 'c': 'ᚳ', 'd': 'ᛞ', 'e': 'ᛖ', 'f': 'ᚠ', 'g': 'ᚷ',
+    'h': 'ᚻ', 'i': 'ᛁ', 'j': 'ᛃ', 'k': 'ᚲ', 'l': 'ᛚ', 'm': 'ᛗ', 'n': 'ᚾ',
+    'o': 'ᚩ', 'p': 'ᛈ', 'q': 'ᛩ', 'r': 'ᚱ', 's': 'ᛋ', 't': 'ᛏ', 'u': 'ᚢ',
+    'v': 'ᚡ', 'w': 'ᚹ', 'x': 'ᛪ', 'y': 'ᚣ', 'z': 'ᛉ'
+};
+
+function applyCipher(text, type, shift = 3) {
+    if (!text) return '';
+    if (type === 'runic') {
+        return text.split('').map(char => RUNIC_MAP[char] || char).join('');
+    } else if (type === 'caesar') {
+        const s = parseInt(shift, 10) || 3;
+        return text.split('').map(char => {
+            const code = char.charCodeAt(0);
+            if (code >= 65 && code <= 90) {
+                return String.fromCharCode(((code - 65 + s) % 26 + 26) % 26 + 65);
+            } else if (code >= 97 && code <= 122) {
+                return String.fromCharCode(((code - 97 + s) % 26 + 26) % 26 + 97);
+            }
+            return char;
+        }).join('');
+    } else if (type === 'redacted') {
+        return text.replace(/\b[A-Za-z]{4,}\b/g, (match, offset) => {
+            return (offset % 2 === 0) ? '█'.repeat(match.length) : match;
+        });
+    } else if (type === 'scramble') {
+        return text.split(' ').map(word => {
+            if (word.length <= 3) return word;
+            const mid = word.slice(1, -1).split('').sort(() => 0.5 - Math.random()).join('');
+            return word[0] + mid + word[word.length - 1];
+        }).join(' ');
+    }
+    return text;
+}
+
+function getHandoutTypeBadge(type) {
+    const t = (type || 'letter').toLowerCase();
+    if (t === 'letter') return { label: '✉️ Sealed Letter', badge: 'bg-sky-950 text-sky-300 border-sky-800' };
+    if (t === 'journal') return { label: '📖 Torn Journal', badge: 'bg-amber-950 text-amber-300 border-amber-800' };
+    if (t === 'bounty') return { label: '⚔️ Bounty Notice', badge: 'bg-rose-950 text-rose-300 border-rose-800' };
+    if (t === 'cipher') return { label: '🔒 Coded Cipher', badge: 'bg-purple-950 text-purple-300 border-purple-800' };
+    if (t === 'scroll') return { label: '✨ Sigil Scroll', badge: 'bg-indigo-950 text-indigo-300 border-indigo-800' };
+    return { label: '📜 Handout', badge: 'bg-ledger-800 text-slate-300 border-ledger-700' };
+}
+
+async function renderHandouts() {
+    if (!appState.handouts || appState.handouts.length === 0) {
+        try {
+            const res = await fetch('/api/handouts');
+            if (res.ok) {
+                appState.handouts = await res.json();
+            }
+        } catch (e) {
+            console.error("Error fetching handouts:", e);
+        }
+    }
+
+    const handouts = appState.handouts || [];
+    const container = document.getElementById('handouts-grid');
+    if (!container) return;
+
+    // Update stats and badges
+    const totalCount = handouts.length;
+    const countAllEl = document.getElementById('handout-count-all');
+    const navBadge = document.getElementById('handouts-nav-badge');
+    if (countAllEl) countAllEl.textContent = totalCount;
+    if (navBadge) navBadge.textContent = totalCount;
+
+    // Filter list
+    let list = handouts;
+    if (appState.handoutStatusFilter === 'ready') {
+        list = list.filter(h => h.status === 'ready');
+    } else if (appState.handoutStatusFilter === 'delivered') {
+        list = list.filter(h => h.status === 'delivered');
+    }
+
+    if (appState.handoutTypeFilter && appState.handoutTypeFilter !== 'all') {
+        list = list.filter(h => (h.type || '').toLowerCase() === appState.handoutTypeFilter.toLowerCase());
+    }
+
+    if (appState.handoutThemeFilter && appState.handoutThemeFilter !== 'all') {
+        list = list.filter(h => (h.theme || '').toLowerCase() === appState.handoutThemeFilter.toLowerCase());
+    }
+
+    if (appState.handoutSearchQuery) {
+        const q = appState.handoutSearchQuery.toLowerCase();
+        list = list.filter(h =>
+            (h.title || '').toLowerCase().includes(q) ||
+            (h.author || '').toLowerCase().includes(q) ||
+            (h.recipient || '').toLowerCase().includes(q) ||
+            (h.content || '').toLowerCase().includes(q) ||
+            (h.tiedLocation || '').toLowerCase().includes(q) ||
+            (h.tiedNpc || '').toLowerCase().includes(q)
+        );
+    }
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full py-12 px-4 text-center border-2 border-dashed border-ledger-800 rounded-2xl space-y-2 text-slate-500 text-xs">
+                <span class="text-3xl block">📜</span>
+                <p class="font-semibold text-slate-400">No in-world handouts found matching current filters.</p>
+                <p>Click <strong class="text-amber-400">+ New Handout</strong> or <strong class="text-amber-400">⚡ +2 Lore Presets</strong> to forge immersive props for your table.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const sealIcons = {
+        crown: '👑', skull: '💀', arcane: '👁️', scales: '⚖️',
+        daggers: '🗡️', dragon: '🐉', tree: '🌳', scroll: '📜', none: ''
+    };
+
+    container.innerHTML = list.map(h => {
+        const typeInfo = getHandoutTypeBadge(h.type);
+        const sealIcon = sealIcons[h.seal || 'crown'] || '📜';
+        const isCoded = Boolean(h.isCoded);
+        const isDeciphered = Boolean(h.isDeciphered);
+
+        let snippet = h.content || '';
+        if (isCoded && !isDeciphered) {
+            snippet = applyCipher(snippet, h.cipherType || 'runic', h.cipherShift || 3);
+        }
+        if (snippet.length > 180) snippet = snippet.slice(0, 180) + '...';
+
+        const tags = [
+            h.tiedLocation ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-emerald-300 text-[10px]">📍 ${escapeHTML(h.tiedLocation)}</span>` : '',
+            h.tiedNpc ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-purple-300 text-[10px]">👤 ${escapeHTML(h.tiedNpc)}</span>` : '',
+            h.dateString ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-amber-300 text-[10px]">📅 ${escapeHTML(h.dateString)}</span>` : ''
+        ].filter(Boolean).join('');
+
+        const themeLabels = {
+            parchment: '📜 Parchment',
+            vellum: '👑 Vellum',
+            burnt: '🔥 Burnt Ash',
+            blood: '🩸 Bloodstained',
+            arcane: '🔮 Arcane'
+        };
+
+        return `
+            <div class="rounded-2xl p-4 flex flex-col justify-between space-y-3 transition border bg-ledger-900/90 border-ledger-700/80 hover:border-amber-500/50 shadow-lg">
+                <div class="space-y-2.5">
+                    <!-- Top Metadata & Seal Bar -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider border ${typeInfo.badge}">
+                                ${typeInfo.label}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-mono bg-ledger-950 border border-ledger-800 text-slate-400">
+                                ${themeLabels[h.theme] || '📜 Parchment'}
+                            </span>
+                            ${h.seal !== 'none' ? `
+                                <span class="px-1.5 py-0.5 rounded-md text-[10px] bg-ledger-950 border border-ledger-800" title="Wax Seal: ${escapeHTML(h.seal)} (${escapeHTML(h.sealColor)})">
+                                    ${sealIcon}
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        <!-- Cipher status pill or Bounty tag -->
+                        ${isCoded ? `
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${isDeciphered ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800' : 'bg-purple-950/80 text-purple-300 border-purple-800'}">
+                                ${isDeciphered ? '🔓 Deciphered' : `🔒 DC ${h.investigationDC || 14}`}
+                            </span>
+                        ` : ''}
+                        ${h.type === 'bounty' && h.bountyReward ? `
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                                💰 ${escapeHTML(h.bountyReward)}
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    <!-- Title & Parties -->
+                    <div>
+                        <h4 class="font-display font-bold text-sm text-slate-100 hover:text-amber-300 transition cursor-pointer" onclick="openCustomHandoutModal('${h.id}')">
+                            ${escapeHTML(h.title)}
+                        </h4>
+                        ${(h.author || h.recipient) ? `
+                            <div class="text-[11px] text-slate-400 font-serif mt-0.5 space-x-1.5">
+                                ${h.author ? `<span>From: <strong class="text-slate-300">${escapeHTML(h.author)}</strong></span>` : ''}
+                                ${h.recipient ? `<span>To: <strong class="text-slate-300">${escapeHTML(h.recipient)}</strong></span>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Miniature Styled Preview Snippet -->
+                    <div class="bg-ledger-950/85 p-3 rounded-xl border border-ledger-800 font-serif text-xs leading-relaxed ${isCoded && !isDeciphered ? 'text-purple-300 font-mono tracking-wider' : 'text-slate-300'}">
+                        “${escapeHTML(snippet)}”
+                    </div>
+
+                    <!-- Tags -->
+                    ${tags ? `<div class="flex items-center gap-1.5 flex-wrap">${tags}</div>` : ''}
+                </div>
+
+                <!-- Bottom Action Toolbar -->
+                <div class="flex items-center justify-between gap-1.5 pt-2.5 border-t border-ledger-800/80 text-[11px] flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="broadcastInWorldHandout('${h.id}')" title="Broadcast directly to Player Screen" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-300 flex items-center gap-1 transition font-bold">
+                            <span>📺</span> <span>Broadcast</span>
+                        </button>
+                        ${isCoded ? `
+                            <button onclick="toggleHandoutDecipher('${h.id}')" title="${isDeciphered ? 'Re-encrypt for players' : 'Decipher and reveal translation to players'}" class="px-2.5 py-1 rounded-lg ${isDeciphered ? 'bg-amber-950 hover:bg-amber-900 border border-amber-800 text-amber-300' : 'bg-purple-950 hover:bg-purple-900 border border-purple-800 text-purple-300'} flex items-center gap-1 transition">
+                                <span>${isDeciphered ? '🔒' : '🔓'}</span> <span>${isDeciphered ? 'Encrypt' : 'Decipher'}</span>
+                            </button>
+                        ` : ''}
+                        <button onclick="convertHandoutToRumor('${h.id}')" title="Pin to Tavern Rumors corkboard" class="px-2 py-1 rounded-lg bg-ledger-950 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 flex items-center gap-1 transition">
+                            <span>📜</span> <span>Rumor</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <button onclick="openCustomHandoutModal('${h.id}')" title="Edit Handout" class="px-2 py-1 rounded-lg bg-ledger-950 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-white transition">
+                            ✏️ Edit
+                        </button>
+                        <button onclick="deleteCustomHandout('${h.id}')" title="Delete Handout" class="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterHandouts() {
+    const qEl = document.getElementById('handout-search');
+    const typeEl = document.getElementById('handout-type-filter');
+    const themeEl = document.getElementById('handout-theme-filter');
+    if (qEl) appState.handoutSearchQuery = qEl.value.trim().toLowerCase();
+    if (typeEl) appState.handoutTypeFilter = typeEl.value;
+    if (themeEl) appState.handoutThemeFilter = themeEl.value;
+    renderHandouts();
+}
+
+function setHandoutStatusFilter(status) {
+    appState.handoutStatusFilter = status;
+    document.querySelectorAll('.handout-status-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold');
+        btn.classList.add('text-slate-400');
+    });
+    const activeBtn = document.getElementById(`handout-filter-btn-${status}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400');
+        activeBtn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold');
+    }
+    renderHandouts();
+}
+
+function openCustomHandoutModal(id = null) {
+    const modal = document.getElementById('custom-handout-modal');
+    if (!modal) return;
+
+    appState.previewDecipherState = false;
+    const decipherBtn = document.getElementById('preview-decipher-btn');
+    if (decipherBtn) {
+        decipherBtn.textContent = "Decipher: Plaintext";
+        decipherBtn.className = "px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-800 transition";
+    }
+
+    if (id) {
+        const h = (appState.handouts || []).find(item => item.id === id);
+        if (h) {
+            document.getElementById('custom-handout-id').value = h.id;
+            document.getElementById('custom-handout-title').value = h.title || '';
+            document.getElementById('custom-handout-type').value = h.type || 'letter';
+            document.getElementById('custom-handout-theme').value = h.theme || 'parchment';
+            document.getElementById('custom-handout-font').value = h.fontStyle || 'cursive';
+            document.getElementById('custom-handout-seal').value = h.seal || 'crown';
+            document.getElementById('custom-handout-seal-color').value = h.sealColor || 'red';
+            document.getElementById('custom-handout-author').value = h.author || '';
+            document.getElementById('custom-handout-recipient').value = h.recipient || '';
+            document.getElementById('custom-handout-date').value = h.dateString || '';
+            document.getElementById('custom-handout-content').value = h.content || '';
+
+            const isCodedBox = document.getElementById('custom-handout-is-coded');
+            if (isCodedBox) isCodedBox.checked = Boolean(h.isCoded);
+            document.getElementById('custom-handout-cipher-type').value = h.cipherType || 'runic';
+            document.getElementById('custom-handout-cipher-dc').value = h.investigationDC || 14;
+            document.getElementById('custom-handout-cipher-hint').value = h.cipherHint || '';
+
+            document.getElementById('custom-handout-bounty-reward').value = h.bountyReward || '';
+            document.getElementById('custom-handout-bounty-crimes').value = h.bountyCrimes || '';
+
+            document.getElementById('custom-handout-location').value = h.tiedLocation || '';
+            document.getElementById('custom-handout-npc').value = h.tiedNpc || '';
+            document.getElementById('custom-handout-notes').value = h.sessionNotes || '';
+            document.getElementById('custom-handout-modal-title').textContent = "Edit In-World Handout";
+        }
+    } else {
+        document.getElementById('custom-handout-id').value = '';
+        document.getElementById('custom-handout-title').value = '';
+        document.getElementById('custom-handout-type').value = 'letter';
+        document.getElementById('custom-handout-theme').value = 'parchment';
+        document.getElementById('custom-handout-font').value = 'cursive';
+        document.getElementById('custom-handout-seal').value = 'crown';
+        document.getElementById('custom-handout-seal-color').value = 'red';
+        document.getElementById('custom-handout-author').value = '';
+        document.getElementById('custom-handout-recipient').value = '';
+        document.getElementById('custom-handout-date').value = '';
+        document.getElementById('custom-handout-content').value = '';
+
+        const isCodedBox = document.getElementById('custom-handout-is-coded');
+        if (isCodedBox) isCodedBox.checked = false;
+        document.getElementById('custom-handout-cipher-type').value = 'runic';
+        document.getElementById('custom-handout-cipher-dc').value = 14;
+        document.getElementById('custom-handout-cipher-hint').value = '';
+
+        document.getElementById('custom-handout-bounty-reward').value = '';
+        document.getElementById('custom-handout-bounty-crimes').value = '';
+
+        document.getElementById('custom-handout-location').value = '';
+        document.getElementById('custom-handout-npc').value = '';
+        document.getElementById('custom-handout-notes').value = '';
+        document.getElementById('custom-handout-modal-title').textContent = "In-World Handout Forge";
+    }
+
+    onHandoutTypeChanged();
+    updateHandoutPreview();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeCustomHandoutModal() {
+    const modal = document.getElementById('custom-handout-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function onHandoutTypeChanged(isUserChange = false) {
+    const type = document.getElementById('custom-handout-type')?.value || 'letter';
+    const bountyBox = document.getElementById('custom-handout-bounty-settings');
+    const isCodedBox = document.getElementById('custom-handout-is-coded');
+    const themeSelect = document.getElementById('custom-handout-theme');
+    const fontSelect = document.getElementById('custom-handout-font');
+    const sealSelect = document.getElementById('custom-handout-seal');
+    const sealColorSelect = document.getElementById('custom-handout-seal-color');
+    const isCreating = !document.getElementById('custom-handout-id')?.value;
+
+    if (bountyBox) {
+        if (type === 'bounty') bountyBox.classList.remove('hidden');
+        else bountyBox.classList.add('hidden');
+    }
+
+    if (type === 'cipher') {
+        if (isCodedBox) {
+            isCodedBox.checked = true;
+            isCodedBox.dataset.autoCipher = 'true';
+        }
+    } else if (isUserChange && isCodedBox && isCodedBox.dataset.autoCipher === 'true') {
+        isCodedBox.checked = false;
+        isCodedBox.dataset.autoCipher = 'false';
+    }
+
+    // When creating a new handout, adapt default theme/font/seal/placeholders to match the chosen document type:
+    if (isUserChange && isCreating) {
+        const titleInput = document.getElementById('custom-handout-title');
+        const contentInput = document.getElementById('custom-handout-content');
+
+        if (type === 'bounty') {
+            if (themeSelect) themeSelect.value = 'parchment';
+            if (fontSelect) fontSelect.value = 'blackletter';
+            if (sealSelect) sealSelect.value = 'skull';
+            if (sealColorSelect) sealColorSelect.value = 'red';
+            if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g. WANTED: The Jackdaw of Oakhaven';
+            if (contentInput && !contentInput.value) contentInput.placeholder = 'Wanted dead or alive for high treason, piracy, and arcane arson...';
+        } else if (type === 'journal') {
+            if (themeSelect) themeSelect.value = 'burnt';
+            if (fontSelect) fontSelect.value = 'serif';
+            if (sealSelect) sealSelect.value = 'none';
+            if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g. Brother Thomas\'s Final Warning';
+            if (contentInput && !contentInput.value) contentInput.placeholder = 'Day 14 — The lower sanctuary has gone silent. We barred the crypt gates...';
+        } else if (type === 'cipher') {
+            if (themeSelect) themeSelect.value = 'parchment';
+            if (fontSelect) fontSelect.value = 'typewriter';
+            if (sealSelect) sealSelect.value = 'daggers';
+            if (sealColorSelect) sealColorSelect.value = 'black';
+            if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g. Smuggler\'s Dead Drop Cypher';
+            if (contentInput && !contentInput.value) contentInput.placeholder = 'The iron coffer is submerged beneath the mill sluice gate at midnight...';
+        } else if (type === 'scroll') {
+            if (themeSelect) themeSelect.value = 'arcane';
+            if (fontSelect) fontSelect.value = 'chisel';
+            if (sealSelect) sealSelect.value = 'arcane';
+            if (sealColorSelect) sealColorSelect.value = 'purple';
+            if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g. Ancient Sigil of Banishment';
+            if (contentInput && !contentInput.value) contentInput.placeholder = 'By the eternal sigil of the astral plane, let the boundaries between realms dissolve...';
+        } else { // letter
+            if (themeSelect) themeSelect.value = 'parchment';
+            if (fontSelect) fontSelect.value = 'cursive';
+            if (sealSelect) sealSelect.value = 'crown';
+            if (sealColorSelect) sealColorSelect.value = 'red';
+            if (titleInput && !titleInput.value) titleInput.placeholder = 'e.g. Lady Cynthia\'s Sealed Missive';
+            if (contentInput && !contentInput.value) contentInput.placeholder = 'My Lord, our house cannot abide another day of delay at the harbor...';
+        }
+    }
+}
+
+function togglePreviewDecipherState() {
+    appState.previewDecipherState = !appState.previewDecipherState;
+    const btn = document.getElementById('preview-decipher-btn');
+    if (btn) {
+        btn.textContent = appState.previewDecipherState ? "Decipher: Encrypted Runes" : "Decipher: Plaintext";
+        btn.className = appState.previewDecipherState ?
+            "px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 transition" :
+            "px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-800 transition";
+    }
+    updateHandoutPreview();
+}
+
+function updateHandoutPreview() {
+    const container = document.getElementById('handout-wysiwyg-container');
+    if (!container) return;
+
+    const type = document.getElementById('custom-handout-type')?.value || 'letter';
+    const theme = document.getElementById('custom-handout-theme')?.value || 'parchment';
+    const font = document.getElementById('custom-handout-font')?.value || 'cursive';
+    const seal = document.getElementById('custom-handout-seal')?.value || 'crown';
+    const sealColor = document.getElementById('custom-handout-seal-color')?.value || 'red';
+    const typedTitle = document.getElementById('custom-handout-title')?.value.trim() || '';
+    const author = document.getElementById('custom-handout-author')?.value.trim() || '';
+    const recipient = document.getElementById('custom-handout-recipient')?.value.trim() || '';
+    const date = document.getElementById('custom-handout-date')?.value.trim() || '';
+    const typedContent = document.getElementById('custom-handout-content')?.value.trim() || '';
+
+    const isCoded = Boolean(document.getElementById('custom-handout-is-coded')?.checked);
+    const cipherType = document.getElementById('custom-handout-cipher-type')?.value || 'runic';
+    const cipherShift = 3;
+    const cipherDC = document.getElementById('custom-handout-cipher-dc')?.value || 14;
+    const cipherHint = document.getElementById('custom-handout-cipher-hint')?.value.trim() || '';
+
+    const bountyReward = document.getElementById('custom-handout-bounty-reward')?.value.trim() || '';
+    const bountyCrimes = document.getElementById('custom-handout-bounty-crimes')?.value.trim() || '';
+
+    const sealIcons = {
+        crown: '👑', skull: '💀', arcane: '👁️', scales: '⚖️',
+        daggers: '🗡️', dragon: '🐉', tree: '🌳', scroll: '📜', none: ''
+    };
+    const sealIcon = sealIcons[seal] || '📜';
+
+    // Distinct contextual presets when fields are empty so live preview immediately reflects the chosen document type
+    const typeDefaults = {
+        letter: {
+            title: 'Sealed Missive to Captain Drake',
+            badge: '✉️ Sealed Missive',
+            body: 'My Lord,\n\nOur house cannot abide another day of delay at the harbor. Deliver the sealed chest before midnight, and burn this missive upon reading.\n\nWith utmost discretion,\nCynthia'
+        },
+        journal: {
+            title: 'Brother Thomas\'s Scorched Journal',
+            badge: '📖 Torn Journal Page',
+            body: 'Day 14 — The lower sanctuary has gone silent. We barred the crypt gates with iron spikes, but the dark water continues to rise through the cellar vents.'
+        },
+        bounty: {
+            title: 'WANTED: The Shadow Broker',
+            badge: '⚔️ Wanted Bounty Notice',
+            body: 'Wanted alive or dead by decree of the High Magistrate. Known to frequent the dockside taverns under false aliases. Approach with extreme caution.'
+        },
+        cipher: {
+            title: 'Smuggler\'s Dead Drop Cypher',
+            badge: '🔒 Encrypted Cipher',
+            body: 'The three casks of alchemical fire are secured beneath the loose flagstone by the mill wheel. Signal twice with the amber lantern when the patrol passes.'
+        },
+        scroll: {
+            title: 'Ancient Sigil of Void Walking',
+            badge: '✨ Magic Sigil Scroll',
+            body: 'By the eternal sigil of the astral plane, let the boundaries between realms dissolve. Speak the unmaking words under the light of the eclipsed moon.'
+        }
+    };
+
+    const currentPreset = typeDefaults[type] || typeDefaults.letter;
+    const title = typedTitle || currentPreset.title;
+    const rawContent = typedContent || currentPreset.body;
+
+    let displayContent = rawContent;
+    if (isCoded && !appState.previewDecipherState) {
+        displayContent = applyCipher(rawContent, cipherType, cipherShift);
+    }
+
+    const paragraphs = displayContent.split('\n\n').map(p => `<p class="leading-relaxed mb-2.5">${escapeHTML(p).replace(/\n/g, '<br>')}</p>`).join('');
+
+    container.className = `handout-paper-${theme} rounded-2xl p-5 shadow-2xl relative overflow-hidden transition-all duration-300 min-h-[360px] flex flex-col justify-between`;
+
+    // Type-Specific Header Rendering
+    let headerHTML = '';
+
+    if (type === 'bounty') {
+        headerHTML = `
+            <div class="border-b-2 border-current/30 pb-2.5 text-center space-y-1">
+                <span class="text-[9px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-black/15 font-bold inline-block">
+                    ⚔️ OFFICIAL BOUNTY PROCLAMATION
+                </span>
+                <div class="font-display font-black text-2xl sm:text-3xl tracking-widest uppercase text-amber-900 dark:text-amber-200 drop-shadow-sm">
+                    ⚔️ WANTED ⚔️
+                </div>
+                <h4 class="font-display font-extrabold text-base sm:text-lg tracking-wide uppercase opacity-95">
+                    ${escapeHTML(title)}
+                </h4>
+                <div class="font-mono font-bold text-sm text-rose-700 dark:text-rose-400">
+                    REWARD: ${escapeHTML(bountyReward || '500 Gold Pieces (Dead or Alive)')}
+                </div>
+                <div class="text-[11px] opacity-85 font-serif italic">
+                    ${bountyCrimes ? `Charges: ${escapeHTML(bountyCrimes)}` : 'Charges: High Treason, Grand Larceny, Smuggling'}
+                </div>
+            </div>
+        `;
+    } else if (type === 'journal') {
+        headerHTML = `
+            <div class="border-b-2 border-dashed border-current/30 pb-2 flex items-start justify-between gap-2">
+                <div>
+                    <div class="flex items-center gap-2 text-[10px] font-mono opacity-80 uppercase tracking-wider">
+                        <span>📖 TORN DIARY ENTRY</span>
+                        ${date ? `<span>• 📅 ${escapeHTML(date)}</span>` : '<span>• 📅 Midnight Watch</span>'}
+                    </div>
+                    <h4 class="font-display font-bold text-lg sm:text-xl tracking-wide opacity-95 mt-0.5">
+                        ${escapeHTML(title)}
+                    </h4>
+                    ${author ? `<div class="text-[11px] opacity-80 font-serif italic">Penned by ${escapeHTML(author)}</div>` : ''}
+                </div>
+                <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/10 border border-current/20 shrink-0">Page Frag.</span>
+            </div>
+        `;
+    } else if (type === 'scroll') {
+        headerHTML = `
+            <div class="text-center pb-2 border-b border-current/20 space-y-0.5">
+                <div class="text-xs font-mono tracking-[0.25em] opacity-80 py-0.5 text-indigo-500 dark:text-indigo-300">
+                    ◈ ᚛ ᛟ ᚱ ᛞ ᚠ ᛊ ᚜ ◈
+                </div>
+                <span class="text-[9px] font-mono uppercase tracking-widest opacity-85">
+                    ✨ ANCIENT MAGIC SCROLL ✨
+                </span>
+                <h4 class="font-display font-bold text-lg sm:text-xl tracking-wider opacity-95">
+                    ${escapeHTML(title)}
+                </h4>
+            </div>
+        `;
+    } else if (type === 'cipher') {
+        headerHTML = `
+            <div class="border-b border-current/20 pb-2 flex items-start justify-between gap-2">
+                <div>
+                    <span class="text-[9px] font-mono uppercase tracking-widest opacity-80">🔒 ENCRYPTED MISSIVE</span>
+                    <h4 class="font-display font-bold text-lg sm:text-xl tracking-wide opacity-95 mt-0.5">
+                        ${escapeHTML(title)}
+                    </h4>
+                    ${(author || recipient) ? `
+                        <div class="text-[11px] opacity-80 space-x-1.5 font-serif mt-0.5">
+                            ${author ? `<span>From: <strong>${escapeHTML(author)}</strong></span>` : ''}
+                            ${recipient ? `<span>• To: <strong>${escapeHTML(recipient)}</strong></span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+                ${date ? `<span class="text-[10px] font-mono opacity-75 shrink-0">📅 ${escapeHTML(date)}</span>` : ''}
+            </div>
+        `;
+    } else { // letter
+        headerHTML = `
+            <div class="border-b border-current/20 pb-2 flex items-start justify-between gap-2">
+                <div>
+                    <span class="text-[9px] font-mono uppercase tracking-widest opacity-75">✉️ SEALED MISSIVE</span>
+                    <h4 class="font-display font-bold text-lg sm:text-xl tracking-wide opacity-95 mt-0.5">
+                        ${escapeHTML(title)}
+                    </h4>
+                    ${(author || recipient) ? `
+                        <div class="text-[11px] opacity-80 space-x-1.5 font-serif mt-0.5">
+                            ${author ? `<span>From: <strong>${escapeHTML(author)}</strong></span>` : ''}
+                            ${recipient ? `<span>• To: <strong>${escapeHTML(recipient)}</strong></span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+                ${date ? `
+                    <span class="text-[10px] font-mono opacity-75 shrink-0">
+                        📅 ${escapeHTML(date)}
+                    </span>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    container.innerHTML = `
+        <div class="space-y-3 font-handout-${font}">
+            <!-- Type-Specific Header -->
+            ${headerHTML}
+
+            <!-- Optional Cipher Banner (Always rendered when isCoded is true) -->
+            ${isCoded ? `
+                <div class="flex items-center justify-between text-[10px] px-2.5 py-1.5 rounded-lg ${appState.previewDecipherState ? 'bg-emerald-900/30 border border-emerald-700/50 text-emerald-800 dark:text-emerald-300' : 'bg-purple-900/30 border border-purple-700/50 text-purple-800 dark:text-purple-300'} font-mono">
+                    <span class="flex items-center gap-1.5 font-bold">
+                        <span>${appState.previewDecipherState ? '🔓' : '🔒'}</span>
+                        <span>${appState.previewDecipherState ? 'DECIPHERED PREVIEW' : `ENCRYPTED CIPHER [DC ${cipherDC} INVESTIGATION]`}</span>
+                    </span>
+                    ${!appState.previewDecipherState && cipherHint ? `<span class="opacity-75 italic text-[10px]">${escapeHTML(cipherHint)}</span>` : ''}
+                </div>
+            ` : ''}
+
+            <!-- Body -->
+            <div class="text-xs sm:text-sm leading-relaxed max-h-[220px] overflow-y-auto pr-1">
+                ${paragraphs}
+            </div>
+
+            ${type === 'scroll' ? `
+                <div class="text-xs font-mono tracking-[0.25em] opacity-80 py-0.5 text-center text-indigo-500 dark:text-indigo-300 border-t border-current/20">
+                    ◈ ᚛ ᛉ ᚳ ᛖ ᛗ ᚾ ᚹ ᚜ ◈
+                </div>
+            ` : ''}
+        </div>
+
+        <!-- Seal & Footer -->
+        <div class="pt-2 border-t border-current/20 flex items-end justify-between gap-2 mt-3">
+            <span class="text-[10px] opacity-75 italic font-serif">
+                ${type === 'letter' ? '✉️ Delivered by courier' :
+                  type === 'journal' ? '📓 Torn from leather binding' :
+                  type === 'bounty' ? '⚖️ By order of the Town Magistrate' :
+                  type === 'scroll' ? '✨ Sealed by arcane ward' :
+                  '🔒 Shadow broker dead drop'}
+            </span>
+            ${seal !== 'none' ? `
+                <div class="wax-seal wax-seal-${sealColor}" style="width: 44px; height: 44px;">
+                    <div class="wax-seal-inner" style="width: 32px; height: 32px; font-size: 15px;">${sealIcon}</div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+async function saveCustomHandout(event) {
+    if (event) event.preventDefault();
+
+    const payload = {
+        id: document.getElementById('custom-handout-id')?.value || undefined,
+        title: document.getElementById('custom-handout-title')?.value.trim() || 'Untitled Handout',
+        type: document.getElementById('custom-handout-type')?.value || 'letter',
+        theme: document.getElementById('custom-handout-theme')?.value || 'parchment',
+        fontStyle: document.getElementById('custom-handout-font')?.value || 'cursive',
+        author: document.getElementById('custom-handout-author')?.value.trim() || '',
+        recipient: document.getElementById('custom-handout-recipient')?.value.trim() || '',
+        dateString: document.getElementById('custom-handout-date')?.value.trim() || '',
+        content: document.getElementById('custom-handout-content')?.value.trim() || '',
+        seal: document.getElementById('custom-handout-seal')?.value || 'crown',
+        sealColor: document.getElementById('custom-handout-seal-color')?.value || 'red',
+        isCoded: Boolean(document.getElementById('custom-handout-is-coded')?.checked),
+        cipherType: document.getElementById('custom-handout-cipher-type')?.value || 'runic',
+        cipherShift: 3,
+        cipherHint: document.getElementById('custom-handout-cipher-hint')?.value.trim() || '',
+        investigationDC: parseInt(document.getElementById('custom-handout-cipher-dc')?.value, 10) || 14,
+        bountyReward: document.getElementById('custom-handout-bounty-reward')?.value.trim() || '',
+        bountyCrimes: document.getElementById('custom-handout-bounty-crimes')?.value.trim() || '',
+        tiedLocation: document.getElementById('custom-handout-location')?.value.trim() || '',
+        tiedNpc: document.getElementById('custom-handout-npc')?.value.trim() || '',
+        sessionNotes: document.getElementById('custom-handout-notes')?.value.trim() || '',
+        status: 'ready'
+    };
+
+    try {
+        const res = await fetch('/api/handouts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            appState.handouts = data.handouts;
+            closeCustomHandoutModal();
+            renderHandouts();
+            showToast(`Handout "${payload.title}" saved!`, "success");
+            return data.handout;
+        } else {
+            showToast("Failed to save handout.", "error");
+        }
+    } catch (e) {
+        showToast("Error saving handout", "error");
+    }
+}
+
+async function saveAndBroadcastHandout(event) {
+    if (event) event.preventDefault();
+    const saved = await saveCustomHandout(event);
+    if (saved && saved.id) {
+        await broadcastInWorldHandout(saved.id);
+    }
+}
+
+async function deleteCustomHandout(id) {
+    if (!confirm("Are you sure you want to delete this in-world handout?")) return;
+    try {
+        const res = await fetch(`/api/handouts/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            appState.handouts = data.handouts;
+            renderHandouts();
+            showToast("Handout deleted.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting handout", "error");
+    }
+}
+
+async function toggleHandoutDecipher(id) {
+    try {
+        const res = await fetch(`/api/handouts/${id}/toggle-decipher`, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            appState.handouts = data.handouts;
+            renderHandouts();
+            const h = data.handout;
+            if (h && h.isDeciphered) {
+                showToast(`Deciphered "${h.title}" for the table!`, "success");
+                if (window.TabletopAudio && window.TabletopAudio.playBell) {
+                    TabletopAudio.playBell();
+                }
+            } else {
+                showToast(`Re-encrypted "${h.title}".`, "info");
+            }
+        }
+    } catch (e) {
+        showToast("Error toggling decipher state", "error");
+    }
+}
+
+async function broadcastInWorldHandout(id) {
+    try {
+        const res = await fetch(`/api/handouts/${id}/broadcast`, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            appState.broadcast = data.broadcast;
+            renderBroadcastPill();
+            showToast(`Broadcasted "${data.broadcast?.title}" to Player Screen!`, "success");
+            if (window.TabletopAudio && window.TabletopAudio.playSecret) {
+                TabletopAudio.playSecret();
+            }
+        } else {
+            showToast("Failed to broadcast handout.", "error");
+        }
+    } catch (e) {
+        showToast("Error broadcasting handout", "error");
+    }
+}
+
+async function generateHandoutBatchPresets() {
+    try {
+        const res = await fetch('/api/handouts/batch-preset', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            appState.handouts = data.handouts;
+            renderHandouts();
+            showToast(`Added ${data.added} campaign lore presets!`, "success");
+        }
+    } catch (e) {
+        showToast("Error generating presets", "error");
+    }
+}
+
+function rollQuickMissive() {
+    const templates = [
+        {
+            title: "Desperate Extortion Demand",
+            type: "letter",
+            theme: "blood",
+            font: "cursive",
+            author: "A Friend in the Shadows",
+            recipient: "Brog the Smith",
+            date: "Third Watch",
+            content: "We know where you hide the iron ledger. Bring fifty silver pieces to the south cistern before sunrise, or the High Magistrate receives the names of your suppliers.",
+            seal: "daggers",
+            sealColor: "black",
+            isCoded: false
+        },
+        {
+            title: "Dying Monk's Final Warning",
+            type: "journal",
+            theme: "burnt",
+            font: "serif",
+            author: "Brother Thomas",
+            recipient: "Whomever Survives",
+            date: "Midnight",
+            content: "Do not unbar the lower sanctuary doors. The water did not put out the flame—it carried the drowned souls upward through the crypt vents. Burn the cedar incense or be taken.",
+            seal: "skull",
+            sealColor: "purple",
+            isCoded: false
+        },
+        {
+            title: "Smuggler's Dead Drop Cypher",
+            type: "cipher",
+            theme: "parchment",
+            font: "typewriter",
+            author: "Obsidian Quartermaster",
+            recipient: "Silas",
+            date: "New Moon",
+            content: "The three casks of alchemical fire are secured beneath the loose flagstone by the mill wheel. Signal twice with the amber lantern when the patrol passes.",
+            seal: "scales",
+            sealColor: "gold",
+            isCoded: true,
+            cipherType: "runic",
+            cipherDC: 13,
+            cipherHint: "Dwarven dockworker cipher"
+        }
+    ];
+
+    const pick = templates[Math.floor(Math.random() * templates.length)];
+    openCustomHandoutModal();
+
+    document.getElementById('custom-handout-title').value = pick.title;
+    document.getElementById('custom-handout-type').value = pick.type;
+    document.getElementById('custom-handout-theme').value = pick.theme;
+    document.getElementById('custom-handout-font').value = pick.font;
+    document.getElementById('custom-handout-author').value = pick.author;
+    document.getElementById('custom-handout-recipient').value = pick.recipient;
+    document.getElementById('custom-handout-date').value = pick.date;
+    document.getElementById('custom-handout-content').value = pick.content;
+    document.getElementById('custom-handout-seal').value = pick.seal;
+    document.getElementById('custom-handout-seal-color').value = pick.sealColor;
+
+    const isCodedBox = document.getElementById('custom-handout-is-coded');
+    if (isCodedBox) isCodedBox.checked = pick.isCoded;
+    if (pick.cipherType) document.getElementById('custom-handout-cipher-type').value = pick.cipherType;
+    if (pick.cipherDC) document.getElementById('custom-handout-cipher-dc').value = pick.cipherDC;
+    if (pick.cipherHint) document.getElementById('custom-handout-cipher-hint').value = pick.cipherHint;
+
+    onHandoutTypeChanged();
+    updateHandoutPreview();
+    showToast(`Drafted quick missive: "${pick.title}"`, "info");
+}
+
+async function convertHandoutToRumor(id) {
+    const h = (appState.handouts || []).find(item => item.id === id);
+    if (!h) return;
+
+    try {
+        const payload = {
+            text: `[Handout Lead] ${h.title}: ${h.content.slice(0, 150)}...`,
+            source: h.author || 'Discovered Document',
+            location: h.tiedLocation || 'In-World Artifact',
+            veracity: 'True',
+            active: true
+        };
+        const res = await fetch('/api/rumors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.rumors) appState.rumors = data.rumors;
+            showToast(`Pinned "${h.title}" to Tavern Rumors corkboard!`, "success");
+        }
+    } catch (e) {
+        showToast("Error creating rumor from handout", "error");
+    }
+}
+
+// Global window exposure for In-World Handouts & Letters Engine
+window.renderHandouts = renderHandouts;
+window.filterHandouts = filterHandouts;
+window.setHandoutStatusFilter = setHandoutStatusFilter;
+window.openCustomHandoutModal = openCustomHandoutModal;
+window.closeCustomHandoutModal = closeCustomHandoutModal;
+window.onHandoutTypeChanged = onHandoutTypeChanged;
+window.togglePreviewDecipherState = togglePreviewDecipherState;
+window.updateHandoutPreview = updateHandoutPreview;
+window.saveCustomHandout = saveCustomHandout;
+window.saveAndBroadcastHandout = saveAndBroadcastHandout;
+window.deleteCustomHandout = deleteCustomHandout;
+window.toggleHandoutDecipher = toggleHandoutDecipher;
+window.broadcastInWorldHandout = broadcastInWorldHandout;
+window.generateHandoutBatchPresets = generateHandoutBatchPresets;
+window.rollQuickMissive = rollQuickMissive;
+window.convertHandoutToRumor = convertHandoutToRumor;
+window.applyCipher = applyCipher;
+window.getHandoutTypeBadge = getHandoutTypeBadge;
 
 // =============================================================================
 // PHASE 4: IMMERSION, BROADCAST, PROCEDURAL AUDIO & BACKUP CONTROLLER
@@ -6193,31 +7571,513 @@ function openSpellDetailModal(spellId) {
 async function broadcastSpellCard(spellId) {
     const s = (appState.spells || []).find(x => x.id === spellId);
     if (!s) return;
-    const payload = {
-        title: s.name,
-        subtitle: `${s.level === 0 ? 'Cantrip' : 'Level ' + s.level} ${s.school} • ${s.casting_time}`,
-        content: `${s.description}\n\n${s.at_higher_levels ? 'At Higher Levels: ' + s.at_higher_levels : ''}`,
-        type: 'lore'
-    };
-    try {
-        const res = await fetch('/api/broadcast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-            appState.broadcast = payload;
-            renderBroadcastPill();
-            showToast(`📺 Broadcasted "${s.name}" to player display!`, "success");
-        }
-    } catch (e) {
-        showToast("Error broadcasting spell", "error");
+    const sub = `${s.level === 0 ? 'Cantrip' : 'Level ' + s.level} ${s.school} • ${s.casting_time}`;
+    let body = s.description || '';
+    if (s.range || s.duration || s.components) {
+        const meta = [
+            s.range ? `Range: ${s.range}` : '',
+            s.components ? `Components: ${s.components}` : '',
+            s.duration ? `Duration: ${s.duration}` : ''
+        ].filter(Boolean).join(' • ');
+        body = meta + '\n\n' + body;
     }
+    if (s.at_higher_levels) {
+        body += `\n\nAt Higher Levels: ${s.at_higher_levels}`;
+    }
+    await broadcastHandout(s.name, sub, body, 'spell');
 }
 
 function broadcastCurrentModalSpell() {
     if (window._modalSpellId) broadcastSpellCard(window._modalSpellId);
 }
+
+// =============================================================================
+// COMPENDIUM: ITEMS & EQUIPMENT CONTROLLER
+// =============================================================================
+
+function getItemRarityBadge(rarity) {
+    const r = (rarity || 'Common').toLowerCase();
+    switch (r) {
+        case 'mundane':
+            return 'bg-slate-800 text-slate-300 border-slate-700';
+        case 'common':
+            return 'bg-slate-700 text-slate-200 border-slate-600';
+        case 'uncommon':
+            return 'bg-emerald-950 text-emerald-300 border-emerald-700';
+        case 'rare':
+            return 'bg-sky-950 text-sky-300 border-sky-700';
+        case 'very rare':
+            return 'bg-violet-950 text-violet-300 border-violet-700';
+        case 'legendary':
+            return 'bg-amber-950 text-amber-300 border-amber-600';
+        case 'artifact':
+            return 'bg-rose-950 text-rose-300 border-rose-600';
+        default:
+            return 'bg-slate-800 text-slate-300 border-slate-700';
+    }
+}
+
+async function renderItemsView() {
+    if (!appState.items || appState.items.length === 0) {
+        try {
+            const res = await fetch('/api/items');
+            if (res.ok) {
+                const fetched = await res.json();
+                if (Array.isArray(fetched) && fetched.length > 0) {
+                    appState.items = fetched;
+                    if (!appState.selectedItemId && appState.items.length > 0) {
+                        appState.selectedItemId = appState.items[0].id;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Direct fetch of /api/items failed:", e);
+        }
+    }
+    filterItemsList();
+}
+
+function setItemTypeFilter(type, btn = null) {
+    appState.itemFilterType = type;
+    const select = document.getElementById('item-type-filter');
+    if (select) select.value = type;
+    document.querySelectorAll('.item-type-pill').forEach(b => {
+        b.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold');
+        b.classList.add('bg-ledger-950', 'text-slate-400');
+    });
+    const target = btn || (typeof window !== 'undefined' && window.event ? (window.event.target.closest ? window.event.target.closest('.item-type-pill') : window.event.target) : null);
+    if (target && target.classList) {
+        target.classList.remove('bg-ledger-950', 'text-slate-400');
+        target.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold');
+    }
+    filterItemsList();
+}
+
+function filterItemsList() {
+    appState.itemSearchQuery = document.getElementById('item-search-input')?.value.toLowerCase() || '';
+    appState.itemFilterType = document.getElementById('item-type-filter')?.value || 'all';
+    appState.itemFilterRarity = document.getElementById('item-rarity-filter')?.value || 'all';
+    appState.itemFilterAttunement = document.getElementById('item-attunement-filter')?.checked || false;
+    appState.itemFilterCustomOnly = document.getElementById('item-custom-only-filter')?.checked || false;
+
+    let items = appState.items || [];
+
+    if (appState.itemSearchQuery) {
+        const q = appState.itemSearchQuery;
+        items = items.filter(i => 
+            (i.name || '').toLowerCase().includes(q) ||
+            (i.type || '').toLowerCase().includes(q) ||
+            (i.description || '').toLowerCase().includes(q) ||
+            (i.damage || '').toLowerCase().includes(q) ||
+            (i.properties || []).some(p => p.toLowerCase().includes(q))
+        );
+    }
+    if (appState.itemFilterType !== 'all') {
+        items = items.filter(i => (i.type || '').toLowerCase() === appState.itemFilterType.toLowerCase());
+    }
+    if (appState.itemFilterRarity !== 'all') {
+        items = items.filter(i => (i.rarity || '').toLowerCase() === appState.itemFilterRarity.toLowerCase());
+    }
+    if (appState.itemFilterAttunement) {
+        items = items.filter(i => !!i.attunement);
+    }
+    if (appState.itemFilterCustomOnly) {
+        items = items.filter(i => !!i.isCustom);
+    }
+
+    renderItemsDirectory(items);
+
+    const countEl = document.getElementById('items-total-count');
+    if (countEl) countEl.textContent = `${items.length} Item${items.length === 1 ? '' : 's'}`;
+
+    if (items.length > 0) {
+        const hasSelected = items.some(x => x.id === appState.selectedItemId);
+        if (!hasSelected) {
+            showItemDetail(items[0].id);
+        } else {
+            showItemDetail(appState.selectedItemId);
+        }
+    } else {
+        const card = document.getElementById('item-detail-card');
+        if (card) {
+            card.innerHTML = `
+                <div class="text-center py-12 text-slate-500">
+                    <span class="text-4xl block mb-2">🔍</span>
+                    <p>No items found matching your filters.</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderItemsDirectory(items) {
+    const container = document.getElementById('items-list-container');
+    if (!container) return;
+
+    if (!items || items.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs italic">No items found matching filters.</div>`;
+        return;
+    }
+
+    container.innerHTML = items.map(item => {
+        const isSelected = item.id === appState.selectedItemId;
+        const rarityBadge = getItemRarityBadge(item.rarity);
+        const costWeight = [item.cost, item.weight].filter(Boolean).join(' • ');
+
+        return `
+            <div onclick="showItemDetail('${item.id}')" class="px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition ${isSelected ? 'bg-amber-500/15 border-l-4 border-amber-400' : 'hover:bg-ledger-800/60'}">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-xs ${isSelected ? 'text-amber-300' : 'text-slate-200'} truncate">${escapeHTML(item.name)}</span>
+                        ${item.isCustom ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Custom</span>` : ''}
+                        ${item.attunement ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-700/80" title="${escapeHTML(typeof item.attunement === 'string' ? item.attunement : 'Requires Attunement')}">🔮</span>` : ''}
+                    </div>
+                    <span class="text-[10px] text-slate-400">${escapeHTML(item.type)}</span>
+                </div>
+                <div class="flex items-center gap-4 text-right flex-shrink-0 text-[11px] font-mono">
+                    <span class="hidden sm:inline text-slate-400 text-[10px]">${costWeight}</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold border ${rarityBadge}">${escapeHTML(item.rarity || 'Common')}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showItemDetail(itemId) {
+    appState.selectedItemId = itemId;
+    const item = (appState.items || []).find(x => x.id === itemId);
+    if (!item) return;
+
+    const card = document.getElementById('item-detail-card');
+    if (!card) return;
+
+    const rarityBadge = getItemRarityBadge(item.rarity);
+    const attunementStr = typeof item.attunement === 'string' ? item.attunement : (item.attunement ? 'Requires Attunement' : 'No Attunement Required');
+
+    card.innerHTML = `
+        <div class="flex items-start justify-between border-b border-ledger-800 pb-3 gap-2">
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="font-display font-bold text-lg text-amber-400">${escapeHTML(item.name)}</h3>
+                    ${item.isCustom ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Custom Homebrew</span>` : ''}
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-[11px] text-sky-300 font-semibold">${escapeHTML(item.type)}</span>
+                    <span class="text-slate-600">•</span>
+                    <span class="px-2 py-0.2 rounded text-[10px] font-bold border ${rarityBadge}">${escapeHTML(item.rarity)}</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+                <button onclick="broadcastItemCard('${item.id}')" title="Broadcast Item Card to Player Screen" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-300 text-xs font-semibold flex items-center gap-1 transition">
+                    <span>📺</span> Broadcast
+                </button>
+            </div>
+        </div>
+
+        <!-- Cost, Weight, Attunement Bar -->
+        <div class="grid grid-cols-3 gap-2 bg-ledger-950 p-2.5 rounded-xl border border-ledger-800 text-[11px] font-mono">
+            <div>
+                <span class="text-[9px] uppercase font-bold text-slate-500 block font-sans">Cost</span>
+                <span class="font-semibold text-amber-300">${item.cost || '—'}</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase font-bold text-slate-500 block font-sans">Weight</span>
+                <span class="font-semibold text-slate-300">${item.weight || '—'}</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase font-bold text-slate-500 block font-sans">Attunement</span>
+                <span class="font-semibold ${item.attunement ? 'text-indigo-400' : 'text-slate-400'}">${item.attunement ? 'Yes' : 'No'}</span>
+            </div>
+        </div>
+
+        ${item.damage || item.ac || (item.properties && item.properties.length > 0) ? `
+            <!-- Combat / Equipment Stats -->
+            <div class="bg-ledger-950 p-3 rounded-xl border border-ledger-800 space-y-1.5 text-xs">
+                ${item.damage ? `
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 text-[11px]">Damage:</span>
+                        <span class="font-mono font-bold text-amber-300">${escapeHTML(item.damage)} ${item.damageType ? '(' + escapeHTML(item.damageType) + ')' : ''}</span>
+                    </div>
+                ` : ''}
+                ${item.ac ? `
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 text-[11px]">Armor Class:</span>
+                        <span class="font-mono font-bold text-emerald-400">${escapeHTML(item.ac)}</span>
+                    </div>
+                ` : ''}
+                ${item.strengthReq ? `
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 text-[11px]">Strength Req:</span>
+                        <span class="font-mono text-slate-300">${escapeHTML(item.strengthReq)}</span>
+                    </div>
+                ` : ''}
+                ${item.stealthDisadv ? `
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 text-[11px]">Stealth:</span>
+                        <span class="font-mono text-rose-300">Disadvantage</span>
+                    </div>
+                ` : ''}
+                ${item.properties && item.properties.length > 0 ? `
+                    <div class="pt-1 border-t border-ledger-800/80">
+                        <span class="text-[10px] uppercase font-bold text-slate-500 block mb-1">Properties & 2024 Masteries</span>
+                        <div class="flex flex-wrap gap-1">
+                            ${(Array.isArray(item.properties) ? item.properties : [item.properties]).map(p => `
+                                <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-sky-300 text-[10px]">${escapeHTML(p)}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        ` : ''}
+
+        ${item.attunement ? `
+            <div class="p-2.5 bg-indigo-950/40 border border-indigo-800/60 rounded-xl text-[11px] text-indigo-300 flex items-center gap-2">
+                <span>🔮</span>
+                <span>${escapeHTML(attunementStr)}</span>
+            </div>
+        ` : ''}
+
+        <!-- Description / Mechanics -->
+        <div class="space-y-1.5">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Item Description & Effects</span>
+            <div class="p-3.5 bg-ledger-950 rounded-xl border border-ledger-800 text-slate-200 font-serif leading-relaxed text-xs max-h-72 overflow-y-auto whitespace-pre-wrap">${escapeHTML(item.description)}</div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between pt-2 border-t border-ledger-800 text-xs flex-wrap gap-2">
+            <button onclick="addItemToLoot('${item.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold flex items-center gap-1.5 transition">
+                <span>🛒</span> Add to Shop Inventory
+            </button>
+            ${item.isCustom ? `
+                <div class="flex items-center gap-2">
+                    <button onclick="openCustomItemModal('${item.id}')" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold transition">
+                        ✏️ Edit
+                    </button>
+                    <button onclick="deleteCustomItem('${item.id}')" class="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-semibold transition">
+                        🗑️ Delete
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function openCustomItemModal(itemId = null) {
+    const modal = document.getElementById('custom-item-modal');
+    if (!modal) {
+        console.error("custom-item-modal element not found in DOM");
+        return;
+    }
+    const titleEl = document.getElementById('custom-item-modal-header-text');
+
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val !== undefined && val !== null ? val : '';
+    };
+
+    if (itemId) {
+        const item = (appState.items || []).find(x => x.id === itemId);
+        if (item) {
+            if (titleEl) titleEl.textContent = `Edit Item: ${item.name}`;
+            setVal('custom-item-id', item.id);
+            setVal('custom-item-name', item.name);
+            setVal('custom-item-type', item.type || 'Wondrous Item');
+            setVal('custom-item-rarity', item.rarity || 'Uncommon');
+            setVal('custom-item-cost', item.cost || '');
+            setVal('custom-item-weight', item.weight || '');
+            setVal('custom-item-attunement', typeof item.attunement === 'string' ? item.attunement : (item.attunement ? 'Requires Attunement' : ''));
+            setVal('custom-item-damage', item.damage || '');
+            setVal('custom-item-damage-type', item.damageType || '');
+            setVal('custom-item-ac', item.ac || '');
+            setVal('custom-item-properties', Array.isArray(item.properties) ? item.properties.join(', ') : (item.properties || ''));
+            setVal('custom-item-desc', item.description || '');
+        }
+    } else {
+        if (titleEl) titleEl.textContent = 'Create Custom Item';
+        setVal('custom-item-id', '');
+        const form = document.getElementById('custom-item-form');
+        if (form) form.reset();
+        setVal('custom-item-type', 'Wondrous Item');
+        setVal('custom-item-rarity', 'Uncommon');
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    if (typeof openModal === 'function') {
+        openModal('custom-item-modal');
+    }
+}
+
+function closeCustomItemModal() {
+    const modal = document.getElementById('custom-item-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    if (typeof closeModal === 'function') {
+        closeModal('custom-item-modal');
+    }
+}
+
+async function saveCustomItem(e) {
+    if (e) e.preventDefault();
+
+    const id = document.getElementById('custom-item-id')?.value.trim();
+    const name = document.getElementById('custom-item-name')?.value.trim();
+    if (!name) {
+        showToast("Please enter an item name", "error");
+        return;
+    }
+
+    const itemType = document.getElementById('custom-item-type')?.value || 'Wondrous Item';
+    const rarity = document.getElementById('custom-item-rarity')?.value || 'Uncommon';
+    const cost = document.getElementById('custom-item-cost')?.value.trim() || '';
+    const weight = document.getElementById('custom-item-weight')?.value.trim() || '';
+    const attunementVal = document.getElementById('custom-item-attunement')?.value.trim();
+    const damage = document.getElementById('custom-item-damage')?.value.trim() || null;
+    const damageType = document.getElementById('custom-item-damage-type')?.value.trim() || null;
+    const ac = document.getElementById('custom-item-ac')?.value.trim() || null;
+    const propStr = document.getElementById('custom-item-properties')?.value.trim();
+    const properties = propStr ? propStr.split(',').map(s => s.trim()).filter(Boolean) : null;
+    const description = document.getElementById('custom-item-desc')?.value.trim() || '';
+
+    const payload = {
+        name,
+        type: itemType,
+        rarity,
+        attunement: attunementVal ? attunementVal : false,
+        cost,
+        weight,
+        damage,
+        damageType,
+        ac,
+        properties,
+        description,
+        isCustom: true
+    };
+    if (id) payload.id = id;
+
+    try {
+        const res = await fetch('/api/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const savedItem = data.item;
+            if (!appState.items) appState.items = [];
+            const existingIdx = appState.items.findIndex(x => x.id === savedItem.id);
+            if (existingIdx !== -1) {
+                appState.items[existingIdx] = savedItem;
+            } else {
+                appState.items.unshift(savedItem);
+            }
+            appState.selectedItemId = savedItem.id;
+            closeCustomItemModal();
+            filterItemsList();
+            showItemDetail(savedItem.id);
+            showToast(`Saved item: ${savedItem.name}`, "success");
+        } else {
+            showToast("Failed to save item", "error");
+        }
+    } catch (err) {
+        console.error("Error saving custom item:", err);
+        showToast("Error saving item", "error");
+    }
+}
+
+async function deleteCustomItem(itemId) {
+    if (!confirm("Are you sure you want to delete this custom item?")) return;
+    try {
+        const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
+        if (res.ok) {
+            appState.items = (appState.items || []).filter(x => x.id !== itemId);
+            if (appState.selectedItemId === itemId) {
+                appState.selectedItemId = appState.items.length > 0 ? appState.items[0].id : null;
+            }
+            filterItemsList();
+            if (appState.selectedItemId) showItemDetail(appState.selectedItemId);
+            showToast("Item deleted", "info");
+        }
+    } catch (err) {
+        console.error("Error deleting item:", err);
+        showToast("Error deleting item", "error");
+    }
+}
+
+async function broadcastItemCard(itemId) {
+    const item = (appState.items || []).find(x => x.id === itemId);
+    if (!item) return;
+
+    let sub = `${item.rarity} ${item.type}`;
+    if (item.attunement) sub += ` • ${typeof item.attunement === 'string' ? item.attunement : 'Requires Attunement'}`;
+
+    const parts = [];
+    if (item.cost || item.weight) {
+        const cw = [item.cost ? `Cost: ${item.cost}` : '', item.weight ? `Weight: ${item.weight}` : ''].filter(Boolean).join(' • ');
+        parts.push(cw);
+    }
+    if (item.damage) {
+        parts.push(`Damage: ${item.damage}${item.damageType ? ' (' + item.damageType + ')' : ''}`);
+    }
+    if (item.ac) {
+        parts.push(`Armor Class: ${item.ac}`);
+    }
+    if (item.properties && item.properties.length > 0) {
+        const pStr = Array.isArray(item.properties) ? item.properties.join(', ') : item.properties;
+        parts.push(`Properties & Masteries: ${pStr}`);
+    }
+    if (item.description) {
+        parts.push(item.description);
+    }
+
+    const body = parts.join('\n\n');
+    await broadcastHandout(item.name, sub, body, 'item');
+}
+
+function addItemToLoot(itemId) {
+    const item = (appState.items || []).find(x => x.id === itemId);
+    if (!item) return;
+
+    if (!appState.currentShop) {
+        generateShop();
+    }
+
+    if (appState.currentShop && appState.currentShop.items) {
+        let costNum = 50;
+        const match = (item.cost || '').match(/\d+/);
+        if (match) costNum = parseInt(match[0], 10);
+
+        appState.currentShop.items.unshift({
+            name: item.name,
+            cost: costNum,
+            finalCost: costNum,
+            unit: "gp",
+            type: item.type,
+            desc: item.description ? item.description.substring(0, 100) + '...' : '',
+            qty: 1
+        });
+        renderShopInventory();
+        switchTab('loot');
+        showToast(`Added ${item.name} to merchant inventory!`, "success");
+    }
+}
+
+// Global window exposure for inline event handlers & compendium interactions
+window.renderItemsView = renderItemsView;
+window.filterItemsList = filterItemsList;
+window.setItemTypeFilter = setItemTypeFilter;
+window.renderItemsDirectory = renderItemsDirectory;
+window.showItemDetail = showItemDetail;
+window.openCustomItemModal = openCustomItemModal;
+window.closeCustomItemModal = closeCustomItemModal;
+window.saveCustomItem = saveCustomItem;
+window.deleteCustomItem = deleteCustomItem;
+window.broadcastItemCard = broadcastItemCard;
+window.broadcastShopInventory = broadcastShopInventory;
+window.addItemToLoot = addItemToLoot;
+window.getItemRarityBadge = getItemRarityBadge;
 
 // -----------------------------------------------------------------------------
 // PHASE 5: AMARAN INDEPENDENT DUAL-CHANNEL LIGHTING CONTROLLER
@@ -6329,6 +8189,7 @@ const DEFAULT_KEYBINDS = {
     nav_bestiary: { label: "5.5e Bestiary (300+)", group: "Navigation", default: "Alt+6", scope: "global" },
     nav_encounters: { label: "Encounter Builder", group: "Navigation", default: "Alt+9", scope: "global" },
     nav_spells: { label: "Spells Compendium", group: "Navigation", default: "Alt+0", scope: "global" },
+    nav_items: { label: "Items Compendium", group: "Navigation", default: "Alt+I", scope: "global" },
     nav_rules: { label: "2024 Rules Engine", group: "Navigation", default: "Alt+3", scope: "global" },
     nav_world: { label: "World, Factions & Quests", group: "Navigation", default: "Alt+7", scope: "global" },
     nav_npcs: { label: "NPC Generator & Roster", group: "Navigation", default: "Alt+2", scope: "global" },
@@ -6518,6 +8379,7 @@ function updateSidebarKeybindTooltips() {
         'bestiary': keybinds.nav_bestiary,
         'encounters': keybinds.nav_encounters,
         'spells': keybinds.nav_spells,
+        'items': keybinds.nav_items,
         'rules': keybinds.nav_rules,
         'world': keybinds.nav_world,
         'npcs': keybinds.nav_npcs,
@@ -6532,7 +8394,7 @@ function updateSidebarKeybindTooltips() {
         if (btn) {
             const tooltip = btn.querySelector('.sidebar-tooltip');
             if (tooltip) {
-                const baseText = tooltip.textContent.replace(/Alt\+[0-9M,]|Ctrl\+\S+|Shift\+\S+|\S+$/g, '').trim();
+                const baseText = tooltip.textContent.replace(/Alt\+[0-9MI,]|Ctrl\+\S+|Shift\+\S+|\S+$/g, '').trim();
                 tooltip.innerHTML = `${baseText} <kbd class="ml-1 text-[9px] text-slate-400 font-mono">${combo}</kbd>`;
             }
         }
@@ -6546,6 +8408,7 @@ function executeKeybindAction(actionId) {
         case 'nav_bestiary': switchTab('bestiary'); break;
         case 'nav_encounters': switchTab('encounters'); break;
         case 'nav_spells': switchTab('spells'); break;
+        case 'nav_items': switchTab('items'); break;
         case 'nav_rules': switchTab('rules'); break;
         case 'nav_world': switchTab('world'); break;
         case 'nav_npcs': switchTab('npcs'); break;
@@ -6792,6 +8655,9 @@ window.onload = async function() {
     renderAudioMixer();
     renderEncountersView();
     renderSpellsView();
+    renderItemsView();
+    renderSecrets();
+    renderHandouts();
     generateShop();
     renderBroadcastPill();
     if (window.LightingEngine) window.LightingEngine.init();

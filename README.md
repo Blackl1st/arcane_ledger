@@ -56,13 +56,15 @@ Arcane Ledger provides three specialized interfaces out of the box:
 
 ### 2. Player Display Screen (`/player`)
 * **Projector / Wall TV HUD**: Displays the current initiative order, round tracker, active turn banner, party health state, and in-game calendar/weather.
-* **Live DM Broadcasts**: Push character art, monster reveals, handouts, and lore secrets to the player screen with a single click.
+* **Authentic In-World Handout Display**: Dedicated tactical prop renderer displaying parchment letters, torn journal fragments, wanted posters, encrypted elder ciphers, and ancient arcane scrolls with 3D wax seals and realistic paper textures.
+* **Live DM Broadcasts**: Push character art, monster reveals, items, shop catalogs, handouts, and lore secrets to the player screen with a single click.
 * **Anti-Spoiler Design**: Hides monster stats, AC, exact hit points, and secret DM notes automatically.
 
 ### 3. Dedicated Tabletop Battlemap (`/map`)
 * **Horizontal In-Table Display**: Designed specifically for flat TVs embedded in gaming tables to host physical miniatures.
 * **1-Inch Miniature Calibration**: Calibrate grid squares precisely to 1-inch physical miniatures regardless of TV screen size (40", 50", 55"+).
 * **Dual-Canvas Fog of War**: DM reveals or conceals terrain using brushes or bounding boxes; players see an opaque parchment/shadow shroud.
+* **Tactical Measurement & AoE Templates**: Tabletop rulers (5ft increments) and broadcastable spell AoE templates (Circles, Cones, Cubes, Lines) rendered directly onto the in-table TV display in real time.
 * **Table Rotation**: Instant 0°, 90°, 180°, or 270° viewport rotation so players seated on any side of the table can view from their perspective.
 * **Interactive Laser Pings**: Click on the DM screen to fire pulsing golden ping coordinates that sync across all displays in real time.
 
@@ -88,10 +90,34 @@ Arcane Ledger provides three specialized interfaces out of the box:
 - Complete searchable library of **340+ spells** updated to the 2024 revision.
 - Filter instantly by spell level (Cantrip through 9th Level), magic school, class spell list, ritual status, concentration, and required components (V, S, M).
 - Full text descriptions including upcasting bonuses, casting times, ranges, and area of effect dimensions.
+- 1-click broadcast of full spell cards to player displays.
+
+### ⚔️ 2024 Items Compendium & Weapon Masteries
+- Complete directory of official 2024 weapons, armor, adventuring gear, tools, and magic items.
+- **2024 Weapon Masteries**: Cleave, Graze, Nick, Push, Sap, Slow, Topple, and Vex with full rules text and mastery requirements.
+- **Custom Item Forge**: Craft homebrew weapons, magical artifacts, potions, and equipment with custom rarity, attunement prerequisites, property tags, damage dice, and descriptions.
+- **1-Click Broadcast**: Broadcast any item card directly to the player screen (`/player`).
+- **1-Click Merchant Stock**: Push any compendium item directly into the active shop inventory for immediate purchase by the party.
+
+### 📜 In-World Handout & Missive Generator
+- **Tactical Physical-Look Props**: Generate authentic in-world documents including **Sealed Missives**, **Torn Journal Pages**, **Wanted Bounty Posters**, **Coded Ciphers & Runes**, and **Magic Sigil Scrolls**.
+- **Parchment Themes**: 5 tactile backgrounds (`Aged Parchment`, `Royal Vellum`, `Burnt Ash`, `Bloodstained`, `Arcane Void`) with procedural wear and edge texturing.
+- **Typography Styles**: 5 period fonts (`Handwritten Cursive`, `Gothic Blackletter`, `Classic Serif`, `Dwarven Runes / Chisel`, `Ledger Typewriter`).
+- **3D Wax Seal Forge**: 8 emblem crests (`Crown`, `Skull`, `Arcane Eye`, `Scales of Justice`, `Daggers`, `Dragon`, `Tree`, `Scroll`) across 5 wax colors (`Red`, `Gold`, `Black`, `Green`, `Purple`) with realistic lighting gradients.
+- **Cryptographic Cipher Engine**: Encrypt secret missives with Elder Futhark runes substitution, Caesar shifts, redacted blocks, or anagram scrambles. Set DC Investigation thresholds and DM hints with 1-click table reveal/decipher.
+- **Live WYSIWYG Forge**: Live real-time preview in the DM console that dynamically shifts layout, banners, and typography the moment a document type is selected.
+- **Dedicated Player Display**: Clean parchment rendering on the player screen (`/player`) isolated from standard interface styling.
+
+### 🕵️ Campaign Secrets, Clues & Rumors
+- **Clue & Discovery Board**: Track campaign secrets, mysteries, and investigation leads linked directly to NPCs, factions, and world locations.
+- **State Progression**: Move clues smoothly between *Undiscovered*, *Discovered*, and *Publicly Revealed*.
+- **Tavern Rumor Panning**: 1-click convert any discovered clue or in-world handout into an active Tavern Rumor.
+- **Player Screen Broadcast**: Push important discoveries directly to player screens as tactical clues.
 
 ### 🗺️ Tabletop Battlemap & Miniatures Engine
 - **Hardware-Calibrated Grid**: Adjustable square and hex grids with customizable grid size, opacity, and color.
 - **Dual-Canvas Shroud**: Brush reveal, brush hide, box reveal, and full map reset.
+- **Tactical Measurement & Spell AoE**: Dynamic measuring tape (5ft increments) and broadcastable spell templates (Circles, Cones, Cubes, Lines) synced live between DM laptop and in-table battlemap TV.
 - **Virtual & Physical Token Support**:
   - Drag-and-drop movement with grid snapping.
   - Size scaling from Tiny up to Gargantuan.
@@ -135,7 +161,8 @@ Arcane Ledger provides three specialized interfaces out of the box:
 ### 💰 2024 Loot & Merchant Generator
 - Individual monster loot tables and Hoard treasure generators organized by CR Tier (0–4, 5–10, 11–16, 17+).
 - Currency calculators (cp, sp, ep, gp, pp), gemstones, art objects, and 2024 magic item tables.
-- Merchant shop inventory generator with variable pricing and roleplay hooks.
+- **Merchant Shop Generator**: Generate settlement shops by tier with variable markup and stock.
+- **Broadcast Shop Catalog**: 1-click broadcast of full merchant catalogs (prices, stock, descriptions) to player screens in an interactive catalog grid.
 
 ### 💾 Safe Storage & Snapshot Backups
 - Atomic JSON persistence: all campaign data is stored locally in human-readable JSON files.
@@ -174,14 +201,13 @@ pip install -r requirements.txt
 
 ### 3. Launch the Server
 
-**Using the startup script (Windows):**
-Double-click `run.bat` or run:
-```cmd
-run.bat
-```
+**Using the startup script:**
+* **macOS / Linux**: Double-click `start.command` in Finder or run `./run.sh` in Terminal
+* **Windows**: Double-click `run.bat`
 
-**Using the command line:**
+**Manual command line launch:**
 ```bash
+source venv/bin/activate   # On Windows: venv\Scripts\activate
 python app.py
 ```
 
@@ -214,6 +240,7 @@ Arcane Ledger includes comprehensive hotkeys designed for fast, seamless tableto
 | <kbd>Alt</kbd> + <kbd>6</kbd> | **5.5e Bestiary** | Search 330+ monster statblocks |
 | <kbd>Alt</kbd> + <kbd>9</kbd> | **Encounter Builder** | XP budget calculator & encounter builder |
 | <kbd>Alt</kbd> + <kbd>0</kbd> | **Spells Compendium** | Filterable 2024 spellbook |
+| <kbd>Alt</kbd> + <kbd>I</kbd> | **Items Compendium** | 2024 equipment, masteries & custom forge |
 | <kbd>Alt</kbd> + <kbd>3</kbd> | **Rules Engine** | 2024 rules cheat sheet & conditions |
 | <kbd>Alt</kbd> + <kbd>7</kbd> | **World & Factions** | Locations, progress clocks, quest log |
 | <kbd>Alt</kbd> + <kbd>2</kbd> | **NPC Generator** | On-the-fly NPC roller & roster |
@@ -285,12 +312,17 @@ arcane_ledger/
 ├── app.py                      # FastAPI core backend & REST API endpoints
 ├── requirements.txt            # Python dependencies
 ├── run.bat                     # Quick-start batch file for Windows
+├── run.sh                      # Quick-start shell script for macOS / Linux
+├── start.command               # Double-clickable launcher for macOS Finder
 ├── dnd_npc_generator.html      # Standalone single-file offline NPC generator
 ├── README.md                   # Project documentation
 │
 ├── data/                       # Local JSON database (human-readable, atomic saves)
 │   ├── monsters.json           # 330+ 2024 D&D monsters & statblocks
 │   ├── spells.json             # 340+ 2024 D&D spells & details
+│   ├── items.json              # 2024 SRD equipment, weapon masteries & custom items
+│   ├── handouts.json           # In-world parchment missives, journals, bounties & ciphers
+│   ├── secrets.json            # Campaign clues, investigative secrets & rumor links
 │   ├── rules_2024.json         # 2024 conditions, actions, and cheat sheets
 │   ├── combat.json             # Active initiative, round, and combatant state
 │   ├── party.json              # Player characters, spell slots, and resources

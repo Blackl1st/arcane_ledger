@@ -22,11 +22,13 @@ window.BattlemapController = (function() {
         locked: false,
         pings: [],
         tokens: [],
+        templates: [],
+        activeRuler: null,
         maps: []
     };
 
     // Tool state
-    let currentTool = 'brush'; // 'brush', 'box', 'shroud', 'ping'
+    let currentTool = 'brush'; // 'brush', 'box', 'shroud', 'ping', 'ruler', 'template'
     let brushRadius = 50;
     let isDrawing = false;
     let isPanning = false;
@@ -39,6 +41,43 @@ window.BattlemapController = (function() {
     let currentMouseX = 0;
     let currentMouseY = 0;
     let isInsideCanvas = false;
+
+    // Tactical Ruler State
+    let isRulerDragging = false;
+    let rulerStartX = 0;
+    let rulerStartY = 0;
+    let broadcastRulerToTable = true;
+    let activeRuler = null;
+
+    // Spell AoE Template State
+    let currentAoEShape = 'circle'; // 'circle', 'cone', 'cube', 'line'
+    let currentAoESize = 20; // feet (radius for circle, size for cube)
+    let currentAoELength = 60; // feet (for cone and line)
+    let currentAoEWidth = 5; // feet (for line)
+    let currentAoERotation = 0; // degrees
+    let currentAoEColor = '#f97316';
+    let currentAoELabel = 'Fireball (20ft)';
+    let broadcastAoEToTable = true;
+    let activeTemplate = null;
+    let isAimingTemplate = false;
+    let templateOriginX = 0;
+    let templateOriginY = 0;
+    let lastAimPushTime = 0;
+    const activeStrideTokens = new Set();
+
+    const SPELL_PRESETS = {
+        'fireball': { name: 'Fireball', shape: 'circle', size: 20, color: '#f97316', label: 'Fireball (20ft r)' },
+        'spirit_guardians': { name: 'Spirit Guardians', shape: 'circle', size: 15, color: '#eab308', label: 'Spirit Guardians (15ft r)' },
+        'darkness': { name: 'Darkness / Fog Cloud', shape: 'circle', size: 15, color: '#64748b', label: 'Darkness (15ft r)' },
+        'moonbeam': { name: 'Moonbeam', shape: 'circle', size: 5, color: '#38bdf8', label: 'Moonbeam (5ft r)' },
+        'burning_hands': { name: 'Burning Hands / Breath', shape: 'cone', length: 15, color: '#ef4444', label: 'Burning Hands (15ft cone)' },
+        'cone_of_cold': { name: 'Cone of Cold', shape: 'cone', length: 60, color: '#06b6d4', label: 'Cone of Cold (60ft cone)' },
+        'lightning_bolt': { name: 'Lightning Bolt', shape: 'line', length: 100, width: 5, color: '#3b82f6', label: 'Lightning Bolt (100×5ft)' },
+        'gust_of_wind': { name: 'Gust of Wind', shape: 'line', length: 60, width: 10, color: '#94a3b8', label: 'Gust of Wind (60×10ft)' },
+        'faerie_fire': { name: 'Faerie Fire', shape: 'cube', size: 20, color: '#a855f7', label: 'Faerie Fire (20ft cube)' },
+        'web': { name: 'Web', shape: 'cube', size: 20, color: '#84cc16', label: 'Web (20ft cube)' },
+        'thunderwave': { name: 'Thunderwave', shape: 'cube', size: 15, color: '#14b8a6', label: 'Thunderwave (15ft cube)' }
+    };
 
     // Token Dragging State
     let draggedToken = null;
@@ -90,6 +129,7 @@ window.BattlemapController = (function() {
         await fetchState();
         populateMapDropdown();
         loadActiveMap();
+        setTool(currentTool || 'brush');
 
         if (!pollInterval) {
             pollInterval = setInterval(pollPingsAndSync, 1200);
@@ -128,6 +168,54 @@ window.BattlemapController = (function() {
         // File upload drag & drop
         containerEl.addEventListener('dragover', (e) => { e.preventDefault(); });
         containerEl.addEventListener('drop', handleFileDrop);
+
+        // Close table settings popover on outside click
+        document.addEventListener('click', (e) => {
+            const popover = document.getElementById('dm-table-calibration-popover');
+            const btn = document.getElementById('dm-table-settings-btn');
+            if (popover && !popover.classList.contains('hidden')) {
+                if (!popover.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                    popover.classList.add('hidden');
+                }
+            }
+        });
+
+        // Keyboard Shortcuts for Battlemap Overlays (M for Ruler, T for Template, Esc for Clear)
+        window.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            const isTyping = active && (
+                active.tagName === 'INPUT' ||
+                active.tagName === 'TEXTAREA' ||
+                active.tagName === 'SELECT' ||
+                active.isContentEditable
+            );
+            if (isTyping) return;
+
+            const mapSection = document.getElementById('tab-battlemap');
+            if (mapSection && mapSection.classList.contains('hidden')) return;
+
+            if (e.key === 'm' || e.key === 'M') {
+                e.preventDefault();
+                setTool('ruler');
+            } else if (e.key === 't' || e.key === 'T') {
+                e.preventDefault();
+                setTool('template');
+            } else if (e.key === 'b' || e.key === 'B') {
+                e.preventDefault();
+                setTool('brush');
+            } else if (e.key === 's' || e.key === 'S') {
+                e.preventDefault();
+                setTool('shroud');
+            } else if (e.key === 'x' || e.key === 'X') {
+                e.preventDefault();
+                setTool('box');
+            } else if (e.key === 'Escape') {
+                if (activeRuler || (state.templates && state.templates.length > 0)) {
+                    e.preventDefault();
+                    clearActiveOverlay();
+                }
+            }
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -138,8 +226,15 @@ window.BattlemapController = (function() {
             const res = await fetch('/api/battlemap');
             if (res.ok) {
                 state = await res.json();
+                if (!state.templates) state.templates = [];
+                if (state.templates.length > 0) activeTemplate = state.templates[0];
+                if (state.activeRuler) activeRuler = state.activeRuler;
+                (state.tokens || []).forEach(t => {
+                    if (t.strideActive) activeStrideTokens.add(t.id);
+                });
                 updateUIControls();
                 renderDMTokens();
+                renderPreview();
             }
         } catch (err) {
             console.error("Error fetching battlemap state:", err);
@@ -161,6 +256,8 @@ window.BattlemapController = (function() {
                     });
                 }
 
+                let needsPreviewRerender = false;
+
                 // Sync tokens if not currently dragging
                 if (!draggedToken && newState.tokens) {
                     const localLen = (state.tokens || []).length;
@@ -169,10 +266,41 @@ window.BattlemapController = (function() {
                     if (localLen !== newLen) {
                         state.tokens = newState.tokens;
                         renderDMTokens();
+                        needsPreviewRerender = true;
                     } else if (tokensJson !== JSON.stringify(state.tokens)) {
                         state.tokens = newState.tokens;
                         state.tokens.forEach(t => updateTokenDOM(t));
+                        needsPreviewRerender = true;
                     }
+
+                    // Sync stride active tokens
+                    newState.tokens.forEach(t => {
+                        if (t.strideActive) activeStrideTokens.add(t.id);
+                        else activeStrideTokens.delete(t.id);
+                    });
+                }
+
+                // Sync templates if changed remotely
+                if (newState.templates !== undefined) {
+                    const templatesJson = JSON.stringify(newState.templates);
+                    if (templatesJson !== JSON.stringify(state.templates || [])) {
+                        state.templates = newState.templates || [];
+                        if (state.templates.length > 0) activeTemplate = state.templates[0];
+                        needsPreviewRerender = true;
+                    }
+                }
+
+                // Sync activeRuler if not dragging locally
+                if (!isRulerDragging && newState.activeRuler !== undefined) {
+                    const rulerJson = JSON.stringify(newState.activeRuler);
+                    if (rulerJson !== JSON.stringify(activeRuler || null)) {
+                        activeRuler = newState.activeRuler;
+                        needsPreviewRerender = true;
+                    }
+                }
+
+                if (needsPreviewRerender) {
+                    renderPreview();
                 }
             }
         } catch (err) {
@@ -334,13 +462,374 @@ window.BattlemapController = (function() {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // TACTICAL OVERLAYS DRAWING HELPERS (RULER, AOE TEMPLATES, STRIDE AURAS)
+    // -------------------------------------------------------------------------
+    function drawRuler(ctx, ruler, gridSize) {
+        if (!ruler || !ruler.active) return;
+        const x1 = ruler.startX;
+        const y1 = ruler.startY;
+        const x2 = ruler.endX;
+        const y2 = ruler.endY;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const distPx = Math.hypot(dx, dy);
+        if (distPx < 3) return;
+
+        const sq = distPx / gridSize;
+        const feet = typeof ruler.distanceFeet === 'number' ? ruler.distanceFeet : Math.round(sq * 5);
+
+        ctx.save();
+        // Outer glow
+        ctx.strokeStyle = 'rgba(2, 132, 199, 0.45)';
+        ctx.lineWidth = 8 / dmZoom;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Core cyan laser line
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3 / dmZoom;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // 5ft / 1 square tick marks
+        const unitX = dx / distPx;
+        const unitY = dy / distPx;
+        const perpX = -unitY;
+        const perpY = unitX;
+        const tickHalf = 6 / dmZoom;
+
+        ctx.strokeStyle = '#bae6fd';
+        ctx.lineWidth = 2 / dmZoom;
+        for (let d = gridSize; d < distPx - 4; d += gridSize) {
+            const tx = x1 + unitX * d;
+            const ty = y1 + unitY * d;
+            ctx.beginPath();
+            ctx.moveTo(tx - perpX * tickHalf, ty - perpY * tickHalf);
+            ctx.lineTo(tx + perpX * tickHalf, ty + perpY * tickHalf);
+            ctx.stroke();
+        }
+
+        // Start & End points
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(x1, y1, 5 / dmZoom, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5 / dmZoom;
+        ctx.beginPath();
+        ctx.arc(x2, y2, 8 / dmZoom, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Distance Badge
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        drawAoEBadge(ctx, midX, midY - 14 / dmZoom, `📏 ${feet} ft (${sq.toFixed(1)} sq)`, '#38bdf8');
+        ctx.restore();
+    }
+
+    function drawAoETemplate(ctx, tpl, gridSize, isGhost = false) {
+        if (!tpl) return;
+        const type = tpl.type || 'circle';
+        const x = tpl.x;
+        const y = tpl.y;
+        const color = tpl.color || '#f97316';
+        const label = tpl.label || 'Spell Effect';
+        const rotationDeg = tpl.rotation || 0;
+        const theta = rotationDeg * Math.PI / 180;
+        const fillAlpha = isGhost ? 0.16 : 0.28;
+        const strokeAlpha = isGhost ? 0.55 : 0.90;
+
+        ctx.save();
+        if (!isGhost) {
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 14;
+        }
+
+        if (type === 'circle') {
+            const radiusFeet = tpl.radiusFeet || 20;
+            const rPx = (radiusFeet / 5) * gridSize;
+
+            ctx.fillStyle = hexToRgba(color, fillAlpha);
+            ctx.beginPath();
+            ctx.arc(x, y, rPx, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Concentric guide ring
+            ctx.strokeStyle = hexToRgba(color, 0.40);
+            ctx.lineWidth = 1 / dmZoom;
+            ctx.setLineDash([4 / dmZoom, 4 / dmZoom]);
+            ctx.beginPath();
+            ctx.arc(x, y, rPx * 0.5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Outer boundary
+            ctx.strokeStyle = hexToRgba(color, strokeAlpha);
+            ctx.lineWidth = (isGhost ? 1.5 : 2.5) / dmZoom;
+            ctx.setLineDash(isGhost ? [4 / dmZoom, 4 / dmZoom] : [8 / dmZoom, 4 / dmZoom]);
+            ctx.beginPath();
+            ctx.arc(x, y, rPx, 0, Math.PI * 2);
+            ctx.stroke();
+
+            drawAoEBadge(ctx, x, y, `${label} • ${radiusFeet}ft r`, color);
+
+        } else if (type === 'cone') {
+            const lengthFeet = tpl.lengthFeet || 60;
+            const lenPx = (lengthFeet / 5) * gridSize;
+            const alpha = 0.4636; // 26.565 deg (5e cone 53.13 deg arc)
+
+            ctx.fillStyle = hexToRgba(color, fillAlpha);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.arc(x, y, lenPx, theta - alpha, theta + alpha);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = hexToRgba(color, strokeAlpha);
+            ctx.lineWidth = (isGhost ? 1.5 : 2.5) / dmZoom;
+            ctx.setLineDash(isGhost ? [4 / dmZoom, 4 / dmZoom] : [8 / dmZoom, 4 / dmZoom]);
+            ctx.stroke();
+
+            // Direction arrow
+            ctx.strokeStyle = hexToRgba(color, 0.5);
+            ctx.lineWidth = 1.5 / dmZoom;
+            ctx.setLineDash([3 / dmZoom, 3 / dmZoom]);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.cos(theta) * lenPx, y + Math.sin(theta) * lenPx);
+            ctx.stroke();
+
+            const badgeX = x + Math.cos(theta) * (lenPx * 0.55);
+            const badgeY = y + Math.sin(theta) * (lenPx * 0.55);
+            drawAoEBadge(ctx, badgeX, badgeY, `${label} • ${lengthFeet}ft cone`, color);
+
+        } else if (type === 'cube') {
+            const sizeFeet = tpl.radiusFeet || tpl.lengthFeet || 20;
+            const sPx = (sizeFeet / 5) * gridSize;
+
+            ctx.translate(x, y);
+            ctx.rotate(theta);
+
+            ctx.fillStyle = hexToRgba(color, fillAlpha);
+            ctx.beginPath();
+            ctx.rect(-sPx / 2, -sPx / 2, sPx, sPx);
+            ctx.fill();
+
+            ctx.strokeStyle = hexToRgba(color, strokeAlpha);
+            ctx.lineWidth = (isGhost ? 1.5 : 2.5) / dmZoom;
+            ctx.setLineDash(isGhost ? [4 / dmZoom, 4 / dmZoom] : [8 / dmZoom, 4 / dmZoom]);
+            ctx.stroke();
+
+            drawAoEBadge(ctx, 0, 0, `${label} • ${sizeFeet}ft cube`, color);
+
+        } else if (type === 'line') {
+            const lengthFeet = tpl.lengthFeet || 60;
+            const widthFeet = tpl.widthFeet || 5;
+            const lenPx = (lengthFeet / 5) * gridSize;
+            const widthPx = Math.max(8, (widthFeet / 5) * gridSize);
+
+            ctx.translate(x, y);
+            ctx.rotate(theta);
+
+            ctx.fillStyle = hexToRgba(color, fillAlpha);
+            ctx.beginPath();
+            ctx.rect(0, -widthPx / 2, lenPx, widthPx);
+            ctx.fill();
+
+            ctx.strokeStyle = hexToRgba(color, strokeAlpha);
+            ctx.lineWidth = (isGhost ? 1.5 : 2.5) / dmZoom;
+            ctx.setLineDash(isGhost ? [4 / dmZoom, 4 / dmZoom] : [6 / dmZoom, 3 / dmZoom]);
+            ctx.stroke();
+
+            drawAoEBadge(ctx, lenPx / 2, 0, `${label} • ${lengthFeet}×${widthFeet}ft`, color);
+        }
+
+        ctx.restore();
+    }
+
+    function drawAoEBadge(ctx, bx, by, text, color) {
+        ctx.save();
+        const fontSize = Math.max(9, Math.round(11 / dmZoom));
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        const m = ctx.measureText(text);
+        const padX = 8 / dmZoom;
+        const padY = 3 / dmZoom;
+        const w = m.width + padX * 2;
+        const h = fontSize + padY * 2 + 4 / dmZoom;
+
+        ctx.fillStyle = 'rgba(10, 14, 20, 0.94)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2 / dmZoom;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(bx - w / 2, by - h / 2, w, h, 6 / dmZoom);
+        } else {
+            ctx.rect(bx - w / 2, by - h / 2, w, h);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, bx, by);
+        ctx.restore();
+    }
+
+    function drawTokenStride(ctx, token, gridSize) {
+        const speed = token.speed || 30;
+        const walkPx = (speed / 5) * gridSize;
+        const dashPx = walkPx * 2;
+        const x = token.x;
+        const y = token.y;
+
+        ctx.save();
+        // Walk circle (soft emerald)
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+        ctx.beginPath();
+        ctx.arc(x, y, walkPx, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2 / dmZoom;
+        ctx.setLineDash([5 / dmZoom, 4 / dmZoom]);
+        ctx.beginPath();
+        ctx.arc(x, y, walkPx, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Dash circle (dashed cyan)
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 1.5 / dmZoom;
+        ctx.setLineDash([3 / dmZoom, 5 / dmZoom]);
+        ctx.beginPath();
+        ctx.arc(x, y, dashPx, 0, Math.PI * 2);
+        ctx.stroke();
+
+        drawAoEBadge(ctx, x, y - walkPx, `Walk ${speed}ft`, '#10b981');
+        ctx.restore();
+    }
+
+    function hexToRgba(hex, alpha) {
+        if (!hex) return `rgba(245, 158, 11, ${alpha})`;
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const r = parseInt(c.substring(0, 2), 16) || 245;
+        const g = parseInt(c.substring(2, 4), 16) || 158;
+        const b = parseInt(c.substring(4, 6), 16) || 11;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
     function renderPreview() {
         if (!isMapLoaded || !previewCtx) return;
         previewCtx.clearRect(0, 0, mapWidth, mapHeight);
 
+        const gridSize = state.gridSize || 50;
+
+        // 1. Render active Token Stride Ranges
+        const tokens = state.tokens || [];
+        tokens.forEach(t => {
+            if (activeStrideTokens.has(t.id) || t.strideActive) {
+                drawTokenStride(previewCtx, t, gridSize);
+            }
+        });
+
+        // 2. Render persistent Spell AoE Templates
+        const templates = state.templates || [];
+        templates.forEach(tpl => {
+            drawAoETemplate(previewCtx, tpl, gridSize);
+        });
+
+        // 3. Render persistent Ruler (if active and not currently drawing new ruler)
+        if (activeRuler && activeRuler.active && !isRulerDragging) {
+            drawRuler(previewCtx, activeRuler, gridSize);
+        }
+
+        // 4. Interactive Previews during Hover or Dragging
+        if (currentTool === 'ruler' && isRulerDragging && activeRuler) {
+            drawRuler(previewCtx, activeRuler, gridSize);
+            return;
+        }
+
+        if (currentTool === 'template' && isAimingTemplate && activeTemplate) {
+            // Draw active template with live aim rotation
+            drawAoETemplate(previewCtx, activeTemplate, gridSize);
+
+            // Draw interactive aiming ray & target reticle from origin to cursor
+            const dx = currentMouseX - templateOriginX;
+            const dy = currentMouseY - templateOriginY;
+            const dist = Math.hypot(dx, dy);
+
+            previewCtx.save();
+            // Origin marker pin
+            previewCtx.fillStyle = activeTemplate.color || '#f97316';
+            previewCtx.beginPath();
+            previewCtx.arc(templateOriginX, templateOriginY, 5 / dmZoom, 0, Math.PI * 2);
+            previewCtx.fill();
+
+            if (dist > 8) {
+                // Dashed aiming guide line
+                previewCtx.strokeStyle = activeTemplate.color || '#f97316';
+                previewCtx.lineWidth = 2 / dmZoom;
+                previewCtx.setLineDash([4 / dmZoom, 4 / dmZoom]);
+                previewCtx.beginPath();
+                previewCtx.moveTo(templateOriginX, templateOriginY);
+                previewCtx.lineTo(currentMouseX, currentMouseY);
+                previewCtx.stroke();
+
+                // Target reticle ring at cursor
+                previewCtx.strokeStyle = '#ffffff';
+                previewCtx.lineWidth = 2 / dmZoom;
+                previewCtx.beginPath();
+                previewCtx.arc(currentMouseX, currentMouseY, 8 / dmZoom, 0, Math.PI * 2);
+                previewCtx.stroke();
+
+                // Live rotation badge floating near cursor
+                drawAoEBadge(previewCtx, currentMouseX, currentMouseY - 14 / dmZoom, `🎯 ${currentAoERotation}°`, activeTemplate.color || '#f97316');
+            }
+            previewCtx.restore();
+            return;
+        }
+
         if (!isInsideCanvas && !isDrawing) return;
 
-        if (currentTool === 'brush' || currentTool === 'shroud') {
+        if (currentTool === 'template' && !isAimingTemplate && !isDrawing) {
+            const snap = findTokenAt(currentMouseX, currentMouseY);
+            const hx = snap ? snap.x : currentMouseX;
+            const hy = snap ? snap.y : currentMouseY;
+
+            const hoverTpl = {
+                type: currentAoEShape,
+                x: hx,
+                y: hy,
+                radiusFeet: currentAoESize,
+                lengthFeet: currentAoELength,
+                widthFeet: currentAoEWidth,
+                rotation: currentAoERotation,
+                color: currentAoEColor,
+                label: currentAoELabel
+            };
+            drawAoETemplate(previewCtx, hoverTpl, gridSize, true);
+
+            // If snapping to a token, draw a distinct target lock ring and name badge
+            if (snap) {
+                previewCtx.save();
+                previewCtx.strokeStyle = currentAoEColor;
+                previewCtx.lineWidth = 2.5 / dmZoom;
+                previewCtx.setLineDash([4 / dmZoom, 4 / dmZoom]);
+                previewCtx.beginPath();
+                const snapR = ((snap.sizeSquares || 1) * gridSize * 0.5) + (4 / dmZoom);
+                previewCtx.arc(snap.x, snap.y, snapR, 0, Math.PI * 2);
+                previewCtx.stroke();
+                drawAoEBadge(previewCtx, snap.x, snap.y - snapR - 10 / dmZoom, `Target: ${snap.name}`, currentAoEColor);
+                previewCtx.restore();
+            }
+        } else if (currentTool === 'brush' || currentTool === 'shroud') {
             previewCtx.save();
             previewCtx.beginPath();
             previewCtx.arc(currentMouseX, currentMouseY, brushRadius, 0, Math.PI * 2);
@@ -548,10 +1037,23 @@ window.BattlemapController = (function() {
         });
 
         renderTokensDrawer();
+
+        if (tokensLayerEl) {
+            const isOverlayTool = (currentTool === 'ruler' || currentTool === 'template' || currentTool === 'ping');
+            tokensLayerEl.classList.toggle('tokens-tool-mode', isOverlayTool);
+        }
     }
 
     function startTokenDrag(e, tokenId) {
         if (e.button !== 0) return; // Left click only
+
+        // When measurement or spell AoE tool is active, don't drag the token.
+        // Instead, forward to canvas tool so rulers and templates can anchor on tokens.
+        if (currentTool === 'ruler' || currentTool === 'template' || currentTool === 'ping' || e.shiftKey) {
+            handleMouseDown(e);
+            return;
+        }
+
         e.stopPropagation(); // Don't trigger canvas drawing
         e.preventDefault();
 
@@ -951,6 +1453,9 @@ window.BattlemapController = (function() {
                         <button onclick="window.BattlemapController.centerOnToken('${t.id}')" title="Center map on token" class="p-1 rounded hover:bg-ledger-800 text-slate-400 hover:text-amber-400">
                             🎯
                         </button>
+                        <button onclick="window.BattlemapController.toggleTokenStride('${t.id}')" title="Toggle 30ft Walk / 60ft Dash Stride Range" class="p-1 rounded hover:bg-ledger-800 ${activeStrideTokens.has(t.id) || t.strideActive ? 'text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-500/50' : 'text-slate-400 hover:text-emerald-400'}">
+                            🏃
+                        </button>
                         <button onclick="window.BattlemapController.toggleTokenVisibility('${t.id}')" title="${isHidden ? 'Show on Table Display' : 'Hide from Table Display (Stealth)'}" class="p-1 rounded hover:bg-ledger-800 ${isHidden ? 'text-slate-500' : 'text-emerald-400'}">
                             ${isHidden ? '🙈' : '👁️'}
                         </button>
@@ -1142,6 +1647,22 @@ window.BattlemapController = (function() {
     // -------------------------------------------------------------------------
     // MOUSE & DRAWING INTERACTIONS
     // -------------------------------------------------------------------------
+    function findTokenAt(worldX, worldY, hitRadiusFactor = 0.6) {
+        const tokens = state.tokens || [];
+        const gridSize = state.gridSize || 50;
+        for (let i = tokens.length - 1; i >= 0; i--) {
+            const t = tokens[i];
+            if (t.x === undefined || t.y === undefined) continue;
+            const sizeSquares = t.sizeSquares || 1.0;
+            const radius = (sizeSquares * gridSize) * hitRadiusFactor;
+            const dist = Math.hypot(worldX - t.x, worldY - t.y);
+            if (dist <= radius) {
+                return t;
+            }
+        }
+        return null;
+    }
+
     function screenToWorld(clientX, clientY) {
         const rect = viewportEl.getBoundingClientRect();
         const worldX = (clientX - rect.left) / dmZoom;
@@ -1174,6 +1695,57 @@ window.BattlemapController = (function() {
             return;
         }
 
+        // Tactical Ruler Measurement Tool
+        if (currentTool === 'ruler') {
+            const snap = findTokenAt(pos.x, pos.y);
+            const startX = snap ? snap.x : pos.x;
+            const startY = snap ? snap.y : pos.y;
+            isRulerDragging = true;
+            rulerStartX = startX;
+            rulerStartY = startY;
+            activeRuler = {
+                startX: startX,
+                startY: startY,
+                endX: startX,
+                endY: startY,
+                distanceFeet: 0,
+                distanceSquares: 0,
+                visibleToPlayers: broadcastRulerToTable,
+                active: true
+            };
+            updateRulerReadout(0, 0);
+            renderPreview();
+            pushRulerUpdate();
+            return;
+        }
+
+        // Spell AoE Template Tool (Hold & Point to Aim)
+        if (currentTool === 'template') {
+            const snap = findTokenAt(pos.x, pos.y);
+            templateOriginX = snap ? snap.x : pos.x;
+            templateOriginY = snap ? snap.y : pos.y;
+            isAimingTemplate = true;
+
+            const tplId = activeTemplate ? activeTemplate.id : ('tpl_' + Math.random().toString(36).substr(2, 8));
+            activeTemplate = {
+                id: tplId,
+                type: currentAoEShape,
+                x: templateOriginX,
+                y: templateOriginY,
+                radiusFeet: currentAoESize,
+                lengthFeet: currentAoELength,
+                widthFeet: currentAoEWidth,
+                rotation: currentAoERotation,
+                color: currentAoEColor,
+                label: currentAoELabel,
+                visibleToPlayers: broadcastAoEToTable
+            };
+            state.templates = [activeTemplate];
+            renderPreview();
+            pushTemplateUpdate(activeTemplate);
+            return;
+        }
+
         // Save current mask to undo history
         saveHistory();
 
@@ -1202,6 +1774,69 @@ window.BattlemapController = (function() {
         currentMouseX = pos.x;
         currentMouseY = pos.y;
 
+        if (isRulerDragging) {
+            const snap = findTokenAt(pos.x, pos.y);
+            let endX = pos.x;
+            let endY = pos.y;
+            if (snap && (Math.hypot(snap.x - rulerStartX, snap.y - rulerStartY) > 5)) {
+                endX = snap.x;
+                endY = snap.y;
+            }
+            const dx = endX - rulerStartX;
+            const dy = endY - rulerStartY;
+            const distPx = Math.hypot(dx, dy);
+            const sq = distPx / (state.gridSize || 50);
+            const feet = Math.round(sq * 5);
+            activeRuler = {
+                startX: rulerStartX,
+                startY: rulerStartY,
+                endX: endX,
+                endY: endY,
+                distanceFeet: feet,
+                distanceSquares: parseFloat(sq.toFixed(1)),
+                visibleToPlayers: broadcastRulerToTable,
+                active: true
+            };
+            updateRulerReadout(feet, sq);
+            renderPreview();
+
+            // Throttle live ruler measurement broadcast to player table screen (every ~120ms)
+            const now = Date.now();
+            if (broadcastRulerToTable && (now - lastAimPushTime > 120)) {
+                lastAimPushTime = now;
+                pushRulerUpdate();
+            }
+            return;
+        }
+
+        // Dynamic Hold-and-Point Aiming for Templates (Cones, Lines, Cubes)
+        if (isAimingTemplate && activeTemplate) {
+            const dx = pos.x - templateOriginX;
+            const dy = pos.y - templateOriginY;
+            const distPx = Math.hypot(dx, dy);
+
+            // If mouse moved more than 6px from origin, dynamically rotate towards cursor
+            if (distPx > 6) {
+                let angleDeg = Math.round(Math.atan2(dy, dx) * 180 / Math.PI);
+                if (angleDeg < 0) angleDeg += 360;
+                currentAoERotation = angleDeg;
+                activeTemplate.rotation = currentAoERotation;
+
+                const rotEl = document.getElementById('dm-aoe-rot-val');
+                if (rotEl) rotEl.textContent = `${currentAoERotation}°`;
+
+                // Throttle live updates to the player table screen (every ~150ms)
+                const now = Date.now();
+                if (broadcastAoEToTable && (now - lastAimPushTime > 150)) {
+                    lastAimPushTime = now;
+                    pushTemplateUpdate(activeTemplate);
+                }
+            }
+
+            renderPreview();
+            return;
+        }
+
         if (isDrawing) {
             if (currentTool === 'brush' || currentTool === 'shroud') {
                 applyBrushStroke(lastDrawX, lastDrawY, pos.x, pos.y);
@@ -1218,6 +1853,27 @@ window.BattlemapController = (function() {
         if (isPanning) {
             isPanning = false;
             containerEl.style.cursor = 'crosshair';
+            return;
+        }
+
+        if (isRulerDragging) {
+            isRulerDragging = false;
+            renderPreview();
+            pushRulerUpdate();
+            return;
+        }
+
+        if (isAimingTemplate) {
+            isAimingTemplate = false;
+            if (activeTemplate) {
+                pushTemplateUpdate(activeTemplate);
+                if (window.showToast) {
+                    const rotStr = (currentAoEShape === 'cone' || currentAoEShape === 'line' || currentAoEShape === 'cube') 
+                        ? ` facing ${currentAoERotation}°` : '';
+                    window.showToast(`✨ Placed ${activeTemplate.label}${rotStr}`, "success");
+                }
+            }
+            renderPreview();
             return;
         }
 
@@ -1383,15 +2039,398 @@ window.BattlemapController = (function() {
     function setTool(tool) {
         currentTool = tool;
         document.querySelectorAll('.dm-tool-btn').forEach(btn => {
-            btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold');
-            btn.classList.add('bg-ledger-800', 'text-slate-300');
+            btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold', 'shadow');
+            btn.classList.add('text-slate-300');
         });
         const activeBtn = document.getElementById(`dm-tool-btn-${tool}`);
         if (activeBtn) {
-            activeBtn.classList.remove('bg-ledger-800', 'text-slate-300');
-            activeBtn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold');
+            activeBtn.classList.remove('text-slate-300');
+            activeBtn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold', 'shadow');
+        }
+
+        if (tokensLayerEl) {
+            const isOverlayTool = (tool === 'ruler' || tool === 'template' || tool === 'ping');
+            tokensLayerEl.classList.toggle('tokens-tool-mode', isOverlayTool);
+        }
+
+        renderOverlayToolbar();
+        renderPreview();
+    }
+
+    function renderOverlayToolbar() {
+        const toolbar = document.getElementById('dm-aoe-ruler-toolbar');
+        const container = document.getElementById('dm-overlay-controls');
+        if (!toolbar || !container) return;
+
+        toolbar.classList.remove('hidden');
+
+        if (currentTool === 'brush') {
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full text-xs flex-wrap gap-2">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="font-bold text-amber-400 flex items-center gap-1.5">
+                            <span>🖌️</span>
+                            <span>Reveal Fog Brush:</span>
+                        </span>
+                        <div class="flex items-center gap-2 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs font-mono">
+                            <span class="text-slate-400 text-[11px]">Size:</span>
+                            <input type="range" id="dm-brush-size-slider" min="15" max="250" value="${brushRadius}" oninput="window.BattlemapController.setBrushRadius(this.value)" class="w-20 h-1.5 bg-ledger-700 accent-amber-500 cursor-pointer">
+                            <span id="dm-brush-size-label" class="text-amber-400 font-bold w-9 text-right text-[11px]">${brushRadius}px</span>
+                        </div>
+                        <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-700 p-0.5 rounded-lg text-[11px]">
+                            <button onclick="window.BattlemapController.setBrushRadius(30)" class="px-2 py-0.5 rounded ${brushRadius === 30 ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-400 hover:text-white'}">30px</button>
+                            <button onclick="window.BattlemapController.setBrushRadius(60)" class="px-2 py-0.5 rounded ${brushRadius === 60 ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-400 hover:text-white'}">60px</button>
+                            <button onclick="window.BattlemapController.setBrushRadius(120)" class="px-2 py-0.5 rounded ${brushRadius === 120 ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-400 hover:text-white'}">120px</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="window.BattlemapController.undo()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center gap-1 transition" title="Undo last fog stroke">
+                            <span>↩️ Undo</span>
+                        </button>
+                        <button onclick="window.BattlemapController.revealAll()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-amber-500/20 text-amber-300 text-[11px] font-semibold flex items-center gap-1 transition" title="Reveal entire map">
+                            <span>👁️ Reveal All</span>
+                        </button>
+                        <button onclick="window.BattlemapController.resetFog()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-rose-900/40 text-rose-300 text-[11px] font-semibold flex items-center gap-1 transition" title="Shroud entire map in darkness">
+                            <span>🌑 Shroud All</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (currentTool === 'shroud') {
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full text-xs flex-wrap gap-2">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="font-bold text-rose-400 flex items-center gap-1.5">
+                            <span>⬛</span>
+                            <span>Re-Shroud Brush:</span>
+                        </span>
+                        <div class="flex items-center gap-2 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs font-mono">
+                            <span class="text-slate-400 text-[11px]">Size:</span>
+                            <input type="range" id="dm-brush-size-slider" min="15" max="250" value="${brushRadius}" oninput="window.BattlemapController.setBrushRadius(this.value)" class="w-20 h-1.5 bg-ledger-700 accent-rose-500 cursor-pointer">
+                            <span id="dm-brush-size-label" class="text-rose-400 font-bold w-9 text-right text-[11px]">${brushRadius}px</span>
+                        </div>
+                        <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-700 p-0.5 rounded-lg text-[11px]">
+                            <button onclick="window.BattlemapController.setBrushRadius(30)" class="px-2 py-0.5 rounded ${brushRadius === 30 ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'}">30px</button>
+                            <button onclick="window.BattlemapController.setBrushRadius(60)" class="px-2 py-0.5 rounded ${brushRadius === 60 ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'}">60px</button>
+                            <button onclick="window.BattlemapController.setBrushRadius(120)" class="px-2 py-0.5 rounded ${brushRadius === 120 ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'}">120px</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="window.BattlemapController.undo()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center gap-1 transition">
+                            <span>↩️ Undo</span>
+                        </button>
+                        <button onclick="window.BattlemapController.resetFog()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-rose-900/40 text-rose-300 text-[11px] font-semibold flex items-center gap-1 transition" title="Shroud entire map in darkness">
+                            <span>🌑 Shroud All</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (currentTool === 'box') {
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full text-xs flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-amber-400 flex items-center gap-1.5">
+                            <span>🔲</span>
+                            <span>Room Box Reveal:</span>
+                        </span>
+                        <span class="text-slate-400 text-[11px]">
+                            Click & drag a rectangle across any room or corridor on the map to reveal it instantly.
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="window.BattlemapController.undo()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] font-semibold flex items-center gap-1 transition">
+                            <span>↩️ Undo</span>
+                        </button>
+                        <button onclick="window.BattlemapController.revealAll()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-amber-500/20 text-amber-300 text-[11px] font-semibold flex items-center gap-1 transition">
+                            <span>👁️ Reveal All</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (currentTool === 'ping') {
+            container.innerHTML = `
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="font-bold text-rose-400 flex items-center gap-1.5">
+                        <span class="animate-pulse">🔴</span>
+                        <span>Laser Ping Mode:</span>
+                    </span>
+                    <span class="text-slate-300 text-[11px]">
+                        Click anywhere on the map (or hold <kbd class="bg-ledger-800 px-1.5 py-0.5 rounded text-amber-400 font-mono text-[10px]">Shift+Click</kbd> with any tool) to pulse an animated laser ping for players on the table screen.
+                    </span>
+                </div>
+            `;
+        } else if (currentTool === 'ruler') {
+            const feet = activeRuler ? activeRuler.distanceFeet : 0;
+            const sq = activeRuler ? activeRuler.distanceSquares : 0;
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full text-xs flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-sky-400 flex items-center gap-1.5">
+                            <span>📏</span>
+                            <span>Tactical Distance:</span>
+                        </span>
+                        <span id="dm-ruler-readout" class="font-mono font-bold text-sky-300 bg-sky-950/80 border border-sky-500/50 px-2.5 py-0.5 rounded-lg text-xs shadow-inner">
+                            ${feet} ft (${sq} sq)
+                        </span>
+                        <span class="text-slate-400 text-[11px]">
+                            Click & drag on ground or tokens to measure movement. Snaps to token centers.
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-ledger-950 px-2.5 py-1 rounded-lg border border-ledger-700" title="Broadcast measurement line to Table TV">
+                            <input type="checkbox" id="dm-overlay-table-sync-toggle" ${broadcastRulerToTable ? 'checked' : ''} onchange="window.BattlemapController.toggleOverlayTableSync(this.checked)" class="rounded bg-ledger-900 border-ledger-700 text-sky-500 focus:ring-0">
+                            <span class="text-[11px] font-semibold text-sky-300">Broadcast to Table</span>
+                        </label>
+                        <button onclick="window.BattlemapController.clearActiveOverlay()" class="px-2.5 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[11px] font-semibold flex items-center gap-1 transition">
+                            <span>✕ Clear</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (currentTool === 'template') {
+            const isConeOrLine = currentAoEShape === 'cone' || currentAoEShape === 'line';
+            const sizeVal = isConeOrLine ? currentAoELength : currentAoESize;
+            const sizeLabel = currentAoEShape === 'line' ? 'Length' : (currentAoEShape === 'cone' ? 'Cone Len' : (currentAoEShape === 'cube' ? 'Cube Size' : 'Radius'));
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full text-xs flex-wrap gap-2">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <!-- Preset Selector -->
+                        <div class="flex items-center gap-1.5 bg-ledger-950 border border-ledger-700 px-2 py-0.5 rounded-lg">
+                            <span class="text-amber-400 font-semibold text-[11px]">Preset:</span>
+                            <select onchange="window.BattlemapController.selectSpellPreset(this.value)" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer text-xs">
+                                <option value="">-- 5.5e Presets --</option>
+                                <option value="fireball">🔥 Fireball (20ft)</option>
+                                <option value="spirit_guardians">✨ Spirit Guardians (15ft)</option>
+                                <option value="darkness">🌑 Darkness / Fog (15ft)</option>
+                                <option value="moonbeam">🌙 Moonbeam (5ft)</option>
+                                <option value="burning_hands">🐉 Burning Hands (15ft)</option>
+                                <option value="cone_of_cold">❄️ Cone of Cold (60ft)</option>
+                                <option value="lightning_bolt">⚡ Lightning Bolt (100ft)</option>
+                                <option value="gust_of_wind">💨 Gust of Wind (60ft)</option>
+                                <option value="faerie_fire">🧚 Faerie Fire (20ft)</option>
+                                <option value="web">🕸️ Web (20ft)</option>
+                                <option value="thunderwave">💥 Thunderwave (15ft)</option>
+                            </select>
+                        </div>
+
+                        <!-- Shape Buttons -->
+                        <div class="flex items-center gap-0.5 bg-ledger-950 border border-ledger-700 p-0.5 rounded-lg">
+                            <button onclick="window.BattlemapController.setAoEShape('circle')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${currentAoEShape === 'circle' ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-300 hover:text-white'}">🟢 Sphere</button>
+                            <button onclick="window.BattlemapController.setAoEShape('cone')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${currentAoEShape === 'cone' ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-300 hover:text-white'}">📐 Cone</button>
+                            <button onclick="window.BattlemapController.setAoEShape('cube')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${currentAoEShape === 'cube' ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-300 hover:text-white'}">🔲 Cube</button>
+                            <button onclick="window.BattlemapController.setAoEShape('line')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${currentAoEShape === 'line' ? 'bg-amber-500 text-ledger-950 font-bold' : 'text-slate-300 hover:text-white'}">📏 Line</button>
+                        </div>
+
+                        <!-- Size Slider -->
+                        <div class="flex items-center gap-1.5 bg-ledger-950 border border-ledger-700 px-2 py-0.5 rounded-lg font-mono text-[11px]">
+                            <span class="text-slate-400 font-sans">${sizeLabel}:</span>
+                            <input type="range" min="5" max="120" step="5" value="${sizeVal}" oninput="window.BattlemapController.setAoESize(this.value)" class="w-14 h-1 bg-ledger-700 accent-amber-500 cursor-pointer">
+                            <span id="dm-aoe-size-val" class="text-amber-400 font-bold w-8 text-right">${sizeVal}ft</span>
+                        </div>
+
+                        <!-- Rotation Controls -->
+                        ${isConeOrLine ? `
+                            <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-700 px-2 py-0.5 rounded-lg font-mono text-[11px]" title="Hold & point on the map to aim direction dynamically, or use ↺ / ↻">
+                                <span class="text-slate-400 font-sans">Aim:</span>
+                                <button onclick="window.BattlemapController.adjustAoERotation(-45)" title="Rotate -45°" class="hover:text-amber-400 px-0.5 font-bold">↺</button>
+                                <span id="dm-aoe-rot-val" class="text-amber-400 font-bold px-0.5 w-8 text-center">${currentAoERotation}°</span>
+                                <button onclick="window.BattlemapController.adjustAoERotation(45)" title="Rotate +45°" class="hover:text-amber-400 px-0.5 font-bold">↻</button>
+                                <span class="text-slate-500 font-sans text-[10px] hidden md:inline ml-1 border-l border-ledger-700 pl-1">Hold & point</span>
+                            </div>
+                        ` : ''}
+
+                        <!-- Color Swatches -->
+                        <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-700 px-2 py-0.5 rounded-lg">
+                            ${['#f97316', '#06b6d4', '#eab308', '#a855f7', '#84cc16', '#3b82f6'].map(col => `
+                                <button onclick="window.BattlemapController.setAoEColor('${col}')" style="background-color: ${col};" class="w-3.5 h-3.5 rounded-full ${currentAoEColor === col ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'} transition"></button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-ledger-950 px-2.5 py-1 rounded-lg border border-ledger-700" title="Broadcast spell template to Table TV">
+                            <input type="checkbox" id="dm-overlay-table-sync-toggle" ${broadcastAoEToTable ? 'checked' : ''} onchange="window.BattlemapController.toggleOverlayTableSync(this.checked)" class="rounded bg-ledger-900 border-ledger-700 text-amber-500 focus:ring-0">
+                            <span class="text-[11px] font-semibold text-amber-300">Broadcast</span>
+                        </label>
+                        <button onclick="window.BattlemapController.clearActiveOverlay()" class="px-2.5 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 text-[11px] font-semibold flex items-center gap-1 transition">
+                            <span>✕ Clear</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function updateRulerReadout(feet, sq) {
+        const el = document.getElementById('dm-ruler-readout');
+        if (el) {
+            el.textContent = `${feet} ft (${parseFloat(sq.toFixed(1))} sq)`;
+        }
+    }
+
+    function selectSpellPreset(key) {
+        if (!key || !SPELL_PRESETS[key]) return;
+        const p = SPELL_PRESETS[key];
+        currentAoEShape = p.shape;
+        currentAoEColor = p.color;
+        currentAoELabel = p.label;
+        if (p.size) currentAoESize = p.size;
+        if (p.length) currentAoELength = p.length;
+        if (p.width) currentAoEWidth = p.width;
+
+        if (activeTemplate) {
+            activeTemplate.type = p.shape;
+            activeTemplate.color = p.color;
+            activeTemplate.label = p.label;
+            if (p.size) activeTemplate.radiusFeet = p.size;
+            if (p.length) activeTemplate.lengthFeet = p.length;
+            if (p.width) activeTemplate.widthFeet = p.width;
+            pushTemplateUpdate(activeTemplate);
+        }
+
+        renderOverlayToolbar();
+        renderPreview();
+    }
+
+    function setAoEShape(shape) {
+        currentAoEShape = shape;
+        if (activeTemplate) {
+            activeTemplate.type = shape;
+            pushTemplateUpdate(activeTemplate);
+        }
+        renderOverlayToolbar();
+        renderPreview();
+    }
+
+    function setAoESize(val) {
+        const num = parseInt(val, 10);
+        if (currentAoEShape === 'cone' || currentAoEShape === 'line') {
+            currentAoELength = num;
+            if (activeTemplate) activeTemplate.lengthFeet = num;
+        } else {
+            currentAoESize = num;
+            if (activeTemplate) activeTemplate.radiusFeet = num;
+        }
+        const valEl = document.getElementById('dm-aoe-size-val');
+        if (valEl) valEl.textContent = `${num}ft`;
+
+        if (activeTemplate) pushTemplateUpdate(activeTemplate);
+        renderPreview();
+    }
+
+    function adjustAoERotation(delta) {
+        currentAoERotation = (currentAoERotation + delta + 360) % 360;
+        const rotEl = document.getElementById('dm-aoe-rot-val');
+        if (rotEl) rotEl.textContent = `${currentAoERotation}°`;
+        if (activeTemplate) {
+            activeTemplate.rotation = currentAoERotation;
+            pushTemplateUpdate(activeTemplate);
         }
         renderPreview();
+    }
+
+    function setAoEColor(col) {
+        currentAoEColor = col;
+        if (activeTemplate) {
+            activeTemplate.color = col;
+            pushTemplateUpdate(activeTemplate);
+        }
+        renderOverlayToolbar();
+        renderPreview();
+    }
+
+    function toggleOverlayTableSync(checked) {
+        broadcastRulerToTable = checked;
+        broadcastAoEToTable = checked;
+        if (activeRuler) {
+            activeRuler.visibleToPlayers = checked;
+            pushRulerUpdate();
+        }
+        if (activeTemplate) {
+            activeTemplate.visibleToPlayers = checked;
+            pushTemplateUpdate(activeTemplate);
+        }
+    }
+
+    function clearActiveOverlay() {
+        isRulerDragging = false;
+        isAimingTemplate = false;
+        if (activeRuler) {
+            activeRuler = null;
+            pushRulerUpdate(false);
+            updateRulerReadout(0, 0);
+        }
+        if (state.templates && state.templates.length > 0) {
+            state.templates = [];
+            activeTemplate = null;
+            fetch('/api/battlemap/templates/clear', { method: 'POST' }).catch(console.error);
+        }
+        renderPreview();
+        if (window.showToast) {
+            window.showToast("Cleared active measurements and templates.", "info");
+        }
+    }
+
+    function toggleTokenStride(tokenId) {
+        const t = (state.tokens || []).find(tok => tok.id === tokenId);
+        if (!t) return;
+        if (activeStrideTokens.has(tokenId)) {
+            activeStrideTokens.delete(tokenId);
+            t.strideActive = false;
+        } else {
+            activeStrideTokens.add(tokenId);
+            t.strideActive = true;
+        }
+        renderDMTokens();
+        renderTokensDrawer();
+        renderPreview();
+
+        // Push token update to server so player table TV displays walk/dash circles
+        fetch('/api/battlemap/tokens/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: tokenId, strideActive: t.strideActive })
+        }).catch(console.error);
+    }
+
+    async function pushRulerUpdate(active = true) {
+        if (activeRuler) {
+            state.activeRuler = {
+                ...activeRuler,
+                active: active,
+                visibleToPlayers: broadcastRulerToTable
+            };
+        } else {
+            state.activeRuler = null;
+        }
+        try {
+            await fetch('/api/battlemap/ruler', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(state.activeRuler ? state.activeRuler : { active: false })
+            });
+        } catch (err) {
+            console.error("Failed to push ruler update:", err);
+        }
+    }
+
+    async function pushTemplateUpdate(tpl) {
+        if (!tpl) return;
+        const payload = {
+            ...tpl,
+            visibleToPlayers: broadcastAoEToTable
+        };
+        state.templates = [payload];
+        try {
+            await fetch('/api/battlemap/templates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch (err) {
+            console.error("Failed to push template update:", err);
+        }
     }
 
     function setBrushRadius(val) {
@@ -1431,6 +2470,13 @@ window.BattlemapController = (function() {
         pushStateUpdate({ rotation: deg });
     }
 
+    function toggleTableSettingsModal() {
+        const popover = document.getElementById('dm-table-calibration-popover');
+        if (popover) {
+            popover.classList.toggle('hidden');
+        }
+    }
+
     function toggleLock() {
         state.locked = !state.locked;
         updateLockBtn();
@@ -1441,11 +2487,13 @@ window.BattlemapController = (function() {
         const btn = document.getElementById('dm-lock-viewport-btn');
         if (!btn) return;
         if (state.locked) {
-            btn.className = "px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition";
-            btn.innerHTML = `<span>🔒</span> <span>Table Viewport Locked</span>`;
+            btn.className = "px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow transition";
+            btn.innerHTML = `<span>🔒</span> <span>Table Locked</span>`;
+            btn.title = "Table TV viewport is locked to prevent miniatures from shifting. Click to unlock.";
         } else {
-            btn.className = "px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-ledger-700 transition";
-            btn.innerHTML = `<span>🔓</span> <span>Table Viewport Free</span>`;
+            btn.className = "px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition";
+            btn.innerHTML = `<span>🔓</span> <span>Table Free</span>`;
+            btn.title = "Table TV viewport is free. Click to lock viewport for physical miniatures.";
         }
     }
 
@@ -1544,6 +2592,7 @@ window.BattlemapController = (function() {
         toggleGrid,
         setRotation,
         toggleLock,
+        toggleTableSettingsModal,
         syncViewportToTable,
         fitMapToWorkspace,
         undo,
@@ -1570,6 +2619,16 @@ window.BattlemapController = (function() {
         renderDMTokens,
         isPointInFog,
         setTokenVisibilityByCombatantId,
-        renderDMFog
+        renderDMFog,
+        renderOverlayToolbar,
+        updateRulerReadout,
+        selectSpellPreset,
+        setAoEShape,
+        setAoESize,
+        adjustAoERotation,
+        setAoEColor,
+        toggleOverlayTableSync,
+        clearActiveOverlay,
+        toggleTokenStride
     };
 })();

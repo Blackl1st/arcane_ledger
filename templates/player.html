@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=MedievalSharp&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
@@ -28,6 +28,9 @@
                         display: ['Cinzel', 'serif'],
                         sans: ['Inter', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
+                        cursive: ['"Great Vibes"', 'cursive'],
+                        blackletter: ['"MedievalSharp"', 'serif'],
+                        typewriter: ['"Courier Prime"', 'monospace']
                     }
                 }
             }
@@ -35,6 +38,91 @@
     </script>
 
     <style>
+        /* In-World Handouts & Typography */
+        .font-handout-cursive { font-family: 'Great Vibes', 'Brush Script MT', 'Apple Chancery', cursive !important; }
+        .font-handout-blackletter { font-family: 'MedievalSharp', 'Cinzel', 'Palatino', serif !important; }
+        .font-handout-serif { font-family: 'Cinzel', Georgia, serif !important; }
+        .font-handout-chisel { font-family: 'MedievalSharp', 'JetBrains Mono', monospace !important; letter-spacing: 0.05em; }
+        .font-handout-typewriter { font-family: 'Courier Prime', 'Courier New', monospace !important; }
+
+        /* Authentic Parchment Styles */
+        .handout-paper-parchment {
+            background: radial-gradient(circle at center, #fbf6ec 0%, #eddcc3 70%, #d8be98 100%) !important;
+            color: #1c1917 !important;
+            border: 2px solid #b39775 !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 45px rgba(120,70,20,0.22) !important;
+        }
+        .handout-paper-burnt {
+            background: radial-gradient(circle at center, #ecdcc4 0%, #caa67b 55%, #5a3821 85%, #24140a 100%) !important;
+            color: #1a0f07 !important;
+            border: 2px dashed #452410 !important;
+            box-shadow: 0 10px 45px rgba(0,0,0,0.95), inset 0 0 60px rgba(25,10,0,0.65) !important;
+        }
+        .handout-paper-vellum {
+            background: radial-gradient(circle at center, #ffffff 0%, #f9f6ef 70%, #efe7d6 100%) !important;
+            color: #0f172a !important;
+            border: 3px double #d97706 !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.85), inset 0 0 35px rgba(217,119,6,0.15) !important;
+        }
+        .handout-paper-blood {
+            background: radial-gradient(circle at center, #f5efe6 0%, #dfd3c0 60%, #b3837c 85%, #6b1414 100%) !important;
+            color: #200808 !important;
+            border: 2px solid #881337 !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 55px rgba(159,18,57,0.35) !important;
+        }
+        .handout-paper-arcane {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 70%, #020617 100%) !important;
+            color: #e0e7ff !important;
+            border: 2px solid #6366f1 !important;
+            box-shadow: 0 0 45px rgba(99,102,241,0.45), inset 0 0 50px rgba(99,102,241,0.3) !important;
+        }
+
+        /* Wax Seal 3D Styling */
+        .wax-seal {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.5);
+            border: 3px double rgba(255,255,255,0.25);
+            transform: rotate(-6deg);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .wax-seal:hover {
+            transform: rotate(0deg) scale(1.08);
+        }
+        .wax-seal-inner {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px dashed rgba(255,255,255,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.85);
+        }
+        .wax-seal-red {
+            background: radial-gradient(circle at 35% 35%, #dc2626, #991b1b 70%, #450a0a);
+        }
+        .wax-seal-gold {
+            background: radial-gradient(circle at 35% 35%, #fbbf24, #d97706 70%, #78350f);
+        }
+        .wax-seal-black {
+            background: radial-gradient(circle at 35% 35%, #475569, #0f172a 70%, #020617);
+        }
+        .wax-seal-green {
+            background: radial-gradient(circle at 35% 35%, #22c55e, #15803d 70%, #052e16);
+        }
+        .wax-seal-purple {
+            background: radial-gradient(circle at 35% 35%, #a855f7, #6b21a8 70%, #3b0764);
+        }
+
         body {
             background-color: #07090e;
             color: #f1f5f9;
@@ -264,6 +352,15 @@
 
             </div>
 
+        </div>
+
+        <!-- DEDICATED IN-WORLD HANDOUT / ARTIFACT PROP CARD -->
+        <div id="broadcast-handout-card" class="hidden relative max-w-3xl w-full rounded-3xl p-7 sm:p-10 shadow-2xl transition-all duration-300 max-h-[92vh] overflow-y-auto">
+            <!-- Close button in upper right corner -->
+            <button onclick="dismissPlayerOverlayLocal()" class="absolute top-4 right-4 text-current/60 hover:text-current transition text-base px-2.5 py-0.5 rounded-lg bg-black/10 hover:bg-black/20 border border-current/20 z-20 font-mono" title="Dismiss">✕</button>
+
+            <!-- Inner content populated dynamically -->
+            <div id="broadcast-handout-inner"></div>
         </div>
     </div>
 
@@ -544,53 +641,265 @@
             }).join('');
         }
 
+        let localDismissedBroadcastKey = null;
+
         function dismissPlayerOverlayLocal() {
             const overlay = document.getElementById('player-broadcast-overlay');
             if (overlay) {
                 overlay.classList.add('hidden');
                 overlay.classList.remove('flex');
             }
+            const b = playerState.broadcast || {};
+            localDismissedBroadcastKey = (b.title || '') + (b.subtitle || '') + (b.content || '');
+        }
+
+        const RUNIC_MAP = {
+            'A': 'ᚪ', 'B': 'ᛒ', 'C': 'ᚳ', 'D': 'ᛞ', 'E': 'ᛖ', 'F': 'ᚠ', 'G': 'ᚷ',
+            'H': 'ᚻ', 'I': 'ᛁ', 'J': 'ᛃ', 'K': 'ᚲ', 'L': 'ᛚ', 'M': 'ᛗ', 'N': 'ᚾ',
+            'O': 'ᚩ', 'P': 'ᛈ', 'Q': 'ᛩ', 'R': 'ᚱ', 'S': 'ᛋ', 'T': 'ᛏ', 'U': 'ᚢ',
+            'V': 'ᚡ', 'W': 'ᚹ', 'X': 'ᛪ', 'Y': 'ᚣ', 'Z': 'ᛉ',
+            'a': 'ᚪ', 'b': 'ᛒ', 'c': 'ᚳ', 'd': 'ᛞ', 'e': 'ᛖ', 'f': 'ᚠ', 'g': 'ᚷ',
+            'h': 'ᚻ', 'i': 'ᛁ', 'j': 'ᛃ', 'k': 'ᚲ', 'l': 'ᛚ', 'm': 'ᛗ', 'n': 'ᚾ',
+            'o': 'ᚩ', 'p': 'ᛈ', 'q': 'ᛩ', 'r': 'ᚱ', 's': 'ᛋ', 't': 'ᛏ', 'u': 'ᚢ',
+            'v': 'ᚡ', 'w': 'ᚹ', 'x': 'ᛪ', 'y': 'ᚣ', 'z': 'ᛉ'
+        };
+
+        function applyCipher(text, type, shift = 3) {
+            if (!text) return '';
+            if (type === 'runic') {
+                return text.split('').map(char => RUNIC_MAP[char] || char).join('');
+            } else if (type === 'caesar') {
+                const s = parseInt(shift, 10) || 3;
+                return text.split('').map(char => {
+                    const code = char.charCodeAt(0);
+                    if (code >= 65 && code <= 90) {
+                        return String.fromCharCode(((code - 65 + s) % 26 + 26) % 26 + 65);
+                    } else if (code >= 97 && code <= 122) {
+                        return String.fromCharCode(((code - 97 + s) % 26 + 26) % 26 + 97);
+                    }
+                    return char;
+                }).join('');
+            } else if (type === 'redacted') {
+                return text.replace(/\b[A-Za-z]{4,}\b/g, (match, offset) => {
+                    return (offset % 2 === 0) ? '█'.repeat(match.length) : match;
+                });
+            } else if (type === 'scramble') {
+                return text.split(' ').map(word => {
+                    if (word.length <= 3) return word;
+                    const mid = word.slice(1, -1).split('').sort(() => 0.5 - Math.random()).join('');
+                    return word[0] + mid + word[word.length - 1];
+                }).join(' ');
+            }
+            return text;
         }
 
         function renderBroadcastOverlay() {
             const overlay = document.getElementById('player-broadcast-overlay');
             const card = document.getElementById('broadcast-card');
+            const handoutCard = document.getElementById('broadcast-handout-card');
+            const handoutInner = document.getElementById('broadcast-handout-inner');
             const b = playerState.broadcast || {};
 
-            if (b && b.active) {
-                overlay.classList.remove('hidden');
-                overlay.classList.add('flex');
-                document.getElementById('broadcast-title').innerText = b.title || 'Tabletop Discovery';
-                document.getElementById('broadcast-subtitle').innerText = b.subtitle || '';
-                document.getElementById('broadcast-content').innerText = b.content || '';
-
-                const badge = document.getElementById('broadcast-type-badge');
-                if (badge) {
-                    if (b.type === 'monster') badge.innerHTML = `<span>🐉</span> <span>Bestiary Encounter</span>`;
-                    else if (b.type === 'npc') badge.innerHTML = `<span>🎭</span> <span>Character Encounter</span>`;
-                    else if (b.type === 'location') badge.innerHTML = `<span>🗺️</span> <span>Landmark Discovery</span>`;
-                    else if (b.type === 'lore') badge.innerHTML = `<span>📜</span> <span>Rumor & Lore</span>`;
-                    else if (b.type === 'quest') badge.innerHTML = `<span>⚔️</span> <span>Quest Bounty</span>`;
-                    else badge.innerHTML = `<span>📜</span> <span>Tabletop Handout</span>`;
-                }
-
-                const imgCol = document.getElementById('broadcast-image-col');
-                const textCol = document.getElementById('broadcast-text-col');
-                const img = document.getElementById('broadcast-image');
-
-                if (b.imageUrl) {
-                    imgCol.classList.remove('hidden');
-                    textCol.className = "md:col-span-7 flex flex-col justify-center space-y-3";
-                    card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
-                    img.src = b.imageUrl;
-                } else {
-                    imgCol.classList.add('hidden');
-                    textCol.className = "col-span-12 flex flex-col justify-center space-y-3 text-center";
-                    card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
-                }
-            } else {
+            if (!b || !b.active) {
+                localDismissedBroadcastKey = null;
                 overlay.classList.add('hidden');
                 overlay.classList.remove('flex');
+                return;
+            }
+
+            const broadcastKey = (b.title || '') + (b.subtitle || '') + (b.content || '');
+            if (localDismissedBroadcastKey && localDismissedBroadcastKey === broadcastKey) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+                return;
+            }
+
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+
+            const isHandout = (b.type === 'handout' || Boolean(b.handout));
+
+            if (isHandout && handoutCard && handoutInner) {
+                // Hide standard card, show authentic artifact prop card
+                card.classList.add('hidden');
+                handoutCard.classList.remove('hidden');
+
+                const h = b.handout || {};
+                const theme = h.theme || 'parchment';
+                const fontStyle = h.fontStyle || 'cursive';
+                const sealColor = h.sealColor || 'red';
+                const sealType = h.seal || 'crown';
+                const sealIcons = {
+                    crown: '👑', skull: '💀', arcane: '👁️', scales: '⚖️',
+                    daggers: '🗡️', dragon: '🐉', tree: '🌳', scroll: '📜', none: ''
+                };
+                const sealIcon = sealIcons[sealType] || '📜';
+
+                handoutCard.className = `handout-paper-${theme} relative max-w-3xl w-full rounded-3xl p-7 sm:p-10 shadow-2xl transition-all duration-300 max-h-[92vh] overflow-y-auto select-text`;
+
+                let rawText = h.content || b.content || '';
+                let isCoded = Boolean(h.isCoded);
+                let isDeciphered = Boolean(h.isDeciphered);
+
+                let displayedText = rawText;
+                if (isCoded && !isDeciphered) {
+                    displayedText = applyCipher(rawText, h.cipherType || 'runic', h.cipherShift || 3);
+                }
+
+                const paragraphs = displayedText.split('\n\n').map(p => `<p class="leading-relaxed mb-3.5">${escapeHTML(p).replace(/\n/g, '<br>')}</p>`).join('');
+
+                const typeBadges = {
+                    letter: '✉️ Sealed Missive',
+                    journal: '📖 Torn Journal Page',
+                    bounty: '⚔️ Wanted Bounty Notice',
+                    cipher: '🔒 Encrypted Cipher',
+                    scroll: '✨ Magic Sigil Scroll'
+                };
+                const docTypeBadge = typeBadges[h.type] || '📜 In-World Artifact';
+
+                handoutInner.className = `font-handout-${fontStyle} text-base sm:text-lg`;
+                handoutInner.innerHTML = `
+                    <div class="space-y-5">
+                        <!-- In-World Header Banner -->
+                        <div class="border-b border-current/25 pb-3.5 flex items-start justify-between gap-4 flex-wrap">
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-mono font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-black/10 border border-current/20 inline-block mb-1">
+                                    ${docTypeBadge}
+                                </span>
+                                <h3 class="font-display font-black text-2xl sm:text-3xl tracking-wide opacity-95 leading-tight">
+                                    ${escapeHTML(h.title || b.title || 'In-World Artifact')}
+                                </h3>
+                                ${(h.author || h.recipient) ? `
+                                    <div class="text-xs sm:text-sm opacity-85 font-serif space-x-2">
+                                        ${h.author ? `<span>From: <strong>${escapeHTML(h.author)}</strong></span>` : ''}
+                                        ${h.recipient ? `<span>• To: <strong>${escapeHTML(h.recipient)}</strong></span>` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${h.dateString ? `
+                                <div class="text-xs font-mono opacity-80 sm:text-right shrink-0">
+                                    📅 ${escapeHTML(h.dateString)}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        ${h.type === 'scroll' ? `
+                            <div class="text-center font-mono text-xs tracking-[0.25em] opacity-80 py-1 text-indigo-400 dark:text-indigo-300 border-y border-current/20">
+                                ◈ ᚛ ᛟ ᚱ ᛞ ᚠ ᛊ ᚜ ◈
+                            </div>
+                        ` : ''}
+
+                        <!-- Bounty Poster Wanted Notice -->
+                        ${h.type === 'bounty' ? `
+                            <div class="bg-black/10 border-2 border-current/30 rounded-2xl p-4 text-center space-y-2">
+                                <div class="font-display font-black text-2xl sm:text-3xl tracking-widest uppercase">⚔️ WANTED ⚔️</div>
+                                ${h.bountyReward ? `<div class="font-mono font-bold text-xl tracking-wider text-amber-700 dark:text-amber-300">REWARD: ${escapeHTML(h.bountyReward)}</div>` : ''}
+                                ${h.bountyCrimes ? `<div class="text-xs sm:text-sm opacity-90 font-serif">Charges: ${escapeHTML(h.bountyCrimes)}</div>` : ''}
+                            </div>
+                        ` : ''}
+
+                        <!-- Cipher Security Status Banner -->
+                        ${isCoded ? `
+                            <div class="flex items-center justify-between text-xs px-3.5 py-2 rounded-xl ${isDeciphered ? 'bg-emerald-900/30 border border-emerald-700/50 text-emerald-900 dark:text-emerald-200' : 'bg-purple-900/30 border border-purple-700/50 text-purple-900 dark:text-purple-200'} font-mono">
+                                <span class="flex items-center gap-2 font-bold">
+                                    <span>${isDeciphered ? '🔓' : '🔒'}</span>
+                                    <span>${isDeciphered ? 'DECIPHERED TRANSLATION' : `ENCRYPTED CIPHER [DC ${h.investigationDC || 14} INVESTIGATION]`}</span>
+                                </span>
+                                ${!isDeciphered && h.cipherHint ? `<span class="opacity-80 italic text-[11px]">${escapeHTML(h.cipherHint)}</span>` : ''}
+                            </div>
+                        ` : ''}
+
+                        <!-- Document Body Content -->
+                        <div class="max-h-[460px] overflow-y-auto pr-2">
+                            ${paragraphs}
+                        </div>
+
+                        ${h.type === 'scroll' ? `
+                            <div class="text-center font-mono text-xs tracking-[0.25em] opacity-80 py-1 text-indigo-400 dark:text-indigo-300 border-y border-current/20">
+                                ◈ ᚛ ᛉ ᚳ ᛖ ᛗ ᚾ ᚹ ᚜ ◈
+                            </div>
+                        ` : ''}
+
+                        <!-- Footer: Seal & Provenance -->
+                        <div class="pt-3.5 border-t border-current/25 flex items-end justify-between gap-4">
+                            <div class="text-xs opacity-80 font-serif italic">
+                                ${h.tiedLocation ? `<span>📍 Discovered at ${escapeHTML(h.tiedLocation)}</span>` : ''}
+                            </div>
+                            ${sealType !== 'none' ? `
+                                <div class="wax-seal wax-seal-${sealColor}" title="Official Seal">
+                                    <div class="wax-seal-inner">${sealIcon}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Otherwise standard card (Monsters, Spells, Items, Shops, NPCs, Locations, etc.)
+            if (handoutCard) handoutCard.classList.add('hidden');
+            card.classList.remove('hidden');
+
+            document.getElementById('broadcast-title').innerText = b.title || 'Tabletop Discovery';
+            document.getElementById('broadcast-subtitle').innerText = b.subtitle || '';
+            document.getElementById('broadcast-content').innerText = b.content || '';
+
+            const badge = document.getElementById('broadcast-type-badge');
+            if (badge) {
+                if (b.type === 'monster') badge.innerHTML = `<span>🐉</span> <span>Bestiary Encounter</span>`;
+                else if (b.type === 'npc') badge.innerHTML = `<span>🎭</span> <span>Character Encounter</span>`;
+                else if (b.type === 'location') badge.innerHTML = `<span>🗺️</span> <span>Landmark Discovery</span>`;
+                else if (b.type === 'lore') badge.innerHTML = `<span>📜</span> <span>Rumor & Lore</span>`;
+                else if (b.type === 'quest') badge.innerHTML = `<span>⚔️</span> <span>Quest Bounty</span>`;
+                else if (b.type === 'item') badge.innerHTML = `<span>⚔️</span> <span>Item Discovery</span>`;
+                else if (b.type === 'spell') badge.innerHTML = `<span>✨</span> <span>Spell Discovery</span>`;
+                else if (b.type === 'shop') badge.innerHTML = `<span>🛒</span> <span>Merchant Catalog</span>`;
+                else badge.innerHTML = `<span>📜</span> <span>Tabletop Discovery</span>`;
+            }
+
+            const imgCol = document.getElementById('broadcast-image-col');
+            const textCol = document.getElementById('broadcast-text-col');
+            const img = document.getElementById('broadcast-image');
+            const contentEl = document.getElementById('broadcast-content');
+
+            if (b.type === 'shop' && Array.isArray(b.items) && b.items.length > 0) {
+                imgCol.classList.add('hidden');
+                textCol.className = "col-span-12 flex flex-col justify-center space-y-3";
+                card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4 max-h-[90vh]";
+
+                contentEl.className = "text-left font-sans";
+                contentEl.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                        ${b.items.map(item => `
+                            <div class="bg-ledger-950/90 border border-amber-500/30 hover:border-amber-400/60 rounded-xl p-3 flex flex-col justify-between space-y-2 shadow-lg transition">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <h4 class="font-bold text-sm text-slate-100 truncate">${escapeHTML(item.name)}</h4>
+                                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-sky-300">${escapeHTML(item.type || 'Item')}</span>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="font-mono font-bold text-sm text-amber-300 block">${escapeHTML(String(item.finalCost || item.cost || ''))} ${escapeHTML(item.unit || 'gp')}</span>
+                                        <span class="text-[10px] text-slate-400 font-mono">Stock: ${escapeHTML(String(item.qty || 1))}</span>
+                                    </div>
+                                </div>
+                                ${item.desc ? `<p class="text-xs text-slate-300 leading-relaxed pt-1.5 border-t border-ledger-800/80 font-serif line-clamp-3">${escapeHTML(item.desc)}</p>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (b.imageUrl) {
+                contentEl.className = "text-sm sm:text-base text-slate-200 leading-relaxed font-serif whitespace-pre-line";
+                contentEl.innerText = b.content || '';
+                imgCol.classList.remove('hidden');
+                textCol.className = "md:col-span-7 flex flex-col justify-center space-y-3";
+                card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
+                img.src = b.imageUrl;
+            } else {
+                contentEl.className = "text-sm sm:text-base text-slate-200 leading-relaxed font-serif whitespace-pre-line";
+                contentEl.innerText = b.content || '';
+                imgCol.classList.add('hidden');
+                textCol.className = "col-span-12 flex flex-col justify-center space-y-3 text-center";
+                card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
             }
         }
 

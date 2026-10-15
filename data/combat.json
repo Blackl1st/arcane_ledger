@@ -1,7 +1,7 @@
 {
-  "inCombat": true,
+  "inCombat": false,
   "round": 2,
-  "currentTurnIndex": 4,
+  "currentTurnIndex": 2,
   "combatants": [
     {
       "id": "combat-pc-3",
@@ -26,33 +26,26 @@
       "size": "Medium"
     },
     {
-      "id": "mob-aboleth-1792062686675-0",
-      "name": "Aboleth",
+      "id": "comb-1792074002779-u7tbl",
+      "name": "Adult Green Dragon",
       "type": "monster",
-      "initiative": 14.0,
-      "tieBreaker": -0.49,
-      "ac": 17,
-      "currentHp": 150,
-      "maxHp": 150,
+      "initiative": 19.0,
+      "tieBreaker": 0.0,
+      "ac": 19,
+      "currentHp": 207,
+      "maxHp": 207,
       "tempHp": 0,
-      "conditions": [
-        {
-          "name": "Poisoned",
-          "detail": "",
-          "durationRounds": 3,
-          "appliedRound": 2
-        }
-      ],
+      "conditions": [],
       "isConcentrating": false,
       "concentratingSpell": "",
-      "notes": "CR 10 | Aberration | Spd: 10 ft., Swim 40 ft.",
-      "statDetails": "",
+      "notes": "CR 15 • Huge Dragon (Chromatic)",
+      "statDetails": "Multiattack",
       "sourceId": null,
       "hidden": false,
       "visibleToPlayers": true,
-      "imageUrl": "/static/images/monsters/aboleth.webp",
-      "monsterId": "aboleth",
-      "size": "Large"
+      "imageUrl": "/static/images/monsters/adult-green-dragon.webp",
+      "monsterId": "adult-green-dragon",
+      "size": "Medium"
     },
     {
       "id": "combat-pc-2",
@@ -74,6 +67,28 @@
       "visibleToPlayers": true,
       "imageUrl": "",
       "monsterId": null,
+      "size": "Medium"
+    },
+    {
+      "id": "comb-1792074002779-5cgxg",
+      "name": "Aboleth",
+      "type": "monster",
+      "initiative": 12.0,
+      "tieBreaker": 0.0,
+      "ac": 17,
+      "currentHp": 150,
+      "maxHp": 150,
+      "tempHp": 0,
+      "conditions": [],
+      "isConcentrating": false,
+      "concentratingSpell": "",
+      "notes": "CR 10 • Large Aberration",
+      "statDetails": "Multiattack",
+      "sourceId": null,
+      "hidden": true,
+      "visibleToPlayers": false,
+      "imageUrl": "/static/images/monsters/aboleth.webp",
+      "monsterId": "aboleth",
       "size": "Medium"
     },
     {
