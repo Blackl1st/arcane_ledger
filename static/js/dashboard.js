@@ -126,9 +126,29 @@ let appState = {
     itemFilterRarity: 'all',
     itemFilterAttunement: false,
     itemFilterCustomOnly: false,
-    itemSearchQuery: ''
+    itemSearchQuery: '',
+    // Campaign Profile Manager & Module Manager
+    campaigns: [],
+    activeCampaignId: 'default',
+    currentCampaign: null,
+    playstylePresets: {}
 };
 window.appState = appState;
+
+const AVAILABLE_MODULES = [
+    { id: 'combat', name: 'Combat & Party', icon: '⚔️', desc: 'Active combat encounter tracker, initiative ladder, death saves & party vitals HUD.' },
+    { id: 'battlemap', name: 'Tabletop Battlemap', icon: '🗺️', desc: 'Tactical grid map, tokens, Fog of War, measuring tools, and AoE spell templates.' },
+    { id: 'bestiary', name: '5.5e Bestiary', icon: '🐉', desc: 'Compendium of 300+ 2024 monsters, stat blocks, attacks, and instant token spawning.' },
+    { id: 'encounters', name: 'Encounter Builder', icon: '⚖️', desc: 'XP budget calculator, party CR balancing, and pre-planned encounter rosters.' },
+    { id: 'spells', name: 'Spells Compendium', icon: '📖', desc: '360+ 2024 D&D spells, school filters, components, upcasting, and class lists.' },
+    { id: 'items', name: 'Items Compendium', icon: '🛡️', desc: 'Weapons, armor, magic items, weapon masteries, attunement, and shop stocks.' },
+    { id: 'rules', name: '2024 Rules Engine', icon: '📜', desc: 'Fast reference for conditions, cover, exhaustion, weapon masteries, and actions.' },
+    { id: 'world', name: 'World, Lore & Handouts', icon: '🏰', desc: 'Factions & tension clocks, locations, quests, rumors, secrets board, and in-world handouts forge.' },
+    { id: 'npcs', name: 'NPC Generator & Roster', icon: '👤', desc: 'Instant 5.5e NPC generator with voices, secrets, statblocks, and campaign roster.' },
+    { id: 'loot', name: 'Loot & Merchant Generator', icon: '💰', desc: 'Random treasure hoards, coin pouch rolling, and categorized shopkeepers.' },
+    { id: 'notes', name: 'Session Scratchpad', icon: '📝', desc: 'In-session DM scratchpad, tagged notes, quick search, and session logs.' },
+    { id: 'audio', name: 'Atmosphere & Lighting', icon: '🎭', desc: 'Layered soundscapes, ambient soundboards, and Amaran smart studio lighting.' }
+];
 
 const DEFAULT_FACTIONS = [
     "Unaligned / Independent Local",
@@ -181,43 +201,43 @@ async function fetchFullState() {
         const res = await fetch('/api/state');
         if (res.ok) {
             const data = await res.json();
-            if (data.party && data.party.length > 0) appState.party = data.party;
+            if (Array.isArray(data.party)) appState.party = data.party;
             if (data.combat) appState.combat = data.combat;
-            if (data.roster && data.roster.length > 0) appState.roster = data.roster;
-            if (data.world && data.world.customFactions) appState.world = data.world;
+            if (Array.isArray(data.roster)) appState.roster = data.roster;
+            if (data.world) appState.world = data.world;
             if (data.rules) appState.rules = data.rules;
-            if (data.notes) appState.notes = data.notes;
+            if (Array.isArray(data.notes)) appState.notes = data.notes;
             if (data.timeWeather) appState.timeWeather = data.timeWeather;
-            if (data.monsters && data.monsters.length > 0) {
+            if (Array.isArray(data.monsters) && data.monsters.length > 0) {
                 appState.monsters = data.monsters;
                 if (!appState.selectedMonsterId) appState.selectedMonsterId = data.monsters[0].id;
             }
-            if (data.locations) appState.locations = data.locations;
-            if (data.factions) appState.factions = data.factions;
-            if (data.quests) appState.quests = data.quests;
-            if (data.rumors) appState.rumors = data.rumors;
-            if (data.secrets) appState.secrets = data.secrets;
-            if (data.handouts) appState.handouts = data.handouts;
+            if (Array.isArray(data.locations)) appState.locations = data.locations;
+            if (Array.isArray(data.factions)) appState.factions = data.factions;
+            if (Array.isArray(data.quests)) appState.quests = data.quests;
+            if (Array.isArray(data.rumors)) appState.rumors = data.rumors;
+            if (Array.isArray(data.secrets)) appState.secrets = data.secrets;
+            if (Array.isArray(data.handouts)) appState.handouts = data.handouts;
             if (data.broadcast !== undefined) {
                 appState.broadcast = data.broadcast;
                 renderBroadcastPill();
             }
-            if (data.audioLibrary) {
+            if (Array.isArray(data.audioLibrary)) {
                 appState.audioLibrary = data.audioLibrary;
                 if (window.AudioEngine) window.AudioEngine.loadTracks(data.audioLibrary);
             }
-            if (data.audioPresets) {
+            if (Array.isArray(data.audioPresets)) {
                 appState.audioPresets = data.audioPresets;
             }
-            if (data.spells && data.spells.length > 0) {
+            if (Array.isArray(data.spells) && data.spells.length > 0) {
                 appState.spells = data.spells;
                 if (!appState.selectedSpellId) appState.selectedSpellId = data.spells[0].id;
             }
-            if (data.items && data.items.length > 0) {
+            if (Array.isArray(data.items) && data.items.length > 0) {
                 appState.items = data.items;
                 if (!appState.selectedItemId) appState.selectedItemId = data.items[0].id;
             }
-            if (data.encounters) {
+            if (Array.isArray(data.encounters)) {
                 appState.encounters = data.encounters;
             }
             if (data.lighting) {
@@ -227,6 +247,16 @@ async function fetchFullState() {
                     window.LightingEngine.updateUI();
                 }
             }
+            if (data.campaigns) appState.campaigns = data.campaigns;
+            if (data.activeCampaignId) appState.activeCampaignId = data.activeCampaignId;
+            if (data.presets) appState.playstylePresets = data.presets;
+            if (data.currentCampaign) {
+                appState.currentCampaign = data.currentCampaign;
+            } else if (appState.campaigns && appState.campaigns.length > 0) {
+                appState.currentCampaign = appState.campaigns.find(c => c.id === appState.activeCampaignId) || appState.campaigns[0];
+            }
+            renderCampaignTopbar();
+            applyModuleVisibility();
             updateConnectionStatus(true);
             return;
         }
@@ -342,6 +372,11 @@ const TAB_TITLES = {
 };
 
 function switchTab(tab) {
+    if (tab !== 'settings' && appState.currentCampaign?.modules && appState.currentCampaign.modules[tab] === false) {
+        const modDef = AVAILABLE_MODULES.find(m => m.id === tab);
+        showToast(`The ${modDef ? modDef.name : tab} module is disabled for this campaign. Enable it in Settings > Modules.`, 'info');
+        return;
+    }
     appState.activeTab = tab;
     document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -445,7 +480,7 @@ function toggleTopPopover(popoverId) {
 }
 
 function closeAllTopPopovers() {
-    const popoverIds = ['time-weather-popover', 'audio-popover', 'displays-popover', 'dice-drawer'];
+    const popoverIds = ['time-weather-popover', 'audio-popover', 'displays-popover', 'dice-drawer', 'campaign-popover'];
     popoverIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
@@ -458,7 +493,8 @@ document.addEventListener('click', function(e) {
         { popover: 'time-weather-popover', trigger: 'time-weather-pill' },
         { popover: 'audio-popover', trigger: 'audio-pill' },
         { popover: 'displays-popover', trigger: 'displays-pill' },
-        { popover: 'dice-drawer', trigger: 'dice-btn' }
+        { popover: 'dice-drawer', trigger: 'dice-btn' },
+        { popover: 'campaign-popover', trigger: 'topbar-campaign-btn' }
     ];
 
     popovers.forEach(item => {
@@ -5924,6 +5960,22 @@ function openTabletopMapWindow() {
     window.open('/map', 'ArcaneLedgerTabletopMap', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
 }
 
+function openMapGeneratorModal() {
+    if (window.BattlemapController && typeof window.BattlemapController.openMapGeneratorModal === 'function') {
+        window.BattlemapController.openMapGeneratorModal();
+    } else {
+        openModal('map-generator-modal');
+    }
+}
+
+function closeMapGeneratorModal() {
+    if (window.BattlemapController && typeof window.BattlemapController.closeMapGeneratorModal === 'function') {
+        window.BattlemapController.closeMapGeneratorModal();
+    } else {
+        closeModal('map-generator-modal');
+    }
+}
+
 function renderBroadcastPill() {
     const pill = document.getElementById('active-broadcast-pill');
     const titleEl = document.getElementById('active-broadcast-title');
@@ -8465,9 +8517,497 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// -----------------------------------------------------------------------------
+// CAMPAIGN PROFILE & MODULE MANAGER SYSTEM
+// -----------------------------------------------------------------------------
+
+function applyModuleVisibility() {
+    if (!appState.currentCampaign || !appState.currentCampaign.modules) return;
+    const modules = appState.currentCampaign.modules;
+
+    AVAILABLE_MODULES.forEach(mod => {
+        const btn = document.getElementById(`tab-btn-${mod.id}`);
+        if (btn) {
+            const isEnabled = modules[mod.id] !== false;
+            if (isEnabled) {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+    });
+
+    if (modules[appState.activeTab] === false) {
+        const firstEnabled = AVAILABLE_MODULES.find(m => modules[m.id] !== false);
+        const nextTab = firstEnabled ? firstEnabled.id : 'settings';
+        switchTab(nextTab);
+    }
+
+    renderActivePresetBadge();
+    renderModuleToggles();
+}
+
+function renderCampaignTopbar() {
+    const nameEl = document.getElementById('topbar-campaign-name');
+    const listEl = document.getElementById('topbar-campaign-list');
+    if (!nameEl) return;
+
+    const activeCamp = appState.currentCampaign || appState.campaigns.find(c => c.id === appState.activeCampaignId) || { name: 'Default Campaign' };
+    nameEl.textContent = activeCamp.name || 'Default Campaign';
+
+    if (!listEl) return;
+    if (!appState.campaigns || appState.campaigns.length === 0) {
+        listEl.innerHTML = `<div class="text-[11px] text-slate-500 py-2 text-center">No campaigns found</div>`;
+        return;
+    }
+
+    listEl.innerHTML = appState.campaigns.map(camp => {
+        const isActive = camp.id === appState.activeCampaignId;
+        const presetName = appState.playstylePresets[camp.preset]?.name || (camp.preset === 'custom' ? 'Custom' : 'Full Immersion');
+        return `
+            <div onclick="switchCampaign('${camp.id}')" class="p-2 rounded-xl cursor-pointer transition flex items-center justify-between gap-2 ${isActive ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300' : 'bg-ledger-900/80 hover:bg-ledger-800 border border-ledger-700/60 text-slate-200'}">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-xs truncate">${escapeHtml(camp.name)}</span>
+                        ${isActive ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-300 border border-amber-500/40">ACTIVE</span>' : ''}
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                        <span>${presetName}</span>
+                        ${camp.partyCount !== undefined ? `<span>• ${camp.partyCount} PCs</span>` : (isActive && appState.party?.length ? `<span>• ${appState.party.length} PCs</span>` : '')}
+                    </div>
+                </div>
+                <div class="shrink-0 text-slate-400">
+                    ${isActive ? '✓' : '→'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderCampaignSettingsCard() {
+    const bannerEl = document.getElementById('settings-active-campaign-banner');
+    const listEl = document.getElementById('settings-campaigns-list');
+    if (!bannerEl || !listEl) return;
+
+    const activeCamp = appState.currentCampaign || appState.campaigns.find(c => c.id === appState.activeCampaignId) || {
+        id: 'default',
+        name: 'Default Campaign',
+        description: 'Primary adventuring party and world state',
+        preset: 'full'
+    };
+
+    const presetName = appState.playstylePresets[activeCamp.preset]?.name || (activeCamp.preset === 'custom' ? 'Custom Configuration' : 'Full Tabletop Immersion');
+    const activePcCount = (activeCamp.partyCount !== undefined) ? activeCamp.partyCount : (appState.party?.length || 0);
+
+    bannerEl.innerHTML = `
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-2xl text-amber-400 shrink-0">
+                📜
+            </div>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">CURRENT ACTIVE CAMPAIGN</span>
+                    <span class="text-[10px] text-slate-400 font-mono">Party: <strong class="text-slate-200">${activePcCount} Player Characters (PCs)</strong></span>
+                    <span class="text-[10px] text-slate-400 font-mono">Preset: <strong class="text-slate-200">${presetName}</strong></span>
+                </div>
+                <h4 class="font-display font-bold text-lg text-slate-100 truncate mt-0.5">${escapeHtml(activeCamp.name)}</h4>
+                <p class="text-xs text-slate-300 leading-snug truncate max-w-xl">${escapeHtml(activeCamp.description || 'No description provided.')}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openEditCampaignModal('${activeCamp.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-ledger-700 transition flex items-center gap-1.5">
+                <span>✏️</span> Edit Details
+            </button>
+            <button onclick="duplicateCampaign('${activeCamp.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-ledger-700 transition flex items-center gap-1.5" title="Clone current party & lore into a new profile">
+                <span>📋</span> Duplicate
+            </button>
+        </div>
+    `;
+
+    if (!appState.campaigns || appState.campaigns.length === 0) {
+        listEl.innerHTML = `<div class="col-span-full text-center text-slate-500 text-xs py-4">No campaign profiles found.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = appState.campaigns.map(camp => {
+        const isActive = camp.id === appState.activeCampaignId;
+        const pName = appState.playstylePresets[camp.preset]?.name || (camp.preset === 'custom' ? 'Custom' : 'Full Immersion');
+        const count = camp.partyCount !== undefined ? camp.partyCount : (isActive ? (appState.party?.length || 0) : 0);
+        const lastPlayed = camp.lastPlayed ? new Date(camp.lastPlayed).toLocaleDateString() : 'Recently';
+
+        return `
+            <div class="bg-ledger-900/80 border ${isActive ? 'border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/30' : 'border-ledger-800 hover:border-ledger-700'} rounded-xl p-4 flex flex-col justify-between gap-3 transition shadow-sm">
+                <div>
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-base">📜</span>
+                            <h5 class="font-bold text-sm text-slate-100 truncate">${escapeHtml(camp.name)}</h5>
+                        </div>
+                        ${isActive ? '<span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 font-bold shrink-0">ACTIVE</span>' : ''}
+                    </div>
+                    <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed min-h-[32px]">${escapeHtml(camp.description || 'No description.')}</p>
+                    <div class="flex items-center gap-3 text-[10px] font-mono text-slate-400 pt-2 border-t border-ledger-800/60 mt-2">
+                        <span>👥 ${count} PCs (Player Characters)</span>
+                        <span>•</span>
+                        <span>🎭 ${pName}</span>
+                        <span>•</span>
+                        <span>🕒 ${lastPlayed}</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 pt-2 border-t border-ledger-800/60">
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="openEditCampaignModal('${camp.id}')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition" title="Edit campaign title & notes">
+                            ✏️
+                        </button>
+                        <button onclick="duplicateCampaign('${camp.id}')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition" title="Duplicate campaign">
+                            📋
+                        </button>
+                        ${appState.campaigns.length > 1 ? `
+                            <button onclick="deleteCampaign('${camp.id}')" class="p-1.5 rounded-lg hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 transition" title="Delete campaign profile">
+                                🗑️
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    ${isActive ? `
+                        <span class="text-xs font-semibold text-amber-400 flex items-center gap-1">
+                            <span>✓</span> Loaded
+                        </span>
+                    ` : `
+                        <button onclick="switchCampaign('${camp.id}')" class="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-ledger-950 font-bold text-xs transition border border-amber-500/30">
+                            Switch Profile
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderActivePresetBadge() {
+    const badge = document.getElementById('active-preset-badge');
+    const preset = appState.currentCampaign?.preset || 'full';
+    const presetDef = appState.playstylePresets[preset];
+    if (badge) {
+        if (presetDef) {
+            badge.textContent = presetDef.name;
+            badge.className = "px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40";
+        } else {
+            badge.textContent = "Custom Configuration";
+            badge.className = "px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40";
+        }
+    }
+
+    ['full', 'theater', 'prep', 'minimal'].forEach(p => {
+        const card = document.getElementById(`preset-card-${p}`);
+        if (card) {
+            if (preset === p) {
+                card.classList.add('border-amber-500', 'bg-amber-500/10', 'ring-1', 'ring-amber-500/40');
+                card.classList.remove('border-ledger-700', 'bg-ledger-900');
+            } else {
+                card.classList.remove('border-amber-500', 'bg-amber-500/10', 'ring-1', 'ring-amber-500/40');
+                card.classList.add('border-ledger-700', 'bg-ledger-900');
+            }
+        }
+    });
+}
+
+function renderModuleToggles() {
+    const grid = document.getElementById('module-toggles-grid');
+    if (!grid) return;
+    const currentModules = appState.currentCampaign?.modules || {};
+
+    grid.innerHTML = AVAILABLE_MODULES.map(mod => {
+        const isEnabled = currentModules[mod.id] !== false;
+        return `
+            <div class="p-3 rounded-xl border ${isEnabled ? 'bg-ledger-900/90 border-ledger-700' : 'bg-ledger-950/60 border-ledger-800/80 opacity-60'} flex items-start justify-between gap-3 transition">
+                <div class="flex items-start gap-2.5 min-w-0">
+                    <span class="text-xl shrink-0 mt-0.5">${mod.icon}</span>
+                    <div class="min-w-0">
+                        <div class="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+                            <span>${mod.name}</span>
+                            ${!isEnabled ? '<span class="text-[9px] font-mono text-slate-500 uppercase">Disabled</span>' : ''}
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-snug mt-0.5">${mod.desc}</p>
+                    </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                    <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleModule('${mod.id}', this.checked)" class="sr-only peer">
+                    <div class="w-9 h-5 bg-ledger-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+            </div>
+        `;
+    }).join('');
+}
+
+async function switchCampaign(campaignId) {
+    if (!campaignId || campaignId === appState.activeCampaignId) {
+        closeAllTopPopovers();
+        return;
+    }
+    try {
+        const res = await fetch(`/api/campaigns/${campaignId}/switch`, {
+            method: 'POST'
+        });
+        if (res.ok) {
+            const data = await res.json();
+            appState.activeCampaignId = data.activeCampaignId;
+            closeAllTopPopovers();
+            await fetchFullState();
+
+            renderPartyHUD();
+            renderCombatTracker();
+            renderCurrentNPC();
+            renderRoster();
+            renderRulesScreen();
+            renderTimeWeatherHUD();
+            renderSessionNotes();
+            renderWorldView();
+            renderAudioMixer();
+            renderEncountersView();
+            renderSpellsView();
+            renderItemsView();
+            renderSecrets();
+            renderHandouts();
+            renderBroadcastPill();
+            renderCampaignSettingsCard();
+            if (appState.activeTab === 'battlemap' && window.BattlemapController) {
+                window.BattlemapController.init();
+            }
+            showToast(`Switched to campaign: ${data.campaign?.name || campaignId}`, 'success');
+        } else {
+            showToast('Failed to switch campaign.', 'error');
+        }
+    } catch (err) {
+        console.error('Error switching campaign:', err);
+        showToast('Network error while switching campaign.', 'error');
+    }
+}
+
+function openNewCampaignModal() {
+    closeAllTopPopovers();
+    const nameInput = document.getElementById('new-campaign-name');
+    const descInput = document.getElementById('new-campaign-desc');
+    const presetSelect = document.getElementById('new-campaign-preset');
+    if (nameInput) nameInput.value = '';
+    if (descInput) descInput.value = '';
+    if (presetSelect) presetSelect.value = 'full';
+    openModal('new-campaign-modal');
+    setTimeout(() => nameInput?.focus(), 100);
+}
+
+async function submitNewCampaign(event) {
+    if (event) event.preventDefault();
+    const name = document.getElementById('new-campaign-name')?.value?.trim();
+    if (!name) return;
+    const desc = document.getElementById('new-campaign-desc')?.value?.trim() || '';
+    const preset = document.getElementById('new-campaign-preset')?.value || 'full';
+    const template = document.querySelector('input[name="new-campaign-template"]:checked')?.value || 'blank';
+
+    try {
+        const res = await fetch('/api/campaigns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description: desc, preset, template })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            closeModal('new-campaign-modal');
+            await fetchFullState();
+            renderPartyHUD();
+            renderCombatTracker();
+            renderCurrentNPC();
+            renderRoster();
+            renderTimeWeatherHUD();
+            renderSessionNotes();
+            renderWorldView();
+            renderSecrets();
+            renderHandouts();
+            renderEncountersView();
+            renderCampaignSettingsCard();
+            if (appState.activeTab === 'battlemap' && window.BattlemapController) {
+                window.BattlemapController.init();
+            }
+            showToast(`Campaign created: ${data.campaign.name}`, 'success');
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to create campaign', 'error');
+        }
+    } catch (err) {
+        console.error('Error creating campaign:', err);
+        showToast('Network error creating campaign.', 'error');
+    }
+}
+
+function openEditCampaignModal(campaignId) {
+    const camp = appState.campaigns.find(c => c.id === campaignId);
+    if (!camp) return;
+    const idInput = document.getElementById('edit-campaign-id');
+    const nameInput = document.getElementById('edit-campaign-name');
+    const descInput = document.getElementById('edit-campaign-desc');
+    if (idInput) idInput.value = camp.id;
+    if (nameInput) nameInput.value = camp.name;
+    if (descInput) descInput.value = camp.description || '';
+    openModal('edit-campaign-modal');
+    setTimeout(() => nameInput?.focus(), 100);
+}
+
+async function submitEditCampaign(event) {
+    if (event) event.preventDefault();
+    const campId = document.getElementById('edit-campaign-id')?.value;
+    const name = document.getElementById('edit-campaign-name')?.value?.trim();
+    if (!campId || !name) return;
+    const desc = document.getElementById('edit-campaign-desc')?.value?.trim() || '';
+
+    try {
+        const res = await fetch(`/api/campaigns/${campId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description: desc })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            closeModal('edit-campaign-modal');
+            const target = appState.campaigns.find(c => c.id === campId);
+            if (target) {
+                target.name = data.campaign.name;
+                target.description = data.campaign.description;
+            }
+            if (appState.currentCampaign?.id === campId) {
+                appState.currentCampaign.name = data.campaign.name;
+                appState.currentCampaign.description = data.campaign.description;
+            }
+            renderCampaignTopbar();
+            renderCampaignSettingsCard();
+            showToast('Campaign details updated.', 'success');
+        } else {
+            showToast('Failed to update campaign.', 'error');
+        }
+    } catch (err) {
+        console.error('Error updating campaign:', err);
+        showToast('Network error updating campaign.', 'error');
+    }
+}
+
+async function duplicateCampaign(campaignId) {
+    try {
+        const res = await fetch(`/api/campaigns/${campaignId}/duplicate`, {
+            method: 'POST'
+        });
+        if (res.ok) {
+            const data = await res.json();
+            appState.campaigns.push(data.campaign);
+            renderCampaignTopbar();
+            renderCampaignSettingsCard();
+            showToast(`Campaign duplicated: ${data.campaign.name}`, 'success');
+        } else {
+            showToast('Failed to duplicate campaign.', 'error');
+        }
+    } catch (err) {
+        console.error('Error duplicating campaign:', err);
+        showToast('Network error duplicating campaign.', 'error');
+    }
+}
+
+async function deleteCampaign(campaignId) {
+    if (appState.campaigns.length <= 1) {
+        showToast('Cannot delete the only campaign profile.', 'error');
+        return;
+    }
+    const camp = appState.campaigns.find(c => c.id === campaignId);
+    const conf = confirm(`Are you sure you want to delete campaign "${camp ? camp.name : campaignId}"? This will permanently delete its isolated party, combat, notes, and lore data.`);
+    if (!conf) return;
+
+    try {
+        const res = await fetch(`/api/campaigns/${campaignId}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            const data = await res.json();
+            await fetchFullState();
+            renderPartyHUD();
+            renderCombatTracker();
+            renderCurrentNPC();
+            renderRoster();
+            renderTimeWeatherHUD();
+            renderSessionNotes();
+            renderWorldView();
+            renderSecrets();
+            renderHandouts();
+            renderEncountersView();
+            renderCampaignSettingsCard();
+            if (appState.activeTab === 'battlemap' && window.BattlemapController) {
+                window.BattlemapController.init();
+            }
+            showToast('Campaign deleted.', 'info');
+        } else {
+            showToast('Failed to delete campaign.', 'error');
+        }
+    } catch (err) {
+        console.error('Error deleting campaign:', err);
+        showToast('Network error deleting campaign.', 'error');
+    }
+}
+
+async function applyPlaystylePreset(presetKey) {
+    if (!appState.currentCampaign) return;
+    const preset = appState.playstylePresets[presetKey];
+    if (!preset) return;
+
+    appState.currentCampaign.preset = presetKey;
+    appState.currentCampaign.modules = Object.assign({}, preset.modules);
+
+    try {
+        await fetch(`/api/campaigns/${appState.activeCampaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preset: presetKey, modules: appState.currentCampaign.modules })
+        });
+        applyModuleVisibility();
+        showToast(`Applied preset: ${preset.name}`, 'success');
+    } catch (err) {
+        console.error('Error saving preset:', err);
+    }
+}
+
+async function toggleModule(moduleId, isEnabled) {
+    if (!appState.currentCampaign) return;
+    if (!appState.currentCampaign.modules) {
+        appState.currentCampaign.modules = {};
+    }
+    appState.currentCampaign.modules[moduleId] = isEnabled;
+    appState.currentCampaign.preset = 'custom';
+
+    try {
+        await fetch(`/api/campaigns/${appState.activeCampaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preset: 'custom', modules: appState.currentCampaign.modules })
+        });
+        applyModuleVisibility();
+        showToast(`${isEnabled ? 'Enabled' : 'Disabled'} ${moduleId} module`, 'info');
+    } catch (err) {
+        console.error('Error toggling module:', err);
+    }
+}
+
 // Render Settings View
 function renderSettingsView() {
     loadArcaneSettings();
+    renderCampaignSettingsCard();
+    renderModuleToggles();
+    renderActivePresetBadge();
     renderSettingsKeybinds();
 
     const fogSlider = document.getElementById('setting-fog-opacity');
@@ -8660,6 +9200,8 @@ window.onload = async function() {
     renderHandouts();
     generateShop();
     renderBroadcastPill();
+    renderCampaignSettingsCard();
+    renderModuleToggles();
     if (window.LightingEngine) window.LightingEngine.init();
 };
 

@@ -1,0 +1,13 @@
+{
+  "day": 1,
+  "hour": 9,
+  "minute": 0,
+  "weather": {
+    "temperature": "Mild (65°F)",
+    "wind": "Calm",
+    "precipitation": "Clear Skies",
+    "tacticalEffect": "None"
+  },
+  "moonPhase": "Waxing Crescent",
+  "activeTimers": []
+}

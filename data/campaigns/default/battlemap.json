@@ -1,0 +1,163 @@
+{
+  "activeMapId": "tavern_cellar",
+  "activeMapUrl": "/static/images/battlemaps/tavern_cellar.svg",
+  "activeMapName": "Smuggler's Tavern Cellar",
+  "gridSize": 50,
+  "gridVisible": true,
+  "gridColor": "rgba(255, 255, 255, 0.22)",
+  "fogEnabled": true,
+  "fogMask": null,
+  "rotation": 0,
+  "panX": 0,
+  "panY": 0,
+  "zoom": 1.0,
+  "locked": true,
+  "pings": [
+    {
+      "id": "c20bbfc7-d019-4bfe-8933-daf04981aced",
+      "x": 296.0,
+      "y": 252.0,
+      "color": "#38bdf8",
+      "timestamp": 1792075762.839009
+    },
+    {
+      "id": "c4d73f81-eb91-4679-be0a-fbf5205ef852",
+      "x": 92.0,
+      "y": 187.0,
+      "color": "#38bdf8",
+      "timestamp": 1792075764.7505028
+    },
+    {
+      "id": "d085ce57-41bf-4df5-be9d-f4a4073b4f05",
+      "x": 92.0,
+      "y": 187.0,
+      "color": "#38bdf8",
+      "timestamp": 1792075766.0706718
+    },
+    {
+      "id": "4dbed259-413e-4921-9561-7aeb1b306007",
+      "x": 255.0,
+      "y": 219.0,
+      "color": "#38bdf8",
+      "timestamp": 1792075766.591424
+    },
+    {
+      "id": "d0606873-6d1c-4b76-a7a3-efe582b39b9c",
+      "x": 258.0,
+      "y": 219.0,
+      "color": "#38bdf8",
+      "timestamp": 1792075767.470722
+    }
+  ],
+  "maps": [
+    {
+      "id": "dungeon_crypt",
+      "name": "Forgotten Dungeon Crypt",
+      "url": "/static/images/battlemaps/dungeon_crypt.svg",
+      "width": 2000,
+      "height": 1500,
+      "defaultGridSize": 50,
+      "theme": "dungeon",
+      "type": "preset",
+      "createdAt": 1728950000
+    },
+    {
+      "id": "forest_river",
+      "name": "Whispering Woods & River Crossing",
+      "url": "/static/images/battlemaps/forest_river.svg",
+      "width": 2000,
+      "height": 1500,
+      "defaultGridSize": 50,
+      "theme": "forest",
+      "type": "preset",
+      "createdAt": 1728950000
+    },
+    {
+      "id": "tavern_cellar",
+      "name": "Smuggler's Tavern Cellar",
+      "url": "/static/images/battlemaps/tavern_cellar.svg",
+      "width": 2000,
+      "height": 1500,
+      "defaultGridSize": 50,
+      "theme": "tavern",
+      "type": "preset",
+      "createdAt": 1728950000
+    }
+  ],
+  "updatedAt": 1792086298.782102,
+  "tokens": [
+    {
+      "id": "token_pbcs124k",
+      "name": "Aboleth",
+      "monsterId": "aboleth",
+      "combatantId": "comb-1792074002779-5cgxg",
+      "size": "Large",
+      "sizeSquares": 2.0,
+      "x": 850.0,
+      "y": 750.0,
+      "imageUrl": "/static/images/monsters/aboleth.webp",
+      "currentHp": 150,
+      "maxHp": 150,
+      "color": "#a855f7",
+      "visibleToPlayers": false,
+      "elevation": 0,
+      "conditions": [],
+      "concentrating": false,
+      "strideActive": false
+    },
+    {
+      "id": "token_kd1lrqd4",
+      "name": "Adult Green Dragon",
+      "monsterId": "adult-green-dragon",
+      "combatantId": "comb-1792074002779-u7tbl",
+      "size": "Huge",
+      "sizeSquares": 3.0,
+      "x": 1100.0,
+      "y": 450.0,
+      "imageUrl": "/static/images/monsters/adult-green-dragon.webp",
+      "currentHp": 207,
+      "maxHp": 207,
+      "color": "#a855f7",
+      "visibleToPlayers": true,
+      "elevation": 0,
+      "conditions": [],
+      "concentrating": false,
+      "strideActive": false
+    },
+    {
+      "id": "token_7c4cdd59",
+      "name": "Finnian Quickfoot",
+      "monsterId": "",
+      "combatantId": "combat-pc-3",
+      "size": "Medium",
+      "sizeSquares": 1.0,
+      "x": 1350.0,
+      "y": 650.0,
+      "imageUrl": "/static/images/tokens/finnian_quickfoot.webp",
+      "currentHp": 12,
+      "maxHp": 33,
+      "color": "#eab308",
+      "visibleToPlayers": true,
+      "elevation": 0,
+      "conditions": [],
+      "concentrating": false,
+      "strideActive": false
+    }
+  ],
+  "templates": [
+    {
+      "id": "tpl_mf9wkaox",
+      "type": "cone",
+      "x": 1100.0,
+      "y": 450.0,
+      "radiusFeet": 20.0,
+      "lengthFeet": 60.0,
+      "widthFeet": 5.0,
+      "rotation": 41.0,
+      "color": "#f97316",
+      "label": "Fireball (20ft)",
+      "visibleToPlayers": true
+    }
+  ],
+  "activeRuler": null
+}

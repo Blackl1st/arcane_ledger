@@ -20,6 +20,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from map_generator import ProceduralMapGenerator, get_random_title
+
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 STATIC_DIR = BASE_DIR / "static"
@@ -28,6 +30,9 @@ BACKUPS_DIR = DATA_DIR / "backups"
 AUDIO_DIR = STATIC_DIR / "audio"
 IMAGES_DIR = STATIC_DIR / "images"
 BATTLEMAPS_DIR = IMAGES_DIR / "battlemaps"
+CAMPAIGNS_DIR = DATA_DIR / "campaigns"
+CAMPAIGNS_MANIFEST_FILE = DATA_DIR / "campaigns.json"
+BATTLEMAPS_CATALOG_FILE = DATA_DIR / "battlemaps_catalog.json"
 
 DATA_DIR.mkdir(exist_ok=True)
 STATIC_DIR.mkdir(exist_ok=True)
@@ -36,6 +41,7 @@ BACKUPS_DIR.mkdir(exist_ok=True)
 AUDIO_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
 BATTLEMAPS_DIR.mkdir(parents=True, exist_ok=True)
+CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Arcane Ledger: D&D 5.5e DM Dashboard", version="1.0.0")
 
@@ -49,9 +55,173 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Helper functions for JSON storage
+# Campaign Scoped vs Global Compendium routing
+CAMPAIGN_SCOPED_FILES = {
+    "party.json",
+    "combat.json",
+    "time_weather.json",
+    "quests.json",
+    "factions.json",
+    "locations.json",
+    "secrets.json",
+    "handouts.json",
+    "roster.json",
+    "battlemap.json",
+    "broadcast.json",
+    "encounters.json",
+    "session_notes.json",
+    "world.json",
+}
+
+DEFAULT_MODULES = {
+    "combat": True,
+    "battlemap": True,
+    "bestiary": True,
+    "encounters": True,
+    "spells": True,
+    "items": True,
+    "rules": True,
+    "world": True,
+    "npcs": True,
+    "loot": True,
+    "notes": True,
+    "audio": True
+}
+
+PLAYSTYLE_PRESETS = {
+    "full": {
+        "id": "full",
+        "name": "Full Tabletop Immersion",
+        "description": "All 12 modules enabled: Tactical Battlemap, Smart Lighting, Audio, Compendiums, Combat Tracker, and World Lore.",
+        "modules": {
+            "combat": True, "battlemap": True, "bestiary": True, "encounters": True,
+            "spells": True, "items": True, "rules": True, "world": True,
+            "npcs": True, "loot": True, "notes": True, "audio": True
+        }
+    },
+    "theater": {
+        "id": "theater",
+        "name": "Theater of the Mind",
+        "description": "Streamlined for descriptive roleplay: Battlemap grid disabled. Keeps Combat tracker, Bestiary, Lore, Spells, Items, Audio, and Notes.",
+        "modules": {
+            "combat": True, "battlemap": False, "bestiary": True, "encounters": True,
+            "spells": True, "items": True, "rules": True, "world": True,
+            "npcs": True, "loot": True, "notes": True, "audio": True
+        }
+    },
+    "prep": {
+        "id": "prep",
+        "name": "Worldbuilder & Prep",
+        "description": "Tailored for session planning: World lore, Secrets, Handouts, Compendiums, NPCs, and Notes enabled. Live Combat tracker and Battlemap disabled.",
+        "modules": {
+            "combat": False, "battlemap": False, "bestiary": True, "encounters": True,
+            "spells": True, "items": True, "rules": True, "world": True,
+            "npcs": True, "loot": True, "notes": True, "audio": False
+        }
+    },
+    "minimal": {
+        "id": "minimal",
+        "name": "Minimalist DM",
+        "description": "Clean, focused, distraction-free screen: Combat tracker, Party status, Scratchpad notes, and 2024 Rules Engine only.",
+        "modules": {
+            "combat": True, "battlemap": False, "bestiary": False, "encounters": False,
+            "spells": False, "items": False, "rules": True, "world": False,
+            "npcs": False, "loot": False, "notes": True, "audio": False
+        }
+    }
+}
+
+def get_campaigns_manifest() -> Dict[str, Any]:
+    if not CAMPAIGNS_MANIFEST_FILE.exists():
+        ensure_campaigns_system()
+    try:
+        with open(CAMPAIGNS_MANIFEST_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error reading campaigns manifest: {e}")
+        return {
+            "activeCampaignId": "default",
+            "campaigns": [
+                {
+                    "id": "default",
+                    "name": "Default Campaign",
+                    "description": "Primary adventuring party and world state",
+                    "createdAt": datetime.now().isoformat(),
+                    "lastPlayed": datetime.now().isoformat(),
+                    "preset": "full",
+                    "modules": dict(DEFAULT_MODULES)
+                }
+            ]
+        }
+
+def save_campaigns_manifest(data: Dict[str, Any]) -> bool:
+    temp_path = DATA_DIR / "campaigns.json.tmp"
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        temp_path.replace(CAMPAIGNS_MANIFEST_FILE)
+        return True
+    except Exception as e:
+        print(f"Error saving campaigns manifest: {e}")
+        if temp_path.exists():
+            temp_path.unlink()
+        return False
+
+def get_active_campaign_id() -> str:
+    manifest = get_campaigns_manifest()
+    return manifest.get("activeCampaignId", "default")
+
+def get_active_campaign_dir() -> Path:
+    camp_id = get_active_campaign_id()
+    camp_dir = CAMPAIGNS_DIR / camp_id
+    camp_dir.mkdir(parents=True, exist_ok=True)
+    return camp_dir
+
+def ensure_campaigns_system():
+    CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
+    default_dir = CAMPAIGNS_DIR / "default"
+    default_dir.mkdir(parents=True, exist_ok=True)
+
+    # Migrate any existing scoped files in DATA_DIR to default campaign folder if they don't already exist there
+    for filename in CAMPAIGN_SCOPED_FILES:
+        src = DATA_DIR / filename
+        dst = default_dir / filename
+        if src.exists() and not dst.exists():
+            try:
+                shutil.copy2(src, dst)
+            except Exception as e:
+                print(f"Error copying {filename} during migration: {e}")
+
+    # Ensure manifest exists
+    if not CAMPAIGNS_MANIFEST_FILE.exists():
+        now_str = datetime.now().isoformat()
+        manifest = {
+            "activeCampaignId": "default",
+            "campaigns": [
+                {
+                    "id": "default",
+                    "name": "Default Campaign",
+                    "description": "Primary adventuring party and world state",
+                    "createdAt": now_str,
+                    "lastPlayed": now_str,
+                    "preset": "full",
+                    "modules": dict(DEFAULT_MODULES)
+                }
+            ]
+        }
+        save_campaigns_manifest(manifest)
+
+# Initialize on module import
+ensure_campaigns_system()
+
+def get_file_path(filename: str) -> Path:
+    if filename in CAMPAIGN_SCOPED_FILES:
+        camp_dir = get_active_campaign_dir()
+        return camp_dir / filename
+    return DATA_DIR / filename
+
 def read_json(filename: str, default: Any = None) -> Any:
-    file_path = DATA_DIR / filename
+    file_path = get_file_path(filename)
     if not file_path.exists():
         if default is not None:
             write_json(filename, default)
@@ -61,19 +231,21 @@ def read_json(filename: str, default: Any = None) -> Any:
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"Error reading {filename}: {e}")
+        print(f"Error reading {filename} ({file_path}): {e}")
         return default
 
 def write_json(filename: str, data: Any) -> bool:
-    file_path = DATA_DIR / filename
-    temp_path = DATA_DIR / f"{filename}.tmp"
+    file_path = get_file_path(filename)
+    parent_dir = file_path.parent
+    parent_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = parent_dir / f"{filename}.tmp"
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         temp_path.replace(file_path)
         return True
     except Exception as e:
-        print(f"Error writing {filename}: {e}")
+        print(f"Error writing {filename} ({file_path}): {e}")
         if temp_path.exists():
             temp_path.unlink()
         return False
@@ -393,6 +565,19 @@ class BattlemapPing(BaseModel):
 class BattlemapSelect(BaseModel):
     mapId: str
 
+class BattlemapGenerateRequest(BaseModel):
+    theme: str = "dungeon" # dungeon, cavern, forest, tavern, arcane, ruins
+    title: Optional[str] = None
+    widthSquares: int = 40
+    heightSquares: int = 30
+    gridSize: int = 50
+    layout: str = "multi_room"
+    lighting: str = "torchlit"
+    hasWater: bool = False
+    hasPillars: bool = True
+    seed: Optional[int] = None
+    deployImmediately: bool = True
+
 class BattlemapTokenCreate(BaseModel):
     id: Optional[str] = None
     name: str
@@ -450,6 +635,19 @@ class ItemModel(BaseModel):
     strengthReq: Optional[str] = None
     stealthDisadv: Optional[bool] = None
     isCustom: Optional[bool] = True
+
+class CampaignCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    preset: Optional[str] = "full"
+    template: Optional[str] = "blank"  # "blank" or "clone_active"
+    modules: Optional[Dict[str, bool]] = None
+
+class CampaignUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    preset: Optional[str] = None
+    modules: Optional[Dict[str, bool]] = None
 
 # Routes
 @app.get("/")
@@ -530,6 +728,12 @@ async def get_full_state():
         "diceTriggers": True
     })
 
+    enriched_campaigns = get_enriched_campaigns()
+    active_camp_id = get_active_campaign_id()
+    current_campaign = next((c for c in enriched_campaigns if c.get("id") == active_camp_id), None)
+    if not current_campaign and enriched_campaigns:
+        current_campaign = enriched_campaigns[0]
+
     return {
         "party": party,
         "combat": combat,
@@ -551,8 +755,209 @@ async def get_full_state():
         "spells": spells,
         "items": items,
         "encounters": encounters,
-        "lighting": lighting
+        "lighting": lighting,
+        "campaigns": enriched_campaigns,
+        "activeCampaignId": active_camp_id,
+        "currentCampaign": current_campaign,
+        "presets": PLAYSTYLE_PRESETS
     }
+
+def get_enriched_campaigns() -> List[Dict[str, Any]]:
+    manifest = get_campaigns_manifest()
+    enriched_campaigns = []
+    for c in manifest.get("campaigns", []):
+        c_copy = dict(c)
+        party_file = CAMPAIGNS_DIR / c["id"] / "party.json"
+        count = 0
+        if party_file.exists():
+            try:
+                with open(party_file, "r", encoding="utf-8") as f:
+                    party_data = json.load(f)
+                    if isinstance(party_data, list):
+                        count = len(party_data)
+            except Exception:
+                pass
+        c_copy["partyCount"] = count
+        enriched_campaigns.append(c_copy)
+    return enriched_campaigns
+
+# Campaign Profiles & Module Manager Endpoints
+@app.get("/api/campaigns")
+async def list_campaigns():
+    manifest = get_campaigns_manifest()
+    return {
+        "activeCampaignId": manifest.get("activeCampaignId", "default"),
+        "campaigns": get_enriched_campaigns(),
+        "presets": PLAYSTYLE_PRESETS
+    }
+
+@app.post("/api/campaigns")
+async def create_campaign(payload: CampaignCreate):
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Campaign name cannot be empty")
+
+    manifest = get_campaigns_manifest()
+    clean_slug = "".join(ch.lower() if ch.isalnum() else "_" for ch in name).strip("_")[:16]
+    camp_id = f"camp_{int(time.time())}_{clean_slug or 'new'}"
+    camp_dir = CAMPAIGNS_DIR / camp_id
+    camp_dir.mkdir(parents=True, exist_ok=True)
+
+    preset_key = payload.preset if payload.preset in PLAYSTYLE_PRESETS else "full"
+    modules = dict(PLAYSTYLE_PRESETS[preset_key]["modules"])
+    if payload.modules:
+        modules.update(payload.modules)
+
+    if payload.template == "clone_active":
+        active_dir = get_active_campaign_dir()
+        if active_dir.exists():
+            for f in active_dir.glob("*.json"):
+                if f.name in CAMPAIGN_SCOPED_FILES:
+                    shutil.copy2(f, camp_dir / f.name)
+    else:
+        empty_party = []
+        empty_combat = {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []}
+        empty_roster = []
+        empty_world = {"customFactions": [], "customLocations": [], "useOnlyCustomFactions": False, "useOnlyCustomLocations": False}
+        empty_notes = []
+        empty_time = {"day": 1, "hour": 9, "minute": 0, "weather": {"temperature": "Mild (65°F)", "wind": "Calm", "precipitation": "Clear Skies", "tacticalEffect": "None"}, "moonPhase": "Waxing Crescent", "activeTimers": []}
+        empty_locations = []
+        empty_factions = []
+        empty_quests = {"quests": [], "rumors": []}
+        empty_broadcast = {"active": False, "title": "", "subtitle": "", "content": "", "type": "text", "imageUrl": ""}
+        empty_encounters = []
+        empty_secrets = []
+        empty_handouts = []
+        empty_battlemap = {"mapUrl": "", "gridSize": 50, "gridOffsetX": 0, "gridOffsetY": 0, "tokens": [], "fog": []}
+
+        defaults = {
+            "party.json": empty_party,
+            "combat.json": empty_combat,
+            "roster.json": empty_roster,
+            "world.json": empty_world,
+            "session_notes.json": empty_notes,
+            "time_weather.json": empty_time,
+            "locations.json": empty_locations,
+            "factions.json": empty_factions,
+            "quests.json": empty_quests,
+            "broadcast.json": empty_broadcast,
+            "encounters.json": empty_encounters,
+            "secrets.json": empty_secrets,
+            "handouts.json": empty_handouts,
+            "battlemap.json": empty_battlemap,
+        }
+        for fname, dval in defaults.items():
+            with open(camp_dir / fname, "w", encoding="utf-8") as f:
+                json.dump(dval, f, indent=2, ensure_ascii=False)
+
+    now_str = datetime.now().isoformat()
+    new_campaign = {
+        "id": camp_id,
+        "name": name,
+        "description": payload.description or "",
+        "createdAt": now_str,
+        "lastPlayed": now_str,
+        "preset": preset_key,
+        "modules": modules
+    }
+
+    manifest.setdefault("campaigns", []).append(new_campaign)
+    manifest["activeCampaignId"] = camp_id
+    save_campaigns_manifest(manifest)
+
+    return {"status": "success", "campaign": new_campaign, "activeCampaignId": camp_id}
+
+@app.post("/api/campaigns/{camp_id}/switch")
+async def switch_campaign_endpoint(camp_id: str):
+    manifest = get_campaigns_manifest()
+    campaign = next((c for c in manifest.get("campaigns", []) if c["id"] == camp_id), None)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    campaign["lastPlayed"] = datetime.now().isoformat()
+    manifest["activeCampaignId"] = camp_id
+    save_campaigns_manifest(manifest)
+
+    return {"status": "success", "activeCampaignId": camp_id, "campaign": campaign}
+
+@app.put("/api/campaigns/{camp_id}")
+async def update_campaign_endpoint(camp_id: str, payload: CampaignUpdate):
+    manifest = get_campaigns_manifest()
+    campaign = next((c for c in manifest.get("campaigns", []) if c["id"] == camp_id), None)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if payload.name is not None and payload.name.strip():
+        campaign["name"] = payload.name.strip()
+    if payload.description is not None:
+        campaign["description"] = payload.description.strip()
+    if payload.preset is not None:
+        campaign["preset"] = payload.preset
+    if payload.modules is not None:
+        if "modules" not in campaign:
+            campaign["modules"] = dict(DEFAULT_MODULES)
+        campaign["modules"].update(payload.modules)
+
+    save_campaigns_manifest(manifest)
+    return {"status": "success", "campaign": campaign}
+
+@app.post("/api/campaigns/{camp_id}/duplicate")
+async def duplicate_campaign_endpoint(camp_id: str):
+    manifest = get_campaigns_manifest()
+    source = next((c for c in manifest.get("campaigns", []) if c["id"] == camp_id), None)
+    if not source:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    src_dir = CAMPAIGNS_DIR / camp_id
+    new_id = f"camp_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    dst_dir = CAMPAIGNS_DIR / new_id
+    dst_dir.mkdir(parents=True, exist_ok=True)
+
+    if src_dir.exists():
+        for f in src_dir.glob("*.json"):
+            shutil.copy2(f, dst_dir / f.name)
+
+    now_str = datetime.now().isoformat()
+    new_campaign = {
+        "id": new_id,
+        "name": f"{source['name']} (Copy)",
+        "description": source.get("description", ""),
+        "createdAt": now_str,
+        "lastPlayed": now_str,
+        "preset": source.get("preset", "full"),
+        "modules": dict(source.get("modules", DEFAULT_MODULES))
+    }
+
+    manifest.setdefault("campaigns", []).append(new_campaign)
+    save_campaigns_manifest(manifest)
+    return {"status": "success", "campaign": new_campaign}
+
+@app.delete("/api/campaigns/{camp_id}")
+async def delete_campaign_endpoint(camp_id: str):
+    manifest = get_campaigns_manifest()
+    campaigns = manifest.get("campaigns", [])
+    if len(campaigns) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the only campaign")
+
+    target = next((c for c in campaigns if c["id"] == camp_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if manifest.get("activeCampaignId") == camp_id:
+        remaining = [c for c in campaigns if c["id"] != camp_id]
+        manifest["activeCampaignId"] = remaining[0]["id"]
+
+    manifest["campaigns"] = [c for c in campaigns if c["id"] != camp_id]
+    save_campaigns_manifest(manifest)
+
+    camp_dir = CAMPAIGNS_DIR / camp_id
+    if camp_dir.exists():
+        try:
+            shutil.rmtree(camp_dir)
+        except Exception as e:
+            print(f"Error removing campaign dir {camp_dir}: {e}")
+
+    return {"status": "success", "activeCampaignId": manifest["activeCampaignId"]}
 
 # Party management
 @app.get("/api/party")
@@ -2321,12 +2726,70 @@ async def update_pc_resource(pc_id: str, payload: Dict[str, Any]):
 # -----------------------------------------------------------------------------
 # TABLETOP BATTLEMAP & FOG OF WAR (3RD SCREEN IN-TABLE TV)
 # -----------------------------------------------------------------------------
+DEFAULT_BATTLEMAPS_CATALOG = [
+    {
+        "id": "dungeon_crypt",
+        "name": "Forgotten Dungeon Crypt",
+        "url": "/static/images/battlemaps/dungeon_crypt.svg",
+        "width": 2000,
+        "height": 1500,
+        "defaultGridSize": 50,
+        "theme": "dungeon",
+        "type": "preset",
+        "createdAt": 1728950000
+    },
+    {
+        "id": "forest_river",
+        "name": "Whispering Woods & River Crossing",
+        "url": "/static/images/battlemaps/forest_river.svg",
+        "width": 2000,
+        "height": 1500,
+        "defaultGridSize": 50,
+        "theme": "forest",
+        "type": "preset",
+        "createdAt": 1728950000
+    },
+    {
+        "id": "tavern_cellar",
+        "name": "Smuggler's Tavern Cellar",
+        "url": "/static/images/battlemaps/tavern_cellar.svg",
+        "width": 2000,
+        "height": 1500,
+        "defaultGridSize": 50,
+        "theme": "tavern",
+        "type": "preset",
+        "createdAt": 1728950000
+    }
+]
+
+def get_shared_battlemaps_catalog() -> List[Dict[str, Any]]:
+    if not BATTLEMAPS_CATALOG_FILE.exists():
+        save_shared_battlemaps_catalog(DEFAULT_BATTLEMAPS_CATALOG)
+        return list(DEFAULT_BATTLEMAPS_CATALOG)
+    try:
+        with open(BATTLEMAPS_CATALOG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list) and len(data) > 0:
+                return data
+    except Exception as e:
+        print(f"Error loading battlemap catalog: {e}")
+    return list(DEFAULT_BATTLEMAPS_CATALOG)
+
+def save_shared_battlemaps_catalog(catalog: List[Dict[str, Any]]) -> None:
+    try:
+        with open(BATTLEMAPS_CATALOG_FILE, "w", encoding="utf-8") as f:
+            json.dump(catalog, f, indent=2)
+    except Exception as e:
+        print(f"Error saving battlemap catalog: {e}")
+
 def get_default_battlemap_state():
+    catalog = get_shared_battlemaps_catalog()
+    first_map = catalog[0] if catalog else DEFAULT_BATTLEMAPS_CATALOG[0]
     return {
-        "activeMapId": "dungeon_crypt",
-        "activeMapUrl": "/static/images/battlemaps/dungeon_crypt.svg",
-        "activeMapName": "Forgotten Dungeon Crypt",
-        "gridSize": 50,
+        "activeMapId": first_map["id"],
+        "activeMapUrl": first_map["url"],
+        "activeMapName": first_map["name"],
+        "gridSize": first_map.get("defaultGridSize", 50),
         "gridVisible": True,
         "gridColor": "rgba(255, 255, 255, 0.22)",
         "fogEnabled": True,
@@ -2340,38 +2803,27 @@ def get_default_battlemap_state():
         "tokens": [],
         "templates": [],
         "activeRuler": None,
-        "maps": [
-            {
-                "id": "dungeon_crypt",
-                "name": "Forgotten Dungeon Crypt",
-                "url": "/static/images/battlemaps/dungeon_crypt.svg",
-                "width": 2000,
-                "height": 1500,
-                "defaultGridSize": 50
-            },
-            {
-                "id": "forest_river",
-                "name": "Whispering Woods & River Crossing",
-                "url": "/static/images/battlemaps/forest_river.svg",
-                "width": 2000,
-                "height": 1500,
-                "defaultGridSize": 50
-            },
-            {
-                "id": "tavern_cellar",
-                "name": "Smuggler's Tavern Cellar",
-                "url": "/static/images/battlemaps/tavern_cellar.svg",
-                "width": 2000,
-                "height": 1500,
-                "defaultGridSize": 50
-            }
-        ],
+        "maps": catalog,
         "updatedAt": time.time()
     }
 
 @app.get("/api/battlemap")
 async def get_battlemap():
     state = read_json("battlemap.json", get_default_battlemap_state())
+    catalog = get_shared_battlemaps_catalog()
+    state["maps"] = catalog
+
+    # Ensure activeMapId points to an existing map from the shared catalog
+    active_id = state.get("activeMapId")
+    matched = next((m for m in catalog if m["id"] == active_id), None)
+    if not matched and catalog:
+        matched = catalog[0]
+        state["activeMapId"] = matched["id"]
+        state["activeMapUrl"] = matched["url"]
+        state["activeMapName"] = matched["name"]
+        if "defaultGridSize" in matched:
+            state["gridSize"] = matched["defaultGridSize"]
+
     now = time.time()
     if state and "pings" in state and isinstance(state["pings"], list):
         state["pings"] = [p for p in state["pings"] if now - p.get("timestamp", 0) < 10.0]
@@ -2555,13 +3007,144 @@ async def clear_battlemap_templates():
     write_json("battlemap.json", state)
     return {"status": "success", "templates": []}
 
+@app.get("/api/battlemap/catalog")
+async def get_battlemap_catalog():
+    return {"status": "success", "catalog": get_shared_battlemaps_catalog()}
+
+@app.delete("/api/battlemap/catalog/{map_id}")
+async def delete_battlemap_from_catalog(map_id: str):
+    catalog = get_shared_battlemaps_catalog()
+    deleted = None
+    new_catalog = []
+    for m in catalog:
+        if m["id"] == map_id:
+            deleted = m
+        else:
+            new_catalog.append(m)
+    
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Map not found in catalog")
+    
+    # Don't delete presets if someone tries
+    if deleted.get("type") == "preset":
+        raise HTTPException(status_code=400, detail="Default preset maps cannot be deleted")
+
+    save_shared_battlemaps_catalog(new_catalog)
+
+    # If it was an uploaded or generated map, delete file
+    if deleted.get("type") in ("generated", "uploaded"):
+        url = deleted.get("url", "")
+        if url.startswith("/static/images/battlemaps/"):
+            filename = url.replace("/static/images/battlemaps/", "")
+            file_path = BATTLEMAPS_DIR / filename
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    print(f"Error removing map file {file_path}: {e}")
+
+    return {"status": "success", "catalog": new_catalog}
+
+@app.post("/api/battlemap/preview")
+async def preview_battlemap(req: BattlemapGenerateRequest):
+    try:
+        gen = ProceduralMapGenerator(
+            theme=req.theme,
+            width_squares=req.widthSquares,
+            height_squares=req.heightSquares,
+            grid_size=req.gridSize,
+            layout=req.layout,
+            lighting=req.lighting,
+            has_water=req.hasWater,
+            has_pillars=req.hasPillars,
+            seed=req.seed
+        )
+        svg_content = gen.generate_svg()
+        title = req.title.strip() if req.title and req.title.strip() else get_random_title(req.theme)
+        return {
+            "status": "success",
+            "svg": svg_content,
+            "title": title,
+            "seed": gen.seed,
+            "theme": req.theme,
+            "width": gen.width,
+            "height": gen.height,
+            "gridSize": gen.grid_size
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Map preview generation failed: {str(e)}")
+
+@app.post("/api/battlemap/generate")
+async def generate_battlemap(req: BattlemapGenerateRequest):
+    try:
+        gen = ProceduralMapGenerator(
+            theme=req.theme,
+            width_squares=req.widthSquares,
+            height_squares=req.heightSquares,
+            grid_size=req.gridSize,
+            layout=req.layout,
+            lighting=req.lighting,
+            has_water=req.hasWater,
+            has_pillars=req.hasPillars,
+            seed=req.seed
+        )
+        svg_content = gen.generate_svg()
+        title = req.title.strip() if req.title and req.title.strip() else get_random_title(req.theme)
+        map_id = f"gen_{req.theme}_{int(time.time())}_{uuid.uuid4().hex[:4]}"
+        filename = f"{map_id}.svg"
+        file_path = BATTLEMAPS_DIR / filename
+        BATTLEMAPS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(svg_content)
+        
+        map_entry = {
+            "id": map_id,
+            "name": title,
+            "url": f"/static/images/battlemaps/{filename}",
+            "width": gen.width,
+            "height": gen.height,
+            "defaultGridSize": gen.grid_size,
+            "theme": req.theme,
+            "type": "generated",
+            "createdAt": time.time(),
+            "seed": gen.seed
+        }
+
+        catalog = get_shared_battlemaps_catalog()
+        catalog.append(map_entry)
+        save_shared_battlemaps_catalog(catalog)
+
+        state = None
+        if req.deployImmediately:
+            state = read_json("battlemap.json", get_default_battlemap_state())
+            state["maps"] = catalog
+            state["activeMapId"] = map_id
+            state["activeMapUrl"] = map_entry["url"]
+            state["activeMapName"] = map_entry["name"]
+            state["gridSize"] = gen.grid_size
+            state["fogMask"] = None
+            state["panX"] = 0
+            state["panY"] = 0
+            state["zoom"] = 1.0
+            state["updatedAt"] = time.time()
+            write_json("battlemap.json", state)
+
+        return {
+            "status": "success",
+            "map": map_entry,
+            "state": state,
+            "catalog": catalog
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Map generation failed: {str(e)}")
+
 @app.post("/api/battlemap/select")
 async def select_battlemap(payload: BattlemapSelect):
     state = read_json("battlemap.json", get_default_battlemap_state())
-    maps = state.get("maps", [])
-    selected = next((m for m in maps if m["id"] == payload.mapId), None)
+    catalog = get_shared_battlemaps_catalog()
+    selected = next((m for m in catalog if m["id"] == payload.mapId), None)
     if not selected:
-        raise HTTPException(status_code=404, detail="Map not found")
+        raise HTTPException(status_code=404, detail="Map not found in shared catalog")
     state["activeMapId"] = selected["id"]
     state["activeMapUrl"] = selected["url"]
     state["activeMapName"] = selected["name"]
@@ -2571,6 +3154,7 @@ async def select_battlemap(payload: BattlemapSelect):
     state["panX"] = 0
     state["panY"] = 0
     state["zoom"] = 1.0
+    state["maps"] = catalog
     state["updatedAt"] = time.time()
     write_json("battlemap.json", state)
     return {"status": "success", "state": state}
@@ -2590,18 +3174,23 @@ async def upload_battlemap_file(file: UploadFile = File(...)):
     map_name = Path(filename).stem.replace("_", " ").replace("-", " ").title()
     map_id = f"map_{uuid.uuid4().hex[:8]}"
 
-    state = read_json("battlemap.json", get_default_battlemap_state())
-    maps = state.get("maps", [])
+    catalog = get_shared_battlemaps_catalog()
     new_map = {
         "id": map_id,
         "name": map_name,
         "url": map_url,
         "width": 2000,
         "height": 1500,
-        "defaultGridSize": 50
+        "defaultGridSize": 50,
+        "theme": "custom",
+        "type": "uploaded",
+        "createdAt": time.time()
     }
-    maps.append(new_map)
-    state["maps"] = maps
+    catalog.append(new_map)
+    save_shared_battlemaps_catalog(catalog)
+
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    state["maps"] = catalog
     state["activeMapId"] = map_id
     state["activeMapUrl"] = map_url
     state["activeMapName"] = map_name
@@ -2612,7 +3201,7 @@ async def upload_battlemap_file(file: UploadFile = File(...)):
     state["updatedAt"] = time.time()
     write_json("battlemap.json", state)
 
-    return {"status": "success", "map": new_map, "state": state}
+    return {"status": "success", "map": new_map, "state": state, "catalog": catalog}
 
 # Token Endpoints
 @app.post("/api/battlemap/tokens")

@@ -123,7 +123,21 @@ Arcane Ledger provides three specialized interfaces out of the box:
   - Size scaling from Tiny up to Gargantuan.
   - Color rings, elevation indicators, status badges, and concentration markers.
   - Bloodied aura indicators and player visibility toggles.
-- **Procedural & Custom Maps**: Includes pre-built high-resolution SVG battlemaps (Dungeon Crypt, Forest River, Tavern Cellar) and a drag-and-drop custom map uploader.
+- **Procedural Battlemap Forge & Generator**:
+  - Synthesize infinite vector SVG battlemaps across 6 distinct D&D environments:
+    - 🏰 **Dungeon Crypt**: Stone masonry, pillared chambers, sarcophagi, iron braziers, and tombs.
+    - 🕳️ **Underdark Caverns**: Organic subterranean limestone, chasms, stalagmites, and bioluminescent fungal groves.
+    - 🌲 **Forest & River Crossing**: Winding dirt trails, river bends, wooden bridges, campfires, and tree canopies.
+    - 🍺 **Stronghold Tavern**: Hardwood floorboards, roaring hearth fireplaces, tavern bar counters, ale casks, and tables.
+    - 🔮 **Arcane Sanctum**: Obsidian polished flagstones, eldritch summoning circles, astral rifts, and floating mana pylons.
+    - 🏛️ **Overgrown Ancient Ruins**: Cracked flagstones, vine-covered broken colonnades, rubble heaps, and sacrificial altars.
+  - **Customizable Tactical Parameters**: Choose room layouts (Multi-Room Chambers, Open Arena, Winding Trails, Crossroads), atmospheric lighting (Torchlit, Pitch Dark, Bioluminescent, Ethereal Astral, Ambient Daylight), water/chasm hazards, and pillar cover obstacles.
+  - **Deterministic Seeds & Randomizer**: Deterministic seed generator for reproducible maps and thematic name generator.
+  - **Live WYSIWYG Vector Preview**: Real-time interactive preview in the DM forge modal before committing to table deployment.
+  - **1-Click Table Deployment**: Instantly deploy generated maps to the DM display and horizontal Table TV (`/map`) in real time.
+- **Shared Multi-Campaign Map Catalog Architecture**:
+  - **Global Map Catalog (`data/battlemaps_catalog.json`)**: All preset, generated, and uploaded battlemaps are shared across all campaign profiles, ensuring the DM never has to re-upload or re-generate maps when switching campaigns.
+  - **Per-Profile Tactical Encounters (`data/campaigns/<id>/battlemap.json`)**: Active table deployments, miniature/token positions, condition auras, Fog of War reveals, spell AoE templates, and viewport zoom/pan are strictly isolated per campaign profile so different groups never cross-contaminate encounters.
 
 ### 🎲 Encounter Builder & XP Budget Calculator
 - Automatically calculates party thresholds (Easy, Medium, Hard, Deadly) using the official 2024 encounter budget formulas.
@@ -168,6 +182,22 @@ Arcane Ledger provides three specialized interfaces out of the box:
 - Atomic JSON persistence: all campaign data is stored locally in human-readable JSON files.
 - One-click timestamped snapshot backups with easy restore.
 - One-click Markdown export of entire campaign state (party stats, active quests, faction clocks, and notes).
+
+### 📜 Multi-Campaign Profile Manager
+- **Complete World & Party Isolation**: Run multiple distinct adventuring groups or campaigns on the same machine without mixing data.
+- **Isolated Per-Campaign Data**: Party vitals, combat encounters, session notes, faction clocks, locations, secrets, handouts, and battlemaps are cleanly partitioned into `data/campaigns/<campaign_id>/`.
+- **Shared Global Compendiums**: All campaigns seamlessly share the core 330+ Bestiary, 340+ Spells, Items compendium, 2024 Rules Engine, Audio Soundscape library, and Amaran Studio Lighting hardware configurations.
+- **Instant Topbar Switcher**: Switch active campaigns directly from the persistent topbar dropdown in a single click without restarting the server.
+- **Full Profile Lifecycle**: Create fresh campaigns, clone existing campaign data (duplicate active party and lore), edit titles and descriptions, or archive older campaigns.
+
+### 🧩 Module Manager & Playstyle Presets
+- **Declutter Your Screen**: Toggle any of the 12 primary dashboard modules on or off per campaign profile to match your personal running style.
+- **One-Click Playstyle Presets**:
+  - ⚔️ **Full Tabletop Immersion**: All 12 modules enabled (Tactical Battlemap, Lighting, Audio, Compendiums, Combat Tracker, and Lore).
+  - 🎭 **Theater of the Mind**: Grid battlemap disabled. Clean, distraction-free focus on descriptive roleplay, audio atmosphere, combat tracking, and lore.
+  - 📜 **Worldbuilder & Prep**: Combat tracker and battlemap hidden. Dedicated workspace for lore prep, NPC creation, handouts forge, and rules compendiums.
+  - ⚡ **Minimalist DM**: Compact setup keeping only the Combat Tracker, Party Vitals HUD, Scratchpad Notes, and Rules Engine.
+  - 🛠️ **Custom Configuration**: Fine-tune individual switches for any combination of tools.
 
 ---
 
@@ -315,9 +345,13 @@ arcane_ledger/
 ├── run.sh                      # Quick-start shell script for macOS / Linux
 ├── start.command               # Double-clickable launcher for macOS Finder
 ├── dnd_npc_generator.html      # Standalone single-file offline NPC generator
+├── map_generator.py            # Procedural vector SVG battlemap generation engine (6 environments)
 ├── README.md                   # Project documentation
 │
 ├── data/                       # Local JSON database (human-readable, atomic saves)
+│   ├── campaigns.json          # Multi-campaign profiles manifest & active profile selector
+│   ├── campaigns/              # Per-campaign isolated data directories (party, combat, etc.)
+│   ├── battlemaps_catalog.json # Shared multi-campaign global battlemaps catalog
 │   ├── monsters.json           # 330+ 2024 D&D monsters & statblocks
 │   ├── spells.json             # 340+ 2024 D&D spells & details
 │   ├── items.json              # 2024 SRD equipment, weapon masteries & custom items

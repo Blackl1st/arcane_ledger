@@ -2583,6 +2583,475 @@ window.BattlemapController = (function() {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // PROCEDURAL BATTLEMAP GENERATOR & CATALOG
+    // -------------------------------------------------------------------------
+    const MAP_THEME_TITLES = {
+        dungeon: [
+            "Forgotten Crypt of the Iron Guard",
+            "Catacombs of the Pale Lord",
+            "Dungeon of the Crimson Vow",
+            "The Sunken Sepulcher",
+            "Vault of the Obsidian King",
+            "Chamber of Whispering Skulls"
+        ],
+        cavern: [
+            "Grotto of the Bioluminescent Fungi",
+            "The Abyssal Chasm",
+            "Underdark Smuggler's Crevasse",
+            "Cavern of Echoing Drips",
+            "Lair of the Web-Spinner",
+            "The Sunless Spring Grotto"
+        ],
+        forest: [
+            "Whispering Woods River Crossing",
+            "The Emerald Clearing",
+            "Shadowfen Bridge Ambush",
+            "Druid's Ancient Oak Glade",
+            "The Old King's Road Waystation",
+            "Mistveil Hollow"
+        ],
+        tavern: [
+            "The Gilded Tankard Taproom",
+            "Smuggler's Cellar & Speakeasy",
+            "The Boar's Tusk Roadhouse",
+            "The Salty Mermaid Tavern",
+            "Dragon's Breath Alehouse",
+            "The Laughing Goblin Inn"
+        ],
+        arcane: [
+            "Sanctum of the Astral Rift",
+            "The Chronomancer's Observatory",
+            "Void-Touched Summoning Chamber",
+            "The Spire of Eldritch Runes",
+            "Aetherium Core Pylon Chamber",
+            "The Sealed Nether-Portal"
+        ],
+        ruins: [
+            "Overgrown Temple of the Sun God",
+            "Fallen Citadel Courtyard",
+            "The Shattered Colonnade",
+            "Moss-Grown Altar of the Ancients",
+            "Ruins of the Wyrm-Keeper",
+            "The Sunken Shrine of Oakhaven"
+        ]
+    };
+
+    let currentGenTheme = 'dungeon';
+    let previewDebounceTimer = null;
+    let isPreviewLoading = false;
+    let currentCatalog = [];
+
+    function openMapGeneratorModal() {
+        const modal = document.getElementById('map-generator-modal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Set default title if empty
+        const titleInput = document.getElementById('gen-map-title');
+        if (titleInput && !titleInput.value.trim()) {
+            randomizeMapTitle();
+        }
+
+        // Set default seed if empty
+        const seedInput = document.getElementById('gen-map-seed');
+        if (seedInput && !seedInput.value) {
+            rerollSeed();
+        }
+
+        switchMapModalTab('forge');
+        triggerMapPreview();
+    }
+
+    function closeMapGeneratorModal() {
+        const modal = document.getElementById('map-generator-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function switchMapModalTab(tab) {
+        const forgeTab = document.getElementById('map-modal-tab-forge');
+        const catalogTab = document.getElementById('map-modal-tab-catalog');
+        const forgeBtn = document.getElementById('map-modal-tab-btn-forge');
+        const catalogBtn = document.getElementById('map-modal-tab-btn-catalog');
+
+        if (tab === 'forge') {
+            if (forgeTab) forgeTab.classList.remove('hidden');
+            if (catalogTab) catalogTab.classList.add('hidden');
+            if (forgeBtn) {
+                forgeBtn.className = "px-3 py-1 rounded-lg font-semibold transition bg-amber-500 text-ledger-950 font-bold shadow";
+            }
+            if (catalogBtn) {
+                catalogBtn.className = "px-3 py-1 rounded-lg font-semibold text-slate-300 hover:text-white transition";
+            }
+        } else {
+            if (forgeTab) forgeTab.classList.add('hidden');
+            if (catalogTab) catalogTab.classList.remove('hidden');
+            if (forgeBtn) {
+                forgeBtn.className = "px-3 py-1 rounded-lg font-semibold text-slate-300 hover:text-white transition";
+            }
+            if (catalogBtn) {
+                catalogBtn.className = "px-3 py-1 rounded-lg font-semibold transition bg-amber-500 text-ledger-950 font-bold shadow";
+            }
+            fetchCatalogAndRender();
+        }
+    }
+
+    function setGenTheme(theme) {
+        currentGenTheme = theme;
+        document.querySelectorAll('.map-theme-btn').forEach(btn => {
+            const btnTheme = btn.getAttribute('data-theme');
+            if (btnTheme === theme) {
+                btn.className = "map-theme-btn p-2 rounded-xl border border-amber-500/80 bg-amber-500/10 text-amber-300 font-semibold flex flex-col items-center gap-1 text-center transition";
+            } else {
+                btn.className = "map-theme-btn p-2 rounded-xl border border-ledger-700 bg-ledger-950 hover:border-slate-500 text-slate-300 font-semibold flex flex-col items-center gap-1 text-center transition";
+            }
+        });
+
+        // Update default lighting based on theme
+        const lightingSelect = document.getElementById('gen-map-lighting');
+        if (lightingSelect) {
+            if (theme === 'arcane') lightingSelect.value = 'ethereal';
+            else if (theme === 'cavern') lightingSelect.value = 'bioluminescent';
+            else if (theme === 'forest') lightingSelect.value = 'bright';
+            else if (theme === 'tavern') lightingSelect.value = 'torchlit';
+            else if (theme === 'dungeon') lightingSelect.value = 'torchlit';
+            else if (theme === 'ruins') lightingSelect.value = 'bright';
+        }
+
+        randomizeMapTitle();
+        triggerMapPreview();
+    }
+
+    function randomizeMapTitle() {
+        const pool = MAP_THEME_TITLES[currentGenTheme] || MAP_THEME_TITLES.dungeon;
+        const randomTitle = pool[Math.floor(Math.random() * pool.length)];
+        const input = document.getElementById('gen-map-title');
+        if (input) input.value = randomTitle;
+    }
+
+    function rerollSeed() {
+        const seedInput = document.getElementById('gen-map-seed');
+        if (seedInput) {
+            seedInput.value = Math.floor(100000 + Math.random() * 900000);
+        }
+        triggerMapPreview();
+    }
+
+    function setGridDimensions(w, h) {
+        const wInput = document.getElementById('gen-map-width');
+        const hInput = document.getElementById('gen-map-height');
+        if (wInput) wInput.value = w;
+        if (hInput) hInput.value = h;
+        triggerMapPreviewDebounced();
+    }
+
+    function triggerMapPreviewDebounced() {
+        if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
+        previewDebounceTimer = setTimeout(triggerMapPreview, 250);
+    }
+
+    async function triggerMapPreview() {
+        const wInput = document.getElementById('gen-map-width');
+        const hInput = document.getElementById('gen-map-height');
+        const layoutSelect = document.getElementById('gen-map-layout');
+        const lightingSelect = document.getElementById('gen-map-lighting');
+        const waterCheck = document.getElementById('gen-map-water');
+        const pillarsCheck = document.getElementById('gen-map-pillars');
+        const seedInput = document.getElementById('gen-map-seed');
+        const titleInput = document.getElementById('gen-map-title');
+        const loadingEl = document.getElementById('gen-map-preview-loading');
+        const svgBox = document.getElementById('gen-map-preview-svg-box');
+
+        const widthSquares = parseInt(wInput ? wInput.value : 40, 10) || 40;
+        const heightSquares = parseInt(hInput ? hInput.value : 30, 10) || 30;
+        const layout = layoutSelect ? layoutSelect.value : 'multi_room';
+        const lighting = lightingSelect ? lightingSelect.value : 'torchlit';
+        const hasWater = waterCheck ? waterCheck.checked : false;
+        const hasPillars = pillarsCheck ? pillarsCheck.checked : true;
+        const seed = seedInput && seedInput.value ? parseInt(seedInput.value, 10) : undefined;
+        const title = titleInput ? titleInput.value.trim() : "";
+
+        if (loadingEl) loadingEl.classList.remove('hidden');
+
+        try {
+            const res = await fetch('/api/battlemap/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    theme: currentGenTheme,
+                    title: title,
+                    widthSquares: widthSquares,
+                    heightSquares: heightSquares,
+                    gridSize: 50,
+                    layout: layout,
+                    lighting: lighting,
+                    hasWater: hasWater,
+                    hasPillars: hasPillars,
+                    seed: seed
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (svgBox) {
+                    svgBox.innerHTML = data.svg;
+                    const svgEl = svgBox.querySelector('svg');
+                    if (svgEl) {
+                        svgEl.style.width = '100%';
+                        svgEl.style.height = '100%';
+                        svgEl.style.maxHeight = '520px';
+                        svgEl.style.objectFit = 'contain';
+                    }
+                }
+                const badge = document.getElementById('gen-preview-badge');
+                if (badge) {
+                    badge.textContent = `${widthSquares}×${heightSquares} (${widthSquares * 50}×${heightSquares * 50})`;
+                }
+                const themeBadge = document.getElementById('gen-preview-theme-badge');
+                if (themeBadge) {
+                    themeBadge.textContent = `${currentGenTheme.toUpperCase()} · ${lighting.toUpperCase()}`;
+                }
+                if (seedInput && data.seed) {
+                    seedInput.value = data.seed;
+                }
+            }
+        } catch (err) {
+            console.error("Error previewing battlemap:", err);
+        } finally {
+            if (loadingEl) loadingEl.classList.add('hidden');
+        }
+    }
+
+    async function deployGeneratedMap() {
+        const wInput = document.getElementById('gen-map-width');
+        const hInput = document.getElementById('gen-map-height');
+        const layoutSelect = document.getElementById('gen-map-layout');
+        const lightingSelect = document.getElementById('gen-map-lighting');
+        const waterCheck = document.getElementById('gen-map-water');
+        const pillarsCheck = document.getElementById('gen-map-pillars');
+        const seedInput = document.getElementById('gen-map-seed');
+        const titleInput = document.getElementById('gen-map-title');
+
+        const widthSquares = parseInt(wInput ? wInput.value : 40, 10) || 40;
+        const heightSquares = parseInt(hInput ? hInput.value : 30, 10) || 30;
+        const layout = layoutSelect ? layoutSelect.value : 'multi_room';
+        const lighting = lightingSelect ? lightingSelect.value : 'torchlit';
+        const hasWater = waterCheck ? waterCheck.checked : false;
+        const hasPillars = pillarsCheck ? pillarsCheck.checked : true;
+        const seed = seedInput && seedInput.value ? parseInt(seedInput.value, 10) : undefined;
+        const title = titleInput && titleInput.value.trim() ? titleInput.value.trim() : (MAP_THEME_TITLES[currentGenTheme] || ["Tactical Battlemap"])[0];
+
+        try {
+            const res = await fetch('/api/battlemap/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    theme: currentGenTheme,
+                    title: title,
+                    widthSquares: widthSquares,
+                    heightSquares: heightSquares,
+                    gridSize: 50,
+                    layout: layout,
+                    lighting: lighting,
+                    hasWater: hasWater,
+                    hasPillars: hasPillars,
+                    seed: seed,
+                    deployImmediately: true
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                state = data.state;
+                populateMapDropdown();
+                loadActiveMap();
+                closeMapGeneratorModal();
+                if (window.showToast) {
+                    window.showToast(`⚔️ Deployed "${data.map.name}" to Table TV & DM View!`, "success");
+                }
+            } else {
+                const errData = await res.json();
+                alert(`Map generation error: ${errData.detail || 'Failed'}`);
+            }
+        } catch (err) {
+            console.error("Error generating and deploying battlemap:", err);
+        }
+    }
+
+    async function saveGeneratedMapToCatalog() {
+        const wInput = document.getElementById('gen-map-width');
+        const hInput = document.getElementById('gen-map-height');
+        const layoutSelect = document.getElementById('gen-map-layout');
+        const lightingSelect = document.getElementById('gen-map-lighting');
+        const waterCheck = document.getElementById('gen-map-water');
+        const pillarsCheck = document.getElementById('gen-map-pillars');
+        const seedInput = document.getElementById('gen-map-seed');
+        const titleInput = document.getElementById('gen-map-title');
+
+        const widthSquares = parseInt(wInput ? wInput.value : 40, 10) || 40;
+        const heightSquares = parseInt(hInput ? hInput.value : 30, 10) || 30;
+        const layout = layoutSelect ? layoutSelect.value : 'multi_room';
+        const lighting = lightingSelect ? lightingSelect.value : 'torchlit';
+        const hasWater = waterCheck ? waterCheck.checked : false;
+        const hasPillars = pillarsCheck ? pillarsCheck.checked : true;
+        const seed = seedInput && seedInput.value ? parseInt(seedInput.value, 10) : undefined;
+        const title = titleInput && titleInput.value.trim() ? titleInput.value.trim() : (MAP_THEME_TITLES[currentGenTheme] || ["Tactical Battlemap"])[0];
+
+        try {
+            const res = await fetch('/api/battlemap/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    theme: currentGenTheme,
+                    title: title,
+                    widthSquares: widthSquares,
+                    heightSquares: heightSquares,
+                    gridSize: 50,
+                    layout: layout,
+                    lighting: lighting,
+                    hasWater: hasWater,
+                    hasPillars: hasPillars,
+                    seed: seed,
+                    deployImmediately: false
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                state.maps = data.catalog;
+                populateMapDropdown();
+                if (window.showToast) {
+                    window.showToast(`💾 Saved "${data.map.name}" to global map library!`, "success");
+                }
+                switchMapModalTab('catalog');
+            } else {
+                const errData = await res.json();
+                alert(`Map save error: ${errData.detail || 'Failed'}`);
+            }
+        } catch (err) {
+            console.error("Error saving battlemap to catalog:", err);
+        }
+    }
+
+    async function fetchCatalogAndRender() {
+        try {
+            const res = await fetch('/api/battlemap/catalog');
+            if (res.ok) {
+                const data = await res.json();
+                currentCatalog = data.catalog || [];
+                const countBadge = document.getElementById('map-catalog-count-badge');
+                if (countBadge) countBadge.textContent = currentCatalog.length;
+                renderCatalogGrid();
+            }
+        } catch (err) {
+            console.error("Error fetching map catalog:", err);
+        }
+    }
+
+    function renderCatalogGrid() {
+        const grid = document.getElementById('map-catalog-grid');
+        if (!grid) return;
+
+        if (!currentCatalog || currentCatalog.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full py-8 text-center text-slate-500 text-xs italic">
+                    No maps found in catalog. Generate or upload a new battlemap to get started!
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = currentCatalog.map(m => {
+            const isCurrent = state && state.activeMapId === m.id;
+            const isPreset = m.type === 'preset';
+            const themeLabel = (m.theme || 'custom').toUpperCase();
+            const width = m.width || 2000;
+            const height = m.height || 1500;
+            const squaresW = Math.round(width / (m.defaultGridSize || 50));
+            const squaresH = Math.round(height / (m.defaultGridSize || 50));
+
+            return `
+                <div class="bg-ledger-950 border ${isCurrent ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)]' : 'border-ledger-800'} rounded-2xl p-3 flex flex-col justify-between gap-2.5 transition hover:border-slate-600">
+                    <div>
+                        <div class="w-full h-32 rounded-xl bg-black border border-ledger-800 overflow-hidden relative mb-2">
+                            <img src="${m.url}" alt="${m.name}" class="w-full h-full object-cover">
+                            ${isCurrent ? `
+                                <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-ledger-950 shadow">
+                                    ⚔️ Active on Table
+                                </span>
+                            ` : ''}
+                            <span class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase font-semibold bg-black/70 text-slate-300 border border-ledger-700 backdrop-blur-xs">
+                                ${m.type || 'map'}
+                            </span>
+                        </div>
+                        <h5 class="font-display font-bold text-slate-200 text-xs line-clamp-1">${m.name}</h5>
+                        <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400 font-mono">
+                            <span>${themeLabel}</span>
+                            <span>•</span>
+                            <span>${squaresW}×${squaresH} sq</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 pt-2 border-t border-ledger-800/80">
+                        <button type="button" onclick="window.BattlemapController.deployMapFromCatalog('${m.id}')" class="flex-1 py-1 rounded-lg ${isCurrent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700'} font-semibold text-xs transition flex items-center justify-center gap-1">
+                            <span>⚔️</span>
+                            <span>${isCurrent ? 'Active' : 'Deploy'}</span>
+                        </button>
+                        ${!isPreset ? `
+                            <button type="button" onclick="window.BattlemapController.deleteMapFromCatalog('${m.id}')" class="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition text-xs" title="Delete map from catalog">
+                                🗑️
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function deployMapFromCatalog(mapId) {
+        await onMapSelect(mapId);
+        closeMapGeneratorModal();
+        if (window.showToast) {
+            const mapObj = currentCatalog.find(m => m.id === mapId);
+            const name = mapObj ? mapObj.name : 'map';
+            window.showToast(`⚔️ Deployed "${name}" to Table TV & DM View!`, "success");
+        }
+    }
+
+    async function deleteMapFromCatalog(mapId) {
+        const mapObj = currentCatalog.find(m => m.id === mapId);
+        const name = mapObj ? mapObj.name : 'this map';
+        if (!confirm(`Are you sure you want to delete "${name}" from the global catalog?`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/battlemap/catalog/${mapId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                currentCatalog = data.catalog;
+                state.maps = data.catalog;
+                populateMapDropdown();
+                renderCatalogGrid();
+                const countBadge = document.getElementById('map-catalog-count-badge');
+                if (countBadge) countBadge.textContent = currentCatalog.length;
+                if (window.showToast) {
+                    window.showToast(`Deleted "${name}" from catalog.`, "info");
+                }
+            } else {
+                const errData = await res.json();
+                alert(errData.detail || "Failed to delete map");
+            }
+        } catch (err) {
+            console.error("Error deleting map from catalog:", err);
+        }
+    }
+
     // Public API
     return {
         init,
@@ -2629,6 +3098,21 @@ window.BattlemapController = (function() {
         setAoEColor,
         toggleOverlayTableSync,
         clearActiveOverlay,
-        toggleTokenStride
+        toggleTokenStride,
+        openMapGeneratorModal,
+        closeMapGeneratorModal,
+        switchMapModalTab,
+        setGenTheme,
+        randomizeMapTitle,
+        rerollSeed,
+        setGridDimensions,
+        triggerMapPreviewDebounced,
+        triggerMapPreview,
+        deployGeneratedMap,
+        saveGeneratedMapToCatalog,
+        fetchCatalogAndRender,
+        renderCatalogGrid,
+        deployMapFromCatalog,
+        deleteMapFromCatalog
     };
 })();

@@ -1,0 +1,40 @@
+[
+  {
+    "id": "enc-goblin-ambush",
+    "name": "Goblin Ambush & Scouting Party",
+    "notes": "Minions attempt to flank from the treeline while the Boss directs with Command.",
+    "monsters": [
+      { "id": "goblin-boss", "name": "Goblin Boss", "cr": "1", "xp": 200, "count": 1 },
+      { "id": "goblin-warrior", "name": "Goblin Warrior", "cr": "1/4", "xp": 50, "count": 2 },
+      { "id": "goblin-minion", "name": "Goblin Minion", "cr": "1/8", "xp": 25, "count": 4 }
+    ]
+  },
+  {
+    "id": "enc-crypt-guardians",
+    "name": "Restless Crypt Guardians",
+    "notes": "Ancient crypt filled with cold mist. Minotaur Skeleton guards the central sarcophagus.",
+    "monsters": [
+      { "id": "minotaur-skeleton", "name": "Minotaur Skeleton", "cr": "2", "xp": 450, "count": 1 },
+      { "id": "skeleton", "name": "Skeleton", "cr": "1/4", "xp": 50, "count": 4 },
+      { "id": "will-o-wisp", "name": "Will-o'-Wisp", "cr": "2", "xp": 450, "count": 1 }
+    ]
+  },
+  {
+    "id": "enc-owlbear-den",
+    "name": "Owlbear Den & Pack Stalkers",
+    "notes": "Territorial owlbear protecting its cave, surrounded by starving winter wolves.",
+    "monsters": [
+      { "id": "owlbear", "name": "Owlbear", "cr": "3", "xp": 700, "count": 1 },
+      { "id": "wolf", "name": "Wolf", "cr": "1/4", "xp": 50, "count": 3 }
+    ]
+  },
+  {
+    "id": "enc-red-dragon-lair",
+    "name": "Red Dragon Apex Confrontation",
+    "notes": "Volcanic caldera lair. Lair actions trigger on initiative 20.",
+    "monsters": [
+      { "id": "adult-red-dragon", "name": "Adult Red Dragon", "cr": "17", "xp": 18000, "count": 1 },
+      { "id": "kobold-warrior", "name": "Kobold Warrior", "cr": "1/8", "xp": 25, "count": 6 }
+    ]
+  }
+]

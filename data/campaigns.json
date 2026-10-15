@@ -1,0 +1,49 @@
+{
+  "activeCampaignId": "camp_1792083672_test_campaign",
+  "campaigns": [
+    {
+      "id": "default",
+      "name": "Default Campaign",
+      "description": "Primary adventuring party and world state",
+      "createdAt": "2026-10-15T12:46:32.107257",
+      "lastPlayed": "2026-10-15T13:44:58.627448",
+      "preset": "full",
+      "modules": {
+        "combat": true,
+        "battlemap": true,
+        "bestiary": true,
+        "encounters": true,
+        "spells": true,
+        "items": true,
+        "rules": true,
+        "world": true,
+        "npcs": true,
+        "loot": true,
+        "notes": true,
+        "audio": true
+      }
+    },
+    {
+      "id": "camp_1792083672_test_campaign",
+      "name": "Test Campaign",
+      "description": "",
+      "createdAt": "2026-10-15T13:01:12.793181",
+      "lastPlayed": "2026-10-15T13:45:01.081957",
+      "preset": "full",
+      "modules": {
+        "combat": true,
+        "battlemap": true,
+        "bestiary": true,
+        "encounters": true,
+        "spells": true,
+        "items": true,
+        "rules": true,
+        "world": true,
+        "npcs": true,
+        "loot": true,
+        "notes": true,
+        "audio": true
+      }
+    }
+  ]
+}

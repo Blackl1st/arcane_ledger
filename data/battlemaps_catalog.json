@@ -1,0 +1,35 @@
+[
+  {
+    "id": "dungeon_crypt",
+    "name": "Forgotten Dungeon Crypt",
+    "url": "/static/images/battlemaps/dungeon_crypt.svg",
+    "width": 2000,
+    "height": 1500,
+    "defaultGridSize": 50,
+    "theme": "dungeon",
+    "type": "preset",
+    "createdAt": 1728950000
+  },
+  {
+    "id": "forest_river",
+    "name": "Whispering Woods & River Crossing",
+    "url": "/static/images/battlemaps/forest_river.svg",
+    "width": 2000,
+    "height": 1500,
+    "defaultGridSize": 50,
+    "theme": "forest",
+    "type": "preset",
+    "createdAt": 1728950000
+  },
+  {
+    "id": "tavern_cellar",
+    "name": "Smuggler's Tavern Cellar",
+    "url": "/static/images/battlemaps/tavern_cellar.svg",
+    "width": 2000,
+    "height": 1500,
+    "defaultGridSize": 50,
+    "theme": "tavern",
+    "type": "preset",
+    "createdAt": 1728950000
+  }
+]

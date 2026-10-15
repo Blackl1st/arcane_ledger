@@ -534,17 +534,51 @@
         <!-- UNIFIED TOP STATUS BAR (~48px height) -->
         <header id="app-topbar" class="sticky top-0 z-30 h-12 bg-ledger-950/95 backdrop-blur-md border-b border-ledger-800 px-3 sm:px-6 flex items-center justify-between gap-3 shadow-md">
             
-            <!-- Left: Active View Title Breadcrumb & Connection Status -->
-            <div class="flex items-center gap-3 min-w-0">
+            <!-- Left: Active View Title Breadcrumb, Campaign Switcher & Connection Status -->
+            <div class="flex items-center gap-2.5 min-w-0">
                 <div class="flex items-center gap-2 truncate">
                     <span id="topbar-view-title" class="font-display font-bold text-sm text-slate-200 flex items-center gap-1.5 truncate">
                         <span>⚔️</span> <span>Combat & Party</span>
                     </span>
                 </div>
                 <div class="h-3 w-px bg-ledger-800 hidden sm:block"></div>
+
+                <!-- Campaign Profile Switcher Pill -->
+                <div class="relative shrink-0">
+                    <button onclick="toggleTopPopover('campaign-popover')" id="topbar-campaign-btn" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ledger-900/90 hover:bg-ledger-800 border border-amber-500/30 hover:border-amber-500/60 text-xs text-amber-300 transition shadow-sm font-medium" title="Switch or manage campaign profiles">
+                        <span class="text-amber-400">📜</span>
+                        <span id="topbar-campaign-name" class="truncate max-w-[120px] sm:max-w-[160px] font-semibold text-slate-200">Default Campaign</span>
+                        <span class="text-[10px] text-slate-400 ml-0.5">▾</span>
+                    </button>
+
+                    <!-- Campaign Popover Dropdown Card -->
+                    <div id="campaign-popover" class="hidden absolute top-full left-0 mt-2 w-80 topbar-popover rounded-2xl p-3 z-50 space-y-2.5 shadow-2xl border border-ledger-700/80 bg-ledger-950/95 backdrop-blur-md">
+                        <div class="flex items-center justify-between pb-2 border-b border-ledger-800">
+                            <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                                <span>📜</span> Campaign Profiles
+                            </span>
+                            <button onclick="openNewCampaignModal()" class="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold hover:underline">
+                                <span>+</span> New Campaign
+                            </button>
+                        </div>
+
+                        <!-- Dynamic list of campaigns -->
+                        <div id="topbar-campaign-list" class="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <div class="pt-2 border-t border-ledger-800 flex items-center justify-between text-xs">
+                            <button onclick="switchTab('settings'); closeAllTopPopovers(); setTimeout(() => document.getElementById('settings-campaign-card')?.scrollIntoView({behavior:'smooth'}), 100);" class="text-slate-400 hover:text-amber-300 flex items-center gap-1.5 transition text-[11px]">
+                                <span>⚙️</span> Manage Profiles & Modules
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-3 w-px bg-ledger-800 hidden md:block"></div>
                 <div id="connection-status" class="flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono shrink-0">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="hidden md:inline">Online</span>
+                    <span class="hidden lg:inline">Online</span>
                 </div>
             </div>
 
@@ -2467,6 +2501,12 @@
                         <span class="hidden md:inline">Upload Map</span>
                     </button>
 
+                    <!-- Procedural Map Generator & Catalog -->
+                    <button onclick="openMapGeneratorModal()" class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-ledger-950 font-bold border border-amber-400 text-xs flex items-center gap-1.5 shadow-sm transition" title="Generate procedural battlemaps (Dungeon, Cavern, Forest, Tavern, Arcane, Ruins)">
+                        <span>✨</span>
+                        <span>Generate Map</span>
+                    </button>
+
                     <!-- Launch Table Display -->
                     <button onclick="openTabletopMapWindow()" class="px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition" title="Open player battlemap view in a separate window for your table TV">
                         <span>📺</span>
@@ -2706,6 +2746,115 @@
 
             <!-- Grid Layout for Settings Sections -->
             <div class="space-y-6">
+
+                <!-- CARD: CAMPAIGN PROFILE MANAGER -->
+                <div id="settings-campaign-card" class="bg-ledger-950/80 border border-ledger-700 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-ledger-800 flex-wrap gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">📜</span>
+                            <div>
+                                <h3 class="font-display font-bold text-base text-amber-400">Campaign Profile Manager</h3>
+                                <p class="text-xs text-slate-400">Switch between different campaigns or adventuring parties. Combat, party, world lore, handouts, notes, and battlemaps are fully isolated.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openNewCampaignModal()" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                                <span>+</span> <span>New Campaign</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Campaign Banner -->
+                    <div id="settings-active-campaign-banner" class="p-4 rounded-xl bg-gradient-to-r from-ledger-900 via-ledger-900 to-amber-950/20 border border-amber-500/40 flex items-center justify-between flex-wrap gap-3">
+                        <!-- Rendered dynamically -->
+                    </div>
+
+                    <!-- All Campaigns Grid -->
+                    <div class="space-y-2 pt-2">
+                        <label class="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Available Campaign Profiles</label>
+                        <div id="settings-campaigns-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <!-- Rendered dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: FEATURE MODULES & PLAYSTYLE PRESETS -->
+                <div id="settings-modules-card" class="bg-ledger-950/80 border border-ledger-700 rounded-2xl p-5 shadow-xl space-y-5">
+                    <div class="flex items-center justify-between pb-3 border-b border-ledger-800 flex-wrap gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">🧩</span>
+                            <div>
+                                <h3 class="font-display font-bold text-base text-amber-400">Feature Modules & Playstyle Presets</h3>
+                                <p class="text-xs text-slate-400">Customize the active modules for this campaign to fit your running style (Theater of the Mind, Prep, Minimalist, or Full Immersion).</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400">Active Preset:</span>
+                            <span id="active-preset-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Full Tabletop Immersion</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Playstyle Presets Grid -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Quick Playstyle Presets</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <button onclick="applyPlaystylePreset('full')" id="preset-card-full" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span class="text-lg">⚔️</span>
+                                        <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Full Immersion</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 leading-snug">All 12 modules enabled: Battlemap, Lighting, Audio, Compendiums, and Combat Tracker.</p>
+                                </div>
+                                <span class="text-[10px] font-mono font-semibold text-amber-400/80 mt-2">12 Modules Active</span>
+                            </button>
+
+                            <button onclick="applyPlaystylePreset('theater')" id="preset-card-theater" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span class="text-lg">🎭</span>
+                                        <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Theater of the Mind</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 leading-snug">Grid battlemap disabled. Clean focus on Combat, Lore, Audio, Notes, and Compendiums.</p>
+                                </div>
+                                <span class="text-[10px] font-mono font-semibold text-sky-400/80 mt-2">11 Modules Active</span>
+                            </button>
+
+                            <button onclick="applyPlaystylePreset('prep')" id="preset-card-prep" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span class="text-lg">📜</span>
+                                        <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Worldbuilder & Prep</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 leading-snug">World lore, NPCs, Secrets, Handouts, Loot & Compendiums. Combat and Battlemap hidden.</p>
+                                </div>
+                                <span class="text-[10px] font-mono font-semibold text-emerald-400/80 mt-2">9 Modules Active</span>
+                            </button>
+
+                            <button onclick="applyPlaystylePreset('minimal')" id="preset-card-minimal" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1.5">
+                                        <span class="text-lg">⚡</span>
+                                        <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Minimalist DM</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 leading-snug">Combat Tracker, Party Status, Scratchpad Notes, and Rules Engine only. Zero clutter.</p>
+                                </div>
+                                <span class="text-[10px] font-mono font-semibold text-purple-400/80 mt-2">3 Modules Active</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Granular Module Switches -->
+                    <div class="space-y-2 pt-2 border-t border-ledger-800">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Module Toggle Switches</label>
+                            <span class="text-[11px] text-slate-400">Toggle individual modules on/off for this campaign</span>
+                        </div>
+                        <div id="module-toggles-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
 
                 <!-- CARD 1: KEYBOARD SHORTCUTS & REBINDING ENGINE -->
                 <div class="bg-ledger-950/80 border border-ledger-700 rounded-2xl p-5 shadow-xl space-y-4">
@@ -4663,6 +4812,318 @@
         </div>
     </div>
 
+    <!-- 27. NEW CAMPAIGN PROFILE MODAL -->
+    <div id="new-campaign-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 text-base">📜</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-amber-400">Create New Campaign</h3>
+                        <p class="text-[11px] text-slate-400">Setup an isolated campaign space with its own party, notes, and world lore</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('new-campaign-modal')" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 transition">✕</button>
+            </div>
+
+            <form id="new-campaign-form" onsubmit="submitNewCampaign(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Campaign Name *</label>
+                    <input type="text" id="new-campaign-name" required placeholder="e.g. Shadows of the Sunken Spire" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-white font-semibold focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Campaign Description</label>
+                    <textarea id="new-campaign-desc" rows="2" placeholder="Brief premise, active adventuring group, or tier of play..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Playstyle Preset</label>
+                    <select id="new-campaign-preset" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+                        <option value="full">⚔️ Full Tabletop Immersion (All 12 Modules)</option>
+                        <option value="theater">🎭 Theater of the Mind (Battlemap Disabled)</option>
+                        <option value="prep">📜 Worldbuilder & Prep (Combat & Map Hidden)</option>
+                        <option value="minimal">⚡ Minimalist DM (Tracker, Notes & Rules Only)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Initial Data Template</label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 cursor-pointer hover:border-amber-500/50">
+                            <input type="radio" name="new-campaign-template" value="blank" checked class="text-amber-500">
+                            <div>
+                                <span class="font-bold text-slate-200 block text-xs">Fresh Slate</span>
+                                <span class="text-[10px] text-slate-400 block">Empty party & world state</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 cursor-pointer hover:border-amber-500/50">
+                            <input type="radio" name="new-campaign-template" value="clone_active" class="text-amber-500">
+                            <div>
+                                <span class="font-bold text-slate-200 block text-xs">Clone Active</span>
+                                <span class="text-[10px] text-slate-400 block">Copy party & lore from current</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-ledger-800">
+                    <button type="button" onclick="closeModal('new-campaign-modal')" class="px-4 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold transition flex items-center gap-1.5 shadow-md">
+                        <span>🚀</span> Create & Switch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 28. EDIT CAMPAIGN PROFILE MODAL -->
+    <div id="edit-campaign-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 text-base">✏️</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-amber-400">Edit Campaign Profile</h3>
+                        <p class="text-[11px] text-slate-400">Update campaign title and campaign description</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('edit-campaign-modal')" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 transition">✕</button>
+            </div>
+
+            <form id="edit-campaign-form" onsubmit="submitEditCampaign(event)" class="space-y-3.5">
+                <input type="hidden" id="edit-campaign-id">
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Campaign Name *</label>
+                    <input type="text" id="edit-campaign-name" required class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-white font-semibold focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Campaign Description</label>
+                    <textarea id="edit-campaign-desc" rows="3" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-ledger-800">
+                    <button type="button" onclick="closeModal('edit-campaign-modal')" class="px-4 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold transition flex items-center gap-1.5 shadow-md">
+                        <span>💾</span> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 29. PROCEDURAL BATTLEMAP GENERATOR & CATALOG MODAL -->
+    <div id="map-generator-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-3xl max-w-6xl w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[94vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 text-lg">🗺️</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-amber-400">Battlemap Forge & Catalog</h3>
+                        <p class="text-[11px] text-slate-400">Procedurally synthesize tactical battlemaps or manage your shared multi-campaign map catalog</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Tab Switcher -->
+                    <div class="flex items-center bg-ledger-950 p-1 rounded-xl border border-ledger-800 text-xs">
+                        <button type="button" id="map-modal-tab-btn-forge" onclick="window.BattlemapController.switchMapModalTab('forge')" class="px-3 py-1 rounded-lg font-semibold transition bg-amber-500 text-ledger-950 font-bold shadow">
+                            ✨ Generator Forge
+                        </button>
+                        <button type="button" id="map-modal-tab-btn-catalog" onclick="window.BattlemapController.switchMapModalTab('catalog')" class="px-3 py-1 rounded-lg font-semibold text-slate-300 hover:text-white transition">
+                            📚 Map Library (<span id="map-catalog-count-badge">3</span>)
+                        </button>
+                    </div>
+                    <button type="button" onclick="closeMapGeneratorModal()" class="text-slate-400 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 transition">✕</button>
+                </div>
+            </div>
+
+            <!-- TAB 1: GENERATOR FORGE -->
+            <div id="map-modal-tab-forge" class="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs min-h-0">
+                <!-- LEFT COLUMN: GENERATOR CONTROLS (5 cols) -->
+                <div class="lg:col-span-5 space-y-3.5 pr-1 overflow-y-auto max-h-full">
+                    
+                    <!-- Theme Selector -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Environment Theme</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="window.BattlemapController.setGenTheme('dungeon')" data-theme="dungeon" class="map-theme-btn p-2 rounded-xl border border-amber-500/80 bg-amber-500/10 text-amber-300 font-semibold flex flex-col items-center gap-1 text-center transition">
+                                <span class="text-lg">🏰</span>
+                                <span class="text-[11px]">Dungeon</span>
+                            </button>
+                            <button type="button" onclick="window.BattlemapController.setGenTheme('cavern')" data-theme="cavern" class="map-theme-btn p-2 rounded-xl border border-ledger-700 bg-ledger-950 hover:border-slate-500 text-slate-300 font-semibold flex flex-col items-center gap-1 text-center transition">
+                                <span class="text-lg">🕳️</span>
+                                <span class="text-[11px]">Cavern</span>
+                            </button>
+                            <button type="button" onclick="window.BattlemapController.setGenTheme('forest')" data-theme="forest" class="map-theme-btn p-2 rounded-xl border border-ledger-700 bg-ledger-950 hover:border-slate-500 text-slate-300 font-semibold flex flex-col items-center gap-1 text-center transition">
+                                <span class="text-lg">🌲</span>
+                                <span class="text-[11px]">Forest</span>
+                            </button>
+                            <button type="button" onclick="window.BattlemapController.setGenTheme('tavern')" data-theme="tavern" class="map-theme-btn p-2 rounded-xl border border-ledger-700 bg-ledger-950 hover:border-slate-500 text-slate-300 font-semibold flex flex-col items-center gap-1 text-center transition">
+                                <span class="text-lg">🍺</span>
+                                <span class="text-[11px]">Tavern</span>
+                            </button>
+                            <button type="button" onclick="window.BattlemapController.setGenTheme('arcane')" data-theme="arcane" class="map-theme-btn p-2 rounded-xl border border-ledger-700 bg-ledger-950 hover:border-slate-500 text-slate-300 font-semibold flex flex-col items-center gap-1 text-center transition">
+                                <span class="text-lg">🔮</span>
+                                <span class="text-[11px]">Arcane</span>
+                            </button>
+                            <button type="button" onclick="window.BattlemapController.setGenTheme('ruins')" data-theme="ruins" class="map-theme-btn p-2 rounded-xl border border-ledger-700 bg-ledger-950 hover:border-slate-500 text-slate-300 font-semibold flex flex-col items-center gap-1 text-center transition">
+                                <span class="text-lg">🏛️</span>
+                                <span class="text-[11px]">Ruins</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Map Title & Randomizer -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-[11px] font-semibold text-slate-300">Map Title</label>
+                            <button type="button" onclick="window.BattlemapController.randomizeMapTitle()" class="text-[10px] text-amber-400 hover:underline flex items-center gap-1">
+                                <span>🎲</span> Randomize Name
+                            </button>
+                        </div>
+                        <input id="gen-map-title" type="text" placeholder="e.g. Forgotten Crypt of the Iron Guard" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white font-semibold focus:outline-none focus:border-amber-500 text-xs">
+                    </div>
+
+                    <!-- Layout Style & Atmosphere -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Tactical Layout</label>
+                            <select id="gen-map-layout" onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-amber-500">
+                                <option value="multi_room">Multi-Room Chambers</option>
+                                <option value="arena">Open Arena / Hall</option>
+                                <option value="winding">Winding Tunnels / Trail</option>
+                                <option value="crossroads">Crossroads / Clearing</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Lighting Style</label>
+                            <select id="gen-map-lighting" onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-amber-500">
+                                <option value="torchlit">🔥 Torchlit Radiance</option>
+                                <option value="dark">🌑 Pitch Shadowed</option>
+                                <option value="bioluminescent">🍄 Bioluminescent Glow</option>
+                                <option value="ethereal">✨ Ethereal Astral</option>
+                                <option value="bright">☀️ Ambient Daylight</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dimensions & Grid Preset -->
+                    <div class="bg-ledger-950/70 border border-ledger-800 p-2.5 rounded-xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Dimensions (5ft Squares)</span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="window.BattlemapController.setGridDimensions(30, 20)" class="px-1.5 py-0.5 rounded text-[10px] bg-ledger-800 hover:bg-ledger-700 text-slate-300">30×20</button>
+                                <button type="button" onclick="window.BattlemapController.setGridDimensions(40, 30)" class="px-1.5 py-0.5 rounded text-[10px] bg-ledger-800 hover:bg-ledger-700 text-slate-300">40×30</button>
+                                <button type="button" onclick="window.BattlemapController.setGridDimensions(50, 35)" class="px-1.5 py-0.5 rounded text-[10px] bg-ledger-800 hover:bg-ledger-700 text-slate-300">50×35</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <span class="text-[10px] text-slate-400">Width (Cols):</span>
+                                <input id="gen-map-width" type="number" min="16" max="60" value="40" oninput="window.BattlemapController.triggerMapPreviewDebounced()" onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="w-full bg-ledger-900 border border-ledger-700 rounded px-2 py-1 text-white font-mono text-center">
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-400">Height (Rows):</span>
+                                <input id="gen-map-height" type="number" min="12" max="50" value="30" oninput="window.BattlemapController.triggerMapPreviewDebounced()" onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="w-full bg-ledger-900 border border-ledger-700 rounded px-2 py-1 text-white font-mono text-center">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tactical Hazards / Feature Toggles -->
+                    <div class="flex items-center gap-4 bg-ledger-950/70 border border-ledger-800 px-3 py-2 rounded-xl">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input id="gen-map-water" type="checkbox" onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="rounded border-ledger-700 text-amber-500 focus:ring-0">
+                            <span class="text-slate-300">🌊 Water / Chasm</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input id="gen-map-pillars" type="checkbox" checked onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="rounded border-ledger-700 text-amber-500 focus:ring-0">
+                            <span class="text-slate-300">🪨 Cover / Pillars</span>
+                        </label>
+                    </div>
+
+                    <!-- Deterministic Seed -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Deterministic Seed</label>
+                            <button type="button" onclick="window.BattlemapController.rerollSeed()" class="text-[10px] text-amber-400 hover:underline flex items-center gap-1">
+                                <span>🎲</span> Reroll Seed
+                            </button>
+                        </div>
+                        <input id="gen-map-seed" type="number" placeholder="Random seed" oninput="window.BattlemapController.triggerMapPreviewDebounced()" onchange="window.BattlemapController.triggerMapPreviewDebounced()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs">
+                    </div>
+
+                    <!-- Forge Action Buttons -->
+                    <div class="pt-2 flex flex-col gap-2">
+                        <button type="button" onclick="window.BattlemapController.deployGeneratedMap()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-400 hover:from-amber-500 hover:to-amber-300 text-ledger-950 font-bold shadow-lg flex items-center justify-center gap-2 transition text-sm">
+                            <span>⚔️</span>
+                            <span>Deploy to Table Now</span>
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="window.BattlemapController.saveGeneratedMapToCatalog()" class="flex-1 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 font-semibold flex items-center justify-center gap-1.5 transition">
+                                <span>💾</span> Save to Library Only
+                            </button>
+                            <button type="button" onclick="window.BattlemapController.triggerMapPreview()" class="py-1.5 px-3 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 border border-ledger-700 font-semibold flex items-center gap-1 transition" title="Refresh preview">
+                                <span>🔄</span> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: LIVE WYSIWYG MAP PREVIEW (7 cols) -->
+                <div class="lg:col-span-7 flex flex-col bg-ledger-950 border border-ledger-800 rounded-2xl p-3 min-h-[380px] lg:min-h-0 relative overflow-hidden">
+                    <!-- Preview Bar Header -->
+                    <div class="flex items-center justify-between border-b border-ledger-800 pb-2 mb-2 shrink-0">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="font-semibold text-slate-200 text-xs">Live Vector Preview</span>
+                            <span id="gen-preview-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-ledger-800 text-amber-300 border border-amber-500/30">
+                                40×30 (2000×1500)
+                            </span>
+                        </div>
+                        <span id="gen-preview-theme-badge" class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                            Dungeon · Torchlit
+                        </span>
+                    </div>
+
+                    <!-- Preview Container -->
+                    <div id="gen-map-preview-container" class="flex-1 rounded-xl bg-[#080b10] border border-ledger-800/80 overflow-auto flex items-center justify-center p-2 relative shadow-inner">
+                        <div id="gen-map-preview-loading" class="hidden absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10">
+                            <div class="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                                <span class="animate-spin text-base">⏳</span> Synthesizing Battlemap...
+                            </div>
+                        </div>
+                        <div id="gen-map-preview-svg-box" class="w-full h-full flex items-center justify-center transition-transform">
+                            <!-- Injected SVG -->
+                            <span class="text-slate-500 text-xs italic">Loading map preview...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: SHARED MAP CATALOG & LIBRARY -->
+            <div id="map-modal-tab-catalog" class="hidden flex-1 overflow-y-auto space-y-4 pr-1 min-h-0">
+                <div class="flex items-center justify-between bg-ledger-950/70 border border-ledger-800 p-3 rounded-2xl">
+                    <div>
+                        <h4 class="font-display font-bold text-amber-400 text-sm">Shared Multi-Campaign Map Catalog</h4>
+                        <p class="text-[11px] text-slate-400">All preset, generated, and uploaded maps are preserved globally and accessible across any campaign profile.</p>
+                    </div>
+                    <button type="button" onclick="document.getElementById('dm-map-file-input').click()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 font-semibold text-xs flex items-center gap-1.5 transition">
+                        <span>📁</span> Upload Custom Map
+                    </button>
+                </div>
+
+                <!-- Catalog Grid -->
+                <div id="map-catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- FLOATING DICE ROLL HUD OVERLAY -->
     <div id="dice-roll-overlay" onclick="dismissDiceOverlay()" class="overlay-hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#0b0f17]/95 border-2 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_30px_rgba(245,158,11,0.35)] backdrop-blur-xl transition cursor-pointer select-none">
         <!-- Animated Polyhedral Die Icon -->
@@ -4701,7 +5162,7 @@
     <script src="/static/js/lighting_engine.js?v=2.5"></script>
     <script src="/static/js/npc_data.js?v=2.5"></script>
     <script src="/static/js/loot_data.js?v=2.5"></script>
-    <script src="/static/js/dashboard.js?v=2.7"></script>
-    <script src="/static/js/battlemap_controller.js?v=2.5"></script>
+    <script src="/static/js/dashboard.js?v=2.9"></script>
+    <script src="/static/js/battlemap_controller.js?v=2.7"></script>
 </body>
 </html>

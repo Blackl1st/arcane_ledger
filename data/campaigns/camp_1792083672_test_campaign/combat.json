@@ -1,0 +1,6 @@
+{
+  "inCombat": false,
+  "round": 1,
+  "currentTurnIndex": 0,
+  "combatants": []
+}

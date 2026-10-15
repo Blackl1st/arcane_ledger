@@ -1,0 +1,98 @@
+[
+  {
+    "id": "pc-1",
+    "name": "Thorne Ironbreaker",
+    "player": "Dave",
+    "species": "Dwarf",
+    "classRole": "Fighter (Battle Master)",
+    "level": 5,
+    "ac": 18,
+    "speed": 25,
+    "currentHp": 44,
+    "maxHp": 44,
+    "tempHp": 0,
+    "initiativeMod": 1,
+    "passivePerception": 12,
+    "passiveInsight": 11,
+    "passiveInvestigation": 10,
+    "spellDc": null,
+    "heroicInspiration": false,
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    },
+    "notes": "Second Wind, Action Surge, 4 Superiority Dice (d8). Weapon: Heavy Warhammer (Push mastery)."
+  },
+  {
+    "id": "pc-2",
+    "name": "Lyra Moonwhisper",
+    "player": "Sarah",
+    "species": "High Elf",
+    "classRole": "Wizard (Evoker)",
+    "level": 5,
+    "ac": 13,
+    "speed": 30,
+    "currentHp": 28,
+    "maxHp": 28,
+    "tempHp": 0,
+    "initiativeMod": 2,
+    "passivePerception": 14,
+    "passiveInsight": 12,
+    "passiveInvestigation": 16,
+    "spellDc": 15,
+    "heroicInspiration": false,
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    },
+    "notes": "Sculpt Spells. Familiar: Barn Owl (Pip). Slots: 4/3/2."
+  },
+  {
+    "id": "pc-3",
+    "name": "Finnian Quickfoot",
+    "player": "Alex",
+    "species": "Halfling",
+    "classRole": "Rogue (Thief)",
+    "level": 5,
+    "ac": 16,
+    "speed": 30,
+    "currentHp": 12,
+    "maxHp": 33,
+    "tempHp": 0,
+    "initiativeMod": 4,
+    "passivePerception": 17,
+    "passiveInsight": 15,
+    "passiveInvestigation": 18,
+    "spellDc": null,
+    "heroicInspiration": false,
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    },
+    "notes": "Cunning Action, Fast Hands (Utilize as Bonus Action), Sneak Attack (3d6), Halfling Nimbleness."
+  },
+  {
+    "id": "pc-4",
+    "name": "Sister Andrea",
+    "player": "Elena",
+    "species": "Human",
+    "classRole": "Cleric (Life Domain)",
+    "level": 5,
+    "ac": 18,
+    "speed": 30,
+    "currentHp": 38,
+    "maxHp": 38,
+    "tempHp": 0,
+    "initiativeMod": 0,
+    "passivePerception": 16,
+    "passiveInsight": 16,
+    "passiveInvestigation": 11,
+    "spellDc": 14,
+    "heroicInspiration": false,
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    },
+    "notes": "Disciple of Life, Preserve Life, Channel Divinity 2/rest. War Caster feat (Adv on Con saves)."
+  }
+]

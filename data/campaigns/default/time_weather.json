@@ -1,0 +1,13 @@
+{
+  "day": 1,
+  "hour": 11,
+  "minute": 0,
+  "weather": {
+    "temperature": "Mild & Pleasant",
+    "wind": "Light Breeze",
+    "precipitation": "Overcast & Gloomy",
+    "tacticalEffect": "None. Normal conditions."
+  },
+  "moonPhase": "New Moon",
+  "activeTimers": []
+}
