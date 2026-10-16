@@ -2,9 +2,25 @@ name: Build Desktop Apps (Windows & macOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag Name'
+        required: false
+        default: 'v1.0.0'
+      release_name:
+        description: 'Release Title'
+        required: false
+        default: 'Arcane Ledger Standalone Desktop Release'
+      publish:
+        description: 'Publish to GitHub Releases page'
+        type: boolean
+        default: true
   push:
     tags:
       - 'v*'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: 'true'
 
 jobs:
   build-windows:
@@ -113,7 +129,7 @@ jobs:
   publish-release:
     name: Publish Release Packages
     needs: [build-windows, build-macos]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -132,12 +148,15 @@ jobs:
         with:
           name: ArcaneLedger-macOS
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || (github.event.inputs.tag_name != '' && github.event.inputs.tag_name || 'v1.0.0') }}
+          name: ${{ github.event.inputs.release_name != '' && github.event.inputs.release_name || 'Arcane Ledger Standalone Desktop Release' }}
           files: |
             ArcaneLedger-Windows-x64.zip
             ArcaneLedger-macOS.zip
           draft: false
           prerelease: false
           generate_release_notes: true
+
