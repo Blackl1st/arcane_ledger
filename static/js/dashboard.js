@@ -15481,6 +15481,323 @@ window.onload = async function() {
     loadSecuritySettingsUI();
     initStreamDeckUI();
     if (window.LightingEngine) window.LightingEngine.init();
+    initUpdater();
 };
+
+// =============================================================================
+// APPLICATION AUTO-UPDATER & PATCHING CONTROLLER
+// =============================================================================
+
+let updaterPollInterval = null;
+let currentUpdateRelease = null;
+
+async function initUpdater() {
+    try {
+        const res = await fetch('/api/updates/settings');
+        if (res.ok) {
+            const data = await res.json();
+            const autoCheckToggle = document.getElementById('updater-auto-check-toggle');
+            if (autoCheckToggle) {
+                autoCheckToggle.checked = (data.auto_check !== false);
+            }
+            const tokenBadge = document.getElementById('updater-token-badge');
+            if (tokenBadge) {
+                if (data.has_token) {
+                    tokenBadge.textContent = `Configured (${data.masked_token})`;
+                    tokenBadge.className = 'text-[10px] font-mono text-emerald-400';
+                } else {
+                    tokenBadge.textContent = 'Not configured';
+                    tokenBadge.className = 'text-[10px] font-mono text-slate-500';
+                }
+            }
+            const versionBadge = document.getElementById('updater-installed-version-badge');
+            if (versionBadge && data.current_version) {
+                versionBadge.textContent = `v${data.current_version}`;
+            }
+
+            // If auto-check enabled, trigger background check after 1.5s delay
+            if (data.auto_check !== false) {
+                setTimeout(() => {
+                    checkForUpdates(false);
+                }, 1500);
+            }
+        }
+    } catch (e) {
+        console.warn('Updater initialization error:', e);
+    }
+}
+
+async function checkForUpdates(manual = false) {
+    const spinner = document.getElementById('updater-check-spinner');
+    const checkBtn = document.getElementById('updater-check-btn');
+    const statusTitle = document.getElementById('updater-status-title');
+    const statusSub = document.getElementById('updater-status-subtitle');
+    const statusIcon = document.getElementById('updater-status-icon');
+    const downloadBtn = document.getElementById('updater-download-btn');
+    const applyBtn = document.getElementById('updater-apply-btn');
+    const notesBox = document.getElementById('updater-notes-box');
+
+    if (spinner) spinner.classList.remove('hidden');
+    if (checkBtn) checkBtn.disabled = true;
+    if (statusTitle) statusTitle.textContent = 'Checking GitHub Releases for updates...';
+
+    try {
+        const url = `/api/updates/check?force=${manual ? 'true' : 'false'}&auto=${manual ? 'false' : 'true'}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (statusSub) {
+            statusSub.textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
+        }
+
+        if (!res.ok || !data.success) {
+            const errMsg = data.detail || data.error || 'Failed to check updates';
+            if (statusTitle) statusTitle.textContent = 'Check Failed';
+            if (statusIcon) statusIcon.textContent = '⚠️';
+            if (statusSub) statusSub.textContent = errMsg;
+            if (manual) showToast(errMsg, 'error');
+            return;
+        }
+
+        if (data.update_available) {
+            currentUpdateRelease = data.release;
+            if (statusIcon) statusIcon.textContent = '🚀';
+            if (statusTitle) statusTitle.textContent = `Update Available: ${data.latest_version}`;
+            if (statusSub) statusSub.textContent = `Current: v${data.current_version} • New version published on GitHub`;
+            
+            if (downloadBtn) downloadBtn.classList.remove('hidden');
+            if (applyBtn) applyBtn.classList.add('hidden');
+
+            // Populate release notes in settings
+            if (notesBox) {
+                notesBox.classList.remove('hidden');
+                const notesTitle = document.getElementById('updater-notes-title');
+                const notesDate = document.getElementById('updater-notes-date');
+                const notesContent = document.getElementById('updater-notes-content');
+                if (notesTitle) notesTitle.textContent = data.release.name || data.latest_version;
+                if (notesDate && data.release.published_at) {
+                    notesDate.textContent = new Date(data.release.published_at).toLocaleDateString();
+                }
+                if (notesContent) {
+                    notesContent.textContent = data.release.body || 'No release notes provided.';
+                }
+            }
+
+            // Show floating startup banner if auto-check
+            const banner = document.getElementById('update-notification-banner');
+            if (banner) {
+                const bannerVersion = document.getElementById('banner-update-version');
+                const bannerNotes = document.getElementById('banner-release-notes');
+                if (bannerVersion) bannerVersion.textContent = data.latest_version;
+                if (bannerNotes) bannerNotes.textContent = data.release.body ? data.release.body.slice(0, 300) : 'New performance enhancements and features ready to install.';
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+            }
+
+            if (manual) showToast(`New Arcane Ledger update ${data.latest_version} is available!`, 'success');
+        } else {
+            if (statusIcon) statusIcon.textContent = '✅';
+            if (statusTitle) statusTitle.textContent = `Arcane Ledger is up to date (v${data.current_version})`;
+            if (statusSub) statusSub.textContent = `You are running the latest version.`;
+            if (downloadBtn) downloadBtn.classList.add('hidden');
+            if (applyBtn) applyBtn.classList.add('hidden');
+            if (notesBox) notesBox.classList.add('hidden');
+            if (manual) showToast('You are running the latest version of Arcane Ledger.', 'info');
+        }
+    } catch (e) {
+        console.error('Error checking updates:', e);
+        if (statusTitle) statusTitle.textContent = 'Check Failed';
+        if (statusIcon) statusIcon.textContent = '⚠️';
+        if (statusSub) statusSub.textContent = String(e);
+        if (manual) showToast('Could not reach GitHub Releases API', 'error');
+    } finally {
+        if (spinner) spinner.classList.add('hidden');
+        if (checkBtn) checkBtn.disabled = false;
+    }
+}
+
+async function startUpdateDownload() {
+    const downloadBtn = document.getElementById('updater-download-btn');
+    const applyBtn = document.getElementById('updater-apply-btn');
+    const progressContainer = document.getElementById('updater-progress-container');
+    const progressBar = document.getElementById('updater-progress-bar');
+    const progressText = document.getElementById('updater-progress-text');
+    const progressLabel = document.getElementById('updater-progress-label');
+    const statusTitle = document.getElementById('updater-status-title');
+
+    if (downloadBtn) {
+        downloadBtn.disabled = true;
+        downloadBtn.classList.add('opacity-50');
+    }
+    if (progressContainer) progressContainer.classList.remove('hidden');
+    if (statusTitle) statusTitle.textContent = 'Downloading update package...';
+
+    try {
+        const res = await fetch('/api/updates/download', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || 'Download initiation failed');
+        }
+
+        if (updaterPollInterval) clearInterval(updaterPollInterval);
+        updaterPollInterval = setInterval(async () => {
+            try {
+                const sRes = await fetch('/api/updates/status');
+                if (!sRes.ok) return;
+                const statusData = await sRes.json();
+
+                if (statusData.status === 'downloading') {
+                    const pct = statusData.progress_pct || 0;
+                    if (progressBar) progressBar.style.width = `${pct}%`;
+                    const mbDown = (statusData.bytes_downloaded / (1024 * 1024)).toFixed(1);
+                    const mbTotal = (statusData.total_bytes / (1024 * 1024)).toFixed(1);
+                    if (progressText) progressText.textContent = `${mbDown} MB / ${mbTotal} MB (${pct}%)`;
+                } else if (statusData.status === 'downloaded') {
+                    clearInterval(updaterPollInterval);
+                    if (progressBar) progressBar.style.width = '100%';
+                    if (progressText) progressText.textContent = '100% (Verified)';
+                    if (progressLabel) progressLabel.textContent = 'Update verified and ready to apply!';
+                    if (statusTitle) statusTitle.textContent = 'Download Complete! Ready to Patch & Relaunch.';
+                    if (downloadBtn) downloadBtn.classList.add('hidden');
+                    if (applyBtn) {
+                        applyBtn.classList.remove('hidden');
+                        applyBtn.disabled = false;
+                    }
+                    showToast('Update package downloaded. Click Relaunch to apply.', 'success');
+                } else if (statusData.status === 'error') {
+                    clearInterval(updaterPollInterval);
+                    if (statusTitle) statusTitle.textContent = 'Download Failed';
+                    if (progressLabel) progressLabel.textContent = statusData.error_message || 'Download error';
+                    if (downloadBtn) {
+                        downloadBtn.disabled = false;
+                        downloadBtn.classList.remove('opacity-50');
+                    }
+                    showToast(statusData.error_message || 'Download failed', 'error');
+                }
+            } catch (err) {
+                console.warn('Status poll error:', err);
+            }
+        }, 400);
+
+    } catch (e) {
+        showToast(e.message, 'error');
+        if (downloadBtn) {
+            downloadBtn.disabled = false;
+            downloadBtn.classList.remove('opacity-50');
+        }
+    }
+}
+
+async function startAutoUpdateDownload() {
+    dismissUpdateBanner();
+    switchTab('settings');
+    scrollToUpdateSection();
+    await startUpdateDownload();
+}
+
+async function applyUpdateAndRestart() {
+    const applyBtn = document.getElementById('updater-apply-btn');
+    const statusTitle = document.getElementById('updater-status-title');
+    const statusSub = document.getElementById('updater-status-subtitle');
+
+    if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.textContent = 'Relaunching Arcane Ledger...';
+    }
+    if (statusTitle) statusTitle.textContent = 'Patching Application & Relaunching...';
+    if (statusSub) statusSub.textContent = 'Please wait while the new version replaces the local app.';
+
+    try {
+        const res = await fetch('/api/updates/apply', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || 'Failed to dispatch updater');
+        }
+        showToast('Relaunching Arcane Ledger with the latest version...', 'info');
+
+        // Full-screen overlay while relaunching
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[100000] bg-black/90 backdrop-blur-lg flex flex-col items-center justify-center gap-4 text-center p-6 text-white';
+        overlay.innerHTML = `
+            <div class="text-5xl animate-bounce">⚡</div>
+            <h2 class="text-2xl font-bold font-display text-amber-400">Patching Arcane Ledger</h2>
+            <p class="text-sm text-slate-300 max-w-md">The application is updating its local files and will automatically restart in a few moments.</p>
+            <div class="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mt-2"></div>
+        `;
+        document.body.appendChild(overlay);
+
+    } catch (e) {
+        showToast(`Failed to apply update: ${e.message}`, 'error');
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.textContent = '⚡ Relaunch to Finish Update';
+        }
+    }
+}
+
+async function saveUpdaterSettings() {
+    const toggle = document.getElementById('updater-auto-check-toggle');
+    const autoCheck = toggle ? toggle.checked : true;
+    try {
+        await fetch('/api/updates/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auto_check: autoCheck })
+        });
+        showToast('Updater preferences saved.', 'info');
+    } catch (e) {
+        console.error('Error saving updater preferences:', e);
+    }
+}
+
+async function saveUpdaterToken() {
+    const input = document.getElementById('updater-token-input');
+    if (!input) return;
+    const token = input.value.trim();
+    try {
+        const res = await fetch('/api/updates/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ github_token: token })
+        });
+        if (res.ok) {
+            showToast('GitHub token saved successfully.', 'success');
+            input.value = '';
+            initUpdater();
+        } else {
+            showToast('Failed to save GitHub token.', 'error');
+        }
+    } catch (e) {
+        showToast('Error saving GitHub token: ' + e.message, 'error');
+    }
+}
+
+function dismissUpdateBanner() {
+    const banner = document.getElementById('update-notification-banner');
+    if (banner) {
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+    }
+}
+
+function scrollToUpdateSection() {
+    setTimeout(() => {
+        const card = document.getElementById('settings-updater-card');
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, 150);
+}
+
+window.initUpdater = initUpdater;
+window.checkForUpdates = checkForUpdates;
+window.startUpdateDownload = startUpdateDownload;
+window.startAutoUpdateDownload = startAutoUpdateDownload;
+window.applyUpdateAndRestart = applyUpdateAndRestart;
+window.saveUpdaterSettings = saveUpdaterSettings;
+window.saveUpdaterToken = saveUpdaterToken;
+window.dismissUpdateBanner = dismissUpdateBanner;
+window.scrollToUpdateSection = scrollToUpdateSection;
+
 
 

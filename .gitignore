@@ -37,3 +37,10 @@ Desktop.ini
 
 # Temporary runtime files
 data/*.tmp
+data/.app_profile/
+data/updater_settings.json
+.updates/
+dist/
+build/
+*.spec
+

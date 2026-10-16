@@ -3985,6 +3985,95 @@
                                 </button>
                             </div>
                         </div>
+                <!-- CARD: APPLICATION UPDATES & LOCAL PATCHING -->
+                <div id="settings-updater-card" class="bg-ledger-950/80 border border-ledger-700 rounded-2xl p-5 shadow-xl space-y-5">
+                    <div class="flex items-center justify-between pb-3 border-b border-ledger-800 flex-wrap gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-xl">🚀</span>
+                            <div>
+                                <h3 class="font-display font-bold text-base text-amber-400">Application Updates & Version Control</h3>
+                                <p class="text-xs text-slate-400">Check for the latest Arcane Ledger releases, review changelogs, and download/patch the local desktop app with one click.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400">Installed Version:</span>
+                            <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.0.3</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Updater Status Box -->
+                    <div id="updater-status-box" class="p-4 rounded-xl bg-ledger-900 border border-ledger-800 space-y-3">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div class="flex items-center gap-3">
+                                <div id="updater-status-icon" class="w-8 h-8 rounded-lg bg-ledger-950 flex items-center justify-center text-base border border-ledger-700">
+                                    ✨
+                                </div>
+                                <div>
+                                    <div id="updater-status-title" class="font-bold text-sm text-slate-200">Checking for updates...</div>
+                                    <div id="updater-status-subtitle" class="text-xs text-slate-400">Last checked: Just now</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                                    <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
+                                    <span>Check for Updates</span>
+                                </button>
+                                <button id="updater-download-btn" onclick="startUpdateDownload()" class="hidden px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                                    <span>⬇️</span> <span>Download & Patch App</span>
+                                </button>
+                                <button id="updater-apply-btn" onclick="applyUpdateAndRestart()" class="hidden px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                                    <span>⚡</span> <span>Relaunch to Finish Update</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar (shown when downloading) -->
+                        <div id="updater-progress-container" class="hidden space-y-1.5 pt-2">
+                            <div class="flex items-center justify-between text-xs font-mono">
+                                <span id="updater-progress-label" class="text-amber-400 font-bold">Downloading update package...</span>
+                                <span id="updater-progress-text" class="text-slate-300">0%</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-ledger-950 rounded-full overflow-hidden border border-ledger-700">
+                                <div id="updater-progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-300 w-0"></div>
+                            </div>
+                        </div>
+
+                        <!-- Release Notes Box (shown when update available) -->
+                        <div id="updater-notes-box" class="hidden bg-ledger-950/70 border border-ledger-800 rounded-xl p-3.5 space-y-2">
+                            <div class="flex items-center justify-between text-xs border-b border-ledger-800/80 pb-2">
+                                <span class="font-bold text-amber-300 font-display flex items-center gap-1.5">
+                                    <span>📜</span> <span id="updater-notes-title">Release Notes</span>
+                                </span>
+                                <span id="updater-notes-date" class="text-slate-400 font-mono text-[10px]"></span>
+                            </div>
+                            <div id="updater-notes-content" class="text-xs text-slate-300 max-h-48 overflow-y-auto space-y-1 whitespace-pre-wrap leading-relaxed pr-1 font-sans">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Updater Settings & Private Repo Auth -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <!-- Auto-Check Switch -->
+                        <div class="bg-ledger-900/60 border border-ledger-800 rounded-xl p-3.5 flex items-center justify-between gap-3">
+                            <div>
+                                <label for="updater-auto-check-toggle" class="font-semibold text-xs text-slate-200 block cursor-pointer">Check for Updates on Startup</label>
+                                <p class="text-[11px] text-slate-400">Automatically ping GitHub Releases in the background when opening the app</p>
+                            </div>
+                            <input id="updater-auto-check-toggle" type="checkbox" onchange="saveUpdaterSettings()" class="w-4 h-4 rounded text-amber-500 bg-ledger-950 border-ledger-700 focus:ring-amber-500 focus:ring-offset-ledger-900 cursor-pointer">
+                        </div>
+
+                        <!-- Private Repository Token Input -->
+                        <div class="bg-ledger-900/60 border border-ledger-800 rounded-xl p-3.5 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="font-semibold text-xs text-slate-200 block">GitHub Access Token <span class="text-slate-500 font-normal font-sans">(Private Repo)</span></label>
+                                <span id="updater-token-badge" class="text-[10px] font-mono text-slate-500">Not configured</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input id="updater-token-input" type="password" placeholder="ghp_xxxxxxxxxxxx" class="flex-1 bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none focus:border-amber-500">
+                                <button onclick="saveUpdaterToken()" class="px-3 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-ledger-700 transition">Save</button>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">Only required if your repository is private. Create a classic token with <span class="font-mono text-slate-400">repo</span> scope or fine-grained read access.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -6979,6 +7068,25 @@
         </div>
 
         <button type="button" onclick="dismissDiceOverlay()" class="text-slate-500 hover:text-slate-300 text-xs ml-1 self-start transition" title="Dismiss">✕</button>
+    </div>
+
+    <!-- FLOATING STARTUP UPDATE NOTIFICATION BANNER -->
+    <div id="update-notification-banner" class="hidden fixed bottom-5 right-5 z-[9999] max-w-md w-full bg-ledger-900/95 border border-amber-500/70 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex-col gap-2.5 animate-slide-up">
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <span class="text-2xl animate-bounce">🚀</span>
+                <div>
+                    <h4 class="font-display font-bold text-sm text-amber-300">New Arcane Ledger Update Available!</h4>
+                    <p class="text-xs text-slate-300">Version <span id="banner-update-version" class="font-bold text-amber-400 font-mono">v1.0.4</span> is ready to install.</p>
+                </div>
+            </div>
+            <button onclick="dismissUpdateBanner()" class="text-slate-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg hover:bg-ledger-800 transition">✕</button>
+        </div>
+        <div id="banner-release-notes" class="text-[11px] text-slate-400 max-h-20 overflow-y-auto whitespace-pre-wrap bg-ledger-950/70 p-2 rounded-lg border border-ledger-800 font-sans"></div>
+        <div class="flex items-center justify-end gap-2 pt-1">
+            <button onclick="switchTab('settings'); scrollToUpdateSection(); dismissUpdateBanner();" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">View in Settings</button>
+            <button onclick="startAutoUpdateDownload()" class="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-bold shadow-md transition">Update & Restart</button>
+        </div>
     </div>
 
     <!-- TOAST NOTIFICATION CONTAINER -->

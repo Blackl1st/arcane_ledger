@@ -20,6 +20,7 @@ from typing import Optional, Dict, Any, List
 # Explicit top-level imports ensure PyInstaller static analyzer bundles these modules
 import uvicorn
 import map_generator
+import updater
 import app
 
 # Determine directory paths

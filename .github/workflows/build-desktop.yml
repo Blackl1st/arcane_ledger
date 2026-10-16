@@ -53,6 +53,7 @@ jobs:
             --add-data "tools;tools" `
             --collect-all "webview" `
             --hidden-import "app" `
+            --hidden-import "updater" `
             --hidden-import "map_generator" `
             --hidden-import "fastapi" `
             --hidden-import "uvicorn" `
@@ -116,6 +117,7 @@ jobs:
             --add-data "tools:tools" \
             --collect-all "webview" \
             --hidden-import "app" \
+            --hidden-import "updater" \
             --hidden-import "map_generator" \
             --hidden-import "fastapi" \
             --hidden-import "uvicorn" \

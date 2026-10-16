@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from map_generator import ProceduralMapGenerator, get_random_title
+import updater
 
 # Resource & Data Directory Resolution (Handles Live Dev & PyInstaller Frozen App)
 if getattr(sys, "frozen", False):
@@ -172,7 +173,7 @@ def is_dm_authenticated(request: Request) -> bool:
             
     return False
 
-app = FastAPI(title="Arcane Ledger: D&D 5.5e DM Dashboard", version="1.0.0")
+app = FastAPI(title="Arcane Ledger: D&D 5.5e DM Dashboard", version=updater.CURRENT_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -236,6 +237,7 @@ async def dm_security_middleware(request: Request, call_next):
     return await call_next(request)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.include_router(updater.router)
 
 # Campaign Scoped vs Global Compendium routing
 CAMPAIGN_SCOPED_FILES = {
