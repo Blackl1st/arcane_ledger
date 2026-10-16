@@ -3563,7 +3563,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.0.7</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.0.8</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -4005,7 +4005,7 @@
                         <h3 class="font-display font-bold text-base text-amber-400">Vault, Snapshots & Storage Cache</h3>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <button onclick="openBackupModal()" class="p-3 rounded-xl bg-ledger-900 hover:bg-amber-500 hover:text-ledger-950 text-slate-200 border border-ledger-700 transition flex items-center justify-between group">
                             <div class="text-left">
                                 <div class="font-bold text-xs">Export Vault (.zip)</div>
@@ -4022,13 +4022,22 @@
                             <span class="text-base">📸</span>
                         </button>
 
+                        <button onclick="restoreSrdCompendiums()" class="p-3 rounded-xl bg-ledger-900 hover:bg-amber-500 hover:text-ledger-950 text-slate-200 border border-ledger-700 transition flex items-center justify-between group">
+                            <div class="text-left">
+                                <div class="font-bold text-xs">Restore 5.5e SRD</div>
+                                <span class="text-[10px] text-slate-400 group-hover:text-ledger-900">Re-seed 330+ monsters, spells, items</span>
+                            </div>
+                            <span class="text-base">🔄</span>
+                        </button>
+
                         <button onclick="clearDiceHistoryAction()" class="p-3 rounded-xl bg-ledger-900 hover:bg-rose-900/60 hover:text-rose-200 text-slate-300 border border-ledger-700 transition flex items-center justify-between">
                             <div class="text-left">
                                 <div class="font-bold text-xs">Clear Dice Log</div>
-                                <span class="text-[10px] text-slate-400">Reset roll history history</span>
+                                <span class="text-[10px] text-slate-400">Reset roll history</span>
                             </div>
                             <span class="text-base">🗑️</span>
                         </button>
+                    </div>
                 </div>
 
                 <!-- CARD 6: HARDWARE MACROS & ELGATO STREAM DECK INTEGRATION -->

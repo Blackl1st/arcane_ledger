@@ -68,10 +68,50 @@ for d in [STATIC_DIR, TEMPLATES_DIR, AUDIO_DIR, IMAGES_DIR, BATTLEMAPS_DIR]:
     except Exception:
         pass
 
-# If running frozen and user data directory is not yet seeded, copy default assets from bundle
-if getattr(sys, "frozen", False) and not CAMPAIGNS_MANIFEST_FILE.exists():
-    bundled_data = RESOURCE_DIR / "data"
-    if bundled_data.exists():
+# -------------------------------------------------------------
+# BUNDLED SRD COMPENDIUM SEEDING & AUTO-HEALING
+# -------------------------------------------------------------
+SRD_COMPENDIUM_FILES = {
+    "monsters.json",
+    "spells.json",
+    "items.json",
+    "rules_2024.json",
+    "audio_library.json",
+    "audio_presets.json",
+    "battlemaps_catalog.json"
+}
+
+def get_bundled_data_dir() -> Optional[Path]:
+    """Find the directory containing the bundled reference datasets (monsters, spells, items, rules, etc.)."""
+    candidates = []
+    if getattr(sys, "frozen", False):
+        if hasattr(sys, "_MEIPASS"):
+            candidates.append(Path(sys._MEIPASS) / "data")
+        candidates.append(Path(sys.executable).resolve().parent / "data")
+        candidates.append(Path(sys.executable).resolve().parent.parent / "Resources" / "data")
+    candidates.append(RESOURCE_DIR / "data")
+    candidates.append(Path(__file__).resolve().parent / "data")
+
+    for c in candidates:
+        try:
+            if c and c.is_dir() and (c / "monsters.json").exists() and (c / "monsters.json").stat().st_size > 1000:
+                return c
+        except Exception:
+            continue
+    return None
+
+def seed_and_repair_data_directory():
+    """Ensure that DATA_DIR contains all bundled files, and auto-repair any empty/corrupted SRD datasets."""
+    bundled_data = get_bundled_data_dir()
+    if not bundled_data or not bundled_data.is_dir():
+        return
+    if bundled_data.resolve() == DATA_DIR.resolve():
+        return
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 1. Seed any completely missing files or directories
+    try:
         for item in bundled_data.iterdir():
             dest = DATA_DIR / item.name
             if not dest.exists():
@@ -80,8 +120,56 @@ if getattr(sys, "frozen", False) and not CAMPAIGNS_MANIFEST_FILE.exists():
                         shutil.copytree(item, dest)
                     else:
                         shutil.copy2(item, dest)
-                except Exception as _e:
-                    print(f"Error seeding bundled data for {item.name}: {_e}")
+                    print(f"[DATA INIT] Seeded missing {item.name} from bundle.")
+                except Exception as e:
+                    print(f"[DATA INIT] Error seeding {item.name}: {e}")
+    except Exception as e:
+        print(f"[DATA INIT] Error scanning bundled data: {e}")
+
+    # 2. Repair any core SRD files that exist but are empty or wiped (e.g. <= 100 bytes or empty list/dict)
+    for filename in SRD_COMPENDIUM_FILES:
+        target = DATA_DIR / filename
+        source = bundled_data / filename
+        if not source.exists():
+            continue
+
+        needs_restore = False
+        if not target.exists():
+            needs_restore = True
+        else:
+            try:
+                size = target.stat().st_size
+                if size < 100:
+                    needs_restore = True
+                else:
+                    with open(target, "r", encoding="utf-8") as f:
+                        content = json.load(f)
+                    if isinstance(content, (list, dict)) and len(content) == 0:
+                        needs_restore = True
+            except Exception:
+                needs_restore = True
+
+        if needs_restore:
+            try:
+                shutil.copy2(source, target)
+                print(f"[DATA REPAIR] Restored SRD compendium {filename} from bundle.")
+            except Exception as e:
+                print(f"[DATA REPAIR] Failed to restore {filename}: {e}")
+
+    # 3. Ensure default campaign has default files if missing
+    default_camp = DATA_DIR / "campaigns" / "default"
+    bundled_default_camp = bundled_data / "campaigns" / "default"
+    if bundled_default_camp.exists() and default_camp.exists():
+        for item in bundled_default_camp.iterdir():
+            dest = default_camp / item.name
+            if not dest.exists() or dest.stat().st_size < 10:
+                try:
+                    shutil.copy2(item, dest)
+                except Exception:
+                    pass
+
+# Run initial seeding and repair
+seed_and_repair_data_directory()
 
 # -------------------------------------------------------------
 # SECURITY & LOCAL NETWORK ACCESS CONTROLS
@@ -389,7 +477,9 @@ def ensure_campaigns_system():
     default_dir = CAMPAIGNS_DIR / "default"
     default_dir.mkdir(parents=True, exist_ok=True)
 
-    # Migrate any existing scoped files in DATA_DIR to default campaign folder if they don't already exist there
+    # Migrate any existing scoped files in DATA_DIR or bundled default campaign folder if they don't already exist
+    bundled_data = get_bundled_data_dir()
+    bundled_default = (bundled_data / "campaigns" / "default") if bundled_data else None
     for filename in CAMPAIGN_SCOPED_FILES:
         src = DATA_DIR / filename
         dst = default_dir / filename
@@ -398,6 +488,11 @@ def ensure_campaigns_system():
                 shutil.copy2(src, dst)
             except Exception as e:
                 print(f"Error copying {filename} during migration: {e}")
+        elif not dst.exists() and bundled_default and (bundled_default / filename).exists():
+            try:
+                shutil.copy2(bundled_default / filename, dst)
+            except Exception:
+                pass
 
     # Ensure manifest exists
     if not CAMPAIGNS_MANIFEST_FILE.exists():
@@ -429,16 +524,48 @@ def get_file_path(filename: str) -> Path:
 
 def read_json(filename: str, default: Any = None) -> Any:
     file_path = get_file_path(filename)
+    bundled_data = get_bundled_data_dir()
+    bundled_file = (bundled_data / filename) if (bundled_data and (bundled_data / filename).exists()) else None
+
     if not file_path.exists():
+        if bundled_file and bundled_file.exists():
+            try:
+                with open(bundled_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                write_json(filename, data)
+                return data
+            except Exception as e:
+                print(f"Error reading bundled copy of {filename}: {e}")
+
         if default is not None:
             write_json(filename, default)
             return default
         return None
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+
+        # Self-heal SRD compendiums if loaded as empty list/dict
+        if filename in SRD_COMPENDIUM_FILES and (not data or len(data) == 0) and bundled_file:
+            try:
+                with open(bundled_file, "r", encoding="utf-8") as bf:
+                    restored = json.load(bf)
+                if restored and len(restored) > 0:
+                    write_json(filename, restored)
+                    return restored
+            except Exception as be:
+                print(f"Error self-healing {filename}: {be}")
+
+        return data
     except Exception as e:
         print(f"Error reading {filename} ({file_path}): {e}")
+        if bundled_file and bundled_file.exists():
+            try:
+                with open(bundled_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
         return default
 
 def write_json(filename: str, data: Any) -> bool:
@@ -2907,6 +3034,35 @@ async def advance_time(payload: Dict[str, Any]):
         "timeWeather": state,
         "expiredTimers": expired_timers
     }
+
+# -------------------------------------------------------------
+# SRD COMPENDIUM RESTORATION & SYNC API
+# -------------------------------------------------------------
+@app.post("/api/compendium/restore-srd")
+async def restore_srd_compendiums():
+    """Manually restore all core SRD 5.5e datasets (monsters, spells, items, rules) from bundle."""
+    bundled_data = get_bundled_data_dir()
+    if not bundled_data:
+        raise HTTPException(status_code=500, detail="Bundled reference data directory not found.")
+
+    restored = {}
+    is_same_dir = (bundled_data.resolve() == DATA_DIR.resolve())
+
+    for filename in SRD_COMPENDIUM_FILES:
+        src = bundled_data / filename
+        dst = DATA_DIR / filename
+        if src.exists():
+            try:
+                if not is_same_dir:
+                    shutil.copy2(src, dst)
+                with open(dst, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                count = len(data) if isinstance(data, (list, dict)) else 1
+                restored[filename] = {"success": True, "count": count}
+            except Exception as e:
+                restored[filename] = {"success": False, "error": str(e)}
+    return {"success": True, "restored": restored}
+
 
 # -------------------------------------------------------------
 # PHASE 3: BESTIARY & MONSTER ENCOUNTER BRIDGE

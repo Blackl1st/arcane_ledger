@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.0.7"
+CURRENT_VERSION = "1.0.8"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 

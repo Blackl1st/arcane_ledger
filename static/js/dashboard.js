@@ -1999,7 +1999,18 @@ function renderDiceHistory() {
 function renderRulesScreen(query = "") {
     const rules = appState.rules;
     const container = document.getElementById('rules-content-container');
-    if (!container || !rules) return;
+    if (!container) return;
+
+    if (!rules || ((!rules.conditions || rules.conditions.length === 0) && (!rules.actions_in_combat || rules.actions_in_combat.length === 0))) {
+        container.innerHTML = `
+            <div class="p-12 text-center text-slate-500 text-xs italic space-y-3">
+                <p>2024 Core Rules database is empty or not loaded.</p>
+                <button onclick="restoreSrdCompendiums()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold hover:bg-amber-500/30 transition">
+                    <span>🔄</span> <span>Restore 2024 Core Rules & Conditions</span>
+                </button>
+            </div>`;
+        return;
+    }
 
     const q = query.toLowerCase().trim();
 
@@ -4408,8 +4419,11 @@ function renderBestiaryList() {
 
     if (list.length === 0) {
         container.innerHTML = `
-            <div class="p-6 text-center text-slate-500 text-xs italic">
-                No monsters match your filters.
+            <div class="p-6 text-center text-slate-500 text-xs italic space-y-3">
+                <p>No monsters match your filters or bestiary is empty.</p>
+                <button onclick="restoreSrdCompendiums()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold hover:bg-amber-500/30 transition">
+                    <span>🔄</span> <span>Restore 5.5e SRD Bestiary (330+ Monsters)</span>
+                </button>
             </div>`;
         return;
     }
@@ -9017,6 +9031,38 @@ async function deleteAudioTrack(trackId) {
     }
 }
 
+async function restoreSrdCompendiums() {
+    if (!confirm("This will restore all default 5.5e SRD Bestiary monsters (330+), Spells (340+), Items (128+), and 2024 Core Rules from the app installation bundle. Continue?")) {
+        return;
+    }
+    try {
+        showToast("Restoring 5.5e SRD compendiums from bundle...", "info");
+        const res = await fetch('/api/compendium/restore-srd', { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+            const stateRes = await fetch('/api/state');
+            if (stateRes.ok) {
+                const newState = await stateRes.json();
+                appState.monsters = newState.monsters || [];
+                appState.spells = newState.spells || [];
+                appState.items = newState.items || [];
+                appState.rules = newState.rules || {};
+
+                if (typeof renderBestiary === 'function') renderBestiary();
+                if (typeof renderBestiaryList === 'function') renderBestiaryList();
+                if (typeof renderSpellsView === 'function') renderSpellsView();
+                if (typeof renderItemsView === 'function') renderItemsView();
+                if (typeof renderRulesScreen === 'function') renderRulesScreen();
+            }
+            showToast("Successfully restored 5.5e SRD monsters, spells, items, and rules!", "success");
+        } else {
+            showToast("Failed to restore SRD compendiums: " + (result.detail || "Unknown error"), "error");
+        }
+    } catch (e) {
+        showToast("Error connecting to server: " + e.message, "error");
+    }
+}
+
 function openBackupModal() {
     openModal('backup-modal');
     loadSnapshotsList();
@@ -9725,7 +9771,13 @@ function renderSpellsDirectory(spells) {
     if (!container) return;
 
     if (!spells || spells.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs italic">No spells found matching filters.</div>`;
+        container.innerHTML = `
+            <div class="p-8 text-center text-slate-500 text-xs italic space-y-3">
+                <p>No spells found matching filters or compendium is empty.</p>
+                <button onclick="restoreSrdCompendiums()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold hover:bg-amber-500/30 transition">
+                    <span>🔄</span> <span>Restore 5.5e SRD Spells (340+ Spells)</span>
+                </button>
+            </div>`;
         return;
     }
 
@@ -9996,7 +10048,13 @@ function renderItemsDirectory(items) {
     if (!container) return;
 
     if (!items || items.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs italic">No items found matching filters.</div>`;
+        container.innerHTML = `
+            <div class="p-8 text-center text-slate-500 text-xs italic space-y-3">
+                <p>No items found matching filters or compendium is empty.</p>
+                <button onclick="restoreSrdCompendiums()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-semibold hover:bg-amber-500/30 transition">
+                    <span>🔄</span> <span>Restore 5.5e SRD Items (128+ Items)</span>
+                </button>
+            </div>`;
         return;
     }
 
