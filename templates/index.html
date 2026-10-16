@@ -8,6 +8,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icon.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/ui_scale.js?v=1.0"></script>
+    <script>
+        if (window.ArcaneScale) {
+            window.ArcaneScale.init({ view: 'dm', defaultScale: 1.0 });
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=MedievalSharp&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -798,6 +804,71 @@
                         <button onclick="switchTab('audio'); toggleTopPopover('audio-popover');" class="w-full py-1 rounded-lg bg-ledger-900 hover:bg-ledger-800 text-slate-400 hover:text-amber-300 text-[11px] font-semibold transition text-center block">
                             Open Full Atmosphere Studio →
                         </button>
+                    </div>
+                </div>
+
+                <!-- UI Scale / 4K Zoom Dropdown -->
+                <div class="relative">
+                    <button onclick="toggleTopPopover('zoom-popover')" id="zoom-pill" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 hover:border-amber-500/50 text-xs text-slate-300 transition shadow-sm" title="Independent UI Scaling & 4K Display Zoom (Cmd + / Cmd -)">
+                        <span class="text-amber-400">🔍</span>
+                        <span id="topbar-zoom-label" class="font-bold text-slate-200 font-mono text-xs">100%</span>
+                        <span class="text-[10px] text-slate-500">▾</span>
+                    </button>
+
+                    <!-- Zoom Dropdown Popover Card -->
+                    <div id="zoom-popover" class="hidden absolute top-full right-0 mt-2 w-72 topbar-popover rounded-2xl p-3.5 z-50 space-y-3">
+                        <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                            <span class="font-display font-bold text-xs uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                <span>🔍</span> Display Scale & 4K
+                            </span>
+                            <button onclick="window.ArcaneScale.reset();" class="text-[10px] font-mono text-slate-400 hover:text-amber-300 transition">
+                                Reset (100%)
+                            </button>
+                        </div>
+
+                        <!-- Stepper Controls -->
+                        <div class="flex items-center justify-between bg-ledger-950 border border-ledger-800 rounded-xl p-1.5">
+                            <button onclick="window.ArcaneScale.zoomOut()" class="w-8 h-7 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-200 font-bold text-sm flex items-center justify-center transition active:scale-95" title="Zoom Out (Cmd -)">
+                                −
+                            </button>
+                            <span class="text-xs font-mono font-bold text-amber-300" id="topbar-zoom-stepper-label">
+                                Stepper: ±10%
+                            </span>
+                            <button onclick="window.ArcaneScale.zoomIn()" class="w-8 h-7 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-200 font-bold text-sm flex items-center justify-center transition active:scale-95" title="Zoom In (Cmd +)">
+                                +
+                            </button>
+                        </div>
+
+                        <!-- Preset Scales Grid -->
+                        <div>
+                            <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">Display Presets</div>
+                            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+                                <button onclick="window.ArcaneScale.setScale(1.0); toggleTopPopover('zoom-popover');" data-scale="1.0" class="ui-scale-preset-item p-1.5 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-800 text-left transition flex items-center justify-between">
+                                    <span>100% (1080p)</span>
+                                </button>
+                                <button onclick="window.ArcaneScale.setScale(1.15); toggleTopPopover('zoom-popover');" data-scale="1.15" class="ui-scale-preset-item p-1.5 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-800 text-left transition flex items-center justify-between">
+                                    <span>115%</span>
+                                </button>
+                                <button onclick="window.ArcaneScale.setScale(1.25); toggleTopPopover('zoom-popover');" data-scale="1.25" class="ui-scale-preset-item p-1.5 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-800 text-left transition flex items-center justify-between">
+                                    <span>125% (1440p)</span>
+                                </button>
+                                <button onclick="window.ArcaneScale.setScale(1.4); toggleTopPopover('zoom-popover');" data-scale="1.4" class="ui-scale-preset-item p-1.5 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-800 text-left transition flex items-center justify-between font-bold text-amber-400">
+                                    <span>140% (4K Rec)</span>
+                                </button>
+                                <button onclick="window.ArcaneScale.setScale(1.5); toggleTopPopover('zoom-popover');" data-scale="1.5" class="ui-scale-preset-item p-1.5 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-800 text-left transition flex items-center justify-between">
+                                    <span>150% (TV)</span>
+                                </button>
+                                <button onclick="window.ArcaneScale.setScale(1.75); toggleTopPopover('zoom-popover');" data-scale="1.75" class="ui-scale-preset-item p-1.5 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-800 text-left transition flex items-center justify-between">
+                                    <span>175% (Large)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Explanatory note -->
+                        <div class="pt-2 border-t border-ledger-800/80 text-[10px] text-slate-400 leading-relaxed font-sans">
+                            <span class="text-amber-400/90 font-semibold">💡 Independent Scaling:</span> Only scales this DM screen. Your Tabletop Battlemap (<span class="font-mono text-emerald-400">/map</span>) stays calibrated for minis.<br>
+                            <span class="text-slate-500 mt-1 block">Hotkeys: <kbd class="px-1 py-0.5 rounded bg-ledger-950 border border-ledger-700 font-mono text-[9px]">Cmd +</kbd> / <kbd class="px-1 py-0.5 rounded bg-ledger-950 border border-ledger-700 font-mono text-[9px]">Cmd -</kbd></span>
+                        </div>
                     </div>
                 </div>
 

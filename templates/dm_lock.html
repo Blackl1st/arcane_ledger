@@ -9,6 +9,12 @@
     <link rel="apple-touch-icon" href="/static/icon.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/ui_scale.js?v=1.0"></script>
+    <script>
+        if (window.ArcaneScale) {
+            window.ArcaneScale.init({ view: 'dm_lock', defaultScale: 1.0 });
+        }
+    </script>
     <script>
         tailwind.config = {
             theme: {

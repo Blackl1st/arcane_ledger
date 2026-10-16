@@ -8,6 +8,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icon.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/ui_scale.js?v=1.0"></script>
+    <script>
+        if (window.ArcaneScale) {
+            window.ArcaneScale.init({ view: 'map', allowKeyboardZoom: false, defaultScale: 1.0 });
+        }
+    </script>
     <style>
         * {
             box-sizing: border-box;

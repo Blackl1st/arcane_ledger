@@ -535,7 +535,7 @@ function toggleTopPopover(popoverId) {
 }
 
 function closeAllTopPopovers() {
-    const popoverIds = ['time-weather-popover', 'audio-popover', 'displays-popover', 'dice-drawer', 'campaign-popover'];
+    const popoverIds = ['time-weather-popover', 'audio-popover', 'zoom-popover', 'displays-popover', 'dice-drawer', 'campaign-popover'];
     popoverIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
@@ -8165,11 +8165,17 @@ window.onHandoutNpcSelectChange = onHandoutNpcSelectChange;
 // =============================================================================
 
 function openPlayerScreenWindow() {
-    window.open('/player', 'ArcaneLedgerPlayer', 'width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
+    const url = (window.ArcaneScale && typeof window.ArcaneScale.getIsolatedUrl === 'function') 
+        ? window.ArcaneScale.getIsolatedUrl('/player') 
+        : '/player';
+    window.open(url, 'ArcaneLedgerPlayer', 'width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
 }
 
 function openTabletopMapWindow() {
-    window.open('/map', 'ArcaneLedgerTabletopMap', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+    const url = (window.ArcaneScale && typeof window.ArcaneScale.getIsolatedUrl === 'function') 
+        ? window.ArcaneScale.getIsolatedUrl('/map') 
+        : '/map';
+    window.open(url, 'ArcaneLedgerTabletopMap', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
 }
 
 function openMapGeneratorModal() {

@@ -8,6 +8,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icon.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/ui_scale.js?v=1.0"></script>
+    <script>
+        if (window.ArcaneScale) {
+            window.ArcaneScale.init({ view: 'player', defaultScale: 1.0 });
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=MedievalSharp&family=Courier+Prime:wght@400;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -255,6 +261,12 @@
                 <span id="player-audio-icon">🔔</span>
                 <span id="player-audio-label" class="hidden sm:inline">Sound</span>
             </button>
+            <!-- UI Zoom Stepper Pill -->
+            <div class="flex items-center bg-ledger-800 border border-ledger-700 rounded-lg p-0.5 text-xs font-mono" title="Scale Player Screen (Cmd + / Cmd -)">
+                <button onclick="window.ArcaneScale.zoomOut()" class="w-6 h-6 flex items-center justify-center rounded hover:bg-ledger-700 text-slate-300 hover:text-white transition" title="Zoom Out (Cmd -)">−</button>
+                <span id="topbar-zoom-label" class="px-1.5 text-[11px] font-bold text-amber-300">100%</span>
+                <button onclick="window.ArcaneScale.zoomIn()" class="w-6 h-6 flex items-center justify-center rounded hover:bg-ledger-700 text-slate-300 hover:text-white transition" title="Zoom In (Cmd +)">+</button>
+            </div>
             <button onclick="toggleFullScreen()" title="Toggle Fullscreen (F11)" class="w-9 h-9 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white border border-ledger-700 flex items-center justify-center transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
