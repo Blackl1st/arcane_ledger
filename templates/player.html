@@ -343,7 +343,7 @@
                     </div>
 
                     <!-- Content Parchment Box -->
-                    <div class="bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-5 shadow-inner max-h-[360px] overflow-y-auto">
+                    <div id="broadcast-content-box" class="bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-5 shadow-inner max-h-[360px] overflow-y-auto">
                         <p id="broadcast-content" class="text-sm sm:text-base text-slate-200 leading-relaxed font-serif whitespace-pre-line">
                             Content text goes here...
                         </p>
@@ -693,6 +693,73 @@
             return text;
         }
 
+        function generatePlayerHexSvg(hexConfig) {
+            if (!hexConfig || hexConfig.enabled === false) return '';
+            const size = hexConfig.size || 36;
+            const opacity = hexConfig.opacity || 0.22;
+            const strokeColor = '#d97706';
+            const strokeWidth = 0.8;
+            const W = Math.sqrt(3) * size;
+            const vertStep = 1.5 * size;
+            const horizStep = W;
+            let pathD = '';
+            const cols = Math.ceil(1600 / horizStep) + 2;
+            const rows = Math.ceil(1000 / vertStep) + 2;
+            for (let r = 0; r < rows; r++) {
+                const yCenter = r * vertStep;
+                const xOffset = (r % 2 === 1) ? horizStep / 2 : 0;
+                for (let c = 0; c < cols; c++) {
+                    const xCenter = c * horizStep + xOffset;
+                    const pts = [];
+                    for (let a = 0; a < 6; a++) {
+                        const angle = (Math.PI / 180) * (60 * a - 30);
+                        const px = xCenter + size * Math.cos(angle);
+                        const py = yCenter + size * Math.sin(angle);
+                        pts.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+                    }
+                    pathD += `M ${pts[0]} L ${pts[1]} L ${pts[2]} L ${pts[3]} L ${pts[4]} L ${pts[5]} Z `;
+                }
+            }
+            return `<path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" opacity="${opacity}" />`;
+        }
+
+        function generatePlayerTrailSvg(trail) {
+            if (!Array.isArray(trail) || trail.length < 2) return '';
+            const trailCoords = trail.map(t => `${((t.x || 50) * 16).toFixed(1)},${((t.y || 50) * 10).toFixed(1)}`).join(' ');
+            return `<polyline points="${trailCoords}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6,5" opacity="0.8" />`;
+        }
+
+        function generatePlayerFogSvg(fogConfig, pins, partyMarker) {
+            if (!fogConfig || fogConfig.enabled === false) return '';
+            const revealedPoints = Array.isArray(fogConfig.revealedPoints) ? fogConfig.revealedPoints : [];
+            let holesSvg = '';
+            revealedPoints.forEach(pt => {
+                const cx = (pt.x || 50) * 16;
+                const cy = (pt.y || 50) * 10;
+                const r = (pt.radius || 8) * 16;
+                holesSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="black" />`;
+            });
+            (pins || []).forEach(p => {
+                const cx = (p.x || 50) * 16;
+                const cy = (p.y || 50) * 10;
+                holesSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="110" fill="black" />`;
+            });
+            if (partyMarker && partyMarker.visibleToPlayers !== false) {
+                const cx = (partyMarker.x || 50) * 16;
+                const cy = (partyMarker.y || 50) * 10;
+                holesSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="130" fill="black" />`;
+            }
+            return `
+                <defs>
+                    <mask id="ow-player-fog-mask">
+                        <rect width="1600" height="1000" fill="white" />
+                        ${holesSvg}
+                    </mask>
+                </defs>
+                <rect width="1600" height="1000" fill="#1c1611" mask="url(#ow-player-fog-mask)" opacity="0.94" />
+            `;
+        }
+
         function renderBroadcastOverlay() {
             const overlay = document.getElementById('player-broadcast-overlay');
             const card = document.getElementById('broadcast-card');
@@ -845,10 +912,12 @@
             document.getElementById('broadcast-content').innerText = b.content || '';
 
             const badge = document.getElementById('broadcast-type-badge');
-            if (badge) {
+            if ( badge ) {
                 if (b.type === 'monster') badge.innerHTML = `<span>🐉</span> <span>Bestiary Encounter</span>`;
                 else if (b.type === 'npc') badge.innerHTML = `<span>🎭</span> <span>Character Encounter</span>`;
                 else if (b.type === 'location') badge.innerHTML = `<span>🗺️</span> <span>Landmark Discovery</span>`;
+                else if (b.type === 'regional_map') badge.innerHTML = `<span>🧭</span> <span>Overworld Cartography & Journey</span>`;
+                else if (b.type === 'deity') badge.innerHTML = `<span>🏛️</span> <span>Divine Iconography & Tenets</span>`;
                 else if (b.type === 'lore') badge.innerHTML = `<span>📜</span> <span>Rumor & Lore</span>`;
                 else if (b.type === 'quest') badge.innerHTML = `<span>⚔️</span> <span>Quest Bounty</span>`;
                 else if (b.type === 'item') badge.innerHTML = `<span>⚔️</span> <span>Item Discovery</span>`;
@@ -861,11 +930,123 @@
             const textCol = document.getElementById('broadcast-text-col');
             const img = document.getElementById('broadcast-image');
             const contentEl = document.getElementById('broadcast-content');
+            const contentBox = document.getElementById('broadcast-content-box');
 
-            if (b.type === 'shop' && Array.isArray(b.items) && b.items.length > 0) {
+            if (b.type === 'regional_map' && b.overworld) {
+                const ow = b.overworld;
+                const pins = Array.isArray(ow.pins) ? ow.pins : [];
+                const pm = ow.partyMarker || { x: 37.5, y: 50.0, label: 'Adventuring Party', visibleToPlayers: true };
+                const camps = (Array.isArray(ow.trail) ? ow.trail : []).filter(t => t.type === 'camp');
+                imgCol.classList.add('hidden');
+                textCol.className = "col-span-12 flex flex-col justify-center space-y-2";
+                card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-[96vw] w-full p-4 sm:p-5 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-2 max-h-[96vh]";
+                if (contentBox) {
+                    contentBox.className = "w-full rounded-2xl overflow-hidden bg-transparent border-0 p-0 flex flex-col items-center justify-center";
+                }
+
+                contentEl.className = "w-full text-left font-sans";
+                contentEl.innerHTML = `
+                    <div class="relative w-full max-w-[1500px] aspect-[16/10] max-h-[78vh] rounded-2xl overflow-hidden border-2 border-amber-500/60 shadow-2xl bg-[#121a24] select-none mx-auto">
+                        <!-- Map Cartography Background -->
+                        <img src="${escapeHTML(ow.mapUrl || '/static/images/overworld_default.svg')}" alt="Regional Overworld Map" class="w-full h-full object-cover pointer-events-none select-none">
+                        
+                        <!-- Hex Grid Layer -->
+                        <svg viewBox="0 0 1600 1000" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none">
+                            ${generatePlayerHexSvg(ow.hexGrid)}
+                        </svg>
+
+                        <!-- Historical Expedition Trail -->
+                        <svg viewBox="0 0 1600 1000" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none">
+                            ${generatePlayerTrailSvg(ow.trail)}
+                        </svg>
+
+                        <!-- Campsites Layer -->
+                        <div class="absolute inset-0 pointer-events-none">
+                            ${camps.map(c => `
+                                <div style="left: ${c.x}%; top: ${c.y}%;" class="absolute -translate-x-1/2 -translate-y-1/2 group cursor-help pointer-events-auto" title="${escapeHTML(c.label || 'Camp')}">
+                                    <div class="w-6 h-6 rounded-full bg-emerald-950/90 border border-emerald-400 shadow flex items-center justify-center text-xs group-hover:scale-125 transition">
+                                        🏕️
+                                    </div>
+                                    <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-2 py-0.5 rounded bg-black/90 border border-emerald-500/50 text-[9px] font-mono font-bold text-emerald-300 whitespace-nowrap shadow opacity-0 group-hover:opacity-100 transition z-30">
+                                        ${escapeHTML(c.label || 'Camp')} (Day ${c.day || 1})
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Terra Incognita Fog of War Mask -->
+                        <svg viewBox="0 0 1600 1000" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none">
+                            ${generatePlayerFogSvg(ow.fog, pins, pm)}
+                        </svg>
+
+                        <!-- Discovered Landmarks & Party Marker Layer -->
+                        <div class="absolute inset-0 pointer-events-none">
+                            ${pins.map(pin => `
+                                <div style="left: ${pin.x}%; top: ${pin.y}%;" class="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group pointer-events-auto cursor-help" title="${escapeHTML(pin.title || pin.label || 'Landmark')}">
+                                    <div class="w-8 h-8 rounded-full bg-ledger-950/90 border-2 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.5)] flex items-center justify-center text-base transition transform group-hover:scale-125 group-hover:border-amber-300">
+                                        ${escapeHTML(pin.icon || '📍')}
+                                    </div>
+                                    <span class="mt-0.5 px-2 py-0.5 rounded bg-ledger-950/95 border border-amber-500/50 text-[10px] font-display font-bold text-amber-200 whitespace-nowrap shadow-md">
+                                        ${escapeHTML(pin.title || pin.label || 'Landmark')}
+                                    </span>
+                                </div>
+                            `).join('')}
+                            ${pm.visibleToPlayers !== false ? `
+                                <div style="left: ${pm.x}%; top: ${pm.y}%;" class="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 pointer-events-auto">
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 border-2 border-white shadow-[0_0_25px_rgba(16,185,129,0.95)] flex items-center justify-center text-lg animate-bounce">
+                                        🛡️
+                                    </div>
+                                    <span class="mt-0.5 px-2.5 py-0.5 rounded-full bg-emerald-950/95 border border-emerald-400 text-[10px] font-mono font-extrabold text-emerald-200 whitespace-nowrap shadow-lg">
+                                        ${escapeHTML(pm.label || 'Party Position')}
+                                    </span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Map Tier & Scale Legend Pill -->
+                        <div class="absolute top-3 left-3 flex items-center gap-2 z-30 pointer-events-none">
+                            <span class="px-2.5 py-1 rounded-lg bg-ledger-950/90 border border-amber-500/60 text-amber-300 font-mono text-[11px] font-bold shadow-lg backdrop-blur">
+                                ${escapeHTML(ow.type || 'Regional')} Map • 1 Hex = ${ow.scaleMilesPerHex || 24} Miles
+                            </span>
+                        </div>
+                    </div>
+                `;
+            } else if (b.type === 'deity' && b.deity) {
+                const d = b.deity;
+                imgCol.classList.add('hidden');
+                textCol.className = "col-span-12 flex flex-col items-center justify-center space-y-4 text-center";
+                card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
+                if (contentBox) {
+                    contentBox.className = "bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-5 shadow-inner max-h-[65vh] overflow-y-auto";
+                }
+
+                contentEl.className = "text-center font-serif space-y-4";
+                contentEl.innerHTML = `
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500/30 via-amber-600/20 to-ledger-950 border-2 border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.45)] flex items-center justify-center text-5xl">
+                            ${escapeHTML(d.symbolIcon || '✨')}
+                        </div>
+                        <div class="text-xs font-mono uppercase tracking-widest text-amber-300 font-bold mt-1">
+                            Holy Symbol: ${escapeHTML(d.symbol || '')}
+                        </div>
+                    </div>
+                    <p class="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto">
+                        ${escapeHTML(d.description || '')}
+                    </p>
+                    <div class="text-left bg-ledger-950/90 border border-amber-500/30 rounded-xl p-4 space-y-2 max-w-xl mx-auto">
+                        <div class="text-[11px] font-mono font-bold uppercase tracking-widest text-amber-400">Sacred Tenets of Faith</div>
+                        <ul class="space-y-1.5 text-xs sm:text-sm text-slate-200">
+                            ${(d.tenets || []).map(t => `<li class="flex items-start gap-2"><span class="text-amber-400">✦</span><span>${escapeHTML(t)}</span></li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            } else if (b.type === 'shop' && Array.isArray(b.items) && b.items.length > 0) {
                 imgCol.classList.add('hidden');
                 textCol.className = "col-span-12 flex flex-col justify-center space-y-3";
                 card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4 max-h-[90vh]";
+                if (contentBox) {
+                    contentBox.className = "bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-inner max-h-[65vh] overflow-y-auto";
+                }
 
                 contentEl.className = "text-left font-sans";
                 contentEl.innerHTML = `
@@ -888,6 +1069,9 @@
                     </div>
                 `;
             } else if (b.imageUrl) {
+                if (contentBox) {
+                    contentBox.className = "bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-5 shadow-inner max-h-[360px] overflow-y-auto";
+                }
                 contentEl.className = "text-sm sm:text-base text-slate-200 leading-relaxed font-serif whitespace-pre-line";
                 contentEl.innerText = b.content || '';
                 imgCol.classList.remove('hidden');
@@ -895,6 +1079,9 @@
                 card.className = "parchment-border border-2 border-amber-500/70 rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-4";
                 img.src = b.imageUrl;
             } else {
+                if (contentBox) {
+                    contentBox.className = "bg-ledger-950/85 border border-amber-500/30 rounded-2xl p-5 shadow-inner max-h-[360px] overflow-y-auto";
+                }
                 contentEl.className = "text-sm sm:text-base text-slate-200 leading-relaxed font-serif whitespace-pre-line";
                 contentEl.innerText = b.content || '';
                 imgCol.classList.add('hidden');

@@ -21,7 +21,76 @@
       "successes": 0,
       "failures": 0
     },
-    "notes": "Second Wind, Action Surge, 4 Superiority Dice (d8). Weapon: Heavy Warhammer (Push mastery)."
+    "notes": "Second Wind, Action Surge, 4 Superiority Dice (d8). Weapon: Heavy Warhammer (Push mastery).",
+    "inventory": [
+      {
+        "id": "inv-101",
+        "name": "Heavy Warhammer +1",
+        "category": "Weapon",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 4,
+        "equipped": true,
+        "attuned": false,
+        "notes": "1d8+1 bludgeoning (Versatile 1d10+1) • Push Mastery"
+      },
+      {
+        "id": "inv-102",
+        "name": "Dwarven Plate Armor",
+        "category": "Armor",
+        "rarity": "Mundane",
+        "qty": 1,
+        "weight": 65,
+        "equipped": true,
+        "attuned": false,
+        "notes": "AC 18 • Heavy Armor"
+      },
+      {
+        "id": "inv-103",
+        "name": "Gauntlets of Ogre Power",
+        "category": "Wondrous Item",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 1,
+        "equipped": true,
+        "attuned": true,
+        "notes": "STR score becomes 19 while attuned."
+      },
+      {
+        "id": "inv-104",
+        "name": "Potion of Healing",
+        "category": "Potion",
+        "rarity": "Common",
+        "qty": 2,
+        "weight": 0.5,
+        "equipped": false,
+        "attuned": false,
+        "notes": "2d4 + 2 HP (Bonus Action)"
+      },
+      {
+        "id": "inv-mvaaz56d-tv9q",
+        "name": "Dagger",
+        "quantity": 1,
+        "qty": 1,
+        "weight": 1,
+        "category": "Weapon",
+        "rarity": "Common",
+        "cost": "2 gp",
+        "equipped": false,
+        "attuned": false,
+        "notes": "1d4 piercing, Finesse, Light, Thrown (20/60). Mastery: Nick"
+      }
+    ],
+    "currency": {
+      "pp": 0,
+      "gp": 63,
+      "sp": 18,
+      "cp": 12
+    },
+    "maxCarryWeight": 240,
+    "deityId": "deity-kordath",
+    "deityName": "Kordath, Lord of the Iron Storm",
+    "pietyScore": 4
   },
   {
     "id": "pc-2",
@@ -45,7 +114,63 @@
       "successes": 0,
       "failures": 0
     },
-    "notes": "Sculpt Spells. Familiar: Barn Owl (Pip). Slots: 4/3/2."
+    "notes": "Sculpt Spells. Familiar: Barn Owl (Pip). Slots: 4/3/2.",
+    "inventory": [
+      {
+        "id": "inv-201",
+        "name": "Arcane Grimoire +1",
+        "category": "Wondrous Item",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 3.0,
+        "equipped": true,
+        "attuned": true,
+        "notes": "+1 to Wizard spell attack rolls and Spell Save DC."
+      },
+      {
+        "id": "inv-202",
+        "name": "Cloak of Protection",
+        "category": "Wondrous Item",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 1.0,
+        "equipped": true,
+        "attuned": true,
+        "notes": "+1 bonus to AC and all Saving Throws."
+      },
+      {
+        "id": "inv-203",
+        "name": "Pearl of Power",
+        "category": "Wondrous Item",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 0.2,
+        "equipped": true,
+        "attuned": true,
+        "notes": "Action: Recover up to a 3rd-level expended spell slot (1/Day)."
+      },
+      {
+        "id": "inv-204",
+        "name": "Component Pouch & Fine Inks",
+        "category": "Adventuring Gear",
+        "rarity": "Mundane",
+        "qty": 1,
+        "weight": 2.0,
+        "equipped": true,
+        "attuned": false,
+        "notes": "Contains 100 gp of spell scribing inks."
+      }
+    ],
+    "currency": {
+      "pp": 1,
+      "gp": 88,
+      "sp": 30,
+      "cp": 5
+    },
+    "maxCarryWeight": 120,
+    "deityId": "deity-oghma-vael",
+    "deityName": "Oghma-Vael, Keeper of the Eternal Ledger",
+    "pietyScore": 5
   },
   {
     "id": "pc-3",
@@ -69,7 +194,63 @@
       "successes": 0,
       "failures": 0
     },
-    "notes": "Cunning Action, Fast Hands (Utilize as Bonus Action), Sneak Attack (3d6), Halfling Nimbleness."
+    "notes": "Cunning Action, Fast Hands (Utilize as Bonus Action), Sneak Attack (3d6), Halfling Nimbleness.",
+    "inventory": [
+      {
+        "id": "inv-301",
+        "name": "Shortsword of Warning",
+        "category": "Weapon",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 2.0,
+        "equipped": true,
+        "attuned": true,
+        "notes": "1d6 piercing (Vex Mastery) • Advantage on Initiative rolls, party cannot be surprised."
+      },
+      {
+        "id": "inv-302",
+        "name": "Studded Leather Armor",
+        "category": "Armor",
+        "rarity": "Mundane",
+        "qty": 1,
+        "weight": 13.0,
+        "equipped": true,
+        "attuned": false,
+        "notes": "AC 12 + DEX Mod"
+      },
+      {
+        "id": "inv-303",
+        "name": "Boots of Elvenkind",
+        "category": "Wondrous Item",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 1.0,
+        "equipped": true,
+        "attuned": false,
+        "notes": "Silent footsteps; Advantage on Stealth checks to move silently."
+      },
+      {
+        "id": "inv-304",
+        "name": "Masterwork Thieves' Tools",
+        "category": "Tool",
+        "rarity": "Mundane",
+        "qty": 1,
+        "weight": 1.0,
+        "equipped": true,
+        "attuned": false,
+        "notes": "Utilize as a Bonus Action via Fast Hands."
+      }
+    ],
+    "currency": {
+      "pp": 3,
+      "gp": 115,
+      "sp": 44,
+      "cp": 29
+    },
+    "maxCarryWeight": 150,
+    "deityId": "deity-vespera",
+    "deityName": "Vespera, The Whispering Shadow",
+    "pietyScore": 3
   },
   {
     "id": "pc-4",
@@ -93,6 +274,62 @@
       "successes": 0,
       "failures": 0
     },
-    "notes": "Disciple of Life, Preserve Life, Channel Divinity 2/rest. War Caster feat (Adv on Con saves)."
+    "notes": "Disciple of Life, Preserve Life, Channel Divinity 2/rest. War Caster feat (Adv on Con saves).",
+    "inventory": [
+      {
+        "id": "inv-401",
+        "name": "Amulet of the Devout +1",
+        "category": "Wondrous Item",
+        "rarity": "Uncommon",
+        "qty": 1,
+        "weight": 1.0,
+        "equipped": true,
+        "attuned": true,
+        "notes": "+1 Spell Attack/Save DC; 1/Day use Channel Divinity without expending a use."
+      },
+      {
+        "id": "inv-402",
+        "name": "Mace & Sun-Crest Shield",
+        "category": "Weapon",
+        "rarity": "Mundane",
+        "qty": 1,
+        "weight": 10.0,
+        "equipped": true,
+        "attuned": false,
+        "notes": "Holy Symbol of Aureon emblazoned on shield (+2 AC)."
+      },
+      {
+        "id": "inv-403",
+        "name": "Chain Mail",
+        "category": "Armor",
+        "rarity": "Mundane",
+        "qty": 1,
+        "weight": 55.0,
+        "equipped": true,
+        "attuned": false,
+        "notes": "AC 16 • Heavy Armor"
+      },
+      {
+        "id": "inv-404",
+        "name": "300 gp Diamond (Revivify)",
+        "category": "Adventuring Gear",
+        "rarity": "Rare",
+        "qty": 2,
+        "weight": 0.1,
+        "equipped": false,
+        "attuned": false,
+        "notes": "Material component for Revivify."
+      }
+    ],
+    "currency": {
+      "pp": 0,
+      "gp": 52,
+      "sp": 15,
+      "cp": 0
+    },
+    "maxCarryWeight": 180,
+    "deityId": "deity-aureon",
+    "deityName": "Aureon, The Dawnfather",
+    "pietyScore": 11
   }
 ]

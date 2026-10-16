@@ -106,6 +106,7 @@ Arcane Ledger provides three specialized interfaces out of the box:
 - **3D Wax Seal Forge**: 8 emblem crests (`Crown`, `Skull`, `Arcane Eye`, `Scales of Justice`, `Daggers`, `Dragon`, `Tree`, `Scroll`) across 5 wax colors (`Red`, `Gold`, `Black`, `Green`, `Purple`) with realistic lighting gradients.
 - **Cryptographic Cipher Engine**: Encrypt secret missives with Elder Futhark runes substitution, Caesar shifts, redacted blocks, or anagram scrambles. Set DC Investigation thresholds and DM hints with 1-click table reveal/decipher.
 - **Live WYSIWYG Forge**: Live real-time preview in the DM console that dynamically shifts layout, banners, and typography the moment a document type is selected.
+- **Entity & Campaign Linking**: Integrated dropdown selectors for **Author / Signer**, **Recipient**, **Tied Location**, and **Tied NPC** dynamically populated from active campaign profiles and rosters, with seamless custom-text fallbacks.
 - **Dedicated Player Display**: Clean parchment rendering on the player screen (`/player`) isolated from standard interface styling.
 
 ### 🕵️ Campaign Secrets, Clues & Rumors
@@ -164,11 +165,18 @@ Arcane Ledger provides three specialized interfaces out of the box:
 ### 📜 World Atlas, Faction Clocks & Quests
 - **Location Codex**: Organize campaign settlements, ruins, dungeons, and points of interest with secret DM notes and NPC linkages.
 - **Faction Progress Clocks**: Blades-in-the-Dark-style segmented countdown clocks (4, 6, 8 segments) to track faction schemes, war progress, and ticking doom clocks.
+- **Faction Diplomacy & Profile-Scoped Linker**: Link factions into alliances, rivalries, or open war with relationship tags and notes; dropdown options are strictly scoped to factions defined in the active campaign profile.
 - **Quest & Rumor Board**: Multi-step quest logs with toggleable objectives, quest giver tracking, and rumor cards.
 
-### 🧑‍🎤 On-the-Fly 5.5e NPC Generator
+### 🧑‍🎤 On-the-Fly 5.5e NPC Generator & Campaign Roster
 - Generate rich, memorable NPCs in seconds with locked-trait rerolling.
 - Generates 2024 species, distinct vocal coaching guides, vivid appearances, personalities, flaws, secrets, tailored loot, and matching CR statblock references.
+- **Profile-Scoped Quick Filters**: Top bar Location and Faction dropdowns reflect only choices found in the active campaign profile.
+- **Advanced Campaign Roster Organization**:
+  - **Dynamic Grouping Modes**: Group saved NPCs `By Location`, `By Faction`, `By Category/Role`, or `Flat List` with collapsible accordions and live count badges.
+  - **Density Controls**: Toggle between `Detailed Cards` (stats, traits, notes) and `Compact List` rows for scanning 50+ NPCs rapidly.
+  - **Full-Screen Roster Directory**: Dual-mode modal featuring a responsive Card Grid (`▦`) and structured Data Table (`☰`) with global search, sorting, and inline action buttons (Edit in Workspace, Push to Combat, Copy MD, Delete).
+  - **Full Markdown Export**: 1-click export of the entire campaign roster as a clean, structured `.md` document or individual character dossiers.
 - Save directly to the campaign roster or export to Markdown.
 - **Bonus Standalone Tool**: Includes `dnd_npc_generator.html` — a zero-dependency, single-file HTML app that can be run completely offline in any web browser without running Python.
 

@@ -1,0 +1,187 @@
+[
+  {
+    "id": "deity-aureon",
+    "name": "Aureon, The Dawnfather",
+    "title": "Sovereign of the Unbroken Sun & Forge of Law",
+    "category": "Prime Deity",
+    "alignment": "Lawful Good",
+    "domains": [
+      "Light",
+      "Life",
+      "Order"
+    ],
+    "symbol": "Golden Sunburst emblazoned over a Crowned Anvil",
+    "symbolIcon": "☀️",
+    "worshippers": "Paladins of the Silver Gauntlet, Clerics, Judges, Smiths, and Sun-Sworn Magistrates",
+    "rivals": [
+      "Vespera, The Whispering Shadow",
+      "Malakor, The Chained Fiend"
+    ],
+    "tenets": [
+      "Bring the light of truth to shadow-haunted places; suffer no undead abomination to walk.",
+      "Honor sworn oaths and defend the weak with steel and shield.",
+      "Temper justice with mercy, but strike down unrepentant tyranny without hesitation."
+    ],
+    "pietyBoons": {
+      "3": "Devotee of the Dawn (Piety 3+): You can cast Light at will, and you gain Advantage on saving throws against being Blinded or Frightened.",
+      "10": "Sun-Blessed Warden (Piety 10+): You can cast Daylight or Crusader's Mantle once per Long Rest without expending a spell slot.",
+      "25": "Radiant Aegis (Piety 25+): You gain Resistance to Radiant and Necrotic damage. When you use Help or Healing Word, the ally gains Temp HP equal to your level.",
+      "50": "Champion of the Unbroken Sun (Piety 50+): Increase Wisdom or Charisma by +2 (to a max of 22). Your weapon and spell attacks deal an extra 1d8 Radiant damage."
+    },
+    "description": "Worshipped inside the grand marble cathedral of Highspire, Aureon is the radiant architect of civilization, righteous law, and solar renewal."
+  },
+  {
+    "id": "deity-sylvara",
+    "name": "Sylvara, Mother of the Wild Weave",
+    "title": "Keeper of the Ancient Oak & Emerald Tide",
+    "category": "Prime Deity",
+    "alignment": "Neutral Good",
+    "domains": [
+      "Nature",
+      "Tempest",
+      "Life"
+    ],
+    "symbol": "Silver Crescent Moon cradled within Antlered Oak Branches",
+    "symbolIcon": "🌿",
+    "worshippers": "Druids, Rangers, Sailors, Herbalists, and Wardens of the Whispering Woods",
+    "rivals": [
+      "Malakor, The Chained Fiend"
+    ],
+    "tenets": [
+      "Preserve the ancient groves, rivers, and wild beasts from greedy despoilers.",
+      "Walk in harmony with the cycle of storm, bloom, and autumn decay.",
+      "Shelter travelers lost in the wilds who show respect to the old ways."
+    ],
+    "pietyBoons": {
+      "3": "Child of the Root (Piety 3+): You learn Druidcraft and can cast Speak with Animals once per Short Rest.",
+      "10": "Walker of the Canopy (Piety 10+): Difficult terrain composed of nonmagical plants or mud doesn't cost you extra movement; cast Pass without Trace 1/Long Rest.",
+      "25": "Storm-Bough Guardian (Piety 25+): Resistance to Lightning and Poison damage. Summoned beasts/fey gain +10 temporary HP.",
+      "50": "Avatar of the Wild Weave (Piety 50+): Increase Wisdom or Constitution by +2 (max 22). Cast Commune with Nature or Awaken 1/Long Rest without components."
+    },
+    "description": "Revered at the Iron-Oak of Oakhaven and the standing stones of the Whispering Woods, Sylvara embodies the untamed heartbeat of the natural world."
+  },
+  {
+    "id": "deity-kordath",
+    "name": "Kordath, Lord of the Iron Storm",
+    "title": "The Thunder-Strider & Patron of Valor",
+    "category": "Prime Deity",
+    "alignment": "Chaotic Neutral",
+    "domains": [
+      "War",
+      "Tempest",
+      "Strength"
+    ],
+    "symbol": "Crossed Greatswords struck by a Forked Lightning Bolt",
+    "symbolIcon": "⚡",
+    "worshippers": "Barbarians, Fighters, Gladiators, Mercenaries, and Storm-Sailors",
+    "rivals": [
+      "Malakor, The Chained Fiend",
+      "Vespera, The Whispering Shadow"
+    ],
+    "tenets": [
+      "Test your mettle against worthy foes; never cower before overwhelming odds.",
+      "Strength is meant to break chains, never to forge them.",
+      "Celebrate victory with thunderous song and honor the glorious dead."
+    ],
+    "pietyBoons": {
+      "3": "Thunderous Grip (Piety 3+): Your carrying capacity doubles, and you gain Advantage on Athletics checks to grapple or shove.",
+      "10": "Stormborn Charge (Piety 10+): Cast Thunderwave or Heroism (2nd level) 1/Long Rest. +5 ft. walking speed.",
+      "25": "Fury of the Gale (Piety 25+): When you score a Critical Hit, thunder erupts dealing 2d8 Thunder damage to the target and pushing it 10 ft.",
+      "50": "Scion of the Iron Storm (Piety 50+): Increase Strength or Constitution by +2 (max 22). Immunity to Thunder damage and the Prone condition."
+    },
+    "description": "His shrines are found in arena halls, mountain peaks, and ship prows. Kordath laughs in the hurricane and blesses warriors who charge headlong into peril."
+  },
+  {
+    "id": "deity-oghma-vael",
+    "name": "Oghma-Vael, Keeper of the Eternal Ledger",
+    "title": "The All-Seeing Scribe & Weaver of Stars",
+    "category": "Prime Deity",
+    "alignment": "True Neutral",
+    "domains": [
+      "Knowledge",
+      "Arcana",
+      "Twilight"
+    ],
+    "symbol": "An Open Silver Tome surmounted by a Starry Eye and Quill",
+    "symbolIcon": "👁️",
+    "worshippers": "Wizards, Bards, Artificers, Cartographers, Archivists, and Detectives",
+    "rivals": [
+      "Vespera, The Whispering Shadow"
+    ],
+    "tenets": [
+      "No true knowledge should be burned; record history faithfully in the great ledger.",
+      "Unravel riddles, ciphers, and arcane mysteries wherever they lie hidden.",
+      "Wield magic with discipline, lest hubris invite a second Cataclysm."
+    ],
+    "pietyBoons": {
+      "3": "Scholar's Eye (Piety 3+): Cast Comprehend Languages or Identify as a Ritual in 1 Action once per Long Rest. +2 to Passive Investigation.",
+      "10": "Astral Recall (Piety 10+): Gain proficiency or Expertise in Arcana or History. Cast Augury or Detect Thoughts 1/Long Rest.",
+      "25": "Weaver's Ward (Piety 25+): Advantage on Concentration saving throws and saving throws against Illusion spells.",
+      "50": "Archmage of the Eternal Ledger (Piety 50+): Increase Intelligence or Wisdom by +2 (max 22). Recover one adicionales 5th-level or lower spell slot on a Short Rest."
+    },
+    "description": "Patron of the Arcane Ledger itself, Oghma-Vael records every deed, spell, and fallen empire across the planes."
+  },
+  {
+    "id": "deity-vespera",
+    "name": "Vespera, The Whispering Shadow",
+    "title": "Lady of the Eclipse, Secrets & Silent Blades",
+    "category": "Cosmic Cult / Dark Deity",
+    "alignment": "Neutral Evil",
+    "domains": [
+      "Trickery",
+      "Death",
+      "Grave"
+    ],
+    "symbol": "A Weeping Obsidian Mask beneath a Total Lunar Eclipse",
+    "symbolIcon": "🌙",
+    "worshippers": "Circle of the Pale Moon, Obsidian Syndicate Assassins, Shadow Monks, Warlocks",
+    "rivals": [
+      "Aureon, The Dawnfather",
+      "Oghma-Vael, Keeper of the Eternal Ledger"
+    ],
+    "tenets": [
+      "Every secret is a blade; hold it to the throat of the powerful.",
+      "Move unseen in the dark; let the light-blinded fools boast while you claim the prize.",
+      "Thin the veil between the mortal world and the eternal quiet of the Shadowfell."
+    ],
+    "pietyBoons": {
+      "3": "Cloak of Dusk (Piety 3+): You gain Darkvision out to 60 ft. (or +30 ft. if you already have it) and Advantage on Stealth checks in dim light.",
+      "10": "Shadow Step Initiate (Piety 10+): Cast Invisibility or Darkness once per Long Rest without a spell slot.",
+      "25": "Whisper in the Vein (Piety 25+): Once per turn when you hit a creature with Advantage, deal an extra 2d6 Necrotic or Psychic damage.",
+      "50": "Harbinger of the Eclipse (Piety 50+): Increase Dexterity or Charisma by +2 (max 22). You can teleport 60 ft. between shadows as a Bonus Action."
+    },
+    "description": "Venerated in the flooded vaults of the Sunken Ward Catacombs, Vespera promises forbidden power to those who embrace the coming eclipse."
+  },
+  {
+    "id": "deity-malakor",
+    "name": "Malakor, The Chained Fiend of the Pit",
+    "title": "Archdevil of Ash, Blood Contracts & Iron Tyranny",
+    "category": "Fiendish Patron / Cult",
+    "alignment": "Lawful Evil",
+    "domains": [
+      "War",
+      "Fiend Patron",
+      "Order"
+    ],
+    "symbol": "A Crown of Nine Burning Iron Spikes dripping Molten Gold",
+    "symbolIcon": "🔥",
+    "worshippers": "Fiend Warlocks, Ruthless Usurers, Tyrants, Oathbreaker Knights, Infernal Cultists",
+    "rivals": [
+      "Aureon, The Dawnfather",
+      "Sylvara, Mother of the Wild Weave",
+      "Kordath, Lord of the Iron Storm"
+    ],
+    "tenets": [
+      "Bind the desperate in ironclad pacts; every favor carries a compounding price.",
+      "Rule through fear, discipline, and overwhelming hellfire.",
+      "Seek the Obsidian Key to unbind the ancient planar seals."
+    ],
+    "pietyBoons": {
+      "3": "Hellfire Brand (Piety 3+): You gain Resistance to Fire damage and learn the Thaumaturgy cantrip.",
+      "10": "Infernal Rebuke (Piety 10+): Cast Hellish Rebuke (2nd level) or Command (2nd level) 1/Long Rest.",
+      "25": "Soul-Tax Collector (Piety 25+): Whenever you reduce a hostile creature to 0 HP, you gain Temporary HP equal to your level + Charisma modifier.",
+      "50": "Paragon of the Nine Chains (Piety 50+): Increase Charisma or Intelligence by +2 (max 22). Fire damage you deal ignores Fire Resistance."
+    },
+    "description": "An ancient archfiend bound beneath the world during the Cataclysm whose whispers offer wealth, vengeance, and eldritch mastery."
+  }
+]

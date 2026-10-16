@@ -1,0 +1,626 @@
+{
+  "mapTitle": "Realm of the Shattered Coast",
+  "mapSubtitle": "Grand Strategic Cartography • 1 Hex = 24 Miles",
+  "mapUrl": "/static/images/overworld_map_test_1.jpg",
+  "scaleMilesPerHex": 24,
+  "fogUnexplored": true,
+  "partyMarker": {
+    "x": 39.5,
+    "y": 76.7,
+    "label": "Adventuring Party Camp",
+    "visibleToPlayers": true,
+    "terrain": "Coastal"
+  },
+  "pins": [
+    {
+      "id": "pin-914bd1bf",
+      "locationId": "loc-b8e211a5",
+      "subMapId": "map-fd102724",
+      "title": "Oakhaven",
+      "type": "Settlement",
+      "danger": "Safe",
+      "population": "5,600",
+      "x": 22.664564446196295,
+      "y": 44.77706161003173,
+      "discovered": true,
+      "icon": "🏰",
+      "notes": "Beautiful big city"
+    }
+  ],
+  "maps": [
+    {
+      "id": "map-main",
+      "title": "Realm of the Shattered Coast",
+      "subtitle": "Grand Strategic Cartography • 1 Hex = 24 Miles",
+      "type": "Kingdom",
+      "scale": "1 Hex = 24 Miles (1 Day Normal Pace)",
+      "scaleMilesPerHex": 24,
+      "mapUrl": "/static/images/overworld_map_test_1.jpg",
+      "partyMarker": {
+        "x": 39.5,
+        "y": 76.7,
+        "label": "Adventuring Party Camp",
+        "visibleToPlayers": true,
+        "terrain": "Coastal"
+      },
+      "hexGrid": {
+        "enabled": true,
+        "opacity": 0.25,
+        "size": 36
+      },
+      "fog": {
+        "enabled": true,
+        "revealedPoints": [
+          {
+            "x": 37.5,
+            "y": 50.0,
+            "radius": 9.0
+          },
+          {
+            "x": 38.7,
+            "y": 39.5,
+            "radius": 8.5
+          },
+          {
+            "x": 38.4,
+            "y": 54.2,
+            "radius": 8.5
+          },
+          {
+            "x": 57.2,
+            "y": 45.4,
+            "radius": 8.5
+          },
+          {
+            "x": 49.7,
+            "y": 40.7,
+            "radius": 8.5
+          },
+          {
+            "x": 32.9,
+            "y": 46.9,
+            "radius": 8.5
+          },
+          {
+            "x": 50.2,
+            "y": 53.2,
+            "radius": 8.5
+          },
+          {
+            "x": 22.664564446196295,
+            "y": 44.77706161003173,
+            "radius": 7.0
+          },
+          {
+            "x": 27.2,
+            "y": 43.8,
+            "radius": 8.5
+          },
+          {
+            "x": 60.8,
+            "y": 21.3,
+            "radius": 8.5
+          },
+          {
+            "x": 55.8,
+            "y": 34.4,
+            "radius": 8.5
+          },
+          {
+            "x": 31.7,
+            "y": 36.8,
+            "radius": 8.5
+          },
+          {
+            "x": 39.5,
+            "y": 76.7,
+            "radius": 8.5
+          },
+          {
+            "x": 39.5,
+            "y": 76.7,
+            "radius": 8.5
+          },
+          {
+            "x": 39.5,
+            "y": 76.7,
+            "radius": 8.5
+          },
+          {
+            "x": 39.5,
+            "y": 76.7,
+            "radius": 8.5
+          }
+        ]
+      },
+      "trail": [
+        {
+          "id": "tr-6077de",
+          "x": 38.7,
+          "y": 39.5,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-9d405c",
+          "x": 38.7,
+          "y": 39.5,
+          "day": 1,
+          "hour": 7,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 07:00. Terrain: Forest."
+        },
+        {
+          "id": "tr-e98180",
+          "x": 38.4,
+          "y": 54.2,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "tr-04ecf6",
+          "x": 57.2,
+          "y": 45.4,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-6aaeab",
+          "x": 57.2,
+          "y": 45.4,
+          "day": 1,
+          "hour": 7,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 07:00. Terrain: Forest."
+        },
+        {
+          "id": "tr-b94e08",
+          "x": 49.7,
+          "y": 40.7,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "tr-6bd33c",
+          "x": 32.9,
+          "y": 46.9,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-e48518",
+          "x": 32.9,
+          "y": 46.9,
+          "day": 1,
+          "hour": 7,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 07:00. Terrain: Forest."
+        },
+        {
+          "id": "camp-c4f57a",
+          "x": 32.9,
+          "y": 46.9,
+          "day": 1,
+          "hour": 7,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 07:00. Terrain: Forest."
+        },
+        {
+          "id": "camp-e0f910",
+          "x": 32.9,
+          "y": 46.9,
+          "day": 1,
+          "hour": 7,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 07:00. Terrain: Forest."
+        },
+        {
+          "id": "tr-e1a695",
+          "x": 50.2,
+          "y": 53.2,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "tr-100b55",
+          "x": 27.2,
+          "y": 43.8,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "tr-22d423",
+          "x": 60.8,
+          "y": 21.3,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-1dc908",
+          "x": 60.8,
+          "y": 21.3,
+          "day": 1,
+          "hour": 7,
+          "label": "Test Camp",
+          "type": "camp",
+          "notes": "Deep forest campsite"
+        },
+        {
+          "id": "tr-2b5d2b",
+          "x": 55.8,
+          "y": 34.4,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-8782aa",
+          "x": 55.8,
+          "y": 34.4,
+          "day": 1,
+          "hour": 7,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 07:00. Terrain: Forest."
+        },
+        {
+          "id": "tr-9890cf",
+          "x": 31.7,
+          "y": 36.8,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "tr-d893ac",
+          "x": 39.5,
+          "y": 76.7,
+          "day": 1,
+          "hour": 7,
+          "label": "March Day 1",
+          "type": "march"
+        }
+      ],
+      "pins": [
+        {
+          "id": "pin-914bd1bf",
+          "locationId": "loc-b8e211a5",
+          "subMapId": "map-fd102724",
+          "title": "Oakhaven",
+          "type": "Settlement",
+          "danger": "Safe",
+          "population": "5,600",
+          "x": 22.664564446196295,
+          "y": 44.77706161003173,
+          "discovered": true,
+          "icon": "🏰",
+          "notes": "Beautiful big city"
+        }
+      ]
+    },
+    {
+      "id": "map-fd102724",
+      "title": "Shattered Coast",
+      "subtitle": "Exploration Tier",
+      "type": "Province",
+      "scale": "1 Hex = 6 Miles",
+      "scaleMilesPerHex": 1,
+      "mapUrl": "/static/images/overworld_default.svg",
+      "partyMarker": {
+        "x": 50.0,
+        "y": 50.0,
+        "label": "Adventuring Party",
+        "visibleToPlayers": true,
+        "terrain": "Forest"
+      },
+      "hexGrid": {
+        "enabled": true,
+        "opacity": 0.25,
+        "size": 36
+      },
+      "fog": {
+        "enabled": true,
+        "revealedPoints": [
+          {
+            "x": 50.0,
+            "y": 50.0,
+            "radius": 9.0
+          }
+        ]
+      },
+      "trail": [],
+      "pins": []
+    }
+  ],
+  "activeMapId": "map-main",
+  "hexGrid": {
+    "enabled": true,
+    "opacity": 0.25,
+    "size": 36
+  },
+  "fog": {
+    "enabled": true,
+    "revealedPoints": [
+      {
+        "x": 37.5,
+        "y": 50.0,
+        "radius": 9.0
+      },
+      {
+        "x": 38.7,
+        "y": 39.5,
+        "radius": 8.5
+      },
+      {
+        "x": 38.4,
+        "y": 54.2,
+        "radius": 8.5
+      },
+      {
+        "x": 57.2,
+        "y": 45.4,
+        "radius": 8.5
+      },
+      {
+        "x": 49.7,
+        "y": 40.7,
+        "radius": 8.5
+      },
+      {
+        "x": 32.9,
+        "y": 46.9,
+        "radius": 8.5
+      },
+      {
+        "x": 50.2,
+        "y": 53.2,
+        "radius": 8.5
+      },
+      {
+        "x": 22.664564446196295,
+        "y": 44.77706161003173,
+        "radius": 7.0
+      },
+      {
+        "x": 27.2,
+        "y": 43.8,
+        "radius": 8.5
+      },
+      {
+        "x": 60.8,
+        "y": 21.3,
+        "radius": 8.5
+      },
+      {
+        "x": 55.8,
+        "y": 34.4,
+        "radius": 8.5
+      },
+      {
+        "x": 31.7,
+        "y": 36.8,
+        "radius": 8.5
+      },
+      {
+        "x": 39.5,
+        "y": 76.7,
+        "radius": 8.5
+      },
+      {
+        "x": 39.5,
+        "y": 76.7,
+        "radius": 8.5
+      },
+      {
+        "x": 39.5,
+        "y": 76.7,
+        "radius": 8.5
+      },
+      {
+        "x": 39.5,
+        "y": 76.7,
+        "radius": 8.5
+      }
+    ]
+  },
+  "trail": [
+    {
+      "id": "tr-6077de",
+      "x": 38.7,
+      "y": 39.5,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-9d405c",
+      "x": 38.7,
+      "y": 39.5,
+      "day": 1,
+      "hour": 7,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 07:00. Terrain: Forest."
+    },
+    {
+      "id": "tr-e98180",
+      "x": 38.4,
+      "y": 54.2,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "tr-04ecf6",
+      "x": 57.2,
+      "y": 45.4,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-6aaeab",
+      "x": 57.2,
+      "y": 45.4,
+      "day": 1,
+      "hour": 7,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 07:00. Terrain: Forest."
+    },
+    {
+      "id": "tr-b94e08",
+      "x": 49.7,
+      "y": 40.7,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "tr-6bd33c",
+      "x": 32.9,
+      "y": 46.9,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-e48518",
+      "x": 32.9,
+      "y": 46.9,
+      "day": 1,
+      "hour": 7,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 07:00. Terrain: Forest."
+    },
+    {
+      "id": "camp-c4f57a",
+      "x": 32.9,
+      "y": 46.9,
+      "day": 1,
+      "hour": 7,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 07:00. Terrain: Forest."
+    },
+    {
+      "id": "camp-e0f910",
+      "x": 32.9,
+      "y": 46.9,
+      "day": 1,
+      "hour": 7,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 07:00. Terrain: Forest."
+    },
+    {
+      "id": "tr-e1a695",
+      "x": 50.2,
+      "y": 53.2,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "tr-100b55",
+      "x": 27.2,
+      "y": 43.8,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "tr-22d423",
+      "x": 60.8,
+      "y": 21.3,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-1dc908",
+      "x": 60.8,
+      "y": 21.3,
+      "day": 1,
+      "hour": 7,
+      "label": "Test Camp",
+      "type": "camp",
+      "notes": "Deep forest campsite"
+    },
+    {
+      "id": "tr-2b5d2b",
+      "x": 55.8,
+      "y": 34.4,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-8782aa",
+      "x": 55.8,
+      "y": 34.4,
+      "day": 1,
+      "hour": 7,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 07:00. Terrain: Forest."
+    },
+    {
+      "id": "tr-9890cf",
+      "x": 31.7,
+      "y": 36.8,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "tr-d893ac",
+      "x": 39.5,
+      "y": 76.7,
+      "day": 1,
+      "hour": 7,
+      "label": "March Day 1",
+      "type": "march"
+    }
+  ],
+  "tiers": [
+    "Kingdom",
+    "Province",
+    "Settlement",
+    "Dungeon"
+  ]
+}

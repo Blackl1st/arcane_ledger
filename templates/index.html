@@ -421,6 +421,12 @@
                     <span class="sidebar-tooltip">Combat & Party <kbd class="ml-1 text-[9px] text-slate-400 font-mono">Alt+1</kbd></span>
                 </button>
 
+                <button id="tab-btn-inventory-modal" onclick="openPartyInventoryModal()" class="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-slate-400 hover:text-amber-300 hover:bg-ledger-900 border border-transparent transition relative group/nav" title="Player Inventory, Attunement & Party Stash">
+                    <span class="text-base shrink-0 w-6 text-center">🎒</span>
+                    <span class="sidebar-text hidden text-xs font-semibold whitespace-nowrap">Party Inventory</span>
+                    <span class="sidebar-tooltip">Party Inventory & Stash</span>
+                </button>
+
                 <button id="tab-btn-battlemap" onclick="switchTab('battlemap')" class="tab-btn w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-ledger-900 border border-transparent transition relative group/nav" title="Tabletop Battlemap (Alt+M)">
                     <span class="text-base shrink-0 w-6 text-center">🗺️</span>
                     <span class="sidebar-text hidden text-xs font-semibold whitespace-nowrap">Battlemap</span>
@@ -471,11 +477,73 @@
             <div class="space-y-1">
                 <span class="sidebar-text hidden text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 px-2 block mb-1">World & Story</span>
 
-                <button id="tab-btn-world" onclick="switchTab('world')" class="tab-btn w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-ledger-900 border border-transparent transition relative group/nav" title="World, Factions & Quests (Alt+7)">
-                    <span class="text-base shrink-0 w-6 text-center">🏰</span>
-                    <span class="sidebar-text hidden text-xs font-semibold whitespace-nowrap">World & Lore</span>
-                    <span class="sidebar-tooltip">World, Factions & Quests <kbd class="ml-1 text-[9px] text-slate-400 font-mono">Alt+7</kbd></span>
-                </button>
+                <div class="space-y-1">
+                    <button id="tab-btn-world" onclick="onSidebarWorldClick(event)" class="tab-btn w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-ledger-900 border border-transparent transition relative group/nav" title="World & Lore Submenu (Alt+7)">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="text-base shrink-0 w-6 text-center">🏰</span>
+                            <span class="sidebar-text hidden text-xs font-semibold whitespace-nowrap">World & Lore</span>
+                        </div>
+                        <svg id="sidebar-world-chevron" class="sidebar-text hidden w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                        <span class="sidebar-tooltip">World & Lore (Click to Toggle) <kbd class="ml-1 text-[9px] text-slate-400 font-mono">Alt+7</kbd></span>
+                    </button>
+
+                    <!-- Collapsible World & Lore Subtabs Container -->
+                    <div id="sidebar-world-subtabs" class="hidden space-y-0.5 pl-1 border-l-2 border-ledger-800/90 ml-3 py-1">
+                        <button id="world-subtab-overworld" onclick="switchWorldSubtab('overworld')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">🗺️</span>
+                            <span class="sidebar-text hidden truncate">Regional Map</span>
+                            <span class="sidebar-tooltip">Regional / Overworld Map</span>
+                        </button>
+                        <button id="world-subtab-locations" onclick="switchWorldSubtab('locations')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">🏰</span>
+                            <span class="sidebar-text hidden truncate">Locations</span>
+                            <span class="sidebar-tooltip">Locations Directory</span>
+                        </button>
+                        <button id="world-subtab-factions" onclick="switchWorldSubtab('factions')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">⚖️</span>
+                            <span class="sidebar-text hidden truncate">Factions & Turn</span>
+                            <span class="sidebar-tooltip">Factions, Relations & Turn</span>
+                        </button>
+                        <button id="world-subtab-quests" onclick="switchWorldSubtab('quests')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">📜</span>
+                            <span class="sidebar-text hidden truncate">Quests & Rumors</span>
+                            <span class="sidebar-tooltip">Quests & Rumors</span>
+                        </button>
+                        <button id="world-subtab-pantheon" onclick="switchWorldSubtab('pantheon')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">🏛️</span>
+                            <span class="sidebar-text hidden truncate">Pantheon & Piety</span>
+                            <span class="sidebar-tooltip">Pantheon, Deities & Piety</span>
+                        </button>
+                        <button id="world-subtab-timeline" onclick="switchWorldSubtab('timeline')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">⏳</span>
+                            <span class="sidebar-text hidden truncate">Timeline & Eras</span>
+                            <span class="sidebar-tooltip">Historical Timeline & Eras</span>
+                        </button>
+                        <button id="world-subtab-travel" onclick="switchWorldSubtab('travel')" class="world-subtab-btn w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <span class="text-sm shrink-0 w-5 text-center">🧭</span>
+                            <span class="sidebar-text hidden truncate">Wilderness Travel</span>
+                            <span class="sidebar-tooltip">Wilderness Travel & Foraging</span>
+                        </button>
+                        <button id="world-subtab-secrets" onclick="switchWorldSubtab('secrets')" class="world-subtab-btn w-full flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="text-sm shrink-0 w-5 text-center">🔍</span>
+                                <span class="sidebar-text hidden truncate">Secrets & Clues</span>
+                            </div>
+                            <span id="secrets-nav-badge" class="sidebar-text hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">0</span>
+                            <span class="sidebar-tooltip">Secrets & Clues</span>
+                        </button>
+                        <button id="world-subtab-handouts" onclick="switchWorldSubtab('handouts')" class="world-subtab-btn w-full flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="text-sm shrink-0 w-5 text-center">✉️</span>
+                                <span class="sidebar-text hidden truncate">Handouts & Letters</span>
+                            </div>
+                            <span id="handouts-nav-badge" class="sidebar-text hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">0</span>
+                            <span class="sidebar-tooltip">Handouts & Letters</span>
+                        </button>
+                    </div>
+                </div>
 
                 <button id="tab-btn-npcs" onclick="switchTab('npcs')" class="tab-btn w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-ledger-900 border border-transparent transition relative group/nav" title="NPC Generator & Roster (Alt+2)">
                     <span class="text-base shrink-0 w-6 text-center">👤</span>
@@ -634,6 +702,42 @@
                         <button onclick="triggerRest('long')" class="py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
                             <span>☀️ Long Rest</span>
                         </button>
+                    </div>
+
+                    <!-- Direct Day & Time Edit / Timeskip -->
+                    <div class="pt-2 border-t border-ledger-800 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Set Exact Day & Time</span>
+                            <span class="text-[10px] font-mono text-amber-400">Timeskip</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 text-xs">
+                            <div>
+                                <label class="block text-[9px] font-mono text-slate-400 uppercase mb-0.5">Day</label>
+                                <input id="manual-clock-day" type="number" min="1" value="1" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-mono text-slate-400 uppercase mb-0.5">Hour (0-23)</label>
+                                <input id="manual-clock-hour" type="number" min="0" max="23" value="9" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-mono text-slate-400 uppercase mb-0.5">Min (0-59)</label>
+                                <input id="manual-clock-minute" type="number" min="0" max="59" value="0" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 font-mono font-bold text-amber-300 text-xs focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button onclick="saveManualGameTime()" class="flex-1 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition shadow whitespace-nowrap">
+                                Set Clock
+                            </button>
+                            <button onclick="timeskipDays(1)" class="px-2 py-1 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-white text-[11px] font-semibold transition" title="Timeskip +1 Day">
+                                +1d
+                            </button>
+                            <button onclick="timeskipDays(7)" class="px-2 py-1 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-white text-[11px] font-semibold transition" title="Timeskip +7 Days (1 Week)">
+                                +7d
+                            </button>
+                            <button onclick="promptTimeskipDays()" class="px-2 py-1 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-purple-300 hover:text-white text-[11px] font-semibold transition" title="Custom Timeskip">
+                                +Days...
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -830,7 +934,10 @@
                         </div>
                     </div>
                     
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="openPartyInventoryModal()" class="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-700/80 text-xs font-bold flex items-center gap-1.5 shadow transition">
+                            <span>🎒 Party Inventory & Stash</span>
+                        </button>
                         <button onclick="importPartyToCombat()" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-sky-300 hover:text-white border border-ledger-600 text-xs font-semibold flex items-center gap-1.5 transition">
                             <span>⚔️ Import Party to Combat</span>
                         </button>
@@ -1171,14 +1278,22 @@
                                     </div>
                                 </div>
                                 <div class="space-y-1.5 text-xs">
-                                    <div class="bg-ledger-950/70 p-2 rounded-lg border border-ledger-800">
-                                        <span class="text-[9px] uppercase tracking-wider text-slate-400 block">Faction Allegiance</span>
-                                        <p id="npc-faction" contenteditable="true" spellcheck="false" class="text-slate-100 font-semibold text-xs"></p>
-                                        <p id="npc-faction-standing" contenteditable="true" spellcheck="false" class="text-indigo-300 text-[11px] mt-0.5"></p>
+                                    <div class="bg-ledger-950/70 p-2 rounded-lg border border-ledger-800 space-y-1">
+                                        <span class="text-[9px] uppercase tracking-wider text-slate-400 block font-mono">Faction Allegiance</span>
+                                        <select id="npc-faction-select" onchange="onNpcFactionSelectChanged()" class="w-full bg-ledger-900 border border-ledger-700 rounded px-2 py-1 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-400">
+                                            <option value="">-- None / Unaffiliated --</option>
+                                        </select>
+                                        <input type="text" id="npc-faction-custom" placeholder="Custom faction name..." oninput="onNpcFactionCustomInput()" class="w-full bg-ledger-950 border border-ledger-700 rounded px-2 py-1 text-xs text-amber-200 hidden focus:outline-none focus:border-amber-400">
+                                        <p id="npc-faction" class="hidden"></p>
+                                        <p id="npc-faction-standing" contenteditable="true" spellcheck="false" class="text-indigo-300 text-[11px] mt-0.5" placeholder="Standing / Rank (e.g. Officer, Informant)"></p>
                                     </div>
-                                    <div class="bg-ledger-950/70 p-2 rounded-lg border border-ledger-800">
-                                        <span class="text-[9px] uppercase tracking-wider text-slate-400 block">Current Location</span>
-                                        <p id="npc-location" contenteditable="true" spellcheck="false" class="text-slate-100 font-medium text-xs"></p>
+                                    <div class="bg-ledger-950/70 p-2 rounded-lg border border-ledger-800 space-y-1">
+                                        <span class="text-[9px] uppercase tracking-wider text-slate-400 block font-mono">Current Location</span>
+                                        <select id="npc-location-select" onchange="onNpcLocationSelectChanged()" class="w-full bg-ledger-900 border border-ledger-700 rounded px-2 py-1 text-xs text-sky-300 font-medium focus:outline-none focus:border-sky-400">
+                                            <option value="">-- None / Wandering --</option>
+                                        </select>
+                                        <input type="text" id="npc-location-custom" placeholder="Custom location name..." oninput="onNpcLocationCustomInput()" class="w-full bg-ledger-950 border border-ledger-700 rounded px-2 py-1 text-xs text-sky-200 hidden focus:outline-none focus:border-sky-400">
+                                        <p id="npc-location" class="hidden"></p>
                                     </div>
                                 </div>
                             </div>
@@ -1243,15 +1358,76 @@
                 <!-- Right Roster Sidebar (3 Columns) -->
                 <div class="lg:col-span-4 xl:col-span-3 space-y-3">
                     <div class="trait-card rounded-xl p-3.5 space-y-3">
-                        <div class="flex items-center justify-between gap-2">
+                        <!-- Header with Action Buttons -->
+                        <div class="flex items-center justify-between gap-2 border-b border-ledger-800 pb-2">
                             <div>
-                                <h3 class="font-bold text-xs uppercase tracking-wider text-amber-400">Campaign Roster</h3>
+                                <h3 class="font-bold text-xs uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                    <span>📜</span> Campaign Roster
+                                </h3>
                                 <p class="text-[11px] text-slate-400"><span id="roster-count" class="font-mono text-white font-bold">0</span> Saved NPCs</p>
                             </div>
-                            <button onclick="exportRosterMarkdown()" title="Export All Roster NPCs as Markdown" class="px-2 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] border border-ledger-700 transition">Export MD</button>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="openRosterDirectoryModal()" title="Open Full-Screen NPC Directory" class="px-2 py-1 rounded bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-semibold flex items-center gap-1 transition">
+                                    <span>⛶</span> Directory
+                                </button>
+                                <button type="button" onclick="exportRosterMarkdown()" title="Export All Roster NPCs as Markdown" class="px-2 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] border border-ledger-700 transition">
+                                    MD
+                                </button>
+                            </div>
                         </div>
-                        <input id="roster-search" oninput="renderRoster()" type="text" placeholder="Search saved roster..." class="w-full bg-ledger-950/80 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
-                        <div id="roster-list" class="space-y-2 max-h-[680px] overflow-y-auto pr-1">
+
+                        <!-- Search Bar -->
+                        <div class="relative">
+                            <input id="roster-search" oninput="renderRoster()" type="text" placeholder="Search saved roster..." class="w-full bg-ledger-950/80 border border-ledger-700 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                            <button type="button" id="roster-search-clear" onclick="clearRosterSearch()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
+                        </div>
+
+                        <!-- Organization Controls (Grouping & Sort & Density) -->
+                        <div class="space-y-1.5 bg-ledger-950/60 p-2 rounded-lg border border-ledger-800 text-[11px]">
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 font-semibold mb-0.5">Group By</label>
+                                    <select id="roster-group-by" onchange="onRosterGroupingChanged(this.value)" class="w-full bg-ledger-900 border border-ledger-700 rounded px-1.5 py-1 text-slate-200 text-[11px] focus:outline-none focus:border-amber-400">
+                                        <option value="none">Flat (None)</option>
+                                        <option value="location" selected>📍 By Location</option>
+                                        <option value="faction">⚔️ By Faction</option>
+                                        <option value="category">🏷️ By Category</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 font-semibold mb-0.5">Sort By</label>
+                                    <select id="roster-sort-by" onchange="onRosterSortChanged(this.value)" class="w-full bg-ledger-900 border border-ledger-700 rounded px-1.5 py-1 text-slate-200 text-[11px] focus:outline-none focus:border-amber-400">
+                                        <option value="name-asc" selected>Name (A-Z)</option>
+                                        <option value="name-desc">Name (Z-A)</option>
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="role">Role / Title</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Filter & Density Row -->
+                            <div class="flex items-center justify-between gap-1 pt-1 border-t border-ledger-800/80">
+                                <div class="flex items-center gap-1 flex-1 min-w-0">
+                                    <select id="roster-filter-location" onchange="onRosterFilterLocationChanged(this.value)" class="bg-ledger-900 border border-ledger-700 rounded px-1.5 py-0.5 text-[10px] text-slate-300 truncate max-w-[105px] focus:outline-none">
+                                        <option value="ALL">All Locs</option>
+                                    </select>
+                                    <select id="roster-filter-faction" onchange="onRosterFilterFactionChanged(this.value)" class="bg-ledger-900 border border-ledger-700 rounded px-1.5 py-0.5 text-[10px] text-slate-300 truncate max-w-[105px] focus:outline-none">
+                                        <option value="ALL">All Factions</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center gap-0.5 border border-ledger-700 rounded p-0.5 bg-ledger-900 shrink-0">
+                                    <button type="button" id="roster-density-detailed" onclick="setRosterDensity('detailed')" title="Detailed Cards" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-ledger-950 transition">
+                                        Card
+                                    </button>
+                                    <button type="button" id="roster-density-compact" onclick="setRosterDensity('compact')" title="Compact Rows" class="px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white transition">
+                                        List
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="roster-list" class="space-y-2 max-h-[640px] overflow-y-auto pr-1">
                             <!-- Populated dynamically via renderRoster() -->
                         </div>
                     </div>
@@ -1560,40 +1736,235 @@
              =================================================================== -->
         <section id="view-world" class="tab-view space-y-5 hidden">
             
-            <!-- World Header & Subtab Bar -->
+            <!-- World Header & Active Subtab Breadcrumb -->
             <div class="bg-ledger-950/90 border border-ledger-700 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
                 <div class="flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">🗺️</span>
+                    <span id="world-active-subtab-icon" class="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 text-lg">🧭</span>
                     <div>
-                        <h2 class="font-display font-bold text-base text-slate-100 leading-tight">World & Campaign Architecture</h2>
-                        <p class="text-[11px] text-slate-400">Locations directory, Faction reputation with interactive Tension Clocks, and Quest checklists</p>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-mono uppercase tracking-widest text-amber-400/80 font-bold">World & Lore</span>
+                            <span class="text-slate-600 text-xs">/</span>
+                            <h2 id="world-active-subtab-title" class="font-display font-bold text-base text-slate-100 leading-tight">Regional Overworld Map</h2>
+                        </div>
+                        <p id="world-active-subtab-desc" class="text-[11px] text-slate-400">Strategic kingdom & regional cartography with interactive lore pins, settlement popovers, and player overland travel broadcast</p>
                     </div>
                 </div>
 
-                <!-- Subtab Switcher -->
-                <div class="flex items-center bg-ledger-900 border border-ledger-700 rounded-lg p-1 text-xs flex-wrap gap-1">
-                    <button id="world-subtab-locations" onclick="switchWorldSubtab('locations')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold bg-amber-500 text-ledger-950 transition">
-                        🗺️ Locations
-                    </button>
-                    <button id="world-subtab-factions" onclick="switchWorldSubtab('factions')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition">
-                        ⚖️ Factions & Tension Clocks
-                    </button>
-                    <button id="world-subtab-quests" onclick="switchWorldSubtab('quests')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition">
-                        📜 Quests & Rumors
-                    </button>
-                    <button id="world-subtab-secrets" onclick="switchWorldSubtab('secrets')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5">
-                        <span>🔍</span> <span>Secrets & Clues</span>
-                        <span id="secrets-nav-badge" class="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">10</span>
-                    </button>
-                    <button id="world-subtab-handouts" onclick="switchWorldSubtab('handouts')" class="world-subtab-btn px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition flex items-center gap-1.5">
-                        <span>📜</span> <span>Handouts & Letters</span>
-                        <span id="handouts-nav-badge" class="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">5</span>
-                    </button>
+                <!-- Quick Jump Pills & Sidebar Hint -->
+                <div class="flex items-center gap-1.5 flex-wrap text-[11px]">
+                    <span class="text-[10px] font-mono text-slate-500 mr-1 hidden xl:inline">Use sidebar <strong class="text-amber-400">🗺️ World & Lore</strong> menu or quick-jump:</span>
+                    <button onclick="switchWorldSubtab('overworld')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">🧭 Overworld</button>
+                    <button onclick="switchWorldSubtab('locations')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">🏰 Locations</button>
+                    <button onclick="switchWorldSubtab('factions')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">⚖️ Factions</button>
+                    <button onclick="switchWorldSubtab('quests')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">📜 Quests</button>
+                    <button onclick="switchWorldSubtab('pantheon')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">☀️ Pantheon</button>
+                    <button onclick="switchWorldSubtab('timeline')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">⏳ Timeline</button>
+                    <button onclick="switchWorldSubtab('travel')" class="px-2.5 py-1 rounded-md bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 transition">🏕️ Travel</button>
+                </div>
+            </div>
+
+            <!-- SUB-VIEW 0: INTERACTIVE REGIONAL / OVERWORLD MAP WITH LORE PINS -->
+            <div id="world-panel-overworld" class="world-panel space-y-4">
+                <!-- Overworld Controls Bar -->
+                <div class="bg-ledger-900 border border-ledger-700 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2.5 shadow-lg">
+                    <!-- Left: Tier Selector & Region Inputs -->
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <!-- Multi-tier map selector -->
+                        <div>
+                            <label class="block text-[9px] font-mono uppercase tracking-wider text-slate-500">Map Tier</label>
+                            <div class="flex items-center gap-1">
+                                <select id="overworld-map-select" onchange="switchOverworldMapTier(this.value)" class="bg-ledger-950 border border-amber-500/50 rounded-lg px-2.5 py-1 text-xs font-display font-bold text-amber-300 focus:outline-none focus:border-amber-400">
+                                    <option value="map-main">👑 [Kingdom] Realm of the Shattered Coast</option>
+                                </select>
+                                <button onclick="openEditOverworldMapModal()" class="px-2 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-300 border border-ledger-700 text-xs font-bold transition" title="Edit Active Map Tier & Classification">✏️ Edit</button>
+                                <button onclick="openAddOverworldMapModal()" class="px-2 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-300 border border-ledger-700 text-xs font-bold transition" title="Add Sub-Map (e.g. Province or Settlement)">+ Map</button>
+                                <button onclick="openManageMapTiersModal()" class="px-2 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 border border-ledger-700 text-xs font-bold transition" title="Add and Remove Custom Map Tiers">⚙️ Tiers</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[9px] font-mono uppercase tracking-wider text-slate-500">Region Title</label>
+                            <input id="overworld-title-input" type="text" onchange="saveOverworldSettings()" value="The Shattered Coast & Crownlands" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-xs font-display font-bold text-amber-300 w-44 sm:w-52 focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-[9px] font-mono uppercase tracking-wider text-slate-500">Scale Description</label>
+                            <input id="overworld-scale-input" type="text" onchange="saveOverworldSettings()" value="1 Hex = 24 Miles (1 Day Normal Pace)" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2 py-1 text-xs text-slate-300 w-36 sm:w-44 focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <!-- Hex Grid Toggle & Settings Pill -->
+                        <div>
+                            <label class="block text-[9px] font-mono uppercase tracking-wider text-slate-500">Hex Grid</label>
+                            <button id="ow-hex-toggle-btn" onclick="toggleOverworldHexGrid()" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border-amber-500/40">
+                                <span>⬡</span> <span id="ow-hex-toggle-label">Hex Grid (On)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Center: Interactive Click Modes -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <label class="block text-[9px] font-mono uppercase tracking-wider text-slate-500 w-full sm:w-auto">Mode</label>
+                        <div class="flex items-center bg-ledger-950 border border-ledger-700 rounded-lg p-0.5 text-xs">
+                            <button id="ow-mode-inspect" onclick="setOverworldMode('inspect')" class="px-2.5 py-1 rounded font-bold bg-amber-500 text-ledger-950 transition" title="Inspect landmarks and settlement dossiers">🔍 Inspect</button>
+                            <button id="ow-mode-add-pin" onclick="setOverworldMode('add_pin')" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition" title="Click anywhere on the map to drop a new landmark">📍 Place Pin</button>
+                            <button id="ow-mode-move-party" onclick="setOverworldMode('move_party')" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition" title="Click to move party marker and log march">🛡️ Move Party</button>
+                            <button id="ow-mode-measure" onclick="setOverworldMode('measure')" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition" title="Measure overland routes, travel days, and rations">📏 Ruler</button>
+                            <button id="ow-mode-fog" onclick="setOverworldMode('fog')" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition" title="Reveal or shroud fog of war">🌫️ Fog Shroud</button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Exploration & Broadcast Tools -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="openOverlandEncounterModal()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition" title="Roll 2024 D&D overland encounters based on terrain, time of day, and danger level">
+                            <span>🎲</span> <span>Overland Encounter</span>
+                        </button>
+                        <button onclick="dropOverworldCampHere()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition flex items-center gap-1" title="Pitch camp at current party position and log to Expedition Chronicle">
+                            <span>🏕️</span> <span>Drop Camp</span>
+                        </button>
+                        <button onclick="openAddOverworldPinModal()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-amber-500/40 text-amber-300 text-xs font-bold transition">
+                            + Pin
+                        </button>
+                        <button onclick="broadcastOverworldMapToPlayers()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-bold shadow-lg flex items-center gap-1.5 transition">
+                            <span>📡</span> <span>Broadcast Map</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Breadcrumb when viewing sub-map -->
+                <div id="overworld-breadcrumb-bar" class="hidden items-center justify-between px-3 py-1.5 bg-ledger-900/90 border border-ledger-700 rounded-lg text-xs">
+                    <div class="flex items-center gap-2 text-slate-300">
+                        <span class="text-amber-400">🗺️</span>
+                        <span id="overworld-breadcrumb-trail" class="font-semibold text-amber-200">Kingdom Map &gt; Sub-Map</span>
+                    </div>
+                    <button onclick="switchOverworldMapTier('map-main')" class="text-xs text-amber-300 hover:text-amber-200 font-bold underline">← Return to Kingdom Map</button>
+                </div>
+
+                <!-- Main Overworld Canvas + Quick Popover Drawer -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                    <!-- Interactive Map Viewport -->
+                    <div class="lg:col-span-8 xl:col-span-9 bg-ledger-950 border-2 border-ledger-700 rounded-2xl overflow-hidden shadow-2xl relative select-none">
+                        <div id="overworld-map-viewport" onclick="handleOverworldCanvasClick(event)" class="relative w-full aspect-[16/10] bg-[#121a24] overflow-hidden cursor-crosshair">
+                            <!-- Background Map Image -->
+                            <img id="overworld-map-img" src="/static/images/overworld_default.svg" alt="Regional Overworld Map" class="w-full h-full object-cover pointer-events-none select-none">
+                            
+                            <!-- Layer 1: SVG Hex Grid Overlay -->
+                            <svg id="overworld-hex-svg" class="absolute inset-0 pointer-events-none w-full h-full select-none" viewBox="0 0 1600 1000"></svg>
+
+                            <!-- Layer 2: SVG Fog of War Mask (DM Misty Veil) -->
+                            <svg id="overworld-fog-svg" class="absolute inset-0 pointer-events-none w-full h-full select-none" viewBox="0 0 1600 1000"></svg>
+
+                            <!-- Layer 3: SVG Measurement Route & Travel Trail -->
+                            <svg id="overworld-routes-svg" class="absolute inset-0 pointer-events-none w-full h-full select-none" viewBox="0 0 1600 1000"></svg>
+
+                            <!-- Layer 4: Campsite Markers Overlay -->
+                            <div id="overworld-camps-layer" class="absolute inset-0 pointer-events-none"></div>
+
+                            <!-- Layer 5: Dynamic Pins & Party Marker Overlay -->
+                            <div id="overworld-pins-layer" class="absolute inset-0"></div>
+
+                            <!-- Floating Ruler Banner (When measuring) -->
+                            <div id="ow-ruler-banner" class="hidden absolute top-3 left-3 right-3 sm:left-auto sm:right-3 bg-ledger-950/95 border-2 border-amber-500/80 rounded-xl p-3 shadow-2xl backdrop-blur-md max-w-sm z-30 space-y-2 pointer-events-auto">
+                                <div class="flex items-center justify-between border-b border-ledger-800 pb-1.5">
+                                    <div class="flex items-center gap-1.5 font-display font-bold text-xs text-amber-300">
+                                        <span>📏</span> <span>Overland Route Measurement</span>
+                                    </div>
+                                    <button onclick="clearOverworldMeasurement()" class="text-slate-400 hover:text-rose-400 text-xs px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700">Clear</button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="p-2 rounded bg-ledger-900/80 border border-ledger-800">
+                                        <span class="block text-[10px] text-slate-400 font-mono">TOTAL DISTANCE</span>
+                                        <span id="ow-ruler-miles" class="font-mono font-bold text-amber-300 text-sm">0.0 mi</span>
+                                        <span id="ow-ruler-hexes" class="text-[10px] text-slate-400 block">(0 hexes)</span>
+                                    </div>
+                                    <div class="p-2 rounded bg-ledger-900/80 border border-ledger-800">
+                                        <span class="block text-[10px] text-slate-400 font-mono">NORMAL PACE</span>
+                                        <span id="ow-ruler-days" class="font-mono font-bold text-emerald-300 text-sm">0 days</span>
+                                        <span class="text-[10px] text-slate-400 block">@ 24 mi / day</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between text-[11px] text-slate-300 pt-1">
+                                    <span>Fast: <b id="ow-ruler-fast" class="text-amber-200">0 d</b> • Slow: <b id="ow-ruler-slow" class="text-amber-200">0 d</b></span>
+                                    <span id="ow-ruler-rations" class="text-amber-400 font-mono">0 rations</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 pt-1">
+                                    <button onclick="movePartyToEndOfRoute()" class="w-full py-1 rounded bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow transition">
+                                        🛡️ Move Party to Route End
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Floating Fog Mode Controls (When fog mode active) -->
+                            <div id="ow-fog-banner" class="hidden absolute top-3 left-3 bg-ledger-950/95 border border-sky-500/60 rounded-xl p-2.5 shadow-2xl backdrop-blur-md z-30 space-y-2 pointer-events-auto text-xs">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-bold text-sky-300 flex items-center gap-1"><span>🌫️</span> <span>Fog Shroud Tool</span></span>
+                                    <button onclick="setOverworldMode('inspect')" class="text-slate-400 hover:text-white">✕</button>
+                                </div>
+                                <div class="flex items-center gap-1 bg-ledger-900 p-0.5 rounded border border-ledger-700">
+                                    <button id="ow-fog-action-reveal" onclick="setOverworldFogAction('reveal')" class="px-2 py-0.5 rounded font-bold bg-sky-500 text-ledger-950">👁️ Reveal</button>
+                                    <button id="ow-fog-action-shroud" onclick="setOverworldFogAction('shroud')" class="px-2 py-0.5 rounded text-slate-400 hover:text-white">🌫️ Shroud</button>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] text-slate-300">
+                                    <span>Brush Radius:</span>
+                                    <input id="ow-fog-radius-slider" type="range" min="4" max="20" value="8" class="w-20 accent-sky-400">
+                                </div>
+                                <button onclick="resetOverworldFog()" class="w-full py-0.5 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-[10px]">Reset Fog to Party Only</button>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Map Bar (Legend & Map URL Prompt) -->
+                        <div class="bg-ledger-900/95 border-t border-ledger-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+                            <div class="flex items-center gap-4 flex-wrap">
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> Revealed / Discovered</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block"></span> Shrouded Fog (DM Eyes Only)</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse inline-block"></span> 🛡️ Party Camp</span>
+                                <div class="flex items-center gap-1.5 bg-ledger-950 px-2 py-0.5 rounded border border-ledger-700">
+                                    <span class="text-[10px] text-slate-400 font-mono">Biome:</span>
+                                    <select id="ow-current-terrain-select" onchange="onOverworldTerrainChanged(this.value)" class="bg-transparent text-amber-300 font-mono text-[10px] font-bold border-none focus:outline-none cursor-pointer">
+                                        <option value="Forest">🌲 Forest</option>
+                                        <option value="Mountain">⛰️ Mountain</option>
+                                        <option value="Swamp">🐊 Swamp</option>
+                                        <option value="Plains">🌾 Plains</option>
+                                        <option value="Desert">🏜️ Desert</option>
+                                        <option value="Underdark">🔮 Underdark</option>
+                                        <option value="Coastal">🌊 Coastal</option>
+                                        <option value="Arctic">❄️ Arctic / Tundra</option>
+                                    </select>
+                                    <span id="ow-current-terrain-badge" class="hidden">🌲 Terrain: Forest</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button onclick="syncTerrainAtmosphere()" class="text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1" title="Sync current terrain to lighting studio and weather">🎭 Sync Atmosphere</button>
+                                <button onclick="promptOverworldMapUrl()" class="text-amber-400 hover:text-amber-300 font-semibold underline">Change Map Image URL</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Settlement & Landmark Quick-Drawer + Directory -->
+                    <div class="lg:col-span-4 xl:col-span-3 space-y-4">
+                        <!-- Settlement Dossier Card -->
+                        <div id="overworld-pin-popover" class="bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-xl space-y-3">
+                            <!-- Populated dynamically via renderOverworldPinPopover() -->
+                        </div>
+
+                        <!-- All Pins Quick Directory -->
+                        <div class="bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-xl space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-display font-bold text-xs uppercase tracking-wider text-amber-400">📍 Mapped Landmarks</h4>
+                                <span id="overworld-pin-count" class="text-[10px] font-mono text-slate-400">0 pins</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-xs">
+                                <input id="ow-pin-filter" oninput="filterOverworldPinList()" type="text" placeholder="Filter landmarks..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500">
+                            </div>
+                            <div id="overworld-pin-list" class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- SUB-VIEW A: LOCATIONS & SETTLEMENTS -->
-            <div id="world-panel-locations" class="world-panel space-y-4">
+            <div id="world-panel-locations" class="world-panel space-y-4 hidden">
                 <div class="flex items-center justify-between gap-2 flex-wrap">
                     <div class="flex items-center gap-2 text-xs">
                         <input id="location-search" oninput="filterLocations()" type="text" placeholder="Filter locations..." class="bg-ledger-900 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500">
@@ -1624,19 +1995,96 @@
                 </div>
             </div>
 
-            <!-- SUB-VIEW B: FACTIONS & TENSION CLOCKS -->
-            <div id="world-panel-factions" class="world-panel space-y-4 hidden">
-                <div class="flex items-center justify-between gap-2 flex-wrap">
-                    <div class="flex items-center gap-2">
-                        <p class="text-xs text-slate-400">Click reputation buttons to shift standing. Click Tension Clock segments to advance looming threats.</p>
+            <!-- SUB-VIEW B: FACTIONS, RELATIONS MATRIX & "FACTION TURN" ENGINE -->
+            <div id="world-panel-factions" class="world-panel space-y-5 hidden">
+                <!-- Faction Turn Simulator & Top Controls Banner -->
+                <div class="bg-ledger-900 border border-ledger-700/90 rounded-2xl p-4 shadow-xl space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">⚖️</span>
+                                <h3 class="font-display font-bold text-base text-amber-300">Faction Intrigue, Relationship Web & "Faction Turn" Engine</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">Political Sandbox</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Advance faction goals between sessions, track inter-faction alliances & wars, and unlock party standing boons or penalties.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button onclick="simulateFactionTurn()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition" title="Roll between-session faction actions, tick Tension Clocks, and auto-generate Tavern Rumors!">
+                                <span>🎲</span> <span>Run Faction Turn</span>
+                            </button>
+                            <button onclick="openAddFactionRelationModal()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-ledger-600 text-amber-300 text-xs font-bold transition">
+                                🕸️ + Add Relation
+                            </button>
+                            <button onclick="openAddClockModal()" class="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-700 text-rose-300 text-xs font-bold transition">
+                                ⏳ + Add Tension Clock
+                            </button>
+                            <button onclick="openAddFactionModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-bold shadow transition">
+                                + Add Faction
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="openAddClockModal()" class="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-700 text-rose-300 text-xs font-bold transition">
-                            ⏳ + Add Tension Clock
-                        </button>
-                        <button onclick="openAddFactionModal()" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-bold shadow transition">
-                            + Add Faction
-                        </button>
+
+                    <!-- Party Standing Milestones Strip -->
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2 border-t border-ledger-800 text-[11px]">
+                        <div class="bg-rose-950/30 border border-rose-800/50 rounded-lg p-2">
+                            <div class="font-bold text-rose-400 flex items-center justify-between"><span>⚔️ Hostile (-2)</span><span class="font-mono text-[9px]">PENALTY</span></div>
+                            <p class="text-slate-400 text-[10px] mt-0.5">Bounties posted, hit squads dispatched, safehouses barred.</p>
+                        </div>
+                        <div class="bg-orange-950/30 border border-orange-800/50 rounded-lg p-2">
+                            <div class="font-bold text-orange-300 flex items-center justify-between"><span>😠 Suspicious (-1)</span><span class="font-mono text-[9px]">FRICTION</span></div>
+                            <p class="text-slate-400 text-[10px] mt-0.5">+25% shop markups, guards tail party, info withheld.</p>
+                        </div>
+                        <div class="bg-ledger-950/60 border border-ledger-800 rounded-lg p-2">
+                            <div class="font-bold text-slate-300 flex items-center justify-between"><span>⚖️ Neutral (0)</span><span class="font-mono text-[9px]">STANDARD</span></div>
+                            <p class="text-slate-400 text-[10px] mt-0.5">Standard market prices, mercenary contracts open.</p>
+                        </div>
+                        <div class="bg-sky-950/30 border border-sky-800/50 rounded-lg p-2">
+                            <div class="font-bold text-sky-300 flex items-center justify-between"><span>🤝 Friendly (+1)</span><span class="font-mono text-[9px]">BOON</span></div>
+                            <p class="text-slate-400 text-[10px] mt-0.5">10% faction discount, free lodging & street rumors.</p>
+                        </div>
+                        <div class="bg-emerald-950/30 border border-emerald-800/50 rounded-lg p-2">
+                            <div class="font-bold text-emerald-400 flex items-center justify-between"><span>🛡️ Allied (+2)</span><span class="font-mono text-[9px]">MAJOR BOON</span></div>
+                            <p class="text-slate-400 text-[10px] mt-0.5">20% discount, safehouses, spellcasting & squad backup.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Relationship Web + Faction Turn Feed Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- Inter-Faction Relationship Web -->
+                    <div class="lg:col-span-7 bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-display font-bold text-sm text-amber-400 flex items-center gap-2">
+                                    <span>🕸️</span> <span>Inter-Faction Relationship Web</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-400">Alliances, rivalries, secret trade pacts, and open wars between powers</p>
+                            </div>
+                            <button onclick="openAddFactionRelationModal()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 border border-ledger-600 text-amber-300 text-[11px] font-semibold transition">
+                                + Link Factions
+                            </button>
+                        </div>
+                        <div id="faction-relations-list" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            <!-- Populated dynamically via renderFactionRelations() -->
+                        </div>
+                    </div>
+
+                    <!-- Recent Faction Turn Log -->
+                    <div class="lg:col-span-5 bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-display font-bold text-sm text-purple-300 flex items-center gap-2">
+                                    <span>📰</span> <span>Faction Turn Chronicle</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-400">Latest between-session maneuvers & clock completions</p>
+                            </div>
+                            <button onclick="simulateFactionTurn()" class="px-2.5 py-1 rounded-lg bg-purple-950/90 hover:bg-purple-900 border border-purple-700 text-purple-200 text-[11px] font-semibold transition">
+                                🎲 Advance Turn
+                            </button>
+                        </div>
+                        <div id="faction-turn-history-list" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            <!-- Populated dynamically via renderFactionRelations() -->
+                        </div>
                     </div>
                 </div>
 
@@ -1844,6 +2292,255 @@
                     <!-- Populated dynamically via renderHandouts() -->
                 </div>
 
+            </div>
+
+            <!-- SUB-VIEW F: PANTHEON, DEITIES & COSMIC CULTS DIRECTORY -->
+            <div id="world-panel-pantheon" class="world-panel space-y-5 hidden">
+                <!-- Pantheon Header & Filter Bar -->
+                <div class="bg-ledger-900 border border-ledger-700/90 rounded-2xl p-4 shadow-xl space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">☀️</span>
+                                <h3 class="font-display font-bold text-base text-amber-300">Pantheon, Deities & Cosmic Cults Directory</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Piety & Divine Boons</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Compendium of gods, celestial patrons, and fiendish lords. Track PC Piety thresholds (3 / 10 / 25 / 50) and broadcast Holy Symbols to player screens.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <input id="pantheon-search" oninput="renderPantheon()" type="text" placeholder="Search deities, domains, tenets..." class="bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 w-52 focus:outline-none focus:border-amber-500">
+                            <select id="pantheon-domain-filter" onchange="renderPantheon()" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+                                <option value="all">All Domains & Pantheons</option>
+                                <option value="Life">Life</option>
+                                <option value="Light">Light</option>
+                                <option value="War">War</option>
+                                <option value="Tempest">Tempest</option>
+                                <option value="Trickery">Trickery</option>
+                                <option value="Knowledge">Knowledge</option>
+                                <option value="Arcana">Arcana</option>
+                                <option value="Nature">Nature</option>
+                                <option value="Death">Death / Undeath</option>
+                                <option value="Forge">Forge</option>
+                                <option value="Twilight">Twilight</option>
+                            </select>
+                            <button onclick="openAddDeityModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow transition">
+                                + Add Deity / Patron
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Party Piety & Divine Renown Tracker Strip -->
+                    <div class="pt-3 border-t border-ledger-800 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-display font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                <span>✨</span> <span>Party Piety & Patron Renown Tracker</span>
+                            </h4>
+                            <span class="text-[10px] font-mono text-slate-400">Thresholds: <strong class="text-slate-200">3+</strong> Devotee • <strong class="text-sky-300">10+</strong> Votary • <strong class="text-purple-300">25+</strong> Disciple • <strong class="text-amber-300">50+</strong> Champion</span>
+                        </div>
+                        <div id="pantheon-piety-tracker-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <!-- Populated dynamically via renderPantheon() -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deities & Cults Grid -->
+                <div id="pantheon-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <!-- Populated dynamically via renderPantheon() -->
+                </div>
+            </div>
+
+            <!-- SUB-VIEW G: CAMPAIGN HISTORICAL TIMELINE & ERAS CHRONOLOGY -->
+            <div id="world-panel-timeline" class="world-panel space-y-5 hidden">
+                <!-- Timeline Header & Era Filters -->
+                <div class="bg-ledger-900 border border-ledger-700/90 rounded-2xl p-4 shadow-xl space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">⏳</span>
+                                <h3 class="font-display font-bold text-base text-amber-300">Campaign Historical Timeline & Eras Chronology</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">Auto-Synced Chronicle</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Chronological feed of world history, cataclysms, and current campaign milestones synced with the in-game calendar.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <input id="timeline-search" oninput="renderTimeline()" type="text" placeholder="Search years, eras, events, tags..." class="bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 w-48 focus:outline-none focus:border-amber-500">
+                            <button onclick="syncTimelineFromQuests()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-sky-500/40 text-sky-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Automatically import completed quests into the Current Campaign Arc timeline">
+                                <span>🔄</span> <span>Sync Quests</span>
+                            </button>
+                            <button onclick="openManageErasModal()" class="px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Add, edit, or delete historical eras for this campaign">
+                                <span>⏳</span> <span>Manage Eras</span>
+                            </button>
+                            <button onclick="openAddTimelineEventModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow transition">
+                                + Add Event
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Era Filter Bar (dynamically rendered) -->
+                    <div id="timeline-era-filters-bar" class="pt-2 border-t border-ledger-800 flex items-center gap-1.5 flex-wrap text-xs">
+                        <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mr-1">Filter by Era:</span>
+                        <!-- Rendered dynamically via renderTimelineEraFilters() -->
+                    </div>
+                </div>
+
+                <!-- Vertical Chronological Feed -->
+                <div id="timeline-feed-container" class="relative pl-4 sm:pl-8 space-y-4">
+                    <!-- Populated dynamically via renderTimeline() -->
+                </div>
+            </div>
+
+            <!-- SUB-VIEW H: WILDERNESS TRAVEL, HAZARDS & FORAGING CALCULATOR -->
+            <div id="world-panel-travel" class="world-panel space-y-5 hidden">
+                <!-- Travel & Survival Header -->
+                <div class="bg-ledger-900 border border-ledger-700/90 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">🏕️</span>
+                            <h3 class="font-display font-bold text-base text-amber-300">Wilderness Travel, Hazards & 5.5e Foraging Calculator</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Clock-Synced Exploration</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">Calculate overland travel pace, terrain navigation & foraging DCs, advance the campaign clock, and roll roadside complications.</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="rollWildernessComplication()" class="px-3.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700 text-purple-200 text-xs font-bold flex items-center gap-1.5 shadow transition">
+                            <span>🎲</span> <span>Roll Exploration Complication</span>
+                        </button>
+                        <button onclick="executeWildernessMarch()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-ledger-950 text-xs font-bold flex items-center gap-1.5 shadow-lg transition">
+                            <span>⏱️</span> <span>Log March & Advance Clock</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3-Column Wilderness Dashboard -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- Col 1: Pace & Distance Calculator -->
+                    <div class="lg:col-span-5 bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-4">
+                        <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                            <h4 class="font-display font-bold text-sm text-amber-400">🐎 Travel Pace & Distance Calculator</h4>
+                            <span id="travel-pace-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300">Normal Pace (24 mi/day)</span>
+                        </div>
+
+                        <!-- Pace Selector Cards -->
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            <button id="travel-pace-btn-Slow" onclick="setTravelPace('Slow')" class="p-2.5 rounded-xl border border-ledger-700 bg-ledger-950 text-left hover:border-emerald-500/50 transition">
+                                <div class="font-bold text-emerald-400">🐢 Slow</div>
+                                <div class="font-mono text-[11px] text-slate-200 mt-0.5">18 mi/day</div>
+                                <div class="text-[10px] text-emerald-300/80 mt-1">✓ Stealth Advantage & Foraging</div>
+                            </button>
+                            <button id="travel-pace-btn-Normal" onclick="setTravelPace('Normal')" class="p-2.5 rounded-xl border-2 border-amber-500 bg-amber-500/10 text-left transition">
+                                <div class="font-bold text-amber-300">🥾 Normal</div>
+                                <div class="font-mono text-[11px] text-slate-200 mt-0.5">24 mi/day</div>
+                                <div class="text-[10px] text-slate-400 mt-1">Standard 3 mi/hr (8h march)</div>
+                            </button>
+                            <button id="travel-pace-btn-Fast" onclick="setTravelPace('Fast')" class="p-2.5 rounded-xl border border-ledger-700 bg-ledger-950 text-left hover:border-rose-500/50 transition">
+                                <div class="font-bold text-rose-400">⚡ Fast</div>
+                                <div class="font-mono text-[11px] text-slate-200 mt-0.5">30 mi/day</div>
+                                <div class="text-[10px] text-rose-300/80 mt-1">-5 Passive Perception, No Forage</div>
+                            </button>
+                        </div>
+
+                        <!-- Terrain & Distance Inputs -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Biome / Terrain</label>
+                                <select id="travel-terrain-select" onchange="updateTravelCalculator()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-xs text-slate-100">
+                                    <option value="Grassland">🌾 Grassland / Farmland (Easy — DC 10)</option>
+                                    <option value="Forest" selected>🌲 Forest / Woodland (Moderate — DC 15)</option>
+                                    <option value="Coast">🌊 Coastline / Salt Marsh (Moderate — DC 12)</option>
+                                    <option value="Mountain">⛰️ Craggy Mountains (Hard — DC 16, Difficult)</option>
+                                    <option value="Swamp">🐊 Fetid Swamp / Bog (Hard — DC 16, Difficult)</option>
+                                    <option value="Desert">🏜️ Scorching Desert (Extreme — DC 18)</option>
+                                    <option value="Arctic">❄️ Frozen Tundra / Arctic (Extreme — DC 18)</option>
+                                    <option value="Underdark">🕸️ Underdark Caverns (Deadly — DC 17)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Road / Trail Quality</label>
+                                <select id="travel-road-select" onchange="updateTravelCalculator()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-xs text-slate-100">
+                                    <option value="highway">🛣️ King's Road / Paved Highway (×1.0 Speed)</option>
+                                    <option value="trail" selected>🥾 Frontier Trail / Track (×1.0 Speed)</option>
+                                    <option value="trackless">🌿 Trackless Wilderness (×0.75 Speed)</option>
+                                    <option value="difficult">🪨 Dense / Difficult Terrain (×0.5 Speed)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Target Journey Distance (Miles)</label>
+                                <input id="travel-distance-miles" type="number" min="1" max="2000" value="48" oninput="updateTravelCalculator()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs font-mono text-amber-300">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Marching Hours Today</label>
+                                <input id="travel-hours-input" type="number" min="1" max="16" value="8" oninput="updateTravelCalculator()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-300">
+                            </div>
+                        </div>
+
+                        <!-- Calculated Output Card -->
+                        <div id="travel-calc-summary" class="bg-ledger-950 border border-ledger-800 rounded-xl p-3.5 space-y-2 text-xs">
+                            <!-- Populated dynamically via updateTravelCalculator() -->
+                        </div>
+                    </div>
+
+                    <!-- Col 2: 5.5e Foraging, Navigation & Forced March Checks -->
+                    <div class="lg:col-span-4 bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-4">
+                        <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                            <h4 class="font-display font-bold text-sm text-emerald-400">🧭 5.5e Survival, Navigation & Foraging</h4>
+                            <span id="travel-dc-pill" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300">Terrain DC 15</span>
+                        </div>
+
+                        <div id="travel-terrain-hazard-box" class="bg-ledger-950 border border-ledger-800 rounded-xl p-3 text-xs space-y-1.5">
+                            <!-- Populated dynamically via updateTravelCalculator() -->
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 text-xs">
+                            <div>
+                                <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Navigator Survival Bonus</label>
+                                <input id="travel-nav-bonus" type="number" value="5" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-sky-300">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Forager Survival Bonus</label>
+                                <input id="travel-forage-bonus" type="number" value="4" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-emerald-300">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button onclick="rollTravelNavigationCheck()" class="px-3 py-2 rounded-xl bg-sky-950/80 hover:bg-sky-900 border border-sky-700 text-sky-200 text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                <span>🧭</span> <span>Roll Navigation</span>
+                            </button>
+                            <button onclick="rollTravelForagingCheck()" class="px-3 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700 text-emerald-200 text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                <span>🌿</span> <span>Roll Foraging</span>
+                            </button>
+                        </div>
+
+                        <div id="travel-check-result-box" class="bg-ledger-950 border border-ledger-800 rounded-xl p-3 text-xs text-slate-400 min-h-[84px] flex flex-col justify-center">
+                            <span>Select terrain and roll Navigation or Foraging checks to resolve overland survival.</span>
+                        </div>
+                    </div>
+
+                    <!-- Col 3: Random Exploration Complication Table -->
+                    <div class="lg:col-span-3 bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-3 flex flex-col">
+                        <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                            <h4 class="font-display font-bold text-sm text-purple-300">🎲 Roadside Complications</h4>
+                            <button onclick="rollWildernessComplication()" class="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition">Roll d20</button>
+                        </div>
+                        <p class="text-[11px] text-slate-400">Generate non-combat roadside discoveries, weather shifts, ruined milestones, or lost caravans.</p>
+                        <div id="travel-complication-result-box" class="flex-1 bg-ledger-950 border border-ledger-800 rounded-xl p-3.5 text-xs space-y-2 flex flex-col justify-between">
+                            <div class="text-slate-500 italic">Click "Roll d20" or "Roll Exploration Complication" to generate an overland event.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lower Section: Expedition March History -->
+                <div class="bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-3">
+                    <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm">📜</span>
+                            <h4 class="font-display font-bold text-sm text-amber-300">Expedition March Chronicle & Travel Log</h4>
+                        </div>
+                        <span class="text-[10px] font-mono text-slate-400">Synced to In-Game Calendar</span>
+                    </div>
+                    <div id="travel-march-history-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <div class="text-xs text-slate-500 italic p-4 text-center">No overland marches logged yet. Click "Log March & Advance Clock" to record party travel.</div>
+                    </div>
+                </div>
             </div>
 
         </section>
@@ -2804,9 +3501,9 @@
                                         <span class="text-lg">⚔️</span>
                                         <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Full Immersion</span>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 leading-snug">All 12 modules enabled: Battlemap, Lighting, Audio, Compendiums, and Combat Tracker.</p>
+                                    <p class="text-[11px] text-slate-400 leading-snug">All 17 modules enabled: Overworld, Factions, Pantheon, Timeline, Travel, Battlemap, Audio, Compendiums, and Combat.</p>
                                 </div>
-                                <span class="text-[10px] font-mono font-semibold text-amber-400/80 mt-2">12 Modules Active</span>
+                                <span class="text-[10px] font-mono font-semibold text-amber-400/80 mt-2">17 Modules Active</span>
                             </button>
 
                             <button onclick="applyPlaystylePreset('theater')" id="preset-card-theater" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
@@ -2815,9 +3512,9 @@
                                         <span class="text-lg">🎭</span>
                                         <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Theater of the Mind</span>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 leading-snug">Grid battlemap disabled. Clean focus on Combat, Lore, Audio, Notes, and Compendiums.</p>
+                                    <p class="text-[11px] text-slate-400 leading-snug">Tactical battlemap disabled. Clean focus on Combat, Lore, Audio, Notes, and Compendiums.</p>
                                 </div>
-                                <span class="text-[10px] font-mono font-semibold text-sky-400/80 mt-2">11 Modules Active</span>
+                                <span class="text-[10px] font-mono font-semibold text-sky-400/80 mt-2">16 Modules Active</span>
                             </button>
 
                             <button onclick="applyPlaystylePreset('prep')" id="preset-card-prep" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
@@ -2826,9 +3523,9 @@
                                         <span class="text-lg">📜</span>
                                         <span class="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">Worldbuilder & Prep</span>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 leading-snug">World lore, NPCs, Secrets, Handouts, Loot & Compendiums. Combat and Battlemap hidden.</p>
+                                    <p class="text-[11px] text-slate-400 leading-snug">World lore, Overworld, Factions, Pantheon, Timeline, Travel, NPCs, Secrets & Compendiums.</p>
                                 </div>
-                                <span class="text-[10px] font-mono font-semibold text-emerald-400/80 mt-2">9 Modules Active</span>
+                                <span class="text-[10px] font-mono font-semibold text-emerald-400/80 mt-2">15 Modules Active</span>
                             </button>
 
                             <button onclick="applyPlaystylePreset('minimal')" id="preset-card-minimal" class="p-3.5 rounded-xl border text-left transition flex flex-col justify-between h-full bg-ledger-900 border-ledger-700 hover:border-amber-500/50 group">
@@ -2839,7 +3536,7 @@
                                     </div>
                                     <p class="text-[11px] text-slate-400 leading-snug">Combat Tracker, Party Status, Scratchpad Notes, and Rules Engine only. Zero clutter.</p>
                                 </div>
-                                <span class="text-[10px] font-mono font-semibold text-purple-400/80 mt-2">3 Modules Active</span>
+                                <span class="text-[10px] font-mono font-semibold text-purple-400/80 mt-2">4 Modules Active</span>
                             </button>
                         </div>
                     </div>
@@ -3485,7 +4182,7 @@
     <div id="add-location-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-ledger-700 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div class="px-6 py-4 border-b border-ledger-700 flex items-center justify-between">
-                <h3 class="font-display font-bold text-base text-amber-400">🗺️ Add Campaign Location</h3>
+                <h3 id="loc-modal-title" class="font-display font-bold text-base text-amber-400">🗺️ Add Campaign Location</h3>
                 <button onclick="closeModal('add-location-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             <div class="p-6 overflow-y-auto space-y-3.5 text-xs">
@@ -3523,14 +4220,29 @@
                     <label class="block text-slate-400 mb-1">Atmospheric Description</label>
                     <textarea id="loc-desc-input" rows="2" placeholder="Sensory details, sights, smells, sounds..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2.5 text-white"></textarea>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <input type="hidden" id="loc-edit-id">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-slate-400 mb-1">Factions Present (comma-sep)</label>
-                        <input id="loc-factions-input" type="text" placeholder="e.g. The Obsidian Syndicate" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-slate-400">Factions Present</label>
+                            <span class="text-[10px] text-slate-500 font-mono">Select or type</span>
+                        </div>
+                        <input id="loc-factions-search" type="text" placeholder="Search / add faction (Enter)..." oninput="filterLocationFactionOptions()" onkeydown="onLocationFactionSearchKeydown(event)" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-xs text-white mb-1.5 focus:outline-none focus:border-amber-400">
+                        <div id="loc-factions-selector" class="max-h-24 overflow-y-auto bg-ledger-950/80 border border-ledger-800 rounded-lg p-2 flex flex-wrap gap-1.5 custom-scrollbar">
+                            <!-- Populated dynamically with toggleable faction pills -->
+                        </div>
+                        <input id="loc-factions-input" type="hidden">
                     </div>
                     <div>
-                        <label class="block text-slate-400 mb-1">Notable NPCs (comma-sep)</label>
-                        <input id="loc-npcs-input" type="text" placeholder="e.g. Brog the Tender" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-slate-400">Notable NPCs</label>
+                            <span class="text-[10px] text-slate-500 font-mono">Select or type</span>
+                        </div>
+                        <input id="loc-npcs-search" type="text" placeholder="Search / add NPC (Enter)..." oninput="filterLocationNpcOptions()" onkeydown="onLocationNpcSearchKeydown(event)" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-xs text-white mb-1.5 focus:outline-none focus:border-amber-400">
+                        <div id="loc-npcs-selector" class="max-h-24 overflow-y-auto bg-ledger-950/80 border border-ledger-800 rounded-lg p-2 flex flex-wrap gap-1.5 custom-scrollbar">
+                            <!-- Populated dynamically with toggleable NPC pills -->
+                        </div>
+                        <input id="loc-npcs-input" type="hidden">
                     </div>
                 </div>
                 <div>
@@ -3654,9 +4366,10 @@
     <div id="add-quest-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-ledger-700 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div class="px-6 py-4 border-b border-ledger-700 flex items-center justify-between">
-                <h3 class="font-display font-bold text-base text-amber-400">📜 Add Campaign Quest</h3>
+                <h3 id="quest-modal-title" class="font-display font-bold text-base text-amber-400">📜 Add Campaign Quest</h3>
                 <button onclick="closeModal('add-quest-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
+            <input type="hidden" id="quest-edit-id">
             <div class="p-6 overflow-y-auto space-y-3.5 text-xs">
                 <div>
                     <label class="block text-slate-400 mb-1">Quest Title *</label>
@@ -3664,12 +4377,24 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-slate-400 mb-1">Quest Giver</label>
-                        <input id="quest-giver-input" type="text" placeholder="e.g. Sister Andrea" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-slate-400">Quest Giver</label>
+                            <span class="text-[10px] text-slate-500 font-mono">NPC</span>
+                        </div>
+                        <select id="quest-giver-select" onchange="onQuestGiverSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                            <option value="">-- None / Unknown --</option>
+                        </select>
+                        <input id="quest-giver-input" type="text" placeholder="Custom quest giver name..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                     </div>
                     <div>
-                        <label class="block text-slate-400 mb-1">Location</label>
-                        <input id="quest-location-input" type="text" placeholder="e.g. Sunken Ward Catacombs" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-slate-400">Location</label>
+                            <span class="text-[10px] text-slate-500 font-mono">World / Map</span>
+                        </div>
+                        <select id="quest-location-select" onchange="onQuestLocationSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                            <option value="">-- None / Wilderness --</option>
+                        </select>
+                        <input id="quest-location-input" type="text" placeholder="Custom location name..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -3710,21 +4435,34 @@
     <div id="add-rumor-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-ledger-700 rounded-2xl max-w-sm w-full overflow-hidden flex flex-col shadow-2xl">
             <div class="px-6 py-4 border-b border-ledger-700 flex items-center justify-between">
-                <h3 class="font-display font-bold text-base text-amber-400">📜 Pin Tavern Rumor</h3>
+                <h3 id="rumor-modal-title" class="font-display font-bold text-base text-amber-400">📜 Pin Tavern Rumor</h3>
                 <button onclick="closeModal('add-rumor-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             <div class="p-6 space-y-3.5 text-xs">
+                <input type="hidden" id="rumor-edit-id">
                 <div>
                     <label class="block text-slate-400 mb-1">Rumor Text *</label>
                     <textarea id="rumor-text-input" rows="3" placeholder="What gossip, rumor, or ominous tale was heard?..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2.5 text-white"></textarea>
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Source / Speaker</label>
-                    <input id="rumor-source-input" type="text" placeholder="e.g. Drunken Sailor at Rusted Anchor" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-slate-400">Source / Speaker</label>
+                        <span class="text-[10px] text-slate-500 font-mono">NPC</span>
+                    </div>
+                    <select id="rumor-source-select" onchange="onRumorSourceSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                        <option value="">-- None / Unknown Speaker --</option>
+                    </select>
+                    <input id="rumor-source-input" type="text" placeholder="Custom speaker or source..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Location Heard</label>
-                    <input id="rumor-location-input" type="text" placeholder="e.g. The Rusted Anchor Tavern" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-slate-400">Location Heard</label>
+                        <span class="text-[10px] text-slate-500 font-mono">World / Map</span>
+                    </div>
+                    <select id="rumor-location-select" onchange="onRumorLocationSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                        <option value="">-- None / Anywhere --</option>
+                    </select>
+                    <input id="rumor-location-input" type="text" placeholder="Custom location heard..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">Veracity / Truth</label>
@@ -3738,7 +4476,7 @@
             </div>
             <div class="px-6 py-3 bg-ledger-950 border-t border-ledger-700 flex justify-end gap-2">
                 <button onclick="closeModal('add-rumor-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300 text-xs">Cancel</button>
-                <button onclick="saveRumorFromModal()" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition">Pin Rumor</button>
+                <button onclick="saveRumorFromModal()" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition">Save Rumor</button>
             </div>
         </div>
     </div>
@@ -4541,16 +5279,34 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tied NPC</label>
-                        <input type="text" id="custom-secret-npc" placeholder="e.g. Bramwell Vance" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[10px] uppercase font-bold text-slate-400">Tied NPC</label>
+                            <span class="text-[9px] text-slate-500 font-mono">NPC</span>
+                        </div>
+                        <select id="custom-secret-npc-select" onchange="onSecretNpcSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                            <option value="">-- None / Unlinked --</option>
+                        </select>
+                        <input type="text" id="custom-secret-npc" placeholder="Custom NPC name..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                     </div>
                     <div>
-                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tied Location</label>
-                        <input type="text" id="custom-secret-location" placeholder="e.g. The Sunken Ward" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[10px] uppercase font-bold text-slate-400">Tied Location</label>
+                            <span class="text-[9px] text-slate-500 font-mono">Location</span>
+                        </div>
+                        <select id="custom-secret-location-select" onchange="onSecretLocationSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                            <option value="">-- None / Unlinked --</option>
+                        </select>
+                        <input type="text" id="custom-secret-location" placeholder="Custom location..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                     </div>
                     <div>
-                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tied Faction</label>
-                        <input type="text" id="custom-secret-faction" placeholder="e.g. Obsidian Syndicate" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[10px] uppercase font-bold text-slate-400">Tied Faction</label>
+                            <span class="text-[9px] text-slate-500 font-mono">Faction</span>
+                        </div>
+                        <select id="custom-secret-faction-select" onchange="onSecretFactionSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                            <option value="">-- None / Unlinked --</option>
+                        </select>
+                        <input type="text" id="custom-secret-faction" placeholder="Custom faction..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                     </div>
                 </div>
 
@@ -4686,12 +5442,24 @@
                     <!-- Author, Recipient & Date -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
-                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Author / Signer</label>
-                            <input id="custom-handout-author" oninput="updateHandoutPreview()" type="text" placeholder="e.g. Lady Cynthia" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-semibold text-slate-300">Author / Signer</label>
+                                <span class="text-[9px] text-slate-500 font-mono">NPC</span>
+                            </div>
+                            <select id="custom-handout-author-select" onchange="onHandoutAuthorSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                                <option value="">-- None / Anonymous --</option>
+                            </select>
+                            <input id="custom-handout-author" oninput="updateHandoutPreview()" type="text" placeholder="Custom author / signer..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Recipient</label>
-                            <input id="custom-handout-recipient" oninput="updateHandoutPreview()" type="text" placeholder="e.g. Captain Drake" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-semibold text-slate-300">Recipient</label>
+                                <span class="text-[9px] text-slate-500 font-mono">NPC</span>
+                            </div>
+                            <select id="custom-handout-recipient-select" onchange="onHandoutRecipientSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                                <option value="">-- None / To Whomever --</option>
+                            </select>
+                            <input id="custom-handout-recipient" oninput="updateHandoutPreview()" type="text" placeholder="Custom recipient..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-300 mb-1">In-World Date / Stamp</label>
@@ -4758,12 +5526,24 @@
                     <!-- Associated Setting Ties -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                         <div>
-                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tied Location</label>
-                            <input id="custom-handout-location" type="text" placeholder="e.g. St. Jude's Crypt" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-semibold text-slate-300">Tied Location</label>
+                                <span class="text-[9px] text-slate-500 font-mono">Location</span>
+                            </div>
+                            <select id="custom-handout-location-select" onchange="onHandoutLocationSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                                <option value="">-- None / Unlinked --</option>
+                            </select>
+                            <input id="custom-handout-location" type="text" placeholder="Custom location..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tied NPC</label>
-                            <input id="custom-handout-npc" type="text" placeholder="e.g. Silas the Scribe" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-semibold text-slate-300">Tied NPC</label>
+                                <span class="text-[9px] text-slate-500 font-mono">NPC</span>
+                            </div>
+                            <select id="custom-handout-npc-select" onchange="onHandoutNpcSelectChange()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400">
+                                <option value="">-- None / Unlinked --</option>
+                            </select>
+                            <input id="custom-handout-npc" type="text" placeholder="Custom NPC..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs mt-1.5 hidden focus:outline-none focus:border-amber-400">
                         </div>
                     </div>
 
@@ -4840,7 +5620,7 @@
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Playstyle Preset</label>
                     <select id="new-campaign-preset" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500">
-                        <option value="full">⚔️ Full Tabletop Immersion (All 12 Modules)</option>
+                        <option value="full">⚔️ Full Tabletop Immersion (All 17 Modules)</option>
                         <option value="theater">🎭 Theater of the Mind (Battlemap Disabled)</option>
                         <option value="prep">📜 Worldbuilder & Prep (Combat & Map Hidden)</option>
                         <option value="minimal">⚡ Minimalist DM (Tracker, Notes & Rules Only)</option>
@@ -5124,6 +5904,644 @@
         </div>
     </div>
 
+    <!-- 30. CAMPAIGN ROSTER FULL DIRECTORY MODAL -->
+    <div id="roster-directory-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-5">
+        <div class="bg-ledger-900 border-2 border-amber-500/50 rounded-3xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            <!-- Modal Header -->
+            <div class="bg-ledger-950/90 border-b border-ledger-800 px-5 py-3.5 flex items-center justify-between gap-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-xl">📋</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base sm:text-lg text-amber-300 leading-tight flex items-center gap-2">
+                            <span>Campaign NPC Directory & Vault</span>
+                            <span id="dir-roster-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-ledger-800 text-amber-300 border border-amber-500/30">0 NPCs</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Search, organize, filter, and review all saved NPCs across your campaign settlements, factions, and dungeons</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="exportRosterMarkdown()" title="Export All Roster NPCs as Markdown" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 font-semibold text-xs flex items-center gap-1.5 transition">
+                        <span>📥</span> Export All (MD)
+                    </button>
+                    <button type="button" onclick="closeModal('roster-directory-modal')" class="text-slate-400 hover:text-white text-base px-2.5 py-1">✕</button>
+                </div>
+            </div>
+
+            <!-- Toolbar / Filters -->
+            <div class="bg-ledger-950/70 border-b border-ledger-800 px-5 py-3 space-y-2.5 shrink-0">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <!-- Search Input -->
+                    <div class="flex-1 min-w-[240px] relative">
+                        <input id="dir-roster-search" oninput="renderRosterDirectory()" type="text" placeholder="Search NPCs by name, title, species, role, faction, location, or notes..." class="w-full bg-ledger-900 border border-ledger-700 rounded-xl px-3 py-1.5 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-400">
+                    </div>
+
+                    <!-- Grouping & Sorting -->
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <div class="flex items-center gap-1">
+                            <span class="text-[11px] text-slate-400 font-semibold">Group:</span>
+                            <select id="dir-roster-group-by" onchange="onDirRosterGroupingChanged(this.value)" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-amber-400">
+                                <option value="location" selected>📍 By Location</option>
+                                <option value="faction">⚔️ By Faction</option>
+                                <option value="category">🏷️ By Category</option>
+                                <option value="none">Flat (None)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[11px] text-slate-400 font-semibold">Sort:</span>
+                            <select id="dir-roster-sort-by" onchange="onDirRosterSortChanged(this.value)" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-amber-400">
+                                <option value="name-asc" selected>Name (A-Z)</option>
+                                <option value="name-desc">Name (Z-A)</option>
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="role">Role / Title</option>
+                            </select>
+                        </div>
+
+                        <!-- View Mode Toggle: Grid vs Table -->
+                        <div class="flex items-center p-0.5 rounded-lg border border-ledger-700 bg-ledger-900">
+                            <button type="button" id="dir-view-grid-btn" onclick="setDirViewMode('grid')" title="Card Grid View" class="px-2.5 py-1 rounded text-xs font-bold bg-amber-500 text-ledger-950 transition">
+                                ▦ Cards
+                            </button>
+                            <button type="button" id="dir-view-table-btn" onclick="setDirViewMode('table')" title="Data Table View" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:text-white transition">
+                                ☰ Table
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-filters: Location & Faction Filters -->
+                <div class="flex items-center gap-2.5 flex-wrap pt-1 text-[11px]">
+                    <span class="text-slate-400 font-semibold">Filter:</span>
+                    <select id="dir-filter-location" onchange="renderRosterDirectory()" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2.5 py-1 text-slate-300 text-xs focus:outline-none focus:border-amber-400">
+                        <option value="ALL">All Locations</option>
+                    </select>
+                    <select id="dir-filter-faction" onchange="renderRosterDirectory()" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2.5 py-1 text-slate-300 text-xs focus:outline-none focus:border-amber-400">
+                        <option value="ALL">All Factions</option>
+                    </select>
+                    <button type="button" onclick="clearDirFilters()" class="text-xs text-amber-400 hover:underline ml-auto font-medium">
+                        Reset Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Area (Scrollable) -->
+            <div id="roster-directory-content" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                <!-- Populated dynamically via renderRosterDirectory() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         PLAYER INVENTORY, ATTUNEMENT & SHARED PARTY STASH MODAL
+         =================================================================== -->
+    <div id="party-inventory-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-5">
+        <div class="bg-ledger-900 border-2 border-amber-500/50 rounded-3xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            <!-- Modal Header -->
+            <div class="bg-ledger-950/90 border-b border-ledger-800 px-5 py-3.5 flex items-center justify-between gap-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-xl">🎒</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base sm:text-lg text-amber-300 leading-tight">Party Inventory, 5.5e Attunement & Shared Stash</h3>
+                        <p class="text-[11px] text-slate-400">Manage individual character equipment, 3-slot magic item attunement, encumbrance, coin purses, and the shared Bag of Holding</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('party-inventory-modal')" class="w-8 h-8 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition">✕</button>
+            </div>
+
+            <!-- Character & Shared Stash Selector Tabs -->
+            <div class="bg-ledger-950/60 border-b border-ledger-800 px-5 py-2.5 flex items-center justify-between gap-2 flex-wrap shrink-0">
+                <div id="inventory-modal-tabs" class="flex items-center gap-1.5 flex-wrap">
+                    <!-- Populated dynamically via renderPartyInventoryModal() -->
+                </div>
+                <div class="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+                    <span>Total Party Wealth: <strong id="inventory-party-total-gp" class="text-amber-300">0 GP</strong></span>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div id="inventory-modal-body" class="flex-1 overflow-y-auto p-5 space-y-5">
+                <!-- Populated dynamically via renderPartyInventoryModal() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         ADD / EDIT OVERWORLD LORE PIN MODAL
+         =================================================================== -->
+    <div id="overworld-pin-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 class="font-display font-bold text-sm text-amber-300">📍 Add / Edit Overworld Lore Pin</h3>
+                <button onclick="closeModal('overworld-pin-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <input type="hidden" id="ow-pin-id">
+            <div class="space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Link to Existing Location (Optional)</label>
+                        <select id="ow-pin-location-link" onchange="onOverworldPinLocationSelect()" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                            <option value="">-- Custom / Unlinked Pin --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Pin Label / Name</label>
+                        <input id="ow-pin-label" type="text" placeholder="e.g. Oakhaven, Sunken Citadel..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Icon</label>
+                        <select id="ow-pin-icon" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                            <option value="🏰">🏰 Settlement / Keep</option>
+                            <option value="👑">👑 Capital / City</option>
+                            <option value="🍺">🍺 Tavern / Waystation</option>
+                            <option value="🏛️">🏛️ Dungeon / Ruins</option>
+                            <option value="🌲">🌲 Wilderness / Grove</option>
+                            <option value="⚓">⚓ Harbor / Port</option>
+                            <option value="⛰️">⛰️ Mountain / Mine</option>
+                            <option value="🔮">🔮 Arcane Spire / Anomaly</option>
+                            <option value="💀">💀 Boss Lair / Hazard</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Map X (%)</label>
+                        <input id="ow-pin-x" type="number" step="0.5" min="2" max="98" value="50" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Map Y (%)</label>
+                        <input id="ow-pin-y" type="number" step="0.5" min="2" max="98" value="50" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white font-mono">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Population / Scale</label>
+                        <input id="ow-pin-population" type="text" placeholder="e.g. ~1,450 (Frontier Town) or Uninhabited" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Danger Level</label>
+                        <select id="ow-pin-danger" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                            <option value="Safe">Safe</option>
+                            <option value="Low">Low</option>
+                            <option value="Moderate">Moderate</option>
+                            <option value="Deadly">Deadly</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Zoom to Sub-Map (Optional Child Map Link)</label>
+                    <select id="ow-pin-submap-link" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                        <option value="">-- No Child Map (Standard Pin) --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Region / Quick Summary Note</label>
+                    <textarea id="ow-pin-notes" rows="2" placeholder="Lore notes, active rumors, or travel hooks..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-slate-200"></textarea>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer pt-1">
+                    <input id="ow-pin-discovered" type="checkbox" checked class="rounded border-ledger-700 text-emerald-500">
+                    <span class="text-slate-200 font-semibold">Discovered by Party (Visible when broadcasting Travel Map to Player Screen)</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-ledger-800">
+                <button onclick="closeModal('overworld-pin-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
+                <button onclick="submitOverworldPinModal()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Save Lore Pin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         ADD / EDIT OVERWORLD SUB-MAP TIER MODAL
+         =================================================================== -->
+    <div id="overworld-map-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 id="ow-map-modal-title" class="font-display font-bold text-sm text-amber-300">🗺️ Add / Edit Regional Map Tier</h3>
+                <button onclick="closeModal('overworld-map-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <input type="hidden" id="ow-submap-edit-id">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Map Title</label>
+                    <input id="ow-submap-title" type="text" placeholder="e.g. Province of the High Moors, Waterdeep City..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[11px] font-bold text-slate-300">Map Tier / Scope</label>
+                            <button type="button" onclick="openManageMapTiersModal()" class="text-[10px] text-amber-400 hover:underline">⚙️ Edit Tiers</button>
+                        </div>
+                        <select id="ow-submap-type" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                            <option value="Province" selected>Province</option>
+                            <option value="Settlement">Settlement</option>
+                            <option value="Kingdom">Kingdom</option>
+                            <option value="Dungeon">Dungeon</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Miles Per Hex</label>
+                        <input id="ow-submap-scale-miles" type="number" min="1" max="100" value="6" oninput="document.getElementById('ow-submap-scale-desc').value = `1 Hex = ${this.value} Miles`" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white font-mono">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Scale Description Text</label>
+                    <input id="ow-submap-scale-desc" type="text" value="1 Hex = 6 Miles" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Map Image URL (or /static/images/...)</label>
+                    <div class="flex items-center gap-1.5">
+                        <input id="ow-submap-url" type="text" placeholder="/static/images/overworld_default.svg" value="/static/images/overworld_default.svg" class="flex-1 bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white font-mono text-[11px]">
+                        <button type="button" onclick="document.getElementById('ow-submap-file-upload').click()" class="px-2.5 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 text-slate-200">Upload</button>
+                        <input type="file" id="ow-submap-file-upload" accept="image/*,.svg" class="hidden" onchange="uploadOverworldSubmapFile(this)">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center pt-3 border-t border-ledger-800">
+                <button id="ow-submap-delete-btn" onclick="deleteCurrentSubmap()" class="hidden px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs">Delete Map</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeModal('overworld-map-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
+                    <button onclick="submitOverworldMapModal()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Save Map Tier</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         MANAGE OVERWORLD MAP TIERS MODAL
+         =================================================================== -->
+    <div id="overworld-tiers-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-base">⚙️</span>
+                    <h3 class="font-display font-bold text-sm text-amber-300">Custom Map Tiers & Hierarchy</h3>
+                </div>
+                <button onclick="closeModal('overworld-tiers-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <p class="text-slate-400 text-[11px] leading-relaxed">
+                Add or remove custom tiers used to categorize your campaign maps (e.g. Continent, Empire, Province, Barony, Settlement, Dungeon, Underdark).
+            </p>
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-300">Active Map Tiers</label>
+                <div id="ow-tiers-list" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    <!-- Populated dynamically with tier pills and delete buttons -->
+                </div>
+            </div>
+            <div class="pt-2 border-t border-ledger-800 space-y-2">
+                <label class="block text-[11px] font-bold text-slate-300">Add New Tier</label>
+                <div class="flex items-center gap-2">
+                    <input id="ow-new-tier-input" type="text" placeholder="e.g. Continent, Barony, City Ward..." class="flex-1 bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-amber-400" onkeydown="if(event.key==='Enter') addOverworldTierFromModal()">
+                    <button onclick="addOverworldTierFromModal()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shrink-0 transition">+ Add Tier</button>
+                </div>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-ledger-800">
+                <button onclick="closeModal('overworld-tiers-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300 hover:text-white text-xs">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         OVERLAND HAZARDS & 2024 ENCOUNTER ROLLER MODAL
+         =================================================================== -->
+    <div id="overworld-encounter-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-5">
+        <div class="bg-ledger-900 border-2 border-purple-500/50 rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs max-h-[92vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl">🎲</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-amber-300">Overland Hazard & 2024 Encounter Roller</h3>
+                        <p class="text-[11px] text-slate-400">Generate terrain-tailored travel encounters, environmental complications, and push monsters to the Combat Tracker.</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('overworld-encounter-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+
+            <!-- Parameters Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-2xl bg-ledger-950 border border-ledger-800">
+                <div>
+                    <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Terrain / Biome</label>
+                    <select id="ow-enc-terrain-select" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-white font-semibold">
+                        <option value="Forest">🌲 Forest & Woodland</option>
+                        <option value="Mountain">⛰️ Mountain & Peak</option>
+                        <option value="Swamp">🐊 Swamp & Fen</option>
+                        <option value="Road">🛣️ Highway & Road</option>
+                        <option value="Plains">🌾 Plains & Grassland</option>
+                        <option value="Desert">🏜️ Desert & Dunes</option>
+                        <option value="Coastal">🌊 Coastal & Shore</option>
+                        <option value="Underdark">🍄 Underdark & Caverns</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Danger Level</label>
+                    <select id="ow-enc-danger-select" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-white">
+                        <option value="all">Any Danger Level</option>
+                        <option value="Low">Low (CR 1/4 - 1)</option>
+                        <option value="Moderate">Moderate (CR 2 - 4)</option>
+                        <option value="Deadly">Deadly (CR 5+)</option>
+                        <option value="Safe">Safe / Social Traveler</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Time of Day</label>
+                    <select id="ow-enc-time-select" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-white">
+                        <option value="Day">☀️ Daylight March</option>
+                        <option value="Night">🌙 Night Watch & Camp</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button onclick="rollOverlandEncounterUI()" class="px-6 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-amber-600 hover:from-purple-500 hover:to-amber-500 text-white font-bold text-xs shadow-lg transition transform hover:scale-105 flex items-center gap-2 mx-auto">
+                    <span>🎲</span> <span>Roll 2024 Overland Encounter</span>
+                </button>
+            </div>
+
+            <!-- Rolled Encounter Display Card -->
+            <div id="ow-encounter-result" class="hidden space-y-3.5 p-4 rounded-2xl bg-ledger-950 border border-purple-500/40">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         ADD / EDIT INTER-FACTION RELATION MODAL
+         =================================================================== -->
+    <div id="faction-relation-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-purple-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 class="font-display font-bold text-sm text-amber-300">🕸️ Link Factions in Relationship Web</h3>
+                <button onclick="closeModal('faction-relation-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">First Faction</label>
+                        <select id="frel-source" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Second Faction</label>
+                        <select id="frel-target" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white"></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Diplomatic Attitude</label>
+                    <select id="frel-status" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                        <option value="War">⚔️ Open War / Blood Feud</option>
+                        <option value="Rivalry">😠 Cold War / Bitter Rivalry</option>
+                        <option value="Cautious Alliance">⚖️ Cautious Truce / Trade Pact</option>
+                        <option value="Friendly">🤝 Friendly Cooperation</option>
+                        <option value="Allied">🛡️ Sworn Alliance</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Political Context / Flashpoint</label>
+                    <textarea id="frel-note" rows="2" placeholder="e.g. Clashing over smuggling tariffs in the Harbor District..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-slate-200"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-ledger-800">
+                <button onclick="closeModal('faction-relation-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
+                <button onclick="submitFactionRelationModal()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Save Relationship</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         ADD / EDIT PANTHEON DEITY & PATRON MODAL
+         =================================================================== -->
+    <div id="deity-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 class="font-display font-bold text-sm text-amber-300">☀️ Add / Edit Deity, Patron or Cosmic Cult</h3>
+                <button onclick="closeModal('deity-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <input type="hidden" id="deity-input-id">
+            <div class="space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Name</label>
+                        <input id="deity-input-name" type="text" placeholder="e.g. Pelor, The Raven Queen, Asmodeus..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Symbol Icon</label>
+                        <input id="deity-input-icon" type="text" value="☀️" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white text-center text-base">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Divine Title / Epithet</label>
+                        <input id="deity-input-title" type="text" placeholder="e.g. The Dawnfather, Matron of Ravens" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Alignment & Tier</label>
+                        <input id="deity-input-alignment" type="text" placeholder="e.g. Neutral Good • Greater Deity" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Divine Domains (comma-separated)</label>
+                        <input id="deity-input-domains" type="text" placeholder="e.g. Life, Light, War" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Holy Symbol Description</label>
+                        <input id="deity-input-symbol" type="text" placeholder="e.g. Golden sun-disc set with amber" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Tenets of Faith (One per line)</label>
+                    <textarea id="deity-input-tenets" rows="3" placeholder="Bring light where darkness festers.&#10;Defend the weak and shelter the harvest." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-slate-200"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Clashing Rivals</label>
+                        <input id="deity-input-rivals" type="text" placeholder="e.g. Tharizdun, Vecna, Shar" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Signature Piety Boon (10+ Piety)</label>
+                        <input id="deity-input-boon" type="text" placeholder="e.g. Cast Daylight 1/Long Rest; +1d4 radiant" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Mythology, Temples & Cult Lore</label>
+                    <textarea id="deity-input-desc" rows="2" placeholder="Overview of worship, temples, and cosmic agenda..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-slate-200"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-ledger-800">
+                <button onclick="closeModal('deity-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
+                <button onclick="submitDeityModal()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Save Deity</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         ADD / EDIT HISTORICAL TIMELINE EVENT MODAL
+         =================================================================== -->
+    <div id="timeline-event-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-sky-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 class="font-display font-bold text-sm text-amber-300">⏳ Record Historical Event or Campaign Milestone</h3>
+                <button onclick="closeModal('timeline-event-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <input type="hidden" id="tl-event-id">
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Historical Era</label>
+                        <select id="tl-event-era" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                            <!-- Populated dynamically via renderTimelineEraSelectOptions() -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Tag / Category</label>
+                        <input id="tl-event-category" type="text" list="tl-category-suggestions" placeholder="e.g. Campaign Milestone, Major Battle..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                        <datalist id="tl-category-suggestions">
+                            <option value="Campaign Milestone">
+                            <option value="Cataclysm">
+                            <option value="Major Battle">
+                            <option value="Political Shift">
+                            <option value="Discovery">
+                            <option value="Arcane Seal">
+                            <option value="Ancient History">
+                            <option value="Mythic Lore">
+                            <option value="Quest Completed">
+                            <option value="Faction Turn">
+                        </datalist>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2.5">
+                    <div class="col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Date / Year Label</label>
+                        <input id="tl-event-date" type="text" placeholder="e.g. 412 AI, or Day 14 — Current Arc" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Sort Order</label>
+                        <input id="tl-event-order" type="number" value="100" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white font-mono">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Event Headline</label>
+                    <input id="tl-event-title" type="text" placeholder="e.g. The Signing of the Iron Concord" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Chronicle Details & Lore Impact</label>
+                    <textarea id="tl-event-desc" rows="3" placeholder="What happened and how does it echo into the present campaign?" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-slate-200"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-3 border-t border-ledger-800">
+                <button onclick="closeModal('timeline-event-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
+                <button onclick="submitTimelineEventModal()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Save Chronicle Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         MANAGE HISTORICAL ERAS MODAL
+         =================================================================== -->
+    <div id="timeline-eras-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-purple-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-base">⏳</span>
+                    <h3 class="font-display font-bold text-sm text-purple-300">Campaign Historical Eras Manager</h3>
+                </div>
+                <button onclick="closeModal('timeline-eras-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+            <p class="text-xs text-slate-400">Add, edit, or delete chronological eras for this campaign. Eras filter the timeline and categorize milestones.</p>
+
+            <!-- Current Eras List -->
+            <div id="timeline-eras-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <!-- Rendered dynamically via renderTimelineErasModal() -->
+            </div>
+
+            <!-- Add / Edit Era Form -->
+            <div class="p-3.5 bg-ledger-950/80 border border-ledger-800 rounded-xl space-y-3">
+                <h4 id="era-form-heading" class="font-bold text-amber-300 text-xs">+ Add New Historical Era</h4>
+                <input type="hidden" id="era-edit-id">
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                        <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Era Name</label>
+                        <input id="era-edit-name" type="text" placeholder="e.g. The Age of Strife" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Icon / Emoji</label>
+                        <input id="era-edit-icon" type="text" value="⏳" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-white text-center">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Badge Color</label>
+                        <select id="era-edit-color" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-white">
+                            <option value="sky">Sky Blue</option>
+                            <option value="amber">Amber / Gold</option>
+                            <option value="purple">Purple / Arcane</option>
+                            <option value="rose">Rose / Crimson</option>
+                            <option value="emerald">Emerald / Nature</option>
+                            <option value="indigo">Indigo / Cosmic</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Brief Description</label>
+                        <input id="era-edit-desc" type="text" placeholder="e.g. Mortal wars prior to the Cataclysm" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-slate-200">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="resetEraForm()" class="px-3 py-1 rounded bg-ledger-800 text-slate-400 hover:text-white text-xs">Reset Form</button>
+                    <button type="button" onclick="submitEraForm()" class="px-3.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs">Save Era</button>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-ledger-800">
+                <button onclick="closeModal('timeline-eras-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300 font-semibold">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         COMPENDIUM ITEM PICKER MODAL (FOR INVENTORY / STASH)
+         =================================================================== -->
+    <div id="inventory-compendium-picker-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-5">
+        <div class="bg-ledger-900 border-2 border-amber-500/50 rounded-3xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            <!-- Modal Header -->
+            <div class="bg-ledger-950/90 border-b border-ledger-800 px-5 py-3.5 flex items-center justify-between gap-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <span class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-lg">🛡️</span>
+                    <div>
+                        <h3 class="font-display font-bold text-sm sm:text-base text-amber-300">Add Item from Compendium</h3>
+                        <p id="inv-picker-target-label" class="text-[11px] text-slate-400">Select an item from the 5.5e compendium to grant to character or party stash.</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('inventory-compendium-picker-modal')" class="w-8 h-8 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition">✕</button>
+            </div>
+
+            <!-- Search & Filters -->
+            <div class="bg-ledger-950/60 border-b border-ledger-800 px-5 py-3 space-y-2.5 shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <span class="absolute left-3 top-2.5 text-slate-500">🔍</span>
+                        <input id="inv-picker-search" oninput="filterCompendiumPickerItems()" type="text" placeholder="Search weapons, potions, armor, wondrous items..." class="w-full bg-ledger-900 border border-ledger-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <button onclick="openCustomItemFromPicker()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs whitespace-nowrap shadow transition">
+                        + Custom Item
+                    </button>
+                </div>
+                <!-- Category Filter Pills -->
+                <div id="inv-picker-category-filters" class="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                    <!-- Rendered dynamically -->
+                </div>
+            </div>
+
+            <!-- Scrollable Items List -->
+            <div id="inv-picker-items-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-ledger-950/90 border-t border-ledger-800 px-5 py-3 flex items-center justify-between text-slate-400 text-[11px] shrink-0">
+                <span id="inv-picker-count-label">Showing items</span>
+                <button onclick="closeModal('inventory-compendium-picker-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-semibold">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- FLOATING DICE ROLL HUD OVERLAY -->
     <div id="dice-roll-overlay" onclick="dismissDiceOverlay()" class="overlay-hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-5 py-3.5 rounded-2xl bg-[#0b0f17]/95 border-2 border-amber-500/80 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_30px_rgba(245,158,11,0.35)] backdrop-blur-xl transition cursor-pointer select-none">
         <!-- Animated Polyhedral Die Icon -->
@@ -5162,7 +6580,7 @@
     <script src="/static/js/lighting_engine.js?v=2.5"></script>
     <script src="/static/js/npc_data.js?v=2.5"></script>
     <script src="/static/js/loot_data.js?v=2.5"></script>
-    <script src="/static/js/dashboard.js?v=2.9"></script>
+    <script src="/static/js/dashboard.js?v=3.4"></script>
     <script src="/static/js/battlemap_controller.js?v=2.7"></script>
 </body>
 </html>

@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "loc-b8e211a5",
+    "name": "Oakhaven",
+    "type": "Settlement",
+    "danger": "Safe",
+    "population": "",
+    "summary": "Largest settlement in the lands",
+    "description": "Beautiful big city",
+    "factions": [],
+    "notableNpcs": [
+      "Neega Ironjaw",
+      "Maren Vance"
+    ],
+    "secrets": "",
+    "tags": [
+      "Settlement"
+    ]
+  }
+]

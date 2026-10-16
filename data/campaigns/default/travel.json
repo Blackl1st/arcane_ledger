@@ -1,0 +1,47 @@
+{
+  "pace": "Normal",
+  "terrain": "Forest",
+  "road": "trail",
+  "targetMiles": 48,
+  "marchHours": 8,
+  "navBonus": 0,
+  "forageBonus": 0,
+  "history": [
+    {
+      "id": "march-2177ed",
+      "day": 1,
+      "hour": 19,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "",
+      "timestamp": "2026-10-15T21:10:27.573688"
+    },
+    {
+      "id": "march-camp-500b09",
+      "day": 1,
+      "hour": 9,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 09:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:24:53.511227"
+    },
+    {
+      "id": "march-camp-a35761",
+      "day": 1,
+      "hour": 11,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 11:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:41:56.428497"
+    }
+  ]
+}

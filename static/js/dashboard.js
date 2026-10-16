@@ -131,7 +131,31 @@ let appState = {
     campaigns: [],
     activeCampaignId: 'default',
     currentCampaign: null,
-    playstylePresets: {}
+    playstylePresets: {},
+    // Phase 6: Regional Overworld, Faction Matrix, Pantheon, Timeline, Travel & Inventory
+    overworld: {
+        mapUrl: '/static/images/overworld_default.svg',
+        title: 'The Shattered Coast & Crownlands',
+        scale: '1 Hex = 24 Miles (1 Day Normal Pace)',
+        partyPosition: { x: 42, y: 55, label: "Adventuring Party Camp" },
+        pins: []
+    },
+    overworldMode: 'inspect', // 'inspect', 'add_pin', 'move_party'
+    selectedOverworldPinId: null,
+    factionRelations: { relations: [], turnHistory: [] },
+    factionTurnHistory: [],
+    pantheon: [],
+    timeline: { eras: [], events: [] },
+    timelineFilterEra: 'all',
+    partyStash: {
+        currency: { pp: 0, gp: 0, sp: 0, cp: 0 },
+        items: []
+    },
+    activeInventoryTab: 'stash',
+    itemPickerTarget: 'stash',
+    itemPickerCategory: 'all',
+    travel: { pace: 'Normal', terrain: 'Forest', road: 'trail', targetMiles: 48, marchHours: 8, navBonus: 0, forageBonus: 0, history: [] },
+    travelPace: 'Normal'
 };
 window.appState = appState;
 
@@ -143,12 +167,23 @@ const AVAILABLE_MODULES = [
     { id: 'spells', name: 'Spells Compendium', icon: '📖', desc: '360+ 2024 D&D spells, school filters, components, upcasting, and class lists.' },
     { id: 'items', name: 'Items Compendium', icon: '🛡️', desc: 'Weapons, armor, magic items, weapon masteries, attunement, and shop stocks.' },
     { id: 'rules', name: '2024 Rules Engine', icon: '📜', desc: 'Fast reference for conditions, cover, exhaustion, weapon masteries, and actions.' },
-    { id: 'world', name: 'World, Lore & Handouts', icon: '🏰', desc: 'Factions & tension clocks, locations, quests, rumors, secrets board, and in-world handouts forge.' },
+    { id: 'world', name: 'World & Lore (Main)', icon: '🏰', desc: 'Master module toggle for World & Lore and its sidebar navigation.' },
+    { id: 'overworld', name: 'Regional Overworld Map', icon: '🗺️', desc: 'Grand regional cartography, POI lore pins, settlement danger popovers, and overland journey.' },
+    { id: 'locations', name: 'Locations Directory', icon: '📍', desc: 'Comprehensive directory of cities, dungeons, taverns, and regional points of interest.' },
+    { id: 'factions', name: 'Factions & Turn Engine', icon: '⚖️', desc: 'Inter-faction attitude web, tension clocks, and between-session faction turn simulator.' },
+    { id: 'quests', name: 'Quests & Rumors', icon: '📜', desc: 'Campaign quest log, side objectives, tavern rumors, bounty leads, and quest milestone rewards.' },
+    { id: 'pantheon', name: 'Pantheon & Cosmic Cults', icon: '🏛️', desc: 'Compendium of deities, divine domains, player piety tracker, and holy symbol broadcasts.' },
+    { id: 'timeline', name: 'Campaign Historical Timeline', icon: '⏳', desc: 'Chronological timeline feed, customizable historical eras, event tags, and quest sync.' },
+    { id: 'travel', name: 'Wilderness Travel & Foraging', icon: '🧭', desc: 'Overland pace calculator, 5.5e foraging and navigation DCs, and roadside complications.' },
+    { id: 'secrets', name: 'Secrets & Clues', icon: '🗝️', desc: 'DM prep secret truths, revealable clues, and session revelations.' },
+    { id: 'handouts', name: 'Handouts & Letters', icon: '✉️', desc: 'In-game letters, player props, parchments, and broadcastable handouts.' },
     { id: 'npcs', name: 'NPC Generator & Roster', icon: '👤', desc: 'Instant 5.5e NPC generator with voices, secrets, statblocks, and campaign roster.' },
     { id: 'loot', name: 'Loot & Merchant Generator', icon: '💰', desc: 'Random treasure hoards, coin pouch rolling, and categorized shopkeepers.' },
     { id: 'notes', name: 'Session Scratchpad', icon: '📝', desc: 'In-session DM scratchpad, tagged notes, quick search, and session logs.' },
     { id: 'audio', name: 'Atmosphere & Lighting', icon: '🎭', desc: 'Layered soundscapes, ambient soundboards, and Amaran smart studio lighting.' }
 ];
+
+const WORLD_SUBMODULE_IDS = ['overworld', 'locations', 'factions', 'quests', 'pantheon', 'timeline', 'travel', 'secrets', 'handouts'];
 
 const DEFAULT_FACTIONS = [
     "Unaligned / Independent Local",
@@ -201,7 +236,7 @@ async function fetchFullState() {
         const res = await fetch('/api/state');
         if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data.party)) appState.party = data.party;
+            appState.party = Array.isArray(data.party) ? data.party : [];
             if (data.combat) appState.combat = data.combat;
             if (Array.isArray(data.roster)) appState.roster = data.roster;
             if (data.world) appState.world = data.world;
@@ -255,8 +290,18 @@ async function fetchFullState() {
             } else if (appState.campaigns && appState.campaigns.length > 0) {
                 appState.currentCampaign = appState.campaigns.find(c => c.id === appState.activeCampaignId) || appState.campaigns[0];
             }
+            appState.overworld = data.overworld || { pins: [], routes: [], regions: [] };
+            appState.factionRelations = data.factionRelations || { relations: [], turnHistory: [] };
+            appState.pantheon = Array.isArray(data.pantheon) ? data.pantheon : [];
+            appState.timeline = data.timeline || { eras: [], events: [] };
+            appState.partyStash = data.partyStash || { currency: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+            if (!appState.partyStash.coins && appState.partyStash.currency) {
+                appState.partyStash.coins = appState.partyStash.currency;
+            }
+            appState.travel = data.travel || { pace: 'Normal', terrain: 'Forest', road: 'trail', targetMiles: 48, marchHours: 8, navBonus: 0, forageBonus: 0, history: [] };
             renderCampaignTopbar();
             applyModuleVisibility();
+            populateTopFilterDropdowns();
             updateConnectionStatus(true);
             return;
         }
@@ -265,6 +310,7 @@ async function fetchFullState() {
     }
     updateConnectionStatus(false);
     loadFromLocalStorage();
+    populateTopFilterDropdowns();
 }
 
 function updateConnectionStatus(online) {
@@ -337,6 +383,10 @@ async function apiSaveRosterNPC(npc) {
         if (res.ok) {
             const data = await res.json();
             if (data.roster) appState.roster = data.roster;
+            if (data.locations) {
+                appState.locations = data.locations;
+                renderLocations();
+            }
         }
     } catch (e) {}
 }
@@ -348,6 +398,10 @@ async function apiDeleteRosterNPC(id) {
         if (res.ok) {
             const data = await res.json();
             if (data.roster) appState.roster = data.roster;
+            if (data.locations) {
+                appState.locations = data.locations;
+                renderLocations();
+            }
         }
     } catch (e) {}
 }
@@ -401,6 +455,7 @@ function switchTab(tab) {
         renderPartyHUD();
         renderCombatTracker();
     } else if (tab === 'npcs') {
+        populateTopFilterDropdowns();
         renderCurrentNPC();
         renderRoster();
     } else if (tab === 'rules') {
@@ -531,9 +586,13 @@ function renderPartyHUD() {
     }
 
     container.innerHTML = appState.party.map(pc => {
-        const hpPct = Math.max(0, Math.min(100, Math.round((pc.currentHp / pc.maxHp) * 100)));
-        const isBloodied = pc.currentHp > 0 && pc.currentHp <= Math.floor(pc.maxHp / 2);
-        const isUnconscious = pc.currentHp === 0;
+        const curHp = (pc.currentHp !== undefined) ? Number(pc.currentHp) : ((pc.hp !== undefined) ? Number(pc.hp) : 0);
+        const maxHp = (pc.maxHp !== undefined) ? Number(pc.maxHp) : (curHp || 1);
+        pc.currentHp = curHp;
+        pc.maxHp = maxHp;
+        const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((curHp / maxHp) * 100))) : 0;
+        const isBloodied = curHp > 0 && curHp <= Math.floor(maxHp / 2);
+        const isUnconscious = curHp === 0;
 
         let hpBarColor = "bg-emerald-500";
         if (isUnconscious) hpBarColor = "bg-rose-700";
@@ -675,6 +734,7 @@ function renderPartyHUD() {
                             <button onclick="modifyPCHp('${pc.id}', 5)" class="px-1.5 py-0.5 rounded bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-800 text-emerald-200 text-xs font-mono font-bold transition">+5</button>
                         </div>
                         <div class="flex items-center gap-1">
+                            <button onclick="openPartyInventoryModal('${pc.id}')" title="Character Inventory & Magic Items" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-[11px] font-semibold flex items-center gap-0.5 transition"><span>🎒</span><span>Inv</span></button>
                             <button onclick="promptCustomHP('${pc.id}')" title="Custom Damage, Heal or Temp HP" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 border border-ledger-600 text-slate-300 hover:text-white text-[11px] transition">Adjust</button>
                             <button onclick="openEditPCModal('${pc.id}')" title="Edit Character Sheet" class="p-1 rounded bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 text-slate-400 hover:text-amber-400 transition">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -939,6 +999,7 @@ function savePCFromModal() {
 
     closeModal('edit-pc-modal');
     renderPartyHUD();
+    renderShopInventory();
     apiSaveParty();
     showToast(`Saved character: ${pc.name}`, "success");
 }
@@ -949,6 +1010,7 @@ function deleteCurrentPC() {
     appState.party = appState.party.filter(p => p.id !== id);
     closeModal('edit-pc-modal');
     renderPartyHUD();
+    renderShopInventory();
     apiSaveParty();
     showToast("Removed character from party", "info");
 }
@@ -1017,10 +1079,14 @@ function renderCombatTracker() {
     }
 
     listEl.innerHTML = combatants.map((c, idx) => {
+        const curHp = (c.currentHp !== undefined) ? Number(c.currentHp) : ((c.hp !== undefined) ? Number(c.hp) : 0);
+        const maxHp = (c.maxHp !== undefined) ? Number(c.maxHp) : (curHp || 1);
+        c.currentHp = curHp;
+        c.maxHp = maxHp;
         const isActiveTurn = combat.inCombat && idx === combat.currentTurnIndex;
-        const hpPct = Math.max(0, Math.min(100, Math.round((c.currentHp / c.maxHp) * 100)));
-        const isBloodied = c.currentHp > 0 && c.currentHp <= Math.floor(c.maxHp / 2);
-        const isDefeated = c.currentHp <= 0;
+        const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((curHp / maxHp) * 100))) : 0;
+        const isBloodied = curHp > 0 && curHp <= Math.floor(maxHp / 2);
+        const isDefeated = curHp <= 0;
 
         let badgeTypeColor = "bg-sky-500/20 text-sky-300 border-sky-500/30";
         if (c.type === 'monster') badgeTypeColor = "bg-rose-500/20 text-rose-300 border-rose-500/30";
@@ -2051,17 +2117,42 @@ function pickRandom(arr) {
 }
 
 function getActiveFactionsPool() {
-    if (appState.world.useOnlyCustomFactions && appState.world.customFactions.length > 0) {
-        return appState.world.customFactions;
-    }
-    return Array.from(new Set([...DEFAULT_FACTIONS, ...(appState.world.customFactions || [])]));
+    const factions = new Set();
+    (appState.factions || []).forEach(f => {
+        if (f && f.name && f.name.trim()) factions.add(f.name.trim());
+    });
+    (appState.locations || []).forEach(l => {
+        (l.factions || []).forEach(fn => {
+            if (typeof fn === 'string' && fn.trim()) factions.add(fn.trim());
+        });
+    });
+    (appState.world?.customFactions || []).forEach(cf => {
+        if (typeof cf === 'string' && cf.trim()) factions.add(cf.trim());
+    });
+    return Array.from(factions).sort((a, b) => a.localeCompare(b));
 }
 
 function getActiveLocationsPool() {
-    if (appState.world.useOnlyCustomLocations && appState.world.customLocations.length > 0) {
-        return appState.world.customLocations;
+    const locations = new Set();
+    (appState.locations || []).forEach(l => {
+        if (l && l.name && l.name.trim()) locations.add(l.name.trim());
+    });
+    (appState.overworld?.pins || []).forEach(p => {
+        const label = (p.label || p.title || '').trim();
+        if (label) locations.add(label);
+    });
+    if (appState.overworld?.maps) {
+        appState.overworld.maps.forEach(m => {
+            (m.pins || []).forEach(p => {
+                const label = (p.label || p.title || '').trim();
+                if (label) locations.add(label);
+            });
+        });
     }
-    return Array.from(new Set([...DEFAULT_LOCATIONS, ...(appState.world.customLocations || [])]));
+    (appState.world?.customLocations || []).forEach(cl => {
+        if (typeof cl === 'string' && cl.trim()) locations.add(cl.trim());
+    });
+    return Array.from(locations).sort((a, b) => a.localeCompare(b));
 }
 
 function syncDOMToCurrentNPC() {
@@ -2076,10 +2167,29 @@ function syncDOMToCurrentNPC() {
     appState.currentNPC.appearance = document.getElementById('npc-appearance').innerText.trim();
     appState.currentNPC.personality = document.getElementById('npc-personality').innerText.trim();
     appState.currentNPC.backstory = document.getElementById('npc-backstory').innerText.trim();
-    appState.currentNPC.secret = document.getElementById('npc-secret').innerText.trim();
-    appState.currentNPC.faction = document.getElementById('npc-faction').innerText.trim();
-    appState.currentNPC.factionStanding = document.getElementById('npc-faction-standing').innerText.trim();
-    appState.currentNPC.location = document.getElementById('npc-location').innerText.trim();
+    // Read faction from select or custom input
+    const facSel = document.getElementById('npc-faction-select');
+    const facCustom = document.getElementById('npc-faction-custom');
+    if (facSel && facSel.value === '__custom__') {
+        appState.currentNPC.faction = facCustom ? facCustom.value.trim() : '';
+    } else if (facSel) {
+        appState.currentNPC.faction = facSel.value.trim();
+    } else {
+        appState.currentNPC.faction = document.getElementById('npc-faction')?.innerText.trim() || '';
+    }
+
+    appState.currentNPC.factionStanding = document.getElementById('npc-faction-standing')?.innerText.trim() || '';
+
+    // Read location from select or custom input
+    const locSel = document.getElementById('npc-location-select');
+    const locCustom = document.getElementById('npc-location-custom');
+    if (locSel && locSel.value === '__custom__') {
+        appState.currentNPC.location = locCustom ? locCustom.value.trim() : '';
+    } else if (locSel) {
+        appState.currentNPC.location = locSel.value.trim();
+    } else {
+        appState.currentNPC.location = document.getElementById('npc-location')?.innerText.trim() || '';
+    }
     appState.currentNPC.loot = document.getElementById('npc-loot').innerText.trim();
     appState.currentNPC.statName = document.getElementById('npc-stat-name').innerText.trim();
     appState.currentNPC.statAcHp = document.getElementById('npc-stat-ac-hp').innerText.trim();
@@ -2142,9 +2252,24 @@ function rollWorld() {
     const factions = getActiveFactionsPool();
     const locations = getActiveLocationsPool();
 
-    appState.currentNPC.faction = (factionFilter !== "ANY") ? factionFilter : pickRandom(factions);
-    appState.currentNPC.factionStanding = pickRandom(FACTION_STANDINGS);
-    appState.currentNPC.location = (locationFilter !== "ANY") ? locationFilter : pickRandom(locations);
+    if (factionFilter !== "ANY") {
+        appState.currentNPC.faction = factionFilter;
+        appState.currentNPC.factionStanding = pickRandom(FACTION_STANDINGS);
+    } else if (factions.length > 0) {
+        appState.currentNPC.faction = pickRandom(factions);
+        appState.currentNPC.factionStanding = pickRandom(FACTION_STANDINGS);
+    } else {
+        appState.currentNPC.faction = "";
+        appState.currentNPC.factionStanding = "Independent";
+    }
+
+    if (locationFilter !== "ANY") {
+        appState.currentNPC.location = locationFilter;
+    } else if (locations.length > 0) {
+        appState.currentNPC.location = pickRandom(locations);
+    } else {
+        appState.currentNPC.location = "";
+    }
 }
 
 function rollLoot() {
@@ -2215,10 +2340,41 @@ function renderCurrentNPC(flashCards = []) {
     document.getElementById('npc-appearance').innerText = npc.appearance;
     document.getElementById('npc-personality').innerText = npc.personality;
     document.getElementById('npc-backstory').innerText = npc.backstory;
-    document.getElementById('npc-secret').innerText = npc.secret;
-    document.getElementById('npc-faction').innerText = npc.faction;
-    document.getElementById('npc-faction-standing').innerText = npc.factionStanding;
-    document.getElementById('npc-location').innerText = npc.location;
+    const facHidden = document.getElementById('npc-faction');
+    if (facHidden) facHidden.innerText = npc.faction || '';
+    const facStandingEl = document.getElementById('npc-faction-standing');
+    if (facStandingEl) facStandingEl.innerText = npc.factionStanding || '';
+    const locHidden = document.getElementById('npc-location');
+    if (locHidden) locHidden.innerText = npc.location || '';
+
+    // Render Faction Dropdown
+    const facSelect = document.getElementById('npc-faction-select');
+    const facCustom = document.getElementById('npc-faction-custom');
+    if (facSelect) {
+        const factions = appState.factions || [];
+        let facHtml = `<option value="">-- None / Unaffiliated --</option>`;
+        let matchFound = !npc.faction;
+        factions.forEach(f => {
+            const isMatch = npc.faction && f.name.toLowerCase() === npc.faction.toLowerCase();
+            if (isMatch) matchFound = true;
+            facHtml += `<option value="${escapeHTML(f.name)}" ${isMatch ? 'selected' : ''}>${escapeHTML(f.name)}</option>`;
+        });
+        facHtml += `<option value="__custom__" ${(!matchFound && npc.faction) ? 'selected' : ''}>✏️ Custom Faction...</option>`;
+        facSelect.innerHTML = facHtml;
+        if (facCustom) {
+            if (!matchFound && npc.faction) {
+                facCustom.classList.remove('hidden');
+                facCustom.value = npc.faction;
+            } else {
+                facCustom.classList.add('hidden');
+                facCustom.value = '';
+            }
+        }
+    }
+
+    // Render Location Dropdown
+    populateNpcLocationOptions(npc.location);
+
     document.getElementById('npc-loot').innerText = npc.loot;
     document.getElementById('npc-stat-name').innerText = npc.statName;
     document.getElementById('npc-stat-ac-hp').innerText = npc.statAcHp;
@@ -2238,6 +2394,177 @@ function renderCurrentNPC(flashCards = []) {
             card.classList.add('rolled-flash');
         }
     });
+}
+
+function populateNpcLocationOptions(selectedLoc = null) {
+    const locSelect = document.getElementById('npc-location-select');
+    const locCustom = document.getElementById('npc-location-custom');
+    if (!locSelect) return;
+    const targetLoc = (selectedLoc !== null && selectedLoc !== undefined) ? selectedLoc : (appState.currentNPC?.location || '');
+
+    const locations = appState.locations || [];
+    const pins = appState.overworld?.pins || [];
+    const locationNames = new Set();
+    locations.forEach(l => { if (l.name) locationNames.add(l.name); });
+    pins.forEach(p => { if (p.label || p.title) locationNames.add(p.label || p.title); });
+
+    let locHtml = `<option value="">-- None / Wandering --</option>`;
+    let locMatchFound = !targetLoc;
+    Array.from(locationNames).sort().forEach(locName => {
+        const isMatch = targetLoc && locName.toLowerCase() === targetLoc.toLowerCase();
+        if (isMatch) locMatchFound = true;
+        locHtml += `<option value="${escapeHTML(locName)}" ${isMatch ? 'selected' : ''}>${escapeHTML(locName)}</option>`;
+    });
+    locHtml += `<option value="__custom__" ${(!locMatchFound && targetLoc) ? 'selected' : ''}>✏️ Custom Location...</option>`;
+    locSelect.innerHTML = locHtml;
+    if (locCustom) {
+        if (!locMatchFound && targetLoc) {
+            locCustom.classList.remove('hidden');
+            locCustom.value = targetLoc;
+        } else {
+            locCustom.classList.add('hidden');
+            locCustom.value = '';
+        }
+    }
+}
+
+let _npcDebounceTimer = null;
+function saveCurrentNPCDebounced() {
+    clearTimeout(_npcDebounceTimer);
+    _npcDebounceTimer = setTimeout(() => {
+        saveToLocalStorage();
+        if (appState.currentNPC && appState.currentNPC.id) {
+            const idx = (appState.roster || []).findIndex(r => r.id === appState.currentNPC.id);
+            if (idx !== -1) {
+                appState.roster[idx] = JSON.parse(JSON.stringify(appState.currentNPC));
+                apiSaveRosterNPC(appState.roster[idx]);
+                renderRoster();
+            }
+        }
+    }, 400);
+}
+
+function syncNpcLocationToLocations(npcName, targetLocationName) {
+    if (!npcName) return;
+    let changed = false;
+    const targetLocLower = (targetLocationName || '').trim().toLowerCase();
+
+    (appState.locations || []).forEach(loc => {
+        if (!loc.notableNpcs) loc.notableNpcs = [];
+        const locNameLower = (loc.name || '').trim().toLowerCase();
+        if (targetLocLower && locNameLower === targetLocLower) {
+            if (!loc.notableNpcs.some(n => n.toLowerCase() === npcName.toLowerCase())) {
+                loc.notableNpcs.push(npcName);
+                changed = true;
+            }
+        } else {
+            if (loc.notableNpcs.some(n => n.toLowerCase() === npcName.toLowerCase())) {
+                loc.notableNpcs = loc.notableNpcs.filter(n => n.toLowerCase() !== npcName.toLowerCase());
+                changed = true;
+            }
+        }
+    });
+
+    if (changed) {
+        renderLocations();
+    }
+}
+
+function syncLocationNpcsToRoster(locationName, notableNpcNames) {
+    if (!locationName) return;
+    const notableSet = new Set((notableNpcNames || []).map(n => n.trim().toLowerCase()));
+    let changed = false;
+
+    (appState.roster || []).forEach(npc => {
+        if (!npc.name) return;
+        const nameLower = npc.name.trim().toLowerCase();
+        if (notableSet.has(nameLower)) {
+            if (npc.location !== locationName) {
+                npc.location = locationName;
+                changed = true;
+            }
+        } else if (npc.location && npc.location.trim().toLowerCase() === locationName.trim().toLowerCase()) {
+            npc.location = '';
+            changed = true;
+        }
+    });
+
+    if (appState.currentNPC && appState.currentNPC.name) {
+        const currentLower = appState.currentNPC.name.trim().toLowerCase();
+        if (notableSet.has(currentLower)) {
+            appState.currentNPC.location = locationName;
+            const locP = document.getElementById('npc-location');
+            if (locP) locP.innerText = locationName;
+            populateNpcLocationOptions(locationName);
+        } else if (appState.currentNPC.location && appState.currentNPC.location.trim().toLowerCase() === locationName.trim().toLowerCase()) {
+            appState.currentNPC.location = '';
+            const locP = document.getElementById('npc-location');
+            if (locP) locP.innerText = '';
+            populateNpcLocationOptions('');
+        }
+    }
+
+    if (changed) {
+        renderRoster();
+    }
+}
+
+function onNpcFactionSelectChanged() {
+    const sel = document.getElementById('npc-faction-select');
+    const custom = document.getElementById('npc-faction-custom');
+    if (!sel || !appState.currentNPC) return;
+    if (sel.value === '__custom__') {
+        if (custom) {
+            custom.classList.remove('hidden');
+            custom.focus();
+            appState.currentNPC.faction = custom.value.trim();
+        }
+    } else {
+        if (custom) custom.classList.add('hidden');
+        appState.currentNPC.faction = sel.value;
+    }
+    const hiddenP = document.getElementById('npc-faction');
+    if (hiddenP) hiddenP.innerText = appState.currentNPC.faction;
+    saveCurrentNPCDebounced();
+}
+
+function onNpcFactionCustomInput() {
+    const custom = document.getElementById('npc-faction-custom');
+    if (!custom || !appState.currentNPC) return;
+    appState.currentNPC.faction = custom.value.trim();
+    const hiddenP = document.getElementById('npc-faction');
+    if (hiddenP) hiddenP.innerText = appState.currentNPC.faction;
+    saveCurrentNPCDebounced();
+}
+
+function onNpcLocationSelectChanged() {
+    const sel = document.getElementById('npc-location-select');
+    const custom = document.getElementById('npc-location-custom');
+    if (!sel || !appState.currentNPC) return;
+    if (sel.value === '__custom__') {
+        if (custom) {
+            custom.classList.remove('hidden');
+            custom.focus();
+            appState.currentNPC.location = custom.value.trim();
+        }
+    } else {
+        if (custom) custom.classList.add('hidden');
+        appState.currentNPC.location = sel.value;
+    }
+    const hiddenP = document.getElementById('npc-location');
+    if (hiddenP) hiddenP.innerText = appState.currentNPC.location;
+    syncNpcLocationToLocations(appState.currentNPC.name, appState.currentNPC.location);
+    saveCurrentNPCDebounced();
+}
+
+function onNpcLocationCustomInput() {
+    const custom = document.getElementById('npc-location-custom');
+    if (!custom || !appState.currentNPC) return;
+    appState.currentNPC.location = custom.value.trim();
+    const hiddenP = document.getElementById('npc-location');
+    if (hiddenP) hiddenP.innerText = appState.currentNPC.location;
+    syncNpcLocationToLocations(appState.currentNPC.name, appState.currentNPC.location);
+    saveCurrentNPCDebounced();
 }
 
 function toggleLock(traitKey) {
@@ -2276,6 +2603,9 @@ function saveCurrentNPCToRoster() {
     syncDOMToCurrentNPC();
     const npcCopy = JSON.parse(JSON.stringify(appState.currentNPC));
 
+    // Mirror to locations
+    syncNpcLocationToLocations(npcCopy.name, npcCopy.location);
+
     if (npcCopy.id) {
         const existingIdx = appState.roster.findIndex(item => item.id === npcCopy.id);
         if (existingIdx !== -1) {
@@ -2300,6 +2630,7 @@ function loadNPCFromRoster(id) {
     if (!found) return;
     appState.currentNPC = JSON.parse(JSON.stringify(found));
     renderCurrentNPC(['identity', 'voice', 'appearance', 'personality', 'backstory', 'secret', 'world', 'loot', 'stats']);
+    renderRoster();
     showToast(`Loaded "${found.name}"`, "info");
 }
 
@@ -2307,10 +2638,247 @@ function deleteNPCFromRoster(id, event) {
     if (event) event.stopPropagation();
     if (!confirm("Delete this NPC from the campaign roster?")) return;
     appState.roster = appState.roster.filter(item => item.id !== id);
-    if (appState.currentNPC.id === id) appState.currentNPC.id = null;
+    if (appState.currentNPC && appState.currentNPC.id === id) appState.currentNPC.id = null;
     apiDeleteRosterNPC(id);
     renderRoster();
+    renderRosterDirectory();
     showToast("Removed NPC from roster", "info");
+}
+
+function getSpeciesEmoji(species) {
+    if (!species) return '👤';
+    const s = species.toLowerCase();
+    if (s.includes('elf')) return '🧝';
+    if (s.includes('dwarf')) return '🧔';
+    if (s.includes('halfling') || s.includes('gnome')) return '🧙';
+    if (s.includes('dragonborn')) return '🐲';
+    if (s.includes('tiefling')) return '😈';
+    if (s.includes('orc') || s.includes('goblin')) return '👹';
+    return '👤';
+}
+
+function copySingleNPCMarkdown(id) {
+    const npc = (appState.roster || []).find(n => n.id === id);
+    if (!npc) return;
+    const md = formatNPCMarkdown(npc);
+    copyTextToClipboard(md, `Copied "${npc.name}" as Markdown!`);
+}
+
+function exportRosterMarkdown() {
+    const list = appState.roster || [];
+    if (list.length === 0) {
+        showToast("Roster is empty. Nothing to export.", "info");
+        return;
+    }
+    const lines = [
+        `# Campaign NPC Roster`,
+        `*Exported from The Arcane Ledger on ${new Date().toLocaleDateString()}*`,
+        ``,
+        `Total Saved NPCs: ${list.length}`,
+        ``,
+        `---`,
+        ``
+    ];
+    list.forEach(npc => {
+        lines.push(formatNPCMarkdown(npc));
+        lines.push(`\n---\n`);
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Campaign_Roster_${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${list.length} NPCs to Markdown!`, "success");
+}
+
+function onRosterGroupingChanged(val) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.groupBy = val;
+    renderRoster();
+}
+
+function onRosterSortChanged(val) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.sortBy = val;
+    renderRoster();
+}
+
+function onRosterFilterLocationChanged(val) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.locationFilter = val;
+    renderRoster();
+}
+
+function onRosterFilterFactionChanged(val) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.factionFilter = val;
+    renderRoster();
+}
+
+function setRosterDensity(density) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.density = density;
+    const detBtn = document.getElementById('roster-density-detailed');
+    const compBtn = document.getElementById('roster-density-compact');
+    if (detBtn && compBtn) {
+        if (density === 'detailed') {
+            detBtn.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-ledger-950 transition";
+            compBtn.className = "px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white transition";
+        } else {
+            compBtn.className = "px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-ledger-950 transition";
+            detBtn.className = "px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white transition";
+        }
+    }
+    renderRoster();
+}
+
+function clearRosterSearch() {
+    const input = document.getElementById('roster-search');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('roster-search-clear');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    renderRoster();
+}
+
+function toggleRosterGroup(groupKey) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    if (!appState.rosterUI.collapsedGroups) appState.rosterUI.collapsedGroups = new Set();
+    if (appState.rosterUI.collapsedGroups.has(groupKey)) {
+        appState.rosterUI.collapsedGroups.delete(groupKey);
+    } else {
+        appState.rosterUI.collapsedGroups.add(groupKey);
+    }
+    renderRoster();
+}
+
+function sortNpcList(list, sortBy = 'name-asc') {
+    const sorted = [...list];
+    switch (sortBy) {
+        case 'name-asc':
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            break;
+        case 'name-desc':
+            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+            break;
+        case 'newest':
+            // Roster array is naturally unshifted newest-first
+            break;
+        case 'oldest':
+            sorted.reverse();
+            break;
+        case 'role':
+            sorted.sort((a, b) => (a.role || '').localeCompare(b.role || ''));
+            break;
+        default:
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    return sorted;
+}
+
+function syncRosterFilterDropdowns() {
+    const locSel = document.getElementById('roster-filter-location');
+    const facSel = document.getElementById('roster-filter-faction');
+    if (!locSel || !facSel) return;
+
+    const curLoc = appState.rosterUI?.locationFilter || 'ALL';
+    const curFac = appState.rosterUI?.factionFilter || 'ALL';
+
+    const locCounts = {};
+    const facCounts = {};
+    (appState.roster || []).forEach(n => {
+        const l = n.location || '__none__';
+        locCounts[l] = (locCounts[l] || 0) + 1;
+        const f = n.faction || '__none__';
+        facCounts[f] = (facCounts[f] || 0) + 1;
+    });
+
+    let locHtml = `<option value="ALL">All Locs (${appState.roster.length})</option>`;
+    if (locCounts['__none__']) {
+        locHtml += `<option value="__none__">Wandering (${locCounts['__none__']})</option>`;
+    }
+    Object.keys(locCounts).filter(k => k !== '__none__').sort().forEach(loc => {
+        locHtml += `<option value="${escapeHTML(loc)}">${escapeHTML(loc)} (${locCounts[loc]})</option>`;
+    });
+    locSel.innerHTML = locHtml;
+    locSel.value = curLoc;
+    if (locSel.value !== curLoc) locSel.value = 'ALL';
+
+    let facHtml = `<option value="ALL">All Factions (${appState.roster.length})</option>`;
+    if (facCounts['__none__']) {
+        facHtml += `<option value="__none__">Independent (${facCounts['__none__']})</option>`;
+    }
+    Object.keys(facCounts).filter(k => k !== '__none__').sort().forEach(fac => {
+        facHtml += `<option value="${escapeHTML(fac)}">${escapeHTML(fac)} (${facCounts[fac]})</option>`;
+    });
+    facSel.innerHTML = facHtml;
+    facSel.value = curFac;
+    if (facSel.value !== curFac) facSel.value = 'ALL';
+}
+
+function renderRosterItem(npc, density, isActive) {
+    if (density === 'compact') {
+        return `
+            <div id="roster-item-${npc.id}" onclick="loadNPCFromRoster('${npc.id}')" class="group p-2 rounded-lg bg-ledger-950/80 hover:bg-ledger-800 border ${isActive ? 'ring-1 ring-amber-400 border-amber-400 bg-amber-500/10' : 'border-ledger-800 hover:border-amber-500/40'} cursor-pointer transition flex items-center justify-between gap-1.5 text-xs">
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="text-xs shrink-0">${getSpeciesEmoji(npc.species)}</span>
+                    <div class="truncate">
+                        <span class="font-bold text-white group-hover:text-amber-300 transition text-[11px] truncate">${escapeHTML(npc.name)}</span>
+                        ${npc.role ? `<span class="text-[10px] text-sky-300/80 ml-1 truncate">(${escapeHTML(npc.role)})</span>` : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    ${npc.location ? `<span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-emerald-300 text-[9px] truncate max-w-[75px]" title="${escapeHTML(npc.location)}">📍 ${escapeHTML(npc.location)}</span>` : ''}
+                    <button type="button" onclick="event.stopPropagation(); copySingleNPCMarkdown('${npc.id}')" title="Copy Markdown" class="p-1 rounded text-slate-500 hover:text-slate-200 text-[10px]">
+                        📋
+                    </button>
+                    <button type="button" onclick="event.stopPropagation(); sendRosterNPCToCombat('${npc.id}')" title="Send to Combat" class="p-1 rounded text-slate-500 hover:text-amber-400 text-[10px]">
+                        ⚔️
+                    </button>
+                    <button type="button" onclick="deleteNPCFromRoster('${npc.id}', event)" title="Delete NPC" class="p-1 rounded text-slate-500 hover:text-rose-400 text-[10px]">
+                        ✕
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div id="roster-item-${npc.id}" onclick="loadNPCFromRoster('${npc.id}')" class="group p-3 rounded-xl bg-ledger-950/90 hover:bg-ledger-800 border ${isActive ? 'border-amber-400 bg-amber-500/10 ring-1 ring-amber-400/60 shadow-lg' : 'border-ledger-800 hover:border-amber-500/40'} cursor-pointer transition relative space-y-2">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <h4 class="font-bold text-xs sm:text-sm text-white group-hover:text-amber-300 transition truncate">
+                            ${escapeHTML(npc.name)}
+                        </h4>
+                        ${npc.epithet ? `<span class="text-amber-400/80 italic text-[11px] font-normal truncate">${escapeHTML(npc.epithet)}</span>` : ''}
+                        ${isActive ? `<span class="px-1 py-0.2 rounded bg-amber-400/20 text-amber-300 text-[9px] font-mono font-bold uppercase">Active</span>` : ''}
+                    </div>
+                    <p class="text-[11px] text-sky-300 font-medium mt-0.5 truncate">${escapeHTML(npc.species || 'Unknown')} • ${escapeHTML(npc.role || 'Unspecified')}</p>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" onclick="event.stopPropagation(); copySingleNPCMarkdown('${npc.id}')" title="Copy Markdown" class="p-1 rounded hover:bg-ledger-700 text-slate-400 hover:text-slate-200 transition text-xs">
+                        📋
+                    </button>
+                    <button type="button" onclick="event.stopPropagation(); sendRosterNPCToCombat('${npc.id}')" title="Send to Combat Tracker" class="p-1 rounded bg-amber-500/10 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 transition text-xs flex items-center gap-1">
+                        <span>⚔️</span>
+                    </button>
+                    <button type="button" onclick="deleteNPCFromRoster('${npc.id}', event)" title="Delete from Roster" class="p-1 rounded hover:bg-rose-950/80 text-slate-400 hover:text-rose-400 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                ${npc.faction ? `<span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-indigo-300 truncate max-w-[130px]">⚔️ ${escapeHTML(npc.faction)}</span>` : ''}
+                ${npc.location ? `<span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-emerald-300 truncate max-w-[130px]">📍 ${escapeHTML(npc.location)}</span>` : ''}
+                ${npc.statName ? `<span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-slate-400 truncate max-w-[130px] font-mono text-[9px]">📊 ${escapeHTML(npc.statName)}</span>` : ''}
+            </div>
+            ${npc.notes ? `<p class="mt-1 text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 italic line-clamp-2">"${escapeHTML(npc.notes)}"</p>` : ''}
+        </div>
+    `;
 }
 
 function renderRoster() {
@@ -2318,57 +2886,454 @@ function renderRoster() {
     const countEl = document.getElementById('roster-count');
     if (!listEl) return;
 
-    const query = (document.getElementById('roster-search')?.value || "").toLowerCase().trim();
-    if (countEl) countEl.innerText = appState.roster.length;
+    if (!appState.rosterUI) {
+        appState.rosterUI = {
+            groupBy: 'location',
+            sortBy: 'name-asc',
+            density: 'detailed',
+            locationFilter: 'ALL',
+            factionFilter: 'ALL',
+            collapsedGroups: new Set()
+        };
+    }
 
-    const filtered = appState.roster.filter(npc => {
-        if (!query) return true;
-        return (
-            (npc.name && npc.name.toLowerCase().includes(query)) ||
-            (npc.epithet && npc.epithet.toLowerCase().includes(query)) ||
-            (npc.role && npc.role.toLowerCase().includes(query)) ||
-            (npc.species && npc.species.toLowerCase().includes(query)) ||
-            (npc.faction && npc.faction.toLowerCase().includes(query)) ||
-            (npc.location && npc.location.toLowerCase().includes(query)) ||
-            (npc.notes && npc.notes.toLowerCase().includes(query))
-        );
+    const query = (document.getElementById('roster-search')?.value || "").toLowerCase().trim();
+    const clearBtn = document.getElementById('roster-search-clear');
+    if (clearBtn) {
+        if (query) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+    }
+
+    if (countEl) countEl.innerText = appState.roster.length;
+    syncRosterFilterDropdowns();
+
+    const locFilter = appState.rosterUI.locationFilter || 'ALL';
+    const facFilter = appState.rosterUI.factionFilter || 'ALL';
+
+    let filtered = appState.roster.filter(npc => {
+        if (query) {
+            const matchesQuery = (
+                (npc.name && npc.name.toLowerCase().includes(query)) ||
+                (npc.epithet && npc.epithet.toLowerCase().includes(query)) ||
+                (npc.role && npc.role.toLowerCase().includes(query)) ||
+                (npc.species && npc.species.toLowerCase().includes(query)) ||
+                (npc.faction && npc.faction.toLowerCase().includes(query)) ||
+                (npc.location && npc.location.toLowerCase().includes(query)) ||
+                (npc.notes && npc.notes.toLowerCase().includes(query)) ||
+                (npc.statName && npc.statName.toLowerCase().includes(query))
+            );
+            if (!matchesQuery) return false;
+        }
+
+        if (locFilter !== 'ALL') {
+            if (locFilter === '__none__') {
+                if (npc.location && npc.location.trim()) return false;
+            } else if ((npc.location || '').trim().toLowerCase() !== locFilter.trim().toLowerCase()) {
+                return false;
+            }
+        }
+
+        if (facFilter !== 'ALL') {
+            if (facFilter === '__none__') {
+                if (npc.faction && npc.faction.trim()) return false;
+            } else if ((npc.faction || '').trim().toLowerCase() !== facFilter.trim().toLowerCase()) {
+                return false;
+            }
+        }
+
+        return true;
     });
 
     if (filtered.length === 0) {
-        listEl.innerHTML = `
-            <div class="text-center py-10 px-3 border border-dashed border-ledger-700 rounded-xl text-slate-400 text-xs space-y-1">
-                <p class="font-semibold text-slate-300">No Saved NPCs Found</p>
-                <p>Click "Save to Roster" on any generated NPC to keep them for your campaign.</p>
+        if (appState.roster.length === 0) {
+            listEl.innerHTML = `
+                <div class="text-center py-10 px-3 border border-dashed border-ledger-700 rounded-xl text-slate-400 text-xs space-y-1">
+                    <p class="font-semibold text-slate-300">No Saved NPCs Yet</p>
+                    <p>Click "Save to Roster" on any generated NPC to preserve them for your campaign.</p>
+                </div>
+            `;
+        } else {
+            listEl.innerHTML = `
+                <div class="text-center py-8 px-3 border border-dashed border-ledger-700 rounded-xl text-slate-400 text-xs space-y-2">
+                    <p class="font-semibold text-slate-300">No NPCs match filters</p>
+                    <button type="button" onclick="clearRosterFilters()" class="px-2.5 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-amber-300 text-xs font-semibold">
+                        Reset Filters
+                    </button>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    filtered = sortNpcList(filtered, appState.rosterUI.sortBy || 'name-asc');
+    const density = appState.rosterUI.density || 'detailed';
+    const activeId = appState.currentNPC?.id || null;
+    const groupBy = appState.rosterUI.groupBy || 'location';
+
+    if (groupBy === 'none') {
+        listEl.innerHTML = filtered.map(npc => renderRosterItem(npc, density, activeId === npc.id)).join('');
+        return;
+    }
+
+    const groups = {};
+    filtered.forEach(npc => {
+        let key = '';
+        if (groupBy === 'location') {
+            key = npc.location ? `📍 ${npc.location}` : `🌲 Wandering / No Location`;
+        } else if (groupBy === 'faction') {
+            key = npc.faction ? `⚔️ ${npc.faction}` : `🛡️ Independent / Unaligned`;
+        } else if (groupBy === 'category') {
+            key = npc.category ? `🏷️ ${npc.category}` : (npc.role ? `🏷️ ${npc.role}` : `🏷️ Other`);
+        }
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(npc);
+    });
+
+    const groupKeys = Object.keys(groups).sort((a, b) => {
+        if (a.includes('Wandering') || a.includes('Independent') || a.includes('Other')) return 1;
+        if (b.includes('Wandering') || b.includes('Independent') || b.includes('Other')) return -1;
+        return a.localeCompare(b);
+    });
+
+    listEl.innerHTML = groupKeys.map(gKey => {
+        const isCollapsed = appState.rosterUI.collapsedGroups?.has(gKey);
+        const items = groups[gKey];
+        return `
+            <div class="roster-group rounded-xl border border-ledger-800/90 bg-ledger-950/40 overflow-hidden transition">
+                <button type="button" onclick="toggleRosterGroup('${escapeHTML(gKey)}')" class="w-full px-2.5 py-1.5 flex items-center justify-between bg-ledger-900/80 hover:bg-ledger-850 text-left transition text-xs font-semibold select-none border-b border-ledger-800/60">
+                    <span class="flex items-center gap-1.5 text-amber-300/90 truncate">
+                        <span class="text-[9px] text-slate-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}">▼</span>
+                        <span class="truncate">${escapeHTML(gKey)}</span>
+                    </span>
+                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-ledger-800 text-slate-300 border border-ledger-700 font-bold shrink-0">
+                        ${items.length}
+                    </span>
+                </button>
+                <div class="p-1.5 space-y-1.5 ${isCollapsed ? 'hidden' : 'block'}">
+                    ${items.map(npc => renderRosterItem(npc, density, activeId === npc.id)).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function clearRosterFilters() {
+    clearRosterSearch();
+    const locSel = document.getElementById('roster-filter-location');
+    if (locSel) locSel.value = 'ALL';
+    const facSel = document.getElementById('roster-filter-faction');
+    if (facSel) facSel.value = 'ALL';
+    if (appState.rosterUI) {
+        appState.rosterUI.locationFilter = 'ALL';
+        appState.rosterUI.factionFilter = 'ALL';
+    }
+    renderRoster();
+}
+
+function openRosterDirectoryModal() {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    if (!appState.rosterUI.dirViewMode) appState.rosterUI.dirViewMode = 'grid';
+    if (!appState.rosterUI.dirGroupBy) appState.rosterUI.dirGroupBy = 'location';
+    if (!appState.rosterUI.dirSortBy) appState.rosterUI.dirSortBy = 'name-asc';
+
+    const dirGroupBySel = document.getElementById('dir-roster-group-by');
+    if (dirGroupBySel) dirGroupBySel.value = appState.rosterUI.dirGroupBy;
+    const dirSortBySel = document.getElementById('dir-roster-sort-by');
+    if (dirSortBySel) dirSortBySel.value = appState.rosterUI.dirSortBy;
+
+    syncDirFilterDropdowns();
+    renderRosterDirectory();
+    openModal('roster-directory-modal');
+}
+
+function syncDirFilterDropdowns() {
+    const locSel = document.getElementById('dir-filter-location');
+    const facSel = document.getElementById('dir-filter-faction');
+    if (!locSel || !facSel) return;
+
+    const curLoc = appState.rosterUI?.dirLocationFilter || 'ALL';
+    const curFac = appState.rosterUI?.dirFactionFilter || 'ALL';
+
+    const locs = new Set();
+    const facs = new Set();
+    (appState.roster || []).forEach(n => {
+        if (n.location) locs.add(n.location);
+        if (n.faction) facs.add(n.faction);
+    });
+
+    locSel.innerHTML = `<option value="ALL">All Locations (${appState.roster.length})</option>` +
+        Array.from(locs).sort().map(l => `<option value="${escapeHTML(l)}">${escapeHTML(l)}</option>`).join('');
+    locSel.value = curLoc;
+
+    facSel.innerHTML = `<option value="ALL">All Factions (${appState.roster.length})</option>` +
+        Array.from(facs).sort().map(f => `<option value="${escapeHTML(f)}">${escapeHTML(f)}</option>`).join('');
+    facSel.value = curFac;
+}
+
+function onDirRosterGroupingChanged(val) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.dirGroupBy = val;
+    renderRosterDirectory();
+}
+
+function onDirRosterSortChanged(val) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.dirSortBy = val;
+    renderRosterDirectory();
+}
+
+function setDirViewMode(mode) {
+    if (!appState.rosterUI) appState.rosterUI = {};
+    appState.rosterUI.dirViewMode = mode;
+    const gridBtn = document.getElementById('dir-view-grid-btn');
+    const tableBtn = document.getElementById('dir-view-table-btn');
+    if (gridBtn && tableBtn) {
+        if (mode === 'grid') {
+            gridBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-amber-500 text-ledger-950 transition";
+            tableBtn.className = "px-2.5 py-1 rounded text-xs text-slate-400 hover:text-white transition";
+        } else {
+            tableBtn.className = "px-2.5 py-1 rounded text-xs font-bold bg-amber-500 text-ledger-950 transition";
+            gridBtn.className = "px-2.5 py-1 rounded text-xs text-slate-400 hover:text-white transition";
+        }
+    }
+    renderRosterDirectory();
+}
+
+function clearDirFilters() {
+    const sInput = document.getElementById('dir-roster-search');
+    if (sInput) sInput.value = '';
+    const locSel = document.getElementById('dir-filter-location');
+    if (locSel) locSel.value = 'ALL';
+    const facSel = document.getElementById('dir-filter-faction');
+    if (facSel) facSel.value = 'ALL';
+    if (appState.rosterUI) {
+        appState.rosterUI.dirLocationFilter = 'ALL';
+        appState.rosterUI.dirFactionFilter = 'ALL';
+    }
+    renderRosterDirectory();
+}
+
+function loadNpcAndCloseDir(id) {
+    closeModal('roster-directory-modal');
+    navigateToNpc(id);
+}
+
+function renderRosterDirectory() {
+    const container = document.getElementById('roster-directory-content');
+    const badgeEl = document.getElementById('dir-roster-count-badge');
+    if (!container) return;
+
+    const query = (document.getElementById('dir-roster-search')?.value || "").toLowerCase().trim();
+    const locFilter = document.getElementById('dir-filter-location')?.value || 'ALL';
+    const facFilter = document.getElementById('dir-filter-faction')?.value || 'ALL';
+    const sortBy = document.getElementById('dir-roster-sort-by')?.value || 'name-asc';
+    const groupBy = document.getElementById('dir-roster-group-by')?.value || 'location';
+    const viewMode = appState.rosterUI?.dirViewMode || 'grid';
+
+    let filtered = (appState.roster || []).filter(npc => {
+        if (query) {
+            const matchesQuery = (
+                (npc.name && npc.name.toLowerCase().includes(query)) ||
+                (npc.epithet && npc.epithet.toLowerCase().includes(query)) ||
+                (npc.role && npc.role.toLowerCase().includes(query)) ||
+                (npc.species && npc.species.toLowerCase().includes(query)) ||
+                (npc.faction && npc.faction.toLowerCase().includes(query)) ||
+                (npc.location && npc.location.toLowerCase().includes(query)) ||
+                (npc.notes && npc.notes.toLowerCase().includes(query)) ||
+                (npc.statName && npc.statName.toLowerCase().includes(query)) ||
+                (npc.backstory && npc.backstory.toLowerCase().includes(query)) ||
+                (npc.appearance && npc.appearance.toLowerCase().includes(query))
+            );
+            if (!matchesQuery) return false;
+        }
+
+        if (locFilter !== 'ALL') {
+            if ((npc.location || '').trim().toLowerCase() !== locFilter.trim().toLowerCase()) return false;
+        }
+        if (facFilter !== 'ALL') {
+            if ((npc.faction || '').trim().toLowerCase() !== facFilter.trim().toLowerCase()) return false;
+        }
+        return true;
+    });
+
+    if (badgeEl) {
+        badgeEl.innerText = `${filtered.length} of ${appState.roster.length} NPCs`;
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-16 px-4 border border-dashed border-ledger-700 rounded-2xl text-slate-400 space-y-2">
+                <span class="text-3xl block">🔍</span>
+                <p class="font-bold text-sm text-slate-300">No NPCs Match Your Search / Filter</p>
+                <p class="text-xs text-slate-500">Try adjusting your query or resetting filters</p>
+                <button type="button" onclick="clearDirFilters()" class="mt-2 px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-amber-300 font-semibold text-xs transition">
+                    Reset All Filters
+                </button>
             </div>
         `;
         return;
     }
 
-    listEl.innerHTML = filtered.map(npc => `
-        <div onclick="loadNPCFromRoster('${npc.id}')" class="group p-3 rounded-xl bg-ledger-950/90 hover:bg-ledger-800 border border-ledger-800 hover:border-amber-500/40 cursor-pointer transition relative">
-            <div class="flex items-start justify-between gap-2">
-                <div>
-                    <h4 class="font-bold text-xs sm:text-sm text-white group-hover:text-amber-300 transition">
-                        ${escapeHTML(npc.name)} <span class="text-amber-400/80 italic font-normal">${escapeHTML(npc.epithet || '')}</span>
-                    </h4>
-                    <p class="text-[11px] text-sky-300 font-medium mt-0.5">${escapeHTML(npc.species)} • ${escapeHTML(npc.role)}</p>
-                </div>
-                <div class="flex items-center gap-1">
-                    <button onclick="event.stopPropagation(); sendRosterNPCToCombat('${npc.id}')" title="Send to Combat Tracker" class="p-1 rounded bg-amber-500/10 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 transition text-xs flex items-center gap-1">
-                        <span>⚔️</span>
-                    </button>
-                    <button onclick="deleteNPCFromRoster('${npc.id}', event)" title="Delete from Roster" class="p-1 rounded hover:bg-rose-950/80 text-slate-400 hover:text-rose-400 transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    </button>
-                </div>
+    filtered = sortNpcList(filtered, sortBy);
+
+    if (viewMode === 'table') {
+        container.innerHTML = `
+            <div class="overflow-x-auto rounded-2xl border border-ledger-800 bg-ledger-950/80 shadow-md">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-ledger-900 border-b border-ledger-800 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                            <th class="p-3">NPC Identity</th>
+                            <th class="p-3">Role & Species</th>
+                            <th class="p-3">Location</th>
+                            <th class="p-3">Faction</th>
+                            <th class="p-3">5e Stat Block</th>
+                            <th class="p-3">Session Notes</th>
+                            <th class="p-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-ledger-800/70">
+                        ${filtered.map(npc => `
+                            <tr class="hover:bg-ledger-900/60 transition group cursor-pointer" onclick="loadNpcAndCloseDir('${npc.id}')">
+                                <td class="p-3">
+                                    <div class="font-bold text-white group-hover:text-amber-300 transition flex items-center gap-1.5">
+                                        <span>${getSpeciesEmoji(npc.species)}</span>
+                                        <span>${escapeHTML(npc.name)}</span>
+                                    </div>
+                                    ${npc.epithet ? `<div class="text-[10px] text-amber-400/80 italic">${escapeHTML(npc.epithet)}</div>` : ''}
+                                </td>
+                                <td class="p-3 text-slate-300">
+                                    <div class="font-medium text-sky-300">${escapeHTML(npc.role)}</div>
+                                    <div class="text-[10px] text-slate-500">${escapeHTML(npc.species)}</div>
+                                </td>
+                                <td class="p-3">
+                                    ${npc.location ? `<span class="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/70 text-emerald-300 text-[10px] font-medium whitespace-nowrap">📍 ${escapeHTML(npc.location)}</span>` : '<span class="text-slate-600 italic">None</span>'}
+                                </td>
+                                <td class="p-3">
+                                    ${npc.faction ? `<span class="px-2 py-0.5 rounded-full bg-indigo-950/80 border border-indigo-800/70 text-indigo-300 text-[10px] font-medium whitespace-nowrap">⚔️ ${escapeHTML(npc.faction)}</span>` : '<span class="text-slate-600 italic">Independent</span>'}
+                                </td>
+                                <td class="p-3 font-mono text-[11px] text-slate-300 whitespace-nowrap">
+                                    ${npc.statName ? `<span class="text-amber-300 font-bold">${escapeHTML(npc.statName)}</span> (${escapeHTML(npc.statAcHp || '')})` : '<span class="text-slate-600 italic">—</span>'}
+                                </td>
+                                <td class="p-3 text-slate-400 max-w-[200px] truncate text-[11px]">
+                                    ${npc.notes ? `“${escapeHTML(npc.notes)}”` : '<span class="text-slate-600 italic">—</span>'}
+                                </td>
+                                <td class="p-3 text-right whitespace-nowrap" onclick="event.stopPropagation()">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <button type="button" onclick="loadNpcAndCloseDir('${npc.id}')" title="Load into Generator" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-400 border border-ledger-700 text-xs transition">
+                                            ✏️ Edit
+                                        </button>
+                                        <button type="button" onclick="sendRosterNPCToCombat('${npc.id}')" title="Send to Combat" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-xs transition">
+                                            ⚔️ Combat
+                                        </button>
+                                        <button type="button" onclick="copySingleNPCMarkdown('${npc.id}')" title="Copy Markdown" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-xs transition">
+                                            📋
+                                        </button>
+                                        <button type="button" onclick="deleteNPCFromRoster('${npc.id}', event)" title="Delete NPC" class="p-1.5 rounded-lg hover:bg-rose-950 text-slate-500 hover:text-rose-400 transition text-xs">
+                                            ✕
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
-            <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
-                <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-indigo-300 truncate max-w-[140px]">${escapeHTML(npc.faction)}</span>
-                <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 text-emerald-300 truncate max-w-[140px]">${escapeHTML(npc.location)}</span>
+        `;
+        return;
+    }
+
+    // Grid View
+    const renderCard = (npc) => `
+        <div class="trait-card rounded-2xl p-4 flex flex-col justify-between space-y-3 bg-ledger-950/90 border border-ledger-800 hover:border-amber-500/50 shadow-md transition group">
+            <div class="space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-base">${getSpeciesEmoji(npc.species)}</span>
+                            <h4 class="font-bold text-sm text-white group-hover:text-amber-300 transition truncate">${escapeHTML(npc.name)}</h4>
+                            ${npc.epithet ? `<span class="text-amber-400/80 italic text-xs font-normal">"${escapeHTML(npc.epithet)}"</span>` : ''}
+                        </div>
+                        <p class="text-xs text-sky-300 font-medium mt-0.5">${escapeHTML(npc.species)} • ${escapeHTML(npc.role)}</p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" onclick="copySingleNPCMarkdown('${npc.id}')" title="Copy Markdown" class="p-1.5 rounded-lg hover:bg-ledger-800 text-slate-400 hover:text-slate-200 transition text-xs">
+                            📋
+                        </button>
+                        <button type="button" onclick="deleteNPCFromRoster('${npc.id}', event)" title="Delete from Roster" class="p-1.5 rounded-lg hover:bg-rose-950 text-slate-500 hover:text-rose-400 transition text-xs">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Badges -->
+                <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
+                    ${npc.location ? `<span class="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 font-semibold">📍 ${escapeHTML(npc.location)}</span>` : '<span class="px-2 py-0.5 rounded-full bg-ledger-900 border border-ledger-800 text-slate-500">🌲 Wandering</span>'}
+                    ${npc.faction ? `<span class="px-2 py-0.5 rounded-full bg-indigo-950/80 border border-indigo-800/80 text-indigo-300 font-semibold">⚔️ ${escapeHTML(npc.faction)}</span>` : ''}
+                    ${npc.statName ? `<span class="px-2 py-0.5 rounded-full bg-ledger-900 border border-ledger-800 text-slate-300 font-mono">📊 ${escapeHTML(npc.statName)} (${escapeHTML(npc.statAcHp || '')})</span>` : ''}
+                </div>
+
+                <!-- Appearance / Personality snippet -->
+                ${npc.appearance ? `<p class="text-[11px] text-slate-300 leading-snug line-clamp-2"><span class="text-slate-500 font-semibold">Look:</span> ${escapeHTML(npc.appearance)}</p>` : ''}
+                ${npc.notes ? `<p class="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-1.5 italic line-clamp-2">“${escapeHTML(npc.notes)}”</p>` : ''}
             </div>
-            ${npc.notes ? `<p class="mt-1.5 text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 italic line-clamp-2">"${escapeHTML(npc.notes)}"</p>` : ''}
+
+            <!-- Footer Action Buttons -->
+            <div class="pt-2.5 border-t border-ledger-800/80 flex items-center justify-between gap-2">
+                <button type="button" onclick="loadNpcAndCloseDir('${npc.id}')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs flex items-center gap-1 shadow transition">
+                    <span>✏️</span> Edit in Generator
+                </button>
+                <button type="button" onclick="sendRosterNPCToCombat('${npc.id}')" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-amber-300 border border-ledger-700 font-semibold text-xs flex items-center gap-1 transition">
+                    <span>⚔️</span> Push to Combat
+                </button>
+            </div>
         </div>
-    `).join('');
+    `;
+
+    if (groupBy === 'none') {
+        container.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                ${filtered.map(renderCard).join('')}
+            </div>
+        `;
+        return;
+    }
+
+    const groups = {};
+    filtered.forEach(npc => {
+        let key = '';
+        if (groupBy === 'location') {
+            key = npc.location ? `📍 ${npc.location}` : `🌲 Wandering / No Location`;
+        } else if (groupBy === 'faction') {
+            key = npc.faction ? `⚔️ ${npc.faction}` : `🛡️ Independent / Unaligned`;
+        } else if (groupBy === 'category') {
+            key = npc.category ? `🏷️ ${npc.category}` : (npc.role ? `🏷️ ${npc.role}` : `🏷️ Other`);
+        }
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(npc);
+    });
+
+    const groupKeys = Object.keys(groups).sort((a, b) => {
+        if (a.includes('Wandering') || a.includes('Independent') || a.includes('Other')) return 1;
+        if (b.includes('Wandering') || b.includes('Independent') || b.includes('Other')) return -1;
+        return a.localeCompare(b);
+    });
+
+    container.innerHTML = groupKeys.map(gKey => {
+        const items = groups[gKey];
+        return `
+            <div class="space-y-3">
+                <div class="flex items-center justify-between border-b border-ledger-800 pb-1.5">
+                    <h4 class="font-display font-bold text-sm text-amber-400 flex items-center gap-2">
+                        <span>${escapeHTML(gKey)}</span>
+                        <span class="px-2 py-0.2 rounded-full text-[10px] font-mono bg-ledger-800 text-slate-300 border border-ledger-700 font-bold">${items.length}</span>
+                    </h4>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    ${items.map(renderCard).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function formatNPCMarkdown(npc) {
@@ -2394,27 +3359,62 @@ function copyNPCMarkdown() {
     copyTextToClipboard(md, `Copied "${appState.currentNPC.name}" as Markdown!`);
 }
 
+window.exportRosterMarkdown = exportRosterMarkdown;
+window.copySingleNPCMarkdown = copySingleNPCMarkdown;
+window.copyNPCMarkdown = copyNPCMarkdown;
+window.onRosterGroupingChanged = onRosterGroupingChanged;
+window.onRosterSortChanged = onRosterSortChanged;
+window.onRosterFilterLocationChanged = onRosterFilterLocationChanged;
+window.onRosterFilterFactionChanged = onRosterFilterFactionChanged;
+window.setRosterDensity = setRosterDensity;
+window.clearRosterSearch = clearRosterSearch;
+window.clearRosterFilters = clearRosterFilters;
+window.toggleRosterGroup = toggleRosterGroup;
+window.openRosterDirectoryModal = openRosterDirectoryModal;
+window.renderRosterDirectory = renderRosterDirectory;
+window.setDirViewMode = setDirViewMode;
+window.onDirRosterGroupingChanged = onDirRosterGroupingChanged;
+window.onDirRosterSortChanged = onDirRosterSortChanged;
+window.clearDirFilters = clearDirFilters;
+window.loadNpcAndCloseDir = loadNpcAndCloseDir;
+window.navigateToNpc = navigateToNpc;
+window.renderRoster = renderRoster;
+window.populateTopFilterDropdowns = populateTopFilterDropdowns;
+window.getActiveFactionsPool = getActiveFactionsPool;
+window.getActiveLocationsPool = getActiveLocationsPool;
+
 function populateTopFilterDropdowns() {
     const spSelect = document.getElementById('filter-species');
-    if (!spSelect) return;
-    const currentSp = spSelect.value || "ANY";
-    spSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Species</option>` +
-        Object.keys(SPECIES_DATA).map(s => `<option value="${escapeHTML(s)}" class="bg-ledger-900">${escapeHTML(s)}</option>`).join('');
-    spSelect.value = currentSp;
+    if (spSelect) {
+        const currentSp = spSelect.value || "ANY";
+        spSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Species</option>` +
+            Object.keys(SPECIES_DATA).map(s => `<option value="${escapeHTML(s)}" class="bg-ledger-900">${escapeHTML(s)}</option>`).join('');
+        spSelect.value = currentSp;
+    }
 
     const facSelect = document.getElementById('filter-faction');
-    const currentFac = facSelect.value || "ANY";
-    const factions = getActiveFactionsPool();
-    facSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Faction</option>` +
-        factions.map(f => `<option value="${escapeHTML(f)}" class="bg-ledger-900">${escapeHTML(f)}</option>`).join('');
-    facSelect.value = factions.includes(currentFac) ? currentFac : "ANY";
+    if (facSelect) {
+        const currentFac = facSelect.value || "ANY";
+        const factions = getActiveFactionsPool();
+        let facHtml = `<option value="ANY" class="bg-ledger-900">Any Faction</option>`;
+        factions.forEach(f => {
+            facHtml += `<option value="${escapeHTML(f)}" class="bg-ledger-900">${escapeHTML(f)}</option>`;
+        });
+        facSelect.innerHTML = facHtml;
+        facSelect.value = factions.includes(currentFac) ? currentFac : "ANY";
+    }
 
     const locSelect = document.getElementById('filter-location');
-    const currentLoc = locSelect.value || "ANY";
-    const locations = getActiveLocationsPool();
-    locSelect.innerHTML = `<option value="ANY" class="bg-ledger-900">Any Location</option>` +
-        locations.map(l => `<option value="${escapeHTML(l)}" class="bg-ledger-900">${escapeHTML(l)}</option>`).join('');
-    locSelect.value = locations.includes(currentLoc) ? currentLoc : "ANY";
+    if (locSelect) {
+        const currentLoc = locSelect.value || "ANY";
+        const locations = getActiveLocationsPool();
+        let locHtml = `<option value="ANY" class="bg-ledger-900">Any Location</option>`;
+        locations.forEach(l => {
+            locHtml += `<option value="${escapeHTML(l)}" class="bg-ledger-900">${escapeHTML(l)}</option>`;
+        });
+        locSelect.innerHTML = locHtml;
+        locSelect.value = locations.includes(currentLoc) ? currentLoc : "ANY";
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -2535,7 +3535,88 @@ function renderTimeWeatherHUD() {
         timerBadgeEl.className = count > 0 ? "px-1.5 py-0.2 rounded-full bg-amber-500 text-ledger-950 font-bold text-[9px] animate-pulse" : "px-1.5 py-0.2 rounded-full bg-ledger-800 text-slate-400 text-[9px]";
     }
 
+    const dayInput = document.getElementById('manual-clock-day');
+    const hourInput = document.getElementById('manual-clock-hour');
+    const minInput = document.getElementById('manual-clock-minute');
+    if (dayInput && document.activeElement !== dayInput) dayInput.value = tw.day || 1;
+    if (hourInput && document.activeElement !== hourInput) hourInput.value = tw.hour ?? 9;
+    if (minInput && document.activeElement !== minInput) minInput.value = tw.minute ?? 0;
+
     renderTimersListModal();
+}
+
+async function saveManualGameTime() {
+    const day = parseInt(document.getElementById('manual-clock-day')?.value, 10) || 1;
+    const hour = Math.max(0, Math.min(23, parseInt(document.getElementById('manual-clock-hour')?.value, 10) || 0));
+    const minute = Math.max(0, Math.min(59, parseInt(document.getElementById('manual-clock-minute')?.value, 10) || 0));
+
+    try {
+        const res = await fetch('/api/time-weather/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ day, hour, minute })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            appState.timeWeather = data.timeWeather || data.state;
+            renderTimeWeatherHUD();
+            showToast(`Clock set to Day ${day}, ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`, "success");
+            return;
+        }
+    } catch (e) {
+        console.error("Error setting game time:", e);
+    }
+
+    // Fallback if offline
+    if (appState.timeWeather) {
+        appState.timeWeather.day = day;
+        appState.timeWeather.hour = hour;
+        appState.timeWeather.minute = minute;
+        renderTimeWeatherHUD();
+        showToast(`Clock set to Day ${day}, ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`, "info");
+    }
+}
+
+async function timeskipDays(days) {
+    if (!days || isNaN(days)) return;
+    const currentDay = appState.timeWeather?.day || 1;
+    const newDay = Math.max(1, currentDay + days);
+    const hour = appState.timeWeather?.hour ?? 9;
+    const minute = appState.timeWeather?.minute ?? 0;
+
+    try {
+        const res = await fetch('/api/time-weather/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ day: newDay, hour, minute })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            appState.timeWeather = data.timeWeather || data.state;
+            renderTimeWeatherHUD();
+            showToast(`Timeskip: Advanced ${days} day${days > 1 ? 's' : ''} to Day ${newDay}!`, "success");
+            return;
+        }
+    } catch (e) {
+        console.error("Error with timeskip:", e);
+    }
+
+    if (appState.timeWeather) {
+        appState.timeWeather.day = newDay;
+        renderTimeWeatherHUD();
+        showToast(`Timeskip: Advanced ${days} day${days > 1 ? 's' : ''} to Day ${newDay}!`, "info");
+    }
+}
+
+function promptTimeskipDays() {
+    const input = prompt("Enter number of days to skip forward:", "3");
+    if (!input) return;
+    const days = parseInt(input.trim(), 10);
+    if (isNaN(days) || days <= 0) {
+        showToast("Please enter a valid positive number of days.", "warning");
+        return;
+    }
+    timeskipDays(days);
 }
 
 async function advanceInGameTime(minutes) {
@@ -2714,6 +3795,8 @@ function removeTimer(id) {
 function renderLootScreen() {
     if (!appState.currentShop) {
         generateShop();
+    } else {
+        renderShopInventory();
     }
 }
 
@@ -2757,6 +3840,57 @@ function generateShop() {
     renderShopInventory();
 }
 
+function getPurseSummary(coins) {
+    if (!coins) return "0 GP";
+    const parts = [];
+    if (coins.pp) parts.push(`${coins.pp}pp`);
+    if (coins.gp || (!coins.pp && !coins.sp && !coins.cp)) parts.push(`${coins.gp || 0}gp`);
+    if (coins.sp) parts.push(`${coins.sp}sp`);
+    if (coins.cp) parts.push(`${coins.cp}cp`);
+    return parts.join(', ');
+}
+
+function deductCoins(coins, costAmount, costUnit) {
+    if (!coins) return null;
+    const coinRates = { pp: 1000, gp: 100, sp: 10, cp: 1 };
+    const unit = (costUnit || 'gp').toLowerCase();
+    const rate = coinRates[unit] || 100;
+    const costCp = costAmount * rate;
+
+    let pp = coins.pp || 0;
+    let gp = coins.gp || 0;
+    let sp = coins.sp || 0;
+    let cp = coins.cp || 0;
+
+    let totalCp = pp * 1000 + gp * 100 + sp * 10 + cp;
+    if (totalCp < costCp) return null;
+
+    if (unit === 'gp' && gp >= costAmount) {
+        gp -= costAmount;
+    } else if (unit === 'sp' && sp >= costAmount) {
+        sp -= costAmount;
+    } else if (unit === 'cp' && cp >= costAmount) {
+        cp -= costAmount;
+    } else if (unit === 'pp' && pp >= costAmount) {
+        pp -= costAmount;
+    } else {
+        let remCp = totalCp - costCp;
+        let newPp = Math.min(pp, Math.floor(remCp / 1000));
+        remCp -= newPp * 1000;
+        let newGp = Math.floor(remCp / 100);
+        remCp -= newGp * 100;
+        let newSp = Math.floor(remCp / 10);
+        remCp -= newSp * 10;
+        let newCp = remCp;
+
+        pp = newPp;
+        gp = newGp;
+        sp = newSp;
+        cp = newCp;
+    }
+    return { pp, gp, sp, cp };
+}
+
 function renderShopInventory() {
     const shop = appState.currentShop;
     const container = document.getElementById('shop-inventory-list');
@@ -2768,21 +3902,135 @@ function renderShopInventory() {
     if (titleEl) titleEl.innerText = shop.name;
     if (descEl) descEl.innerText = `${shop.desc} • Price Multiplier: ${Math.round(shop.multiplier * 100)}% (${shop.tier.toUpperCase()})`;
 
-    container.innerHTML = shop.items.map(item => `
-        <div class="trait-card rounded-xl p-3 flex flex-col justify-between space-y-1.5">
-            <div class="flex items-start justify-between gap-2">
-                <div>
-                    <h4 class="font-bold text-xs sm:text-sm text-slate-100">${escapeHTML(item.name)}</h4>
-                    <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-ledger-900 border border-ledger-700 text-sky-300">${escapeHTML(item.type)}</span>
+    const stashCoins = appState.partyStash?.coins || appState.partyStash?.currency || { pp: 0, gp: 0, sp: 0, cp: 0 };
+    const stashPurseStr = getPurseSummary(stashCoins);
+    const party = appState.party || [];
+
+    container.innerHTML = shop.items.map((item, idx) => {
+        const partyOptions = party.map(pc => {
+            const pcPurse = getPurseSummary(pc.currency);
+            return `<option value="${pc.id}">${escapeHTML(pc.name)} (${pcPurse})</option>`;
+        }).join('');
+
+        const isOutOfStock = item.qty <= 0;
+
+        return `
+            <div class="trait-card rounded-xl p-3 flex flex-col justify-between space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <h4 class="font-bold text-xs sm:text-sm text-slate-100">${escapeHTML(item.name)}</h4>
+                        <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-ledger-900 border border-ledger-700 text-sky-300">${escapeHTML(item.type)}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-mono font-bold text-xs sm:text-sm text-amber-300">${item.finalCost} ${item.unit}</span>
+                        <span class="text-[10px] ${isOutOfStock ? 'text-rose-400 font-bold' : 'text-slate-400'} block">Stock: ${item.qty}</span>
+                    </div>
                 </div>
-                <div class="text-right">
-                    <span class="font-mono font-bold text-xs sm:text-sm text-amber-300">${item.finalCost} ${item.unit}</span>
-                    <span class="text-[10px] text-slate-400 block">Stock: ${item.qty}</span>
+                <p class="text-[11px] text-slate-300 leading-snug pt-1 border-t border-ledger-800/80">${escapeHTML(item.desc)}</p>
+                
+                <div class="pt-2 border-t border-ledger-800/80 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                        <label class="text-[10px] font-mono text-slate-400 shrink-0">Buyer:</label>
+                        <select id="shop-buyer-${idx}" class="flex-1 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-amber-500 font-mono truncate">
+                            <option value="stash">Party Stash (${stashPurseStr})</option>
+                            ${partyOptions}
+                        </select>
+                    </div>
+                    <button onclick="purchaseShopItem(${idx})" ${isOutOfStock ? 'disabled' : ''} class="px-3 py-1 rounded-lg ${isOutOfStock ? 'bg-ledger-900 text-slate-600 border border-ledger-800 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-400 text-ledger-950 shadow'} font-bold text-xs flex items-center gap-1 shrink-0 transition">
+                        <span>🛒</span>
+                        <span>${isOutOfStock ? 'Sold Out' : 'Buy'}</span>
+                    </button>
                 </div>
             </div>
-            <p class="text-[11px] text-slate-300 leading-snug pt-1 border-t border-ledger-800/80">${escapeHTML(item.desc)}</p>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+async function purchaseShopItem(itemIndex) {
+    const shop = appState.currentShop;
+    if (!shop || !shop.items || !shop.items[itemIndex]) return;
+    const item = shop.items[itemIndex];
+
+    if (item.qty <= 0) {
+        showToast(`"${item.name}" is sold out!`, "warning");
+        return;
+    }
+
+    const selectEl = document.getElementById(`shop-buyer-${itemIndex}`);
+    const buyerId = selectEl ? selectEl.value : 'stash';
+
+    const costAmount = item.finalCost || 1;
+    const costUnit = (item.unit || 'gp').toLowerCase();
+
+    if (buyerId === 'stash') {
+        const stash = appState.partyStash || { coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, currency: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+        const currentCoins = Object.assign({ pp: 0, gp: 0, sp: 0, cp: 0 }, stash.coins || stash.currency || {});
+        const updatedCoins = deductCoins(currentCoins, costAmount, costUnit);
+        if (!updatedCoins) {
+            showToast(`Shared Party Stash cannot afford ${item.name} (${costAmount} ${costUnit.toUpperCase()})! Current: ${getPurseSummary(currentCoins)}`, "error");
+            return;
+        }
+
+        stash.coins = updatedCoins;
+        stash.currency = updatedCoins;
+        if (!stash.items) stash.items = [];
+        const newItem = {
+            id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+            name: item.name,
+            quantity: 1,
+            qty: 1,
+            weight: parseFloat(item.weight) || 1,
+            category: item.type || "Equipment",
+            rarity: item.rarity || "Common",
+            cost: `${item.finalCost} ${costUnit}`,
+            equipped: false,
+            attuned: false,
+            notes: item.desc || ""
+        };
+        stash.items.push(newItem);
+        item.qty -= 1;
+
+        await savePartyStashAPI(stash);
+        renderShopInventory();
+        if (typeof renderPartyInventoryModal === 'function') renderPartyInventoryModal();
+        showToast(`Purchased "${item.name}" for ${costAmount} ${costUnit.toUpperCase()}! Charged to Party Stash.`, "success");
+    } else {
+        const pc = (appState.party || []).find(p => p.id === buyerId);
+        if (!pc) {
+            showToast("Selected buyer not found in party.", "error");
+            return;
+        }
+        const currentCoins = Object.assign({ pp: 0, gp: 0, sp: 0, cp: 0 }, pc.currency || {});
+        const updatedCoins = deductCoins(currentCoins, costAmount, costUnit);
+        if (!updatedCoins) {
+            showToast(`${pc.name} cannot afford ${item.name} (${costAmount} ${costUnit.toUpperCase()})! Current: ${getPurseSummary(currentCoins)}`, "error");
+            return;
+        }
+
+        pc.currency = updatedCoins;
+        if (!pc.inventory) pc.inventory = [];
+        const newItem = {
+            id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+            name: item.name,
+            quantity: 1,
+            qty: 1,
+            weight: parseFloat(item.weight) || 1,
+            category: item.type || "Equipment",
+            rarity: item.rarity || "Common",
+            cost: `${item.finalCost} ${costUnit}`,
+            equipped: false,
+            attuned: false,
+            notes: item.desc || ""
+        };
+        pc.inventory.push(newItem);
+        item.qty -= 1;
+
+        await savePCCurrencyAPI(pc.id, pc.currency);
+        await savePCInventoryAPI(pc.id, pc.inventory);
+        renderShopInventory();
+        if (typeof renderPartyInventoryModal === 'function') renderPartyInventoryModal();
+        showToast(`Purchased "${item.name}" for ${costAmount} ${costUnit.toUpperCase()}! Charged to ${pc.name}.`, "success");
+    }
 }
 
 function copyShopMarkdown() {
@@ -3729,11 +4977,63 @@ async function deleteMonster(id) {
 // PHASE 3: WORLD & CAMPAIGN ARCHITECTURE
 // =============================================================================
 
+const WORLD_SUBTAB_METADATA = {
+    'overworld': { icon: '🧭', title: 'Regional Overworld Map', desc: 'Strategic kingdom & regional cartography with interactive lore pins, settlement popovers, and player overland travel broadcast' },
+    'locations': { icon: '🏰', title: 'Locations & Settlements', desc: 'Settlement directory, taverns, dungeons, wilderness landmarks, and DM secrets' },
+    'factions': { icon: '⚖️', title: 'Factions, Relations & Faction Turns', desc: 'Diplomatic web, between-session faction turn simulator, tension clocks, and party standing milestones' },
+    'quests': { icon: '📜', title: 'Quests & Tavern Rumors', desc: 'Campaign quest checklist, objectives, street rumors, and clue corkboard' },
+    'pantheon': { icon: '☀️', title: 'Pantheon, Deities & Cosmic Cults', desc: 'Compendium of gods, celestial patrons, tenets of faith, and party piety tracking' },
+    'timeline': { icon: '⏳', title: 'Campaign Historical Timeline', desc: 'Chronological eras feed and session log synchronization with the in-game calendar' },
+    'travel': { icon: '🏕️', title: 'Wilderness Travel & Foraging Calculator', desc: 'Overland pace calculator, 5.5e foraging & navigation DCs, and roadside exploration complications' },
+    'secrets': { icon: '🔍', title: 'Secrets & Clues Engine', desc: 'Prepare revelations, lore discoveries, and plot clues to drop during session play' },
+    'handouts': { icon: '📜', title: 'In-World Handouts & Letters', desc: 'Forge authentic missives, burned journals, bounties, and decipherable coded notes' }
+};
+
+function toggleWorldSidebarSubmenu(forceOpen = null) {
+    const submenu = document.getElementById('sidebar-world-subtabs');
+    const chevron = document.getElementById('sidebar-world-chevron');
+    if (!submenu) return;
+    const shouldOpen = forceOpen !== null ? forceOpen : submenu.classList.contains('hidden');
+    if (shouldOpen) {
+        submenu.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+    } else {
+        submenu.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+    }
+}
+
+function onSidebarWorldClick(e) {
+    if (e) e.stopPropagation();
+    if (appState.activeTab !== 'world') {
+        switchTab('world');
+        toggleWorldSidebarSubmenu(true);
+    } else {
+        toggleWorldSidebarSubmenu();
+    }
+}
+
 function switchWorldSubtab(subtab) {
+    if (!subtab) subtab = 'overworld';
     appState.worldActiveSubtab = subtab;
+
+    // Ensure we are viewing the world tab
+    if (appState.activeTab !== 'world') {
+        switchTab('world');
+    }
+
+    // Ensure submenu is visible and chevron rotated
+    toggleWorldSidebarSubmenu(true);
+
+    // Hide all world panels
     document.querySelectorAll('.world-panel').forEach(p => p.classList.add('hidden'));
+
+    // Reset all subtab buttons (sidebar buttons)
     document.querySelectorAll('.world-subtab-btn').forEach(btn => {
-        btn.classList.remove('bg-amber-500', 'text-ledger-950');
+        btn.classList.remove(
+            'bg-amber-500/20', 'bg-amber-500/25', 'bg-amber-500', 
+            'text-amber-300', 'border', 'border-amber-500/40', 'border-amber-500/50', 'text-ledger-950'
+        );
         btn.classList.add('text-slate-400');
     });
 
@@ -3742,18 +5042,102 @@ function switchWorldSubtab(subtab) {
     if (activePanel) activePanel.classList.remove('hidden');
     if (activeBtn) {
         activeBtn.classList.remove('text-slate-400');
-        activeBtn.classList.add('bg-amber-500', 'text-ledger-950');
+        activeBtn.classList.add('bg-amber-500/20', 'text-amber-300', 'border', 'border-amber-500/40');
     }
 
-    if (subtab === 'locations') renderLocations();
-    else if (subtab === 'factions') renderFactions();
+    // Update Header Breadcrumb in #view-world
+    const meta = WORLD_SUBTAB_METADATA[subtab] || { icon: '🗺️', title: subtab, desc: '' };
+    const iconEl = document.getElementById('world-active-subtab-icon');
+    const titleEl = document.getElementById('world-active-subtab-title');
+    const descEl = document.getElementById('world-active-subtab-desc');
+    if (iconEl) iconEl.textContent = meta.icon;
+    if (titleEl) titleEl.textContent = meta.title;
+    if (descEl) descEl.textContent = meta.desc;
+
+    // Trigger subtab renderers
+    if (subtab === 'overworld') renderOverworld();
+    else if (subtab === 'locations') renderLocations();
+    else if (subtab === 'factions') { renderFactions(); renderFactionRelations(); }
     else if (subtab === 'quests') renderQuests();
+    else if (subtab === 'pantheon') renderPantheon();
+    else if (subtab === 'timeline') renderTimeline();
+    else if (subtab === 'travel') renderTravel();
     else if (subtab === 'secrets') renderSecrets();
     else if (subtab === 'handouts') renderHandouts();
 }
 
 function renderWorldView() {
-    switchWorldSubtab(appState.worldActiveSubtab || 'locations');
+    switchWorldSubtab(appState.worldActiveSubtab || 'overworld');
+}
+
+function navigateToFaction(factionIdOrName) {
+    if (!factionIdOrName) return;
+    switchWorldSubtab('factions');
+    const target = (appState.factions || []).find(f => f.id === factionIdOrName || (f.name && f.name.toLowerCase() === String(factionIdOrName).toLowerCase()));
+    if (target) {
+        setTimeout(() => {
+            const card = document.getElementById(`faction-card-${target.id}`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('ring-2', 'ring-amber-400');
+                setTimeout(() => card.classList.remove('ring-2', 'ring-amber-400'), 2500);
+            }
+        }, 120);
+    }
+}
+
+function navigateToNpc(npcIdOrName) {
+    if (!npcIdOrName) return;
+    switchTab('npcs');
+    const target = (appState.roster || []).find(n => n.id === npcIdOrName || (n.name && n.name.toLowerCase() === String(npcIdOrName).toLowerCase()));
+    if (target) {
+        if (appState.rosterUI) {
+            appState.rosterUI.locationFilter = 'ALL';
+            appState.rosterUI.factionFilter = 'ALL';
+            if (appState.rosterUI.collapsedGroups) {
+                appState.rosterUI.collapsedGroups.clear();
+            }
+        }
+        const searchInput = document.getElementById('roster-search');
+        if (searchInput && searchInput.value) {
+            searchInput.value = '';
+            const clearBtn = document.getElementById('roster-search-clear');
+            if (clearBtn) clearBtn.classList.add('hidden');
+        }
+        const locSel = document.getElementById('roster-filter-location');
+        if (locSel) locSel.value = 'ALL';
+        const facSel = document.getElementById('roster-filter-faction');
+        if (facSel) facSel.value = 'ALL';
+
+        loadNPCFromRoster(target.id);
+        setTimeout(() => {
+            const card = document.getElementById(`roster-item-${target.id}`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('ring-2', 'ring-amber-400');
+                setTimeout(() => card.classList.remove('ring-2', 'ring-amber-400'), 2500);
+            }
+        }, 120);
+    }
+}
+
+function navigateToQuest(questIdOrTitle) {
+    if (!questIdOrTitle) return;
+    switchWorldSubtab('quests');
+    if (appState.questStatusFilter && appState.questStatusFilter !== 'all') {
+        filterQuests('all');
+    }
+    const target = (appState.quests || []).find(q => q.id === questIdOrTitle || (q.title && q.title.toLowerCase() === String(questIdOrTitle).toLowerCase()));
+    if (target) {
+        setTimeout(() => {
+            const card = document.getElementById(`quest-card-${target.id}`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('ring-2', 'ring-amber-400');
+                setTimeout(() => card.classList.remove('ring-2', 'ring-amber-400'), 2500);
+            }
+        }, 120);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -3836,6 +5220,9 @@ function renderLocations() {
                             <button onclick="broadcastLocation('${loc.id}')" title="Broadcast location handout to player display" class="text-slate-400 hover:text-sky-300 text-xs p-1 transition">
                                 📺
                             </button>
+                            <button onclick="openAddLocationModal('${loc.id}')" title="Edit location" class="text-slate-400 hover:text-amber-300 text-xs p-1 transition">
+                                ✏️
+                            </button>
                             <button onclick="deleteLocation('${loc.id}')" title="Delete location" class="text-slate-500 hover:text-rose-400 text-xs p-1 transition">
                                 ✕
                             </button>
@@ -3852,7 +5239,7 @@ function renderLocations() {
                         <div>
                             <span class="text-slate-400 font-bold block mb-0.5">Factions:</span>
                             <div class="flex flex-wrap gap-1">
-                                ${loc.factions.map(f => `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700 text-slate-300 font-mono text-[10px]">${escapeHTML(f)}</span>`).join('')}
+                                ${loc.factions.map(f => `<button type="button" onclick="navigateToFaction('${escapeHTML(f)}')" title="View Faction" class="px-1.5 py-0.5 rounded bg-ledger-950 hover:bg-ledger-800 border border-ledger-700 text-slate-300 font-mono text-[10px] cursor-pointer transition">⚔️ ${escapeHTML(f)}</button>`).join('')}
                             </div>
                         </div>` : ''}
 
@@ -3860,7 +5247,7 @@ function renderLocations() {
                         <div>
                             <span class="text-slate-400 font-bold block mb-0.5">Notable Figures:</span>
                             <div class="flex flex-wrap gap-1">
-                                ${loc.notableNpcs.map(n => `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px]">${escapeHTML(n)}</span>`).join('')}
+                                ${loc.notableNpcs.map(n => `<button type="button" onclick="navigateToNpc('${escapeHTML(n)}')" title="View in NPC Roster" class="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] cursor-pointer transition">👤 ${escapeHTML(n)}</button>`).join('')}
                             </div>
                         </div>` : ''}
                 </div>
@@ -3892,17 +5279,139 @@ function renderLocations() {
     }).join('');
 }
 
-function openAddLocationModal() {
-    document.getElementById('loc-name-input').value = '';
-    document.getElementById('loc-type-input').value = 'Settlement';
-    document.getElementById('loc-danger-input').value = 'Low';
-    document.getElementById('loc-summary-input').value = '';
-    document.getElementById('loc-desc-input').value = '';
-    document.getElementById('loc-factions-input').value = '';
-    document.getElementById('loc-npcs-input').value = '';
-    document.getElementById('loc-secrets-input').value = '';
+let selectedLocationFactions = new Set();
+let selectedLocationNpcs = new Set();
+
+function openAddLocationModal(editLocId = null) {
+    selectedLocationFactions = new Set();
+    selectedLocationNpcs = new Set();
+    const editIdInput = document.getElementById('loc-edit-id');
+    if (editIdInput) editIdInput.value = editLocId || '';
+
+    const existingLoc = editLocId ? (appState.locations || []).find(l => l.id === editLocId) : null;
+    const titleEl = document.getElementById('loc-modal-title');
+    if (titleEl) {
+        titleEl.innerText = existingLoc ? `✏️ Edit Location: ${existingLoc.name}` : `🗺️ Add Campaign Location`;
+    }
+
+    document.getElementById('loc-name-input').value = existingLoc ? existingLoc.name : '';
+    document.getElementById('loc-type-input').value = existingLoc ? (existingLoc.type || 'Settlement') : 'Settlement';
+    document.getElementById('loc-danger-input').value = existingLoc ? (existingLoc.danger || 'Low') : 'Low';
+    document.getElementById('loc-summary-input').value = existingLoc ? (existingLoc.summary || '') : '';
+    document.getElementById('loc-desc-input').value = existingLoc ? (existingLoc.description || '') : '';
+    document.getElementById('loc-secrets-input').value = existingLoc ? (existingLoc.secrets || '') : '';
+
+    if (existingLoc) {
+        (existingLoc.factions || []).forEach(f => selectedLocationFactions.add(f));
+        (existingLoc.notableNpcs || []).forEach(n => selectedLocationNpcs.add(n));
+    }
+
+    renderLocationFactionsSelector();
+    renderLocationNpcsSelector();
 
     openModal('add-location-modal');
+}
+
+function renderLocationFactionsSelector(filter = '') {
+    const container = document.getElementById('loc-factions-selector');
+    if (!container) return;
+    const allFactions = new Set();
+    (appState.factions || []).forEach(f => { if (f.name) allFactions.add(f.name); });
+    selectedLocationFactions.forEach(f => allFactions.add(f));
+
+    const list = Array.from(allFactions).sort().filter(f => !filter || f.toLowerCase().includes(filter.toLowerCase()));
+    if (list.length === 0) {
+        container.innerHTML = `<span class="text-[10px] text-slate-500 italic p-1">No factions match. Press Enter to add.</span>`;
+        return;
+    }
+
+    container.innerHTML = list.map(f => {
+        const isSel = selectedLocationFactions.has(f);
+        return `
+            <button type="button" onclick="toggleLocationFaction('${escapeHTML(f)}')" class="px-2 py-0.5 rounded-full border text-[11px] font-medium transition ${isSel ? 'bg-amber-500 text-ledger-950 border-amber-400 font-bold shadow' : 'bg-ledger-900 border-ledger-700 text-slate-300 hover:text-white'}">
+                ${isSel ? '✓ ' : '+ '}${escapeHTML(f)}
+            </button>
+        `;
+    }).join('');
+}
+
+function toggleLocationFaction(facName) {
+    if (selectedLocationFactions.has(facName)) {
+        selectedLocationFactions.delete(facName);
+    } else {
+        selectedLocationFactions.add(facName);
+    }
+    const searchVal = document.getElementById('loc-factions-search')?.value.trim() || '';
+    renderLocationFactionsSelector(searchVal);
+}
+
+function filterLocationFactionOptions() {
+    const val = document.getElementById('loc-factions-search')?.value.trim() || '';
+    renderLocationFactionsSelector(val);
+}
+
+function onLocationFactionSearchKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = document.getElementById('loc-factions-search');
+        const val = input ? input.value.trim() : '';
+        if (val) {
+            selectedLocationFactions.add(val);
+            input.value = '';
+            renderLocationFactionsSelector();
+        }
+    }
+}
+
+function renderLocationNpcsSelector(filter = '') {
+    const container = document.getElementById('loc-npcs-selector');
+    if (!container) return;
+    const allNpcs = new Set();
+    (appState.roster || []).forEach(n => { if (n.name) allNpcs.add(n.name); });
+    selectedLocationNpcs.forEach(n => allNpcs.add(n));
+
+    const list = Array.from(allNpcs).sort().filter(n => !filter || n.toLowerCase().includes(filter.toLowerCase()));
+    if (list.length === 0) {
+        container.innerHTML = `<span class="text-[10px] text-slate-500 italic p-1">No NPCs match. Press Enter to add.</span>`;
+        return;
+    }
+
+    container.innerHTML = list.map(n => {
+        const isSel = selectedLocationNpcs.has(n);
+        return `
+            <button type="button" onclick="toggleLocationNpc('${escapeHTML(n)}')" class="px-2 py-0.5 rounded-full border text-[11px] font-medium transition ${isSel ? 'bg-sky-500 text-ledger-950 border-sky-400 font-bold shadow' : 'bg-ledger-900 border-ledger-700 text-slate-300 hover:text-white'}">
+                ${isSel ? '✓ ' : '+ '}${escapeHTML(n)}
+            </button>
+        `;
+    }).join('');
+}
+
+function toggleLocationNpc(npcName) {
+    if (selectedLocationNpcs.has(npcName)) {
+        selectedLocationNpcs.delete(npcName);
+    } else {
+        selectedLocationNpcs.add(npcName);
+    }
+    const searchVal = document.getElementById('loc-npcs-search')?.value.trim() || '';
+    renderLocationNpcsSelector(searchVal);
+}
+
+function filterLocationNpcOptions() {
+    const val = document.getElementById('loc-npcs-search')?.value.trim() || '';
+    renderLocationNpcsSelector(val);
+}
+
+function onLocationNpcSearchKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = document.getElementById('loc-npcs-search');
+        const val = input ? input.value.trim() : '';
+        if (val) {
+            selectedLocationNpcs.add(val);
+            input.value = '';
+            renderLocationNpcsSelector();
+        }
+    }
 }
 
 async function saveLocationFromModal() {
@@ -3913,7 +5422,8 @@ async function saveLocationFromModal() {
         return;
     }
 
-    const parseComma = (text) => (text || '').split(',').map(s => s.trim()).filter(Boolean);
+    const editId = document.getElementById('loc-edit-id')?.value.trim() || null;
+    const notableNpcs = Array.from(selectedLocationNpcs);
 
     const locObj = {
         name: name,
@@ -3921,11 +5431,15 @@ async function saveLocationFromModal() {
         danger: document.getElementById('loc-danger-input')?.value || 'Low',
         summary: summary,
         description: document.getElementById('loc-desc-input')?.value.trim() || '',
-        factions: parseComma(document.getElementById('loc-factions-input')?.value),
-        notableNpcs: parseComma(document.getElementById('loc-npcs-input')?.value),
+        factions: Array.from(selectedLocationFactions),
+        notableNpcs: notableNpcs,
         secrets: document.getElementById('loc-secrets-input')?.value.trim() || '',
         tags: [document.getElementById('loc-type-input')?.value || 'Location']
     };
+    if (editId) locObj.id = editId;
+
+    // Immediately sync notable figures with Roster NPCs
+    syncLocationNpcsToRoster(name, notableNpcs);
 
     try {
         const res = await fetch('/api/locations', {
@@ -3936,9 +5450,14 @@ async function saveLocationFromModal() {
         if (res.ok) {
             const data = await res.json();
             if (data.locations) appState.locations = data.locations;
+            if (data.roster) {
+                appState.roster = data.roster;
+                renderRoster();
+            }
             closeModal('add-location-modal');
             showToast(`🗺️ Saved location: ${name}!`, "success");
             renderLocations();
+            populateTopFilterDropdowns();
         }
     } catch (e) {
         showToast("Error saving location.", "error");
@@ -3947,13 +5466,33 @@ async function saveLocationFromModal() {
 
 async function deleteLocation(id) {
     if (!confirm("Delete this location?")) return;
+    const locToDelete = (appState.locations || []).find(l => l.id === id);
+    const locName = locToDelete ? locToDelete.name : null;
+
     try {
         const res = await fetch(`/api/locations/${id}`, { method: 'DELETE' });
         if (res.ok) {
             const data = await res.json();
             if (data.locations) appState.locations = data.locations;
+            if (locName) {
+                // Clear location from any roster NPCs that were tied to it
+                const targetLower = locName.trim().toLowerCase();
+                (appState.roster || []).forEach(npc => {
+                    if (npc.location && npc.location.trim().toLowerCase() === targetLower) {
+                        npc.location = '';
+                    }
+                });
+                if (appState.currentNPC && appState.currentNPC.location && appState.currentNPC.location.trim().toLowerCase() === targetLower) {
+                    appState.currentNPC.location = '';
+                    const locP = document.getElementById('npc-location');
+                    if (locP) locP.innerText = '';
+                    populateNpcLocationOptions('');
+                }
+                renderRoster();
+            }
             showToast("Location deleted.", "info");
             renderLocations();
+            populateTopFilterDropdowns();
         }
     } catch (e) {
         showToast("Error deleting location.", "error");
@@ -3990,7 +5529,7 @@ function renderFactions() {
         const repStyle = repStyles[repText] || 'bg-slate-900 text-slate-300 border-slate-700';
 
         return `
-            <div class="trait-card rounded-xl p-5 space-y-4">
+            <div id="faction-card-${fac.id}" class="trait-card rounded-xl p-5 space-y-4">
                 
                 <!-- Faction Header -->
                 <div class="flex items-start justify-between gap-3 flex-wrap">
@@ -4268,6 +5807,7 @@ async function saveFactionFromModal() {
             closeModal('add-faction-modal');
             showToast(`⚖️ Saved faction: ${name}!`, "success");
             renderFactions();
+            populateTopFilterDropdowns();
         }
     } catch (e) {
         showToast("Error saving faction.", "error");
@@ -4283,6 +5823,7 @@ async function deleteFaction(id) {
             if (data.factions) appState.factions = data.factions;
             showToast("Faction deleted.", "info");
             renderFactions();
+            populateTopFilterDropdowns();
         }
     } catch (e) {
         showToast("Error deleting faction.", "error");
@@ -4336,7 +5877,7 @@ function renderQuests() {
             const sStyle = statusBadges[q.status] || 'bg-slate-900 text-slate-300 border-slate-700';
 
             return `
-                <div class="trait-card rounded-xl p-4 flex flex-col justify-between space-y-3 transition">
+                <div id="quest-card-${q.id}" class="trait-card rounded-xl p-4 flex flex-col justify-between space-y-3 transition">
                     
                     <!-- Header -->
                     <div>
@@ -4350,6 +5891,7 @@ function renderQuests() {
                             </div>
                             <div class="flex items-center gap-1.5">
                                 <button onclick="broadcastQuest('${q.id}')" title="Broadcast quest bounty to player screen" class="text-slate-400 hover:text-sky-300 text-xs p-1">📺</button>
+                                <button onclick="openAddQuestModal('${q.id}')" title="Edit quest details" class="text-slate-400 hover:text-amber-300 text-xs p-1">✏️</button>
                                 <select onchange="changeQuestStatus('${q.id}', this.value)" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${sStyle} bg-transparent cursor-pointer">
                                     <option value="Active" ${q.status === 'Active' ? 'selected' : ''}>Active</option>
                                     <option value="Completed" ${q.status === 'Completed' ? 'selected' : ''}>Completed</option>
@@ -4445,15 +5987,125 @@ async function changeQuestStatus(questId, newStatus) {
     } catch (e) {}
 }
 
-function openAddQuestModal() {
-    document.getElementById('quest-title-input').value = '';
-    document.getElementById('quest-giver-input').value = '';
-    document.getElementById('quest-location-input').value = '';
-    document.getElementById('quest-reward-input').value = '';
-    document.getElementById('quest-status-input').value = 'Active';
-    document.getElementById('quest-summary-input').value = '';
-    document.getElementById('quest-objectives-input').value = '';
-    document.getElementById('quest-notes-input').value = '';
+function populateQuestGiverOptions(selectedGiver = '') {
+    const select = document.getElementById('quest-giver-select');
+    const customInput = document.getElementById('quest-giver-input');
+    if (!select) return;
+
+    const roster = appState.roster || [];
+    let html = `<option value="">-- None / Unknown --</option>`;
+    if (roster.length > 0) {
+        html += `<optgroup label="Campaign NPC Roster">`;
+        roster.forEach(n => {
+            const label = n.name + (n.role ? ` (${n.role})` : (n.species ? ` (${n.species})` : ''));
+            const isSel = (n.name && selectedGiver && n.name.toLowerCase() === selectedGiver.toLowerCase());
+            html += `<option value="${escapeHTML(n.name)}" ${isSel ? 'selected' : ''}>${escapeHTML(label)}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+    html += `<option value="__custom__">✏️ Custom Quest Giver...</option>`;
+    select.innerHTML = html;
+
+    const match = roster.find(n => n.name && selectedGiver && n.name.toLowerCase() === selectedGiver.toLowerCase());
+    if (selectedGiver && !match) {
+        select.value = '__custom__';
+        if (customInput) {
+            customInput.classList.remove('hidden');
+            customInput.value = selectedGiver;
+        }
+    } else {
+        if (customInput) {
+            customInput.classList.add('hidden');
+            customInput.value = match ? match.name : '';
+        }
+    }
+}
+
+function onQuestGiverSelectChange() {
+    const select = document.getElementById('quest-giver-select');
+    const customInput = document.getElementById('quest-giver-input');
+    if (!select || !customInput) return;
+    if (select.value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = select.value;
+    }
+}
+
+function populateQuestLocationOptions(selectedLocation = '') {
+    const select = document.getElementById('quest-location-select');
+    const customInput = document.getElementById('quest-location-input');
+    if (!select) return;
+
+    const locSet = new Set();
+    (appState.locations || []).forEach(l => { if (l.name) locSet.add(l.name); });
+    (appState.overworld?.maps || []).forEach(m => {
+        (m.pins || []).forEach(p => { if (p.label || p.title) locSet.add(p.label || p.title); });
+    });
+
+    const sortedLocs = Array.from(locSet).sort();
+    let html = `<option value="">-- None / Wilderness --</option>`;
+    if (sortedLocs.length > 0) {
+        html += `<optgroup label="Campaign Locations & Landmarks">`;
+        sortedLocs.forEach(locName => {
+            const isSel = (selectedLocation && locName.toLowerCase() === selectedLocation.toLowerCase());
+            html += `<option value="${escapeHTML(locName)}" ${isSel ? 'selected' : ''}>${escapeHTML(locName)}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+    html += `<option value="__custom__">✏️ Custom Location...</option>`;
+    select.innerHTML = html;
+
+    const match = sortedLocs.find(l => selectedLocation && l.toLowerCase() === selectedLocation.toLowerCase());
+    if (selectedLocation && !match) {
+        select.value = '__custom__';
+        if (customInput) {
+            customInput.classList.remove('hidden');
+            customInput.value = selectedLocation;
+        }
+    } else {
+        if (customInput) {
+            customInput.classList.add('hidden');
+            customInput.value = match || '';
+        }
+    }
+}
+
+function onQuestLocationSelectChange() {
+    const select = document.getElementById('quest-location-select');
+    const customInput = document.getElementById('quest-location-input');
+    if (!select || !customInput) return;
+    if (select.value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = select.value;
+    }
+}
+
+function openAddQuestModal(editQuestId = null) {
+    const editIdInput = document.getElementById('quest-edit-id');
+    if (editIdInput) editIdInput.value = editQuestId || '';
+
+    const existingQuest = editQuestId ? (appState.quests || []).find(q => q.id === editQuestId) : null;
+    const titleEl = document.getElementById('quest-modal-title');
+    if (titleEl) {
+        titleEl.innerText = existingQuest ? `✏️ Edit Quest: ${existingQuest.title}` : `📜 Add Campaign Quest`;
+    }
+
+    document.getElementById('quest-title-input').value = existingQuest ? existingQuest.title : '';
+    populateQuestGiverOptions(existingQuest ? (existingQuest.giver || '') : '');
+    populateQuestLocationOptions(existingQuest ? (existingQuest.location || '') : '');
+    document.getElementById('quest-reward-input').value = existingQuest ? (existingQuest.reward || '') : '';
+    document.getElementById('quest-status-input').value = existingQuest ? (existingQuest.status || 'Active') : 'Active';
+    document.getElementById('quest-summary-input').value = existingQuest ? (existingQuest.summary || '') : '';
+    
+    const objs = existingQuest?.objectives || [];
+    document.getElementById('quest-objectives-input').value = objs.map(o => o.text).join('\n');
+    document.getElementById('quest-notes-input').value = existingQuest ? (existingQuest.notes || '') : '';
 
     openModal('add-quest-modal');
 }
@@ -4465,23 +6117,41 @@ async function saveQuestFromModal() {
         return;
     }
 
+    const editId = document.getElementById('quest-edit-id')?.value.trim() || null;
+    const existingQuest = editId ? (appState.quests || []).find(q => q.id === editId) : null;
+
+    const giverSelect = document.getElementById('quest-giver-select');
+    const giverCustom = document.getElementById('quest-giver-input');
+    const giver = (giverSelect?.value === '__custom__') ? (giverCustom?.value.trim() || '') : (giverSelect?.value || giverCustom?.value.trim() || '');
+
+    const locSelect = document.getElementById('quest-location-select');
+    const locCustom = document.getElementById('quest-location-input');
+    const location = (locSelect?.value === '__custom__') ? (locCustom?.value.trim() || '') : (locSelect?.value || locCustom?.value.trim() || '');
+
     const lines = (document.getElementById('quest-objectives-input')?.value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const objectives = lines.map((text, i) => ({
-        id: `obj-${i+1}-${Date.now()}`,
-        text: text,
-        completed: false
-    }));
+    const existingObjs = existingQuest?.objectives || [];
+    const objectives = lines.map((text, i) => {
+        const prev = existingObjs.find(o => o.text === text);
+        return {
+            id: prev ? prev.id : `obj-${i+1}-${Date.now()}`,
+            text: text,
+            completed: prev ? !!prev.completed : false
+        };
+    });
 
     const questObj = {
         title: title,
-        giver: document.getElementById('quest-giver-input')?.value.trim() || '',
-        location: document.getElementById('quest-location-input')?.value.trim() || '',
+        giver: giver,
+        location: location,
         reward: document.getElementById('quest-reward-input')?.value.trim() || '',
         status: document.getElementById('quest-status-input')?.value || 'Active',
         summary: document.getElementById('quest-summary-input')?.value.trim() || '',
         objectives: objectives,
         notes: document.getElementById('quest-notes-input')?.value.trim() || ''
     };
+    if (editId) {
+        questObj.id = editId;
+    }
 
     try {
         const res = await fetch('/api/quests', {
@@ -4556,6 +6226,9 @@ function renderRumors() {
                         ${r.location ? `<span class="block text-slate-500 truncate">📍 ${escapeHTML(r.location)}</span>` : ''}
                     </div>
                     <div class="flex items-center gap-1">
+                        <button onclick="openAddRumorModal('${r.id}')" title="Edit rumor details" class="p-1 rounded bg-ledger-900 hover:bg-amber-900/60 text-amber-300 border border-ledger-700 text-xs transition">
+                            ✏️
+                        </button>
                         <button onclick="broadcastRumor('${r.id}')" title="Broadcast rumor to player screen" class="p-1 rounded bg-ledger-900 hover:bg-sky-900 text-sky-400 border border-ledger-700 text-xs transition">
                             📺
                         </button>
@@ -4593,11 +6266,125 @@ async function logRumorToNotes(rumorId) {
     }
 }
 
-function openAddRumorModal() {
-    document.getElementById('rumor-text-input').value = '';
-    document.getElementById('rumor-source-input').value = '';
-    document.getElementById('rumor-location-input').value = '';
-    document.getElementById('rumor-veracity-input').value = 'Unverified';
+function populateRumorSourceOptions(selectedSource = '') {
+    const select = document.getElementById('rumor-source-select');
+    const customInput = document.getElementById('rumor-source-input');
+    if (!select) return;
+
+    const names = new Set();
+    (appState.roster || []).forEach(n => { if (n.name) names.add(n.name); });
+    (appState.locations || []).forEach(loc => {
+        (loc.notableNpcs || []).forEach(n => names.add(n));
+    });
+
+    const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
+    let html = `<option value="">-- None / Unknown Speaker --</option>`;
+    sorted.forEach(n => {
+        const isMatch = selectedSource && n.toLowerCase() === selectedSource.toLowerCase();
+        html += `<option value="${escapeHTML(n)}" ${isMatch ? 'selected' : ''}>👤 ${escapeHTML(n)}</option>`;
+    });
+    html += `<option value="__custom__">✏️ Custom Speaker...</option>`;
+    select.innerHTML = html;
+
+    const match = sorted.find(n => selectedSource && n.toLowerCase() === selectedSource.toLowerCase());
+    if (selectedSource && !match) {
+        select.value = '__custom__';
+        if (customInput) {
+            customInput.classList.remove('hidden');
+            customInput.value = selectedSource;
+        }
+    } else {
+        if (customInput) {
+            customInput.classList.add('hidden');
+            customInput.value = match || '';
+        }
+    }
+}
+
+function onRumorSourceSelectChange() {
+    const select = document.getElementById('rumor-source-select');
+    const customInput = document.getElementById('rumor-source-input');
+    if (!select || !customInput) return;
+    if (select.value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = select.value;
+    }
+}
+
+function populateRumorLocationOptions(selectedLoc = '') {
+    const select = document.getElementById('rumor-location-select');
+    const customInput = document.getElementById('rumor-location-input');
+    if (!select) return;
+
+    const locs = new Set();
+    (appState.locations || []).forEach(l => { if (l.name) locs.add(l.name); });
+    (appState.overworld?.pins || []).forEach(p => {
+        const label = p.label || p.title;
+        if (label) locs.add(label);
+    });
+    if (appState.overworld?.maps) {
+        appState.overworld.maps.forEach(m => {
+            (m.pins || []).forEach(p => {
+                const label = p.label || p.title;
+                if (label) locs.add(label);
+            });
+        });
+    }
+
+    const sorted = Array.from(locs).sort((a, b) => a.localeCompare(b));
+    let html = `<option value="">-- None / Anywhere --</option>`;
+    sorted.forEach(l => {
+        const isMatch = selectedLoc && l.toLowerCase() === selectedLoc.toLowerCase();
+        html += `<option value="${escapeHTML(l)}" ${isMatch ? 'selected' : ''}>📍 ${escapeHTML(l)}</option>`;
+    });
+    html += `<option value="__custom__">✏️ Custom Location...</option>`;
+    select.innerHTML = html;
+
+    const match = sorted.find(l => selectedLoc && l.toLowerCase() === selectedLoc.toLowerCase());
+    if (selectedLoc && !match) {
+        select.value = '__custom__';
+        if (customInput) {
+            customInput.classList.remove('hidden');
+            customInput.value = selectedLoc;
+        }
+    } else {
+        if (customInput) {
+            customInput.classList.add('hidden');
+            customInput.value = match || '';
+        }
+    }
+}
+
+function onRumorLocationSelectChange() {
+    const select = document.getElementById('rumor-location-select');
+    const customInput = document.getElementById('rumor-location-input');
+    if (!select || !customInput) return;
+    if (select.value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = select.value;
+    }
+}
+
+function openAddRumorModal(editRumorId = null) {
+    const editIdInput = document.getElementById('rumor-edit-id');
+    if (editIdInput) editIdInput.value = editRumorId || '';
+
+    const existingRumor = editRumorId ? (appState.rumors || []).find(r => r.id === editRumorId) : null;
+    const titleEl = document.getElementById('rumor-modal-title');
+    if (titleEl) {
+        titleEl.innerText = existingRumor ? `✏️ Edit Tavern Rumor` : `📜 Pin Tavern Rumor`;
+    }
+
+    document.getElementById('rumor-text-input').value = existingRumor ? existingRumor.text : '';
+    populateRumorSourceOptions(existingRumor ? (existingRumor.source || '') : '');
+    populateRumorLocationOptions(existingRumor ? (existingRumor.location || '') : '');
+    document.getElementById('rumor-veracity-input').value = existingRumor ? (existingRumor.veracity || 'Unverified') : 'Unverified';
 
     openModal('add-rumor-modal');
 }
@@ -4609,13 +6396,26 @@ async function saveRumorFromModal() {
         return;
     }
 
+    const editId = document.getElementById('rumor-edit-id')?.value.trim() || null;
+
+    const srcSelect = document.getElementById('rumor-source-select');
+    const srcCustom = document.getElementById('rumor-source-input');
+    const source = (srcSelect?.value === '__custom__') ? (srcCustom?.value.trim() || '') : (srcSelect?.value || srcCustom?.value.trim() || '');
+
+    const locSelect = document.getElementById('rumor-location-select');
+    const locCustom = document.getElementById('rumor-location-input');
+    const location = (locSelect?.value === '__custom__') ? (locCustom?.value.trim() || '') : (locSelect?.value || locCustom?.value.trim() || '');
+
     const rumorObj = {
         text: text,
-        source: document.getElementById('rumor-source-input')?.value.trim() || '',
-        location: document.getElementById('rumor-location-input')?.value.trim() || '',
+        source: source,
+        location: location,
         veracity: document.getElementById('rumor-veracity-input')?.value || 'Unverified',
         active: true
     };
+    if (editId) {
+        rumorObj.id = editId;
+    }
 
     try {
         const res = await fetch('/api/rumors', {
@@ -4627,11 +6427,11 @@ async function saveRumorFromModal() {
             const data = await res.json();
             if (data.rumors) appState.rumors = data.rumors;
             closeModal('add-rumor-modal');
-            showToast("📜 Pinned new tavern rumor!", "success");
+            showToast(editId ? "📜 Updated tavern rumor!" : "📜 Pinned new tavern rumor!", "success");
             renderRumors();
         }
     } catch (e) {
-        showToast("Error pinning rumor.", "error");
+        showToast("Error saving rumor.", "error");
     }
 }
 
@@ -4857,6 +6657,150 @@ async function toggleSecretStatus(secretId) {
     }
 }
 
+function populateSecretEntityOptions(selectedNpc = '', selectedLoc = '', selectedFaction = '') {
+    // 1. Tied NPC
+    const npcSelect = document.getElementById('custom-secret-npc-select');
+    const npcCustom = document.getElementById('custom-secret-npc');
+    if (npcSelect) {
+        const npcs = new Set();
+        (appState.roster || []).forEach(n => { if (n.name) npcs.add(n.name); });
+        (appState.locations || []).forEach(l => { (l.notableNpcs || []).forEach(n => npcs.add(n)); });
+        const sortedNpcs = Array.from(npcs).sort((a, b) => a.localeCompare(b));
+        let html = `<option value="">-- None / Unlinked --</option>`;
+        sortedNpcs.forEach(n => {
+            const isMatch = selectedNpc && n.toLowerCase() === selectedNpc.toLowerCase();
+            html += `<option value="${escapeHTML(n)}" ${isMatch ? 'selected' : ''}>👤 ${escapeHTML(n)}</option>`;
+        });
+        html += `<option value="__custom__">✏️ Custom NPC...</option>`;
+        npcSelect.innerHTML = html;
+
+        const match = sortedNpcs.find(n => selectedNpc && n.toLowerCase() === selectedNpc.toLowerCase());
+        if (selectedNpc && !match) {
+            npcSelect.value = '__custom__';
+            if (npcCustom) {
+                npcCustom.classList.remove('hidden');
+                npcCustom.value = selectedNpc;
+            }
+        } else {
+            if (npcCustom) {
+                npcCustom.classList.add('hidden');
+                npcCustom.value = match || '';
+            }
+        }
+    }
+
+    // 2. Tied Location
+    const locSelect = document.getElementById('custom-secret-location-select');
+    const locCustom = document.getElementById('custom-secret-location');
+    if (locSelect) {
+        const locs = new Set();
+        (appState.locations || []).forEach(l => { if (l.name) locs.add(l.name); });
+        (appState.overworld?.pins || []).forEach(p => {
+            const label = p.label || p.title;
+            if (label) locs.add(label);
+        });
+        if (appState.overworld?.maps) {
+            appState.overworld.maps.forEach(m => {
+                (m.pins || []).forEach(p => {
+                    const label = p.label || p.title;
+                    if (label) locs.add(label);
+                });
+            });
+        }
+        const sortedLocs = Array.from(locs).sort((a, b) => a.localeCompare(b));
+        let html = `<option value="">-- None / Unlinked --</option>`;
+        sortedLocs.forEach(l => {
+            const isMatch = selectedLoc && l.toLowerCase() === selectedLoc.toLowerCase();
+            html += `<option value="${escapeHTML(l)}" ${isMatch ? 'selected' : ''}>📍 ${escapeHTML(l)}</option>`;
+        });
+        html += `<option value="__custom__">✏️ Custom Location...</option>`;
+        locSelect.innerHTML = html;
+
+        const match = sortedLocs.find(l => selectedLoc && l.toLowerCase() === selectedLoc.toLowerCase());
+        if (selectedLoc && !match) {
+            locSelect.value = '__custom__';
+            if (locCustom) {
+                locCustom.classList.remove('hidden');
+                locCustom.value = selectedLoc;
+            }
+        } else {
+            if (locCustom) {
+                locCustom.classList.add('hidden');
+                locCustom.value = match || '';
+            }
+        }
+    }
+
+    // 3. Tied Faction
+    const facSelect = document.getElementById('custom-secret-faction-select');
+    const facCustom = document.getElementById('custom-secret-faction');
+    if (facSelect) {
+        const factions = new Set();
+        (appState.factions || []).forEach(f => { if (f.name) factions.add(f.name); });
+        const sortedFactions = Array.from(factions).sort((a, b) => a.localeCompare(b));
+        let html = `<option value="">-- None / Unlinked --</option>`;
+        sortedFactions.forEach(f => {
+            const isMatch = selectedFaction && f.toLowerCase() === selectedFaction.toLowerCase();
+            html += `<option value="${escapeHTML(f)}" ${isMatch ? 'selected' : ''}>⚔️ ${escapeHTML(f)}</option>`;
+        });
+        html += `<option value="__custom__">✏️ Custom Faction...</option>`;
+        facSelect.innerHTML = html;
+
+        const match = sortedFactions.find(f => selectedFaction && f.toLowerCase() === selectedFaction.toLowerCase());
+        if (selectedFaction && !match) {
+            facSelect.value = '__custom__';
+            if (facCustom) {
+                facCustom.classList.remove('hidden');
+                facCustom.value = selectedFaction;
+            }
+        } else {
+            if (facCustom) {
+                facCustom.classList.add('hidden');
+                facCustom.value = match || '';
+            }
+        }
+    }
+}
+
+function onSecretNpcSelectChange() {
+    const select = document.getElementById('custom-secret-npc-select');
+    const custom = document.getElementById('custom-secret-npc');
+    if (!select || !custom) return;
+    if (select.value === '__custom__') {
+        custom.classList.remove('hidden');
+        custom.focus();
+    } else {
+        custom.classList.add('hidden');
+        custom.value = select.value;
+    }
+}
+
+function onSecretLocationSelectChange() {
+    const select = document.getElementById('custom-secret-location-select');
+    const custom = document.getElementById('custom-secret-location');
+    if (!select || !custom) return;
+    if (select.value === '__custom__') {
+        custom.classList.remove('hidden');
+        custom.focus();
+    } else {
+        custom.classList.add('hidden');
+        custom.value = select.value;
+    }
+}
+
+function onSecretFactionSelectChange() {
+    const select = document.getElementById('custom-secret-faction-select');
+    const custom = document.getElementById('custom-secret-faction');
+    if (!select || !custom) return;
+    if (select.value === '__custom__') {
+        custom.classList.remove('hidden');
+        custom.focus();
+    } else {
+        custom.classList.add('hidden');
+        custom.value = select.value;
+    }
+}
+
 function openCustomSecretModal(secretId = null) {
     const modal = document.getElementById('custom-secret-modal');
     if (!modal) return;
@@ -4875,9 +6819,7 @@ function openCustomSecretModal(secretId = null) {
             setVal('custom-secret-text', s.text);
             setVal('custom-secret-category', s.category || 'Plot');
             setVal('custom-secret-status', s.status || 'unrevealed');
-            setVal('custom-secret-npc', s.tiedNpc || '');
-            setVal('custom-secret-location', s.tiedLocation || '');
-            setVal('custom-secret-faction', s.tiedFaction || '');
+            populateSecretEntityOptions(s.tiedNpc || '', s.tiedLocation || '', s.tiedFaction || '');
             setVal('custom-secret-notes', s.sessionNotes || '');
         }
     } else {
@@ -4886,6 +6828,7 @@ function openCustomSecretModal(secretId = null) {
         document.getElementById('custom-secret-form')?.reset();
         setVal('custom-secret-category', 'Plot');
         setVal('custom-secret-status', 'unrevealed');
+        populateSecretEntityOptions('', '', '');
     }
 
     modal.classList.remove('hidden');
@@ -4909,13 +6852,25 @@ async function saveCustomSecret(e) {
         return;
     }
 
+    const npcSel = document.getElementById('custom-secret-npc-select');
+    const npcCustom = document.getElementById('custom-secret-npc');
+    const tiedNpc = (npcSel?.value === '__custom__') ? (npcCustom?.value.trim() || '') : (npcSel?.value || npcCustom?.value.trim() || '');
+
+    const locSel = document.getElementById('custom-secret-location-select');
+    const locCustom = document.getElementById('custom-secret-location');
+    const tiedLocation = (locSel?.value === '__custom__') ? (locCustom?.value.trim() || '') : (locSel?.value || locCustom?.value.trim() || '');
+
+    const facSel = document.getElementById('custom-secret-faction-select');
+    const facCustom = document.getElementById('custom-secret-faction');
+    const tiedFaction = (facSel?.value === '__custom__') ? (facCustom?.value.trim() || '') : (facSel?.value || facCustom?.value.trim() || '');
+
     const payload = {
         text: text,
         category: document.getElementById('custom-secret-category')?.value || 'Plot',
         status: document.getElementById('custom-secret-status')?.value || 'unrevealed',
-        tiedNpc: document.getElementById('custom-secret-npc')?.value.trim() || '',
-        tiedLocation: document.getElementById('custom-secret-location')?.value.trim() || '',
-        tiedFaction: document.getElementById('custom-secret-faction')?.value.trim() || '',
+        tiedNpc: tiedNpc,
+        tiedLocation: tiedLocation,
+        tiedFaction: tiedFaction,
         sessionNotes: document.getElementById('custom-secret-notes')?.value.trim() || ''
     };
     if (id) payload.id = id;
@@ -5072,6 +7027,13 @@ window.broadcastSecretCard = broadcastSecretCard;
 window.rollRandomSecret = rollRandomSecret;
 window.generateSecretsBatch = generateSecretsBatch;
 window.getSecretCategoryBadge = getSecretCategoryBadge;
+window.onSecretNpcSelectChange = onSecretNpcSelectChange;
+window.onSecretLocationSelectChange = onSecretLocationSelectChange;
+window.onSecretFactionSelectChange = onSecretFactionSelectChange;
+window.openAddRumorModal = openAddRumorModal;
+window.saveRumorFromModal = saveRumorFromModal;
+window.onRumorSourceSelectChange = onRumorSourceSelectChange;
+window.onRumorLocationSelectChange = onRumorLocationSelectChange;
 
 // =============================================================================
 // IN-WORLD HANDOUTS & LETTERS ENGINE (PARCHMENT, CIPHERS, BOUNTIES & SEALS)
@@ -5367,6 +7329,8 @@ function openCustomHandoutModal(id = null) {
             document.getElementById('custom-handout-npc').value = h.tiedNpc || '';
             document.getElementById('custom-handout-notes').value = h.sessionNotes || '';
             document.getElementById('custom-handout-modal-title').textContent = "Edit In-World Handout";
+
+            populateHandoutDropdowns(h.author || '', h.recipient || '', h.tiedLocation || '', h.tiedNpc || '');
         }
     } else {
         document.getElementById('custom-handout-id').value = '';
@@ -5394,6 +7358,8 @@ function openCustomHandoutModal(id = null) {
         document.getElementById('custom-handout-npc').value = '';
         document.getElementById('custom-handout-notes').value = '';
         document.getElementById('custom-handout-modal-title').textContent = "In-World Handout Forge";
+
+        populateHandoutDropdowns('', '', '', '');
     }
 
     onHandoutTypeChanged();
@@ -5490,6 +7456,223 @@ function togglePreviewDecipherState() {
     updateHandoutPreview();
 }
 
+function populateHandoutDropdowns(authorVal = '', recipientVal = '', locationVal = '', npcVal = '') {
+    const npcSet = new Set();
+    (appState.roster || []).forEach(n => { if (n.name && n.name.trim()) npcSet.add(n.name.trim()); });
+    (appState.locations || []).forEach(l => { (l.notableNpcs || []).forEach(n => { if (n && n.trim()) npcSet.add(n.trim()); }); });
+    if (appState.currentNPC?.name && appState.currentNPC.name.trim()) {
+        npcSet.add(appState.currentNPC.name.trim());
+    }
+    const sortedNpcs = Array.from(npcSet).sort((a, b) => a.localeCompare(b));
+    const sortedLocs = getActiveLocationsPool();
+
+    // 1. Author Select
+    const authorSel = document.getElementById('custom-handout-author-select');
+    const authorInput = document.getElementById('custom-handout-author');
+    if (authorSel) {
+        let h = `<option value="">-- None / Anonymous --</option>`;
+        if (sortedNpcs.length > 0) {
+            h += `<optgroup label="Campaign NPCs">`;
+            sortedNpcs.forEach(n => {
+                h += `<option value="${escapeHTML(n)}">👤 ${escapeHTML(n)}</option>`;
+            });
+            h += `</optgroup>`;
+        }
+        h += `<option value="__custom__">✏️ Custom Author...</option>`;
+        authorSel.innerHTML = h;
+
+        const match = sortedNpcs.find(n => authorVal && n.toLowerCase() === authorVal.toLowerCase());
+        if (match) {
+            authorSel.value = match;
+            if (authorInput) {
+                authorInput.classList.add('hidden');
+                authorInput.value = match;
+            }
+        } else if (authorVal) {
+            authorSel.value = '__custom__';
+            if (authorInput) {
+                authorInput.classList.remove('hidden');
+                authorInput.value = authorVal;
+            }
+        } else {
+            authorSel.value = '';
+            if (authorInput) {
+                authorInput.classList.add('hidden');
+                authorInput.value = '';
+            }
+        }
+    }
+
+    // 2. Recipient Select
+    const recipSel = document.getElementById('custom-handout-recipient-select');
+    const recipInput = document.getElementById('custom-handout-recipient');
+    if (recipSel) {
+        let h = `<option value="">-- None / To Whomever --</option>`;
+        if (sortedNpcs.length > 0) {
+            h += `<optgroup label="Campaign NPCs">`;
+            sortedNpcs.forEach(n => {
+                h += `<option value="${escapeHTML(n)}">👤 ${escapeHTML(n)}</option>`;
+            });
+            h += `</optgroup>`;
+        }
+        h += `<option value="__custom__">✏️ Custom Recipient...</option>`;
+        recipSel.innerHTML = h;
+
+        const match = sortedNpcs.find(n => recipientVal && n.toLowerCase() === recipientVal.toLowerCase());
+        if (match) {
+            recipSel.value = match;
+            if (recipInput) {
+                recipInput.classList.add('hidden');
+                recipInput.value = match;
+            }
+        } else if (recipientVal) {
+            recipSel.value = '__custom__';
+            if (recipInput) {
+                recipInput.classList.remove('hidden');
+                recipInput.value = recipientVal;
+            }
+        } else {
+            recipSel.value = '';
+            if (recipInput) {
+                recipInput.classList.add('hidden');
+                recipInput.value = '';
+            }
+        }
+    }
+
+    // 3. Location Select
+    const locSel = document.getElementById('custom-handout-location-select');
+    const locInput = document.getElementById('custom-handout-location');
+    if (locSel) {
+        let h = `<option value="">-- None / Unlinked --</option>`;
+        if (sortedLocs.length > 0) {
+            h += `<optgroup label="Campaign Locations">`;
+            sortedLocs.forEach(l => {
+                h += `<option value="${escapeHTML(l)}">📍 ${escapeHTML(l)}</option>`;
+            });
+            h += `</optgroup>`;
+        }
+        h += `<option value="__custom__">✏️ Custom Location...</option>`;
+        locSel.innerHTML = h;
+
+        const match = sortedLocs.find(l => locationVal && l.toLowerCase() === locationVal.toLowerCase());
+        if (match) {
+            locSel.value = match;
+            if (locInput) {
+                locInput.classList.add('hidden');
+                locInput.value = match;
+            }
+        } else if (locationVal) {
+            locSel.value = '__custom__';
+            if (locInput) {
+                locInput.classList.remove('hidden');
+                locInput.value = locationVal;
+            }
+        } else {
+            locSel.value = '';
+            if (locInput) {
+                locInput.classList.add('hidden');
+                locInput.value = '';
+            }
+        }
+    }
+
+    // 4. Tied NPC Select
+    const npcSel = document.getElementById('custom-handout-npc-select');
+    const npcInput = document.getElementById('custom-handout-npc');
+    if (npcSel) {
+        let h = `<option value="">-- None / Unlinked --</option>`;
+        if (sortedNpcs.length > 0) {
+            h += `<optgroup label="Campaign NPCs">`;
+            sortedNpcs.forEach(n => {
+                h += `<option value="${escapeHTML(n)}">👤 ${escapeHTML(n)}</option>`;
+            });
+            h += `</optgroup>`;
+        }
+        h += `<option value="__custom__">✏️ Custom NPC...</option>`;
+        npcSel.innerHTML = h;
+
+        const match = sortedNpcs.find(n => npcVal && n.toLowerCase() === npcVal.toLowerCase());
+        if (match) {
+            npcSel.value = match;
+            if (npcInput) {
+                npcInput.classList.add('hidden');
+                npcInput.value = match;
+            }
+        } else if (npcVal) {
+            npcSel.value = '__custom__';
+            if (npcInput) {
+                npcInput.classList.remove('hidden');
+                npcInput.value = npcVal;
+            }
+        } else {
+            npcSel.value = '';
+            if (npcInput) {
+                npcInput.classList.add('hidden');
+                npcInput.value = '';
+            }
+        }
+    }
+}
+
+function onHandoutAuthorSelectChange() {
+    const sel = document.getElementById('custom-handout-author-select');
+    const input = document.getElementById('custom-handout-author');
+    if (!sel || !input) return;
+    if (sel.value === '__custom__') {
+        input.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    } else {
+        input.classList.add('hidden');
+        input.value = sel.value;
+    }
+    updateHandoutPreview();
+}
+
+function onHandoutRecipientSelectChange() {
+    const sel = document.getElementById('custom-handout-recipient-select');
+    const input = document.getElementById('custom-handout-recipient');
+    if (!sel || !input) return;
+    if (sel.value === '__custom__') {
+        input.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    } else {
+        input.classList.add('hidden');
+        input.value = sel.value;
+    }
+    updateHandoutPreview();
+}
+
+function onHandoutLocationSelectChange() {
+    const sel = document.getElementById('custom-handout-location-select');
+    const input = document.getElementById('custom-handout-location');
+    if (!sel || !input) return;
+    if (sel.value === '__custom__') {
+        input.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    } else {
+        input.classList.add('hidden');
+        input.value = sel.value;
+    }
+}
+
+function onHandoutNpcSelectChange() {
+    const sel = document.getElementById('custom-handout-npc-select');
+    const input = document.getElementById('custom-handout-npc');
+    if (!sel || !input) return;
+    if (sel.value === '__custom__') {
+        input.classList.remove('hidden');
+        input.value = '';
+        input.focus();
+    } else {
+        input.classList.add('hidden');
+        input.value = sel.value;
+    }
+}
+
 function updateHandoutPreview() {
     const container = document.getElementById('handout-wysiwyg-container');
     if (!container) return;
@@ -5500,8 +7683,15 @@ function updateHandoutPreview() {
     const seal = document.getElementById('custom-handout-seal')?.value || 'crown';
     const sealColor = document.getElementById('custom-handout-seal-color')?.value || 'red';
     const typedTitle = document.getElementById('custom-handout-title')?.value.trim() || '';
-    const author = document.getElementById('custom-handout-author')?.value.trim() || '';
-    const recipient = document.getElementById('custom-handout-recipient')?.value.trim() || '';
+
+    const authorSel = document.getElementById('custom-handout-author-select');
+    const authorInput = document.getElementById('custom-handout-author');
+    const author = (authorSel && authorSel.value !== '__custom__') ? (authorSel.value || authorInput?.value.trim() || '') : (authorInput?.value.trim() || '');
+
+    const recipSel = document.getElementById('custom-handout-recipient-select');
+    const recipInput = document.getElementById('custom-handout-recipient');
+    const recipient = (recipSel && recipSel.value !== '__custom__') ? (recipSel.value || recipInput?.value.trim() || '') : (recipInput?.value.trim() || '');
+
     const date = document.getElementById('custom-handout-date')?.value.trim() || '';
     const typedContent = document.getElementById('custom-handout-content')?.value.trim() || '';
 
@@ -5706,14 +7896,30 @@ function updateHandoutPreview() {
 async function saveCustomHandout(event) {
     if (event) event.preventDefault();
 
+    const authorSel = document.getElementById('custom-handout-author-select');
+    const authorInput = document.getElementById('custom-handout-author');
+    const author = (authorSel?.value === '__custom__') ? (authorInput?.value.trim() || '') : (authorSel?.value || authorInput?.value.trim() || '');
+
+    const recipSel = document.getElementById('custom-handout-recipient-select');
+    const recipInput = document.getElementById('custom-handout-recipient');
+    const recipient = (recipSel?.value === '__custom__') ? (recipInput?.value.trim() || '') : (recipSel?.value || recipInput?.value.trim() || '');
+
+    const locSel = document.getElementById('custom-handout-location-select');
+    const locInput = document.getElementById('custom-handout-location');
+    const tiedLocation = (locSel?.value === '__custom__') ? (locInput?.value.trim() || '') : (locSel?.value || locInput?.value.trim() || '');
+
+    const npcSel = document.getElementById('custom-handout-npc-select');
+    const npcInput = document.getElementById('custom-handout-npc');
+    const tiedNpc = (npcSel?.value === '__custom__') ? (npcInput?.value.trim() || '') : (npcSel?.value || npcInput?.value.trim() || '');
+
     const payload = {
         id: document.getElementById('custom-handout-id')?.value || undefined,
         title: document.getElementById('custom-handout-title')?.value.trim() || 'Untitled Handout',
         type: document.getElementById('custom-handout-type')?.value || 'letter',
         theme: document.getElementById('custom-handout-theme')?.value || 'parchment',
         fontStyle: document.getElementById('custom-handout-font')?.value || 'cursive',
-        author: document.getElementById('custom-handout-author')?.value.trim() || '',
-        recipient: document.getElementById('custom-handout-recipient')?.value.trim() || '',
+        author: author,
+        recipient: recipient,
         dateString: document.getElementById('custom-handout-date')?.value.trim() || '',
         content: document.getElementById('custom-handout-content')?.value.trim() || '',
         seal: document.getElementById('custom-handout-seal')?.value || 'crown',
@@ -5725,8 +7931,8 @@ async function saveCustomHandout(event) {
         investigationDC: parseInt(document.getElementById('custom-handout-cipher-dc')?.value, 10) || 14,
         bountyReward: document.getElementById('custom-handout-bounty-reward')?.value.trim() || '',
         bountyCrimes: document.getElementById('custom-handout-bounty-crimes')?.value.trim() || '',
-        tiedLocation: document.getElementById('custom-handout-location')?.value.trim() || '',
-        tiedNpc: document.getElementById('custom-handout-npc')?.value.trim() || '',
+        tiedLocation: tiedLocation,
+        tiedNpc: tiedNpc,
         sessionNotes: document.getElementById('custom-handout-notes')?.value.trim() || '',
         status: 'ready'
     };
@@ -5896,6 +8102,7 @@ function rollQuickMissive() {
     if (pick.cipherDC) document.getElementById('custom-handout-cipher-dc').value = pick.cipherDC;
     if (pick.cipherHint) document.getElementById('custom-handout-cipher-hint').value = pick.cipherHint;
 
+    populateHandoutDropdowns(pick.author || '', pick.recipient || '', '', '');
     onHandoutTypeChanged();
     updateHandoutPreview();
     showToast(`Drafted quick missive: "${pick.title}"`, "info");
@@ -5947,6 +8154,11 @@ window.rollQuickMissive = rollQuickMissive;
 window.convertHandoutToRumor = convertHandoutToRumor;
 window.applyCipher = applyCipher;
 window.getHandoutTypeBadge = getHandoutTypeBadge;
+window.populateHandoutDropdowns = populateHandoutDropdowns;
+window.onHandoutAuthorSelectChange = onHandoutAuthorSelectChange;
+window.onHandoutRecipientSelectChange = onHandoutRecipientSelectChange;
+window.onHandoutLocationSelectChange = onHandoutLocationSelectChange;
+window.onHandoutNpcSelectChange = onHandoutNpcSelectChange;
 
 // =============================================================================
 // PHASE 4: IMMERSION, BROADCAST, PROCEDURAL AUDIO & BACKUP CONTROLLER
@@ -7897,9 +10109,14 @@ function showItemDetail(itemId) {
 
         <!-- Actions -->
         <div class="flex items-center justify-between pt-2 border-t border-ledger-800 text-xs flex-wrap gap-2">
-            <button onclick="addItemToLoot('${item.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold flex items-center gap-1.5 transition">
-                <span>🛒</span> Add to Shop Inventory
-            </button>
+            <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="giveItemToParty('${item.id}')" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold flex items-center gap-1.5 transition">
+                    <span>🎁</span> Give to Party / Stash
+                </button>
+                <button onclick="addItemToLoot('${item.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold flex items-center gap-1.5 transition">
+                    <span>🛒</span> Add to Shop Inventory
+                </button>
+            </div>
             ${item.isCustom ? `
                 <div class="flex items-center gap-2">
                     <button onclick="openCustomItemModal('${item.id}')" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold transition">
@@ -8534,21 +10751,50 @@ function escapeHtml(str) {
 function applyModuleVisibility() {
     if (!appState.currentCampaign || !appState.currentCampaign.modules) return;
     const modules = appState.currentCampaign.modules;
+    const worldEnabled = modules.world !== false;
 
     AVAILABLE_MODULES.forEach(mod => {
+        const isSub = WORLD_SUBMODULE_IDS.includes(mod.id);
+        const isEnabled = modules[mod.id] !== false && (!isSub || worldEnabled);
         const btn = document.getElementById(`tab-btn-${mod.id}`);
         if (btn) {
-            const isEnabled = modules[mod.id] !== false;
             if (isEnabled) {
                 btn.classList.remove('hidden');
             } else {
                 btn.classList.add('hidden');
             }
         }
+        const subBtn = document.getElementById(`world-subtab-${mod.id}`);
+        if (subBtn) {
+            if (isEnabled && worldEnabled) {
+                subBtn.classList.remove('hidden');
+            } else {
+                subBtn.classList.add('hidden');
+            }
+        }
     });
 
-    if (modules[appState.activeTab] === false) {
-        const firstEnabled = AVAILABLE_MODULES.find(m => modules[m.id] !== false);
+    const worldBtn = document.getElementById('tab-btn-world');
+    const worldSubtabs = document.getElementById('sidebar-world-subtabs');
+    if (worldBtn) {
+        if (worldEnabled) {
+            worldBtn.classList.remove('hidden');
+        } else {
+            worldBtn.classList.add('hidden');
+        }
+    }
+    if (worldSubtabs) {
+        if (!worldEnabled) {
+            worldSubtabs.classList.add('hidden');
+        }
+    }
+
+    const currentTabDisabled = modules[appState.activeTab] === false || (appState.activeTab === 'world' && !worldEnabled);
+    if (currentTabDisabled) {
+        const firstEnabled = AVAILABLE_MODULES.find(m => {
+            const isSub = WORLD_SUBMODULE_IDS.includes(m.id);
+            return modules[m.id] !== false && (!isSub || worldEnabled);
+        });
         const nextTab = firstEnabled ? firstEnabled.id : 'settings';
         switchTab(nextTab);
     }
@@ -8764,8 +11010,22 @@ async function switchCampaign(campaignId) {
             const data = await res.json();
             appState.activeCampaignId = data.activeCampaignId;
             closeAllTopPopovers();
+
+            // Reset campaign-scoped in-memory state before loading new profile
+            appState.party = [];
+            appState.combat = { inCombat: false, round: 1, currentTurnIndex: 0, combatants: [] };
+            appState.roster = [];
+            appState.notes = [];
+            appState.overworld = { pins: [], routes: [], regions: [] };
+            appState.factionRelations = { relations: [], turnHistory: [] };
+            appState.pantheon = [];
+            appState.timeline = { eras: [], events: [] };
+            appState.partyStash = { currency: { pp: 0, gp: 0, sp: 0, cp: 0 }, coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+            appState.travel = { pace: 'Normal', terrain: 'Forest', road: 'trail', targetMiles: 48, marchHours: 8, navBonus: 0, forageBonus: 0, history: [] };
+
             await fetchFullState();
 
+            populateTopFilterDropdowns();
             renderPartyHUD();
             renderCombatTracker();
             renderCurrentNPC();
@@ -8774,6 +11034,11 @@ async function switchCampaign(campaignId) {
             renderTimeWeatherHUD();
             renderSessionNotes();
             renderWorldView();
+            renderOverworld();
+            renderFactionRelations();
+            renderPantheon();
+            renderTimeline();
+            renderTravel();
             renderAudioMixer();
             renderEncountersView();
             renderSpellsView();
@@ -8782,6 +11047,10 @@ async function switchCampaign(campaignId) {
             renderHandouts();
             renderBroadcastPill();
             renderCampaignSettingsCard();
+            renderShopInventory();
+            if (typeof renderPartyInventoryModal === 'function') {
+                renderPartyInventoryModal();
+            }
             if (appState.activeTab === 'battlemap' && window.BattlemapController) {
                 window.BattlemapController.init();
             }
@@ -8829,13 +11098,27 @@ async function submitNewCampaign(event) {
             renderCombatTracker();
             renderCurrentNPC();
             renderRoster();
+            renderRulesScreen();
             renderTimeWeatherHUD();
             renderSessionNotes();
             renderWorldView();
+            renderOverworld();
+            renderFactionRelations();
+            renderPantheon();
+            renderTimeline();
+            renderTravel();
+            renderAudioMixer();
+            renderEncountersView();
+            renderSpellsView();
+            renderItemsView();
             renderSecrets();
             renderHandouts();
-            renderEncountersView();
+            renderBroadcastPill();
             renderCampaignSettingsCard();
+            renderShopInventory();
+            if (typeof renderPartyInventoryModal === 'function') {
+                renderPartyInventoryModal();
+            }
             if (appState.activeTab === 'battlemap' && window.BattlemapController) {
                 window.BattlemapController.init();
             }
@@ -8987,6 +11270,13 @@ async function toggleModule(moduleId, isEnabled) {
         appState.currentCampaign.modules = {};
     }
     appState.currentCampaign.modules[moduleId] = isEnabled;
+    if (moduleId === 'world') {
+        WORLD_SUBMODULE_IDS.forEach(subId => {
+            appState.currentCampaign.modules[subId] = isEnabled;
+        });
+    } else if (WORLD_SUBMODULE_IDS.includes(moduleId) && isEnabled) {
+        appState.currentCampaign.modules['world'] = true;
+    }
     appState.currentCampaign.preset = 'custom';
 
     try {
@@ -9177,6 +11467,3405 @@ function clearDiceHistoryAction() {
     showToast("Dice roll history cleared.", "info");
 }
 
+// =============================================================================
+// PHASE 6: REGIONAL OVERWORLD MAP, FACTION MATRIX, PANTHEON, TIMELINE, TRAVEL & INVENTORY
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. REGIONAL OVERWORLD CARTOGRAPHY & LORE PINS
+// -----------------------------------------------------------------------------
+function renderOverworld() {
+    const ow = appState.overworld || {};
+    const activeMap = (ow.maps && ow.maps.find(m => m.id === ow.activeMapId)) || ow.maps?.[0] || ow;
+    const titleInput = document.getElementById('overworld-title-input');
+    const scaleInput = document.getElementById('overworld-scale-input');
+    const mapImg = document.getElementById('overworld-map-img');
+    const mapSelect = document.getElementById('overworld-map-select');
+    const breadcrumbBar = document.getElementById('overworld-breadcrumb-bar');
+    const breadcrumbTrail = document.getElementById('overworld-breadcrumb-trail');
+    const terrainBadge = document.getElementById('ow-current-terrain-badge');
+    const hexToggleLabel = document.getElementById('ow-hex-toggle-label');
+    const hexToggleBtn = document.getElementById('ow-hex-toggle-btn');
+
+    // Populate Map Tier Selector grouped by tier
+    if (mapSelect && Array.isArray(ow.maps)) {
+        const availableTiers = ow.tiers || ["Kingdom", "Province", "Settlement", "Dungeon"];
+        const tierSet = new Set(availableTiers);
+        ow.maps.forEach(m => { if (m.type) tierSet.add(m.type); });
+        const allTiers = Array.from(tierSet);
+
+        let selectHtml = '';
+        allTiers.forEach(tier => {
+            const tierMaps = ow.maps.filter(m => (m.type || 'Kingdom').toLowerCase() === tier.toLowerCase());
+            if (tierMaps.length > 0) {
+                selectHtml += `<optgroup label="${escapeHTML(tier)} Tier (${tierMaps.length})">`;
+                tierMaps.forEach(m => {
+                    const icon = tier === 'Kingdom' ? '👑' : (tier === 'Province' ? '🗺️' : (tier === 'Settlement' ? '🏰' : (tier === 'Dungeon' ? '⚔️' : '📍')));
+                    const isSel = m.id === ow.activeMapId ? 'selected' : '';
+                    selectHtml += `<option value="${m.id}" ${isSel}>${icon} ${escapeHTML(m.title || 'Untitled Map')}</option>`;
+                });
+                selectHtml += `</optgroup>`;
+            }
+        });
+
+        const uncategorized = ow.maps.filter(m => !allTiers.some(t => t.toLowerCase() === (m.type || '').toLowerCase()));
+        if (uncategorized.length > 0) {
+            selectHtml += `<optgroup label="Other Maps">`;
+            uncategorized.forEach(m => {
+                const isSel = m.id === ow.activeMapId ? 'selected' : '';
+                selectHtml += `<option value="${m.id}" ${isSel}>📍 ${escapeHTML(m.title || 'Untitled Map')}</option>`;
+            });
+            selectHtml += `</optgroup>`;
+        }
+        mapSelect.innerHTML = selectHtml;
+    }
+
+    // Breadcrumbs
+    if (breadcrumbBar) {
+        if (ow.activeMapId && ow.activeMapId !== 'map-main' && ow.maps?.length > 1) {
+            breadcrumbBar.classList.remove('hidden');
+            breadcrumbBar.classList.add('flex');
+            const rootMap = ow.maps.find(m => m.id === 'map-main') || ow.maps[0];
+            if (breadcrumbTrail) {
+                breadcrumbTrail.innerText = `${rootMap.title} > ${activeMap.title || 'Sub-Map'}`;
+            }
+        } else {
+            breadcrumbBar.classList.add('hidden');
+            breadcrumbBar.classList.remove('flex');
+        }
+    }
+
+    if (titleInput && activeMap.title) titleInput.value = activeMap.title;
+    if (scaleInput && activeMap.scale) scaleInput.value = activeMap.scale;
+    if (mapImg && activeMap.mapUrl) mapImg.src = activeMap.mapUrl;
+
+    const currentTerrain = activeMap.partyMarker?.terrain || 'Forest';
+    const terrainSelect = document.getElementById('ow-current-terrain-select');
+    if (terrainSelect) terrainSelect.value = currentTerrain;
+    if (terrainBadge) {
+        terrainBadge.innerText = `🌲 Terrain: ${currentTerrain}`;
+    }
+
+    const hexConfig = activeMap.hexGrid || { enabled: true, opacity: 0.25, size: 36 };
+    if (hexToggleLabel) {
+        hexToggleLabel.innerText = hexConfig.enabled ? 'Hex Grid (On)' : 'Hex Grid (Off)';
+    }
+    if (hexToggleBtn) {
+        if (hexConfig.enabled) {
+            hexToggleBtn.className = "px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border-amber-500/40";
+        } else {
+            hexToggleBtn.className = "px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 bg-ledger-800 text-slate-400 border-ledger-700 hover:text-white";
+        }
+    }
+
+    // Render Layers
+    renderOverworldHexGrid(document.getElementById('overworld-hex-svg'), hexConfig, false);
+    renderOverworldFog(document.getElementById('overworld-fog-svg'), activeMap.fog || { enabled: true, revealedPoints: [] }, activeMap.pins || [], activeMap.partyMarker, false);
+    renderOverworldRoutesAndTrail();
+    renderOverworldCamps();
+    renderOverworldPins();
+    renderOverworldPinList();
+    renderOverworldPinPopover();
+}
+
+function setOverworldMode(mode) {
+    appState.overworldMode = mode;
+    ['inspect', 'add_pin', 'move_party', 'measure', 'fog'].forEach(m => {
+        const btn = document.getElementById(`ow-mode-${m.replace('_', '-')}`);
+        if (btn) {
+            if (m === mode) {
+                btn.className = "px-2.5 py-1 rounded font-bold bg-amber-500 text-ledger-950 transition";
+            } else {
+                btn.className = "px-2.5 py-1 rounded text-slate-400 hover:text-white transition";
+            }
+        }
+    });
+
+    const rulerBanner = document.getElementById('ow-ruler-banner');
+    if (rulerBanner) {
+        if (mode === 'measure') {
+            rulerBanner.classList.remove('hidden');
+        } else if (!appState.measurePoints || appState.measurePoints.length === 0) {
+            rulerBanner.classList.add('hidden');
+        }
+    }
+
+    const fogBanner = document.getElementById('ow-fog-banner');
+    if (fogBanner) {
+        if (mode === 'fog') {
+            fogBanner.classList.remove('hidden');
+        } else {
+            fogBanner.classList.add('hidden');
+        }
+    }
+
+    const vp = document.getElementById('overworld-map-viewport');
+    if (vp) {
+        if (mode === 'add_pin') vp.style.cursor = 'cell';
+        else if (mode === 'move_party') vp.style.cursor = 'crosshair';
+        else if (mode === 'measure') vp.style.cursor = 'pointer';
+        else if (mode === 'fog') vp.style.cursor = 'radial-gradient';
+        else vp.style.cursor = 'default';
+    }
+}
+
+function handleOverworldCanvasClick(e) {
+    if (e.target.closest('.ow-pin-marker') || e.target.closest('#ow-party-marker') || e.target.closest('#ow-ruler-banner') || e.target.closest('#ow-fog-banner')) return;
+    const vp = document.getElementById('overworld-map-viewport');
+    if (!vp) return;
+    const rect = vp.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const pctX = Math.max(2, Math.min(98, (clickX / rect.width) * 100));
+    const pctY = Math.max(2, Math.min(98, (clickY / rect.height) * 100));
+
+    if (appState.overworldMode === 'add_pin') {
+        openAddOverworldPinModal(null, pctX, pctY);
+    } else if (appState.overworldMode === 'move_party') {
+        movePartyMarker(pctX, pctY);
+    } else if (appState.overworldMode === 'measure') {
+        if (!appState.measurePoints) appState.measurePoints = [];
+        appState.measurePoints.push({ x: pctX, y: pctY });
+        renderOverworldMeasurement();
+    } else if (appState.overworldMode === 'fog') {
+        handleFogCanvasClick(pctX, pctY);
+    }
+}
+
+// -------------------------------------------------------------
+// MULTI-TIER MAP HIERARCHY MANAGEMENT
+// -------------------------------------------------------------
+async function switchOverworldMapTier(mapId) {
+    if (!mapId) return;
+    try {
+        const res = await fetch('/api/overworld/maps/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mapId })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            appState.selectedOverworldPinId = null;
+            clearOverworldMeasurement();
+            renderOverworld();
+            const activeM = appState.overworld.maps?.find(m => m.id === mapId);
+            showToast(`Switched map tier to ${activeM?.title || 'Map'}`, "info");
+        }
+    } catch (e) {
+        showToast("Error switching map tier.", "error");
+    }
+}
+
+function populateMapTierDropdownOptions(selectedTier = 'Province') {
+    const selectEl = document.getElementById('ow-submap-type');
+    if (!selectEl) return;
+    const tiers = (appState.overworld && appState.overworld.tiers && appState.overworld.tiers.length > 0)
+        ? appState.overworld.tiers
+        : ["Kingdom", "Province", "Settlement", "Dungeon"];
+    
+    const all = Array.from(new Set([...tiers, selectedTier].filter(Boolean)));
+    selectEl.innerHTML = all.map(t => `<option value="${escapeHTML(t)}" ${t.toLowerCase() === String(selectedTier).toLowerCase() ? 'selected' : ''}>${escapeHTML(t)}</option>`).join('');
+}
+
+function openAddOverworldMapModal() {
+    const modal = document.getElementById('overworld-map-modal');
+    if (!modal) return;
+    const titleHeader = document.getElementById('ow-map-modal-title');
+    if (titleHeader) titleHeader.innerText = "🗺️ Add Regional Map Tier";
+    
+    const editIdInput = document.getElementById('ow-submap-edit-id');
+    if (editIdInput) editIdInput.value = '';
+
+    document.getElementById('ow-submap-title').value = '';
+    populateMapTierDropdownOptions('Province');
+    document.getElementById('ow-submap-scale-miles').value = '6';
+    document.getElementById('ow-submap-scale-desc').value = '1 Hex = 6 Miles';
+    document.getElementById('ow-submap-url').value = '/static/images/overworld_default.svg';
+    
+    const delBtn = document.getElementById('ow-submap-delete-btn');
+    if (delBtn) delBtn.classList.add('hidden');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function openEditOverworldMapModal(mapId = null) {
+    const modal = document.getElementById('overworld-map-modal');
+    if (!modal) return;
+    
+    const targetId = mapId || appState.overworld?.activeMapId || 'map-main';
+    const targetMap = (appState.overworld?.maps || []).find(m => m.id === targetId) || (appState.overworld?.maps && appState.overworld.maps[0]) || appState.overworld;
+    if (!targetMap) {
+        showToast("No active map to edit.", "warning");
+        return;
+    }
+
+    const titleHeader = document.getElementById('ow-map-modal-title');
+    if (titleHeader) titleHeader.innerText = `✏️ Edit Map: ${targetMap.title || 'Regional Map'}`;
+
+    const editIdInput = document.getElementById('ow-submap-edit-id');
+    if (editIdInput) editIdInput.value = targetMap.id || targetId;
+
+    document.getElementById('ow-submap-title').value = targetMap.title || '';
+    populateMapTierDropdownOptions(targetMap.type || 'Kingdom');
+    document.getElementById('ow-submap-scale-miles').value = targetMap.scaleMilesPerHex || 6;
+    document.getElementById('ow-submap-scale-desc').value = targetMap.scale || `1 Hex = ${targetMap.scaleMilesPerHex || 6} Miles`;
+    document.getElementById('ow-submap-url').value = targetMap.mapUrl || '/static/images/overworld_default.svg';
+
+    const delBtn = document.getElementById('ow-submap-delete-btn');
+    if (delBtn) {
+        if (targetMap.id === 'map-main') {
+            delBtn.classList.add('hidden');
+        } else {
+            delBtn.classList.remove('hidden');
+        }
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+async function submitOverworldMapModal() {
+    const title = document.getElementById('ow-submap-title').value.trim();
+    if (!title) {
+        showToast("Please enter a map title.", "warning");
+        return;
+    }
+    const editId = document.getElementById('ow-submap-edit-id')?.value;
+    const type = document.getElementById('ow-submap-type').value;
+    const scaleMilesPerHex = parseInt(document.getElementById('ow-submap-scale-miles').value) || 6;
+    const scale = document.getElementById('ow-submap-scale-desc').value.trim() || `1 Hex = ${scaleMilesPerHex} Miles`;
+    const mapUrl = document.getElementById('ow-submap-url').value.trim() || '/static/images/overworld_default.svg';
+
+    const payload = {
+        title,
+        type,
+        scale,
+        scaleMilesPerHex,
+        mapUrl
+    };
+    if (editId) {
+        payload.id = editId;
+    }
+
+    try {
+        const res = await fetch('/api/overworld/maps', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            closeModal('overworld-map-modal');
+            renderOverworld();
+            showToast(editId ? `Updated map: ${title}` : `Created new map tier: ${title}`, "success");
+        }
+    } catch (e) {
+        showToast("Error saving map tier.", "error");
+    }
+}
+
+async function deleteCurrentSubmap() {
+    const editId = document.getElementById('ow-submap-edit-id')?.value;
+    const targetId = editId || appState.overworld?.activeMapId;
+    if (!targetId || targetId === 'map-main') {
+        showToast("Cannot delete primary kingdom map.", "warning");
+        return;
+    }
+    if (!confirm("Are you sure you want to delete this map tier?")) return;
+    try {
+        const res = await fetch(`/api/overworld/maps/${targetId}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            closeModal('overworld-map-modal');
+            renderOverworld();
+            showToast("Map tier removed.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting map tier.", "error");
+    }
+}
+
+function openManageMapTiersModal() {
+    const modal = document.getElementById('overworld-tiers-modal');
+    if (!modal) return;
+    renderOverworldTiersList();
+    const input = document.getElementById('ow-new-tier-input');
+    if (input) input.value = '';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function renderOverworldTiersList() {
+    const container = document.getElementById('ow-tiers-list');
+    if (!container) return;
+    const tiers = (appState.overworld && appState.overworld.tiers && appState.overworld.tiers.length > 0)
+        ? appState.overworld.tiers
+        : ["Kingdom", "Province", "Settlement", "Dungeon"];
+
+    container.innerHTML = tiers.map(t => {
+        const icon = t === 'Kingdom' ? '👑' : (t === 'Province' ? '🗺️' : (t === 'Settlement' ? '🏰' : (t === 'Dungeon' ? '⚔️' : '🏷️')));
+        const count = (appState.overworld?.maps || []).filter(m => (m.type || '').toLowerCase() === t.toLowerCase()).length;
+        const canDelete = tiers.length > 1;
+
+        return `
+            <div class="p-2 rounded-xl bg-ledger-950 border border-ledger-800 flex items-center justify-between gap-2 text-xs">
+                <div class="flex items-center gap-2">
+                    <span>${icon}</span>
+                    <span class="font-bold text-slate-200">${escapeHTML(t)}</span>
+                    <span class="text-[10px] text-slate-500 font-mono">(${count} ${count === 1 ? 'map' : 'maps'})</span>
+                </div>
+                ${canDelete ? `
+                    <button onclick="deleteOverworldTier('${escapeHTML(t)}')" title="Delete tier" class="text-slate-500 hover:text-rose-400 p-1 text-xs transition">✕</button>
+                ` : `<span class="text-[10px] text-slate-600 italic">Locked</span>`}
+            </div>
+        `;
+    }).join('');
+}
+
+async function addOverworldTierFromModal() {
+    const input = document.getElementById('ow-new-tier-input');
+    const tierName = input?.value.trim();
+    if (!tierName) {
+        showToast("Please enter a tier name.", "warning");
+        return;
+    }
+    try {
+        const res = await fetch('/api/overworld/tiers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tier: tierName })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.tiers) {
+                if (!appState.overworld) appState.overworld = {};
+                appState.overworld.tiers = data.tiers;
+            }
+            if (data.overworld) appState.overworld = data.overworld;
+            if (input) input.value = '';
+            renderOverworldTiersList();
+            renderOverworld();
+            populateMapTierDropdownOptions(tierName);
+            showToast(`Added map tier: ${tierName}`, "success");
+        }
+    } catch (e) {
+        showToast("Error adding map tier.", "error");
+    }
+}
+
+async function deleteOverworldTier(tierName) {
+    if (!tierName) return;
+    if (!confirm(`Are you sure you want to delete the "${tierName}" tier?`)) return;
+    try {
+        const res = await fetch(`/api/overworld/tiers/${encodeURIComponent(tierName)}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.tiers) {
+                if (!appState.overworld) appState.overworld = {};
+                appState.overworld.tiers = data.tiers;
+            }
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworldTiersList();
+            renderOverworld();
+            populateMapTierDropdownOptions();
+            showToast(`Removed map tier: ${tierName}`, "info");
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Cannot delete tier.", "warning");
+        }
+    } catch (e) {
+        showToast("Error deleting tier.", "error");
+    }
+}
+
+async function uploadOverworldSubmapFile(input) {
+    if (!input.files || !input.files[0]) return;
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+                document.getElementById('ow-submap-url').value = data.url;
+                showToast("Uploaded map art.", "success");
+            }
+        }
+    } catch (e) {
+        showToast("Error uploading file.", "error");
+    }
+}
+
+// -------------------------------------------------------------
+// SVG HEX GRID LAYER
+// -------------------------------------------------------------
+function renderOverworldHexGrid(svgEl, hexConfig, isPlayerView = false) {
+    if (!svgEl) return;
+    if (!hexConfig || hexConfig.enabled === false) {
+        svgEl.innerHTML = '';
+        return;
+    }
+
+    const size = hexConfig.size || 36;
+    const opacity = hexConfig.opacity || (isPlayerView ? 0.20 : 0.25);
+    const strokeColor = isPlayerView ? '#d97706' : '#f59e0b';
+    const strokeWidth = 0.8;
+
+    const W = Math.sqrt(3) * size;
+    const H = 2 * size;
+    const vertStep = 1.5 * size;
+    const horizStep = W;
+
+    let pathD = '';
+    const cols = Math.ceil(1600 / horizStep) + 2;
+    const rows = Math.ceil(1000 / vertStep) + 2;
+
+    for (let r = 0; r < rows; r++) {
+        const yCenter = r * vertStep;
+        const xOffset = (r % 2 === 1) ? horizStep / 2 : 0;
+        for (let c = 0; c < cols; c++) {
+            const xCenter = c * horizStep + xOffset;
+            const pts = [];
+            for (let a = 0; a < 6; a++) {
+                const angle = (Math.PI / 180) * (60 * a - 30);
+                const px = xCenter + size * Math.cos(angle);
+                const py = yCenter + size * Math.sin(angle);
+                pts.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+            }
+            pathD += `M ${pts[0]} L ${pts[1]} L ${pts[2]} L ${pts[3]} L ${pts[4]} L ${pts[5]} Z `;
+        }
+    }
+
+    svgEl.innerHTML = `<path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" opacity="${opacity}" />`;
+}
+
+async function toggleOverworldHexGrid() {
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const hexConfig = activeMap.hexGrid || { enabled: true, opacity: 0.25, size: 36 };
+    hexConfig.enabled = !hexConfig.enabled;
+    try {
+        const res = await fetch('/api/overworld/hex-grid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hexConfig)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworld();
+            showToast(hexConfig.enabled ? "Hex grid enabled." : "Hex grid hidden.", "info");
+        }
+    } catch (e) {
+        showToast("Error updating hex grid.", "error");
+    }
+}
+
+// -------------------------------------------------------------
+// SVG FOG OF WAR MASK (DM MISTY SHROUD VS PLAYER TERRA INCOGNITA)
+// -------------------------------------------------------------
+function renderOverworldFog(svgEl, fogConfig, pins, partyMarker, isPlayerView = false) {
+    if (!svgEl) return;
+    if (!fogConfig || fogConfig.enabled === false) {
+        svgEl.innerHTML = '';
+        return;
+    }
+
+    const maskId = isPlayerView ? 'ow-player-fog-mask' : 'ow-dm-fog-mask';
+    const revealedPoints = Array.isArray(fogConfig.revealedPoints) ? fogConfig.revealedPoints : [];
+
+    let holesSvg = '';
+    revealedPoints.forEach(pt => {
+        const cx = (pt.x || 50) * 16;
+        const cy = (pt.y || 50) * 10;
+        const r = (pt.radius || 8) * 16;
+        holesSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="black" />`;
+    });
+
+    // Discovered pins automatically cut fog holes
+    pins.forEach(p => {
+        if (p.discovered) {
+            const cx = (p.x || 50) * 16;
+            const cy = (p.y || 50) * 10;
+            holesSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="110" fill="black" />`;
+        }
+    });
+
+    // Party marker sight radius
+    if (partyMarker) {
+        const cx = (partyMarker.x || 50) * 16;
+        const cy = (partyMarker.y || 50) * 10;
+        holesSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="130" fill="black" />`;
+    }
+
+    const fillColor = isPlayerView ? '#1c1611' : '#080d16';
+    const fillOpacity = isPlayerView ? 0.94 : 0.45;
+
+    svgEl.innerHTML = `
+        <defs>
+            <mask id="${maskId}">
+                <rect width="1600" height="1000" fill="white" />
+                ${holesSvg}
+            </mask>
+        </defs>
+        <rect width="1600" height="1000" fill="${fillColor}" mask="url(#${maskId})" opacity="${fillOpacity}" />
+    `;
+}
+
+function setOverworldFogAction(action) {
+    appState.fogBrushAction = action;
+    const btnRev = document.getElementById('ow-fog-action-reveal');
+    const btnShr = document.getElementById('ow-fog-action-shroud');
+    if (btnRev && btnShr) {
+        if (action === 'reveal') {
+            btnRev.className = "px-2 py-0.5 rounded font-bold bg-sky-500 text-ledger-950";
+            btnShr.className = "px-2 py-0.5 rounded text-slate-400 hover:text-white";
+        } else {
+            btnRev.className = "px-2 py-0.5 rounded text-slate-400 hover:text-white";
+            btnShr.className = "px-2 py-0.5 rounded font-bold bg-rose-500 text-white";
+        }
+    }
+}
+
+async function handleFogCanvasClick(pctX, pctY) {
+    const action = appState.fogBrushAction || 'reveal';
+    const slider = document.getElementById('ow-fog-radius-slider');
+    const radius = slider ? parseFloat(slider.value) : 8;
+
+    try {
+        const endpoint = action === 'reveal' ? '/api/overworld/fog/reveal' : '/api/overworld/fog/shroud';
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x: pctX, y: pctY, radius })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworld();
+        }
+    } catch (e) {
+        console.error("Error updating fog:", e);
+    }
+}
+
+async function resetOverworldFog() {
+    if (!confirm("Reset fog of war exploration back to party location only?")) return;
+    try {
+        const res = await fetch('/api/overworld/fog/shroud', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resetAll: true })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworld();
+            showToast("Reset fog of war.", "info");
+        }
+    } catch (e) {
+        showToast("Error resetting fog.", "error");
+    }
+}
+
+// -------------------------------------------------------------
+// OVERLAND MEASUREMENT RULER & EXPEDITION WAYPOINTS
+// -------------------------------------------------------------
+function renderOverworldMeasurement() {
+    const svgEl = document.getElementById('overworld-routes-svg');
+    const banner = document.getElementById('ow-ruler-banner');
+    if (!svgEl) return;
+
+    const pts = appState.measurePoints || [];
+    if (pts.length === 0) {
+        renderOverworldRoutesAndTrail();
+        if (banner) banner.classList.add('hidden');
+        return;
+    }
+
+    if (banner) banner.classList.remove('hidden');
+
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const scaleMiles = activeMap.scaleMilesPerHex || 24;
+
+    let totalDistVirtual = 0;
+    for (let i = 1; i < pts.length; i++) {
+        const dx = (pts[i].x - pts[i - 1].x) * 16;
+        const dy = (pts[i].y - pts[i - 1].y) * 10;
+        totalDistVirtual += Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // 1600 virtual width represents ~44.4 hexes across for size 36 hex (width ~62.35)
+    const hexRadiusVirtual = 36 * Math.sqrt(3);
+    const totalHexes = totalDistVirtual / hexRadiusVirtual;
+    const totalMiles = totalHexes * scaleMiles;
+    const normalDays = Math.max(0.1, totalMiles / 24);
+    const fastDays = Math.max(0.1, totalMiles / 30);
+    const slowDays = Math.max(0.1, totalMiles / 18);
+    const partySize = (appState.party || []).length || 4;
+    const rationsEst = Math.ceil(partySize * normalDays);
+
+    document.getElementById('ow-ruler-miles').innerText = `${totalMiles.toFixed(1)} mi`;
+    document.getElementById('ow-ruler-hexes').innerText = `(${totalHexes.toFixed(1)} hexes)`;
+    document.getElementById('ow-ruler-days').innerText = `${normalDays.toFixed(1)} days`;
+    document.getElementById('ow-ruler-fast').innerText = `${fastDays.toFixed(1)} d`;
+    document.getElementById('ow-ruler-slow').innerText = `${slowDays.toFixed(1)} d`;
+    document.getElementById('ow-ruler-rations').innerText = `${rationsEst} rations`;
+
+    renderOverworldRoutesAndTrail();
+}
+
+function clearOverworldMeasurement() {
+    appState.measurePoints = [];
+    const banner = document.getElementById('ow-ruler-banner');
+    if (banner) banner.classList.add('hidden');
+    renderOverworldRoutesAndTrail();
+}
+
+async function movePartyToEndOfRoute() {
+    const pts = appState.measurePoints || [];
+    if (pts.length === 0) return;
+    const dest = pts[pts.length - 1];
+    await movePartyMarker(dest.x, dest.y);
+    clearOverworldMeasurement();
+    setOverworldMode('inspect');
+    showToast("Party advanced to destination along route!", "success");
+}
+
+function renderOverworldRoutesAndTrail() {
+    const svgEl = document.getElementById('overworld-routes-svg');
+    if (!svgEl) return;
+
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const trail = activeMap.trail || [];
+    const measurePts = appState.measurePoints || [];
+
+    let html = '';
+
+    // Historical March Trail (Emerald Dotted Line)
+    if (trail.length > 1) {
+        const trailCoords = trail.map(t => `${((t.x || 50) * 16).toFixed(1)},${((t.y || 50) * 10).toFixed(1)}`).join(' ');
+        html += `<polyline points="${trailCoords}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6,5" opacity="0.75" />`;
+    }
+
+    // Active Measurement Route (Golden Pulsing Line)
+    if (measurePts.length > 0) {
+        const routeCoords = measurePts.map(p => `${((p.x || 50) * 16).toFixed(1)},${((p.y || 50) * 10).toFixed(1)}`).join(' ');
+        html += `<polyline points="${routeCoords}" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-dasharray="9,6" />`;
+        measurePts.forEach((p, idx) => {
+            const cx = (p.x * 16).toFixed(1);
+            const cy = (p.y * 10).toFixed(1);
+            html += `<circle cx="${cx}" cy="${cy}" r="6" fill="#f59e0b" stroke="#000" stroke-width="2" />`;
+            html += `<text x="${cx}" y="${cy - 12}" fill="#fde68a" font-size="16" font-family="monospace" font-weight="bold" text-anchor="middle">#${idx + 1}</text>`;
+        });
+    }
+
+    svgEl.innerHTML = html;
+}
+
+function renderOverworldCamps() {
+    const layer = document.getElementById('overworld-camps-layer');
+    if (!layer) return;
+
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const camps = (activeMap.trail || []).filter(t => t.type === 'camp');
+
+    layer.innerHTML = camps.map(c => `
+        <div style="left: ${c.x}%; top: ${c.y}%;" class="absolute -translate-x-1/2 -translate-y-1/2 group cursor-help pointer-events-auto" title="${escapeHTML(c.label || 'Camp')}">
+            <div class="w-6 h-6 rounded-full bg-emerald-950/90 border border-emerald-400 shadow flex items-center justify-center text-xs group-hover:scale-125 transition">
+                🏕️
+            </div>
+            <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-2 py-0.5 rounded bg-black/90 border border-emerald-500/50 text-[9px] font-mono font-bold text-emerald-300 whitespace-nowrap shadow opacity-0 group-hover:opacity-100 transition z-30">
+                ${escapeHTML(c.label || 'Camp')} (Day ${c.day || 1})
+            </div>
+        </div>
+    `).join('');
+}
+
+async function dropOverworldCampHere() {
+    try {
+        const res = await fetch('/api/overworld/trail/camp', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            if (data.travel) {
+                appState.travel = data.travel;
+                renderTravelMarchHistory();
+            }
+            renderOverworld();
+            showToast("🏕️ Campsite pitched and logged to Expedition Chronicle!", "success");
+        }
+    } catch (e) {
+        showToast("Error establishing campsite.", "error");
+    }
+}
+
+// -------------------------------------------------------------
+// BIOME & ATMOSPHERE INTEGRATION
+// -------------------------------------------------------------
+async function onOverworldTerrainChanged(newTerrain) {
+    if (!newTerrain) return;
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    if (!activeMap.partyMarker) activeMap.partyMarker = { x: 50, y: 50, label: "Adventuring Party" };
+    activeMap.partyMarker.terrain = newTerrain;
+
+    const terrainSelect = document.getElementById('ow-current-terrain-select');
+    if (terrainSelect) terrainSelect.value = newTerrain;
+    const terrainBadge = document.getElementById('ow-current-terrain-badge');
+    if (terrainBadge) terrainBadge.innerText = `🌲 Terrain: ${newTerrain}`;
+
+    renderOverworldPinPopover();
+
+    try {
+        await fetch('/api/overworld/party-marker', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ terrain: newTerrain, dropTrail: false })
+        });
+        await syncTerrainAtmosphere();
+    } catch (e) {
+        console.error("Error setting terrain:", e);
+    }
+}
+
+async function syncTerrainAtmosphere() {
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const terrain = activeMap.partyMarker?.terrain || 'Forest';
+
+    const terrainThemes = {
+        Forest: { color: "#10b981", name: "Emerald Deepwoods" },
+        Mountain: { color: "#38bdf8", name: "Alpine Crag" },
+        Swamp: { color: "#84cc16", name: "Murky Fen" },
+        Plains: { color: "#eab308", name: "Golden Steppe" },
+        Road: { color: "#f59e0b", name: "Kings Highway" },
+        Desert: { color: "#f97316", name: "Scorching Dunes" },
+        Coastal: { color: "#06b6d4", name: "Coastal Tides" },
+        Underdark: { color: "#a855f7", name: "Bioluminescent Dark" }
+    };
+
+    const theme = terrainThemes[terrain] || terrainThemes.Forest;
+
+    // Sync travel engine terrain
+    try {
+        await fetch('/api/travel/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ terrain })
+        });
+    } catch (e) {}
+
+    showToast(`🎭 Synchronized atmosphere to ${theme.name} (${terrain})!`, "success");
+}
+
+// -------------------------------------------------------------
+// SETTLEMENT & LANDMARK QUICK-DRAWER (POPULATES #overworld-pin-popover)
+// -------------------------------------------------------------
+function renderOverworldPinPopover() {
+    const popover = document.getElementById('overworld-pin-popover');
+    if (!popover) return;
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const pins = activeMap.pins || [];
+    const pin = pins.find(p => p.id === appState.selectedOverworldPinId);
+
+    if (!pin) {
+        const pm = activeMap.partyMarker || { x: 37.5, y: 50.0, terrain: 'Forest' };
+        popover.innerHTML = `
+            <div class="space-y-3">
+                <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🛡️</span>
+                        <div>
+                            <h4 class="font-display font-bold text-sm text-amber-300">${escapeHTML(pm.label || 'Party Encampment')}</h4>
+                            <span class="text-[10px] font-mono text-slate-400">Position: (${pm.x}%, ${pm.y}%)</span>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300">Active Party</span>
+                </div>
+                <div class="p-3 rounded-xl bg-ledger-950 border border-ledger-800 text-xs space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Current Biome:</span>
+                        <span class="font-bold text-emerald-300">${pm.terrain || 'Forest'}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">In-Game Date:</span>
+                        <span class="font-mono text-sky-300">Day ${appState.timeWeather?.day || 1}, ${String(appState.timeWeather?.hour || 9).padStart(2,'0')}:00</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Party Strength:</span>
+                        <span class="text-slate-200 font-semibold">${(appState.party || []).length} Adventurers</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+                    <button onclick="setOverworldMode('move_party')" class="py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-amber-300 font-bold border border-ledger-700 transition">
+                        🛡️ Move Party
+                    </button>
+                    <button onclick="dropOverworldCampHere()" class="py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold border border-emerald-700 transition">
+                        🏕️ Pitch Camp
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-500 text-center pt-1 italic">Click any landmark icon or pin in the directory to inspect its full Settlement Dossier.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const pinLabel = pin.label || pin.title || 'Landmark';
+    const linkedLoc = pin.locationId ? (appState.locations || []).find(l => l.id === pin.locationId) : null;
+    const dangerBadge = pin.danger === 'Deadly' ? 'bg-rose-950 text-rose-300 border-rose-700' : (pin.danger === 'Moderate' ? 'bg-amber-950 text-amber-300 border-amber-700' : 'bg-emerald-950 text-emerald-300 border-emerald-700');
+
+    // Factions associated with this settlement
+    const linkedFactions = (appState.factions || []).filter(f => {
+        const text = `${f.name || ''} ${f.headquarters || ''} ${f.presence || ''}`.toLowerCase();
+        return text.includes(pinLabel.toLowerCase()) || (linkedLoc && text.includes(linkedLoc.name.toLowerCase()));
+    });
+
+    // NPCs in this settlement
+    const linkedNpcs = (appState.roster || []).filter(n => {
+        const loc = (n.location || '').toLowerCase();
+        return loc.includes(pinLabel.toLowerCase()) || (linkedLoc && loc.includes(linkedLoc.name.toLowerCase()));
+    });
+
+    // Quests & Rumors in this settlement
+    const linkedQuests = (appState.quests || []).filter(q => (q.location || '').toLowerCase().includes(pinLabel.toLowerCase()));
+    const linkedRumors = (appState.rumors || []).filter(r => (r.location || '').toLowerCase().includes(pinLabel.toLowerCase()));
+
+    // Active sub-map link
+    const childMap = pin.subMapId ? (appState.overworld?.maps || []).find(m => m.id === pin.subMapId) : null;
+
+    popover.innerHTML = `
+        <div class="space-y-3">
+            <!-- Header -->
+            <div class="flex items-start justify-between gap-2 border-b border-ledger-800 pb-2.5">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="text-2xl shrink-0">${pin.icon || '📍'}</span>
+                    <div class="min-w-0">
+                        <h4 class="font-display font-bold text-sm text-amber-300 leading-tight truncate">${escapeHTML(pinLabel)}</h4>
+                        <div class="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                            <span>${escapeHTML(pin.type || 'Landmark')}</span>
+                            ${pin.population ? `<span>• Pop: ${escapeHTML(pin.population)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${dangerBadge}">${pin.danger || 'Moderate'}</span>
+            </div>
+
+            <!-- Sub-Map Zoom Banner if Linked -->
+            ${childMap ? `
+                <div class="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-purple-500/20 border border-amber-500/40 flex items-center justify-between">
+                    <div>
+                        <div class="text-[10px] font-mono text-amber-300 font-bold uppercase tracking-wider">Nested Child Map</div>
+                        <div class="text-xs font-bold text-white">${escapeHTML(childMap.title)}</div>
+                    </div>
+                    <button onclick="switchOverworldMapTier('${childMap.id}')" class="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow transition">
+                        🗺️ Zoom In
+                    </button>
+                </div>
+            ` : ''}
+
+            <!-- Lore & Overview -->
+            <div class="text-xs text-slate-300 leading-relaxed max-h-28 overflow-y-auto whitespace-pre-wrap">${escapeHTML(pin.notes || (linkedLoc ? linkedLoc.description : 'No additional lore recorded.'))}</div>
+
+            ${linkedLoc && linkedLoc.secret ? `
+                <div class="p-2.5 rounded-xl bg-purple-950/40 border border-purple-800/60 text-[11px] text-purple-200">
+                    <span class="font-bold block text-purple-400 uppercase tracking-wider text-[9px] mb-0.5">🔒 DM Secret</span>
+                    ${escapeHTML(linkedLoc.secret)}
+                </div>
+            ` : ''}
+
+            <!-- Linked Factions & Tension Clocks -->
+            ${linkedFactions.length > 0 ? `
+                <div class="space-y-1.5">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">Local Factions & Clocks</span>
+                    <div class="space-y-1">
+                        ${linkedFactions.map(f => `
+                            <div onclick="navigateToFaction('${f.id}')" role="button" title="Open ${escapeHTML(f.name)} in Factions tab" class="p-1.5 rounded-lg bg-ledger-950 hover:bg-ledger-800 border border-ledger-800 hover:border-amber-500/50 flex items-center justify-between text-xs cursor-pointer transition group">
+                                <span class="font-semibold text-slate-200 group-hover:text-amber-300 transition">${escapeHTML(f.name)} ↗</span>
+                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ledger-900 text-amber-300">Standing: ${f.reputation >= 0 ? '+' : ''}${f.reputation || 0}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Resident NPCs -->
+            ${linkedNpcs.length > 0 ? `
+                <div class="space-y-1.5">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold">Resident NPCs (${linkedNpcs.length})</span>
+                    <div class="flex items-center gap-1.5 overflow-x-auto py-1 custom-scrollbar">
+                        ${linkedNpcs.map(n => `
+                            <div onclick="navigateToNpc('${n.id}')" role="button" title="Open ${escapeHTML(n.name)} in NPCs tab" class="px-2 py-1 rounded-lg bg-ledger-950 hover:bg-ledger-800 border border-ledger-800 hover:border-sky-400 text-[11px] whitespace-nowrap shrink-0 flex items-center gap-1.5 text-slate-200 hover:text-sky-300 cursor-pointer transition">
+                                <span>👤</span> <span>${escapeHTML(n.name)} ↗</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Active Quests / Rumors -->
+            ${(linkedQuests.length > 0 || linkedRumors.length > 0) ? `
+                <div class="space-y-1 text-xs">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">Local Quests & Rumors</span>
+                    ${linkedQuests.map(q => `
+                        <div onclick="navigateToQuest('${q.id}')" role="button" title="Open ${escapeHTML(q.title)} in Quests tab" class="p-1.5 rounded bg-ledger-950 hover:bg-ledger-800 border border-ledger-800 hover:border-amber-400 text-[11px] text-amber-200 hover:text-amber-300 flex items-center justify-between gap-1.5 cursor-pointer transition">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <span>⚔️</span> <span class="truncate">${escapeHTML(q.title)}</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-amber-400/80 shrink-0">↗</span>
+                        </div>
+                    `).join('')}
+                    ${linkedRumors.map(r => `
+                        <div class="p-1.5 rounded bg-ledger-950 border border-ledger-800 text-[10px] text-slate-300 italic">
+                            "${escapeHTML(r.text)}"
+                        </div>
+                    `).join('')}
+                </div>
+            ` : ''}
+
+            <!-- Quick Actions Toolbar -->
+            <div class="pt-2 border-t border-ledger-800 space-y-2">
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button onclick="movePartyMarker(${pin.x}, ${pin.y})" class="py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold shadow transition flex items-center justify-center gap-1">
+                        <span>🛡️</span> <span>Move Party Here</span>
+                    </button>
+                    <button onclick="restPartyAtSettlementPrompt('${escapeHTML(pinLabel)}')" class="py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-600 text-emerald-300 font-bold shadow transition flex items-center justify-center gap-1">
+                        <span>🏕️</span> <span>Rest at Tavern</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between gap-1.5 flex-wrap pt-1">
+                    <button onclick="toggleOverworldPinDiscovery('${pin.id}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${pin.discovered ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300' : 'bg-ledger-800 border-ledger-700 text-slate-400 hover:text-white'}">
+                        ${pin.discovered ? '✓ Visible to Players' : '👁️ Reveal to Players'}
+                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="openAddOverworldPinModal('${pin.id}')" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white text-xs transition">Edit</button>
+                        <button onclick="deleteOverworldPin('${pin.id}')" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function restPartyAtSettlementPrompt(locName) {
+    const isLong = confirm(`Take an 8-Hour Long Rest at ${locName}?\n\n- Restores all PCs to Maximum HP\n- Resets death saves and refreshes abilities\n- Advances game clock by 8 hours\n- Consumes 1 ration per adventurer\n\n(Click Cancel for a 1-hour Short Rest)`);
+    const restType = isLong ? 'long' : 'short';
+    try {
+        const res = await fetch('/api/overworld/settlement/rest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ restType, locationName: locName })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.party) appState.party = data.party;
+            if (data.timeWeather) appState.timeWeather = data.timeWeather;
+            renderPartyHUD();
+            renderTimeWeatherHUD();
+            showToast(data.summary || `Party completed ${restType} rest at ${locName}!`, "success");
+        }
+    } catch (e) {
+        showToast("Error executing rest.", "error");
+    }
+}
+
+// -------------------------------------------------------------
+// OVERLAND HAZARD & 2024 ENCOUNTER ROLLER
+// -------------------------------------------------------------
+function openOverlandEncounterModal() {
+    const modal = document.getElementById('overworld-encounter-modal');
+    if (!modal) return;
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const currentTerrain = activeMap.partyMarker?.terrain || 'Forest';
+    const select = document.getElementById('ow-enc-terrain-select');
+    if (select) select.value = currentTerrain;
+
+    const hour = appState.timeWeather?.hour || 9;
+    const timeSelect = document.getElementById('ow-enc-time-select');
+    if (timeSelect) timeSelect.value = (hour >= 20 || hour < 6) ? 'Night' : 'Day';
+
+    const resultBox = document.getElementById('ow-encounter-result');
+    if (resultBox) resultBox.classList.add('hidden');
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+async function rollOverlandEncounterUI() {
+    const terrain = document.getElementById('ow-enc-terrain-select')?.value || 'Forest';
+    const danger = document.getElementById('ow-enc-danger-select')?.value || 'all';
+    const timeOfDay = document.getElementById('ow-enc-time-select')?.value || 'Day';
+    const resultBox = document.getElementById('ow-encounter-result');
+    if (!resultBox) return;
+
+    try {
+        const res = await fetch('/api/overworld/encounter/roll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ terrain, danger, timeOfDay })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const enc = data.encounter;
+            if (!enc) return;
+
+            const categoryIcon = enc.category === 'combat' ? '⚔️' : (enc.category === 'hazard' ? '⚠️' : (enc.category === 'discovery' ? '✨' : '👥'));
+            const dangerColor = enc.danger === 'Deadly' ? 'bg-rose-950 text-rose-300 border-rose-700' : (enc.danger === 'Moderate' ? 'bg-amber-950 text-amber-300 border-amber-700' : 'bg-emerald-950 text-emerald-300 border-emerald-700');
+
+            resultBox.innerHTML = `
+                <div class="flex items-start justify-between gap-3 border-b border-ledger-800 pb-2.5">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">${categoryIcon}</span>
+                            <h4 class="font-display font-bold text-base text-amber-300">${escapeHTML(enc.title)}</h4>
+                        </div>
+                        <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                            <span>Terrain: <strong class="text-slate-200">${escapeHTML(enc.terrain)}</strong></span>
+                            <span>•</span>
+                            <span>Time: <strong class="text-sky-300">${escapeHTML(enc.timeOfDay)}</strong></span>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${dangerColor}">${enc.danger} Threat</span>
+                </div>
+
+                <div class="p-3 rounded-xl bg-ledger-900/90 border border-ledger-800 text-xs text-slate-200 leading-relaxed font-serif italic">
+                    "${escapeHTML(enc.narrative)}"
+                </div>
+
+                ${enc.dcCheck ? `
+                    <div class="p-2.5 rounded-xl bg-blue-950/30 border border-blue-800/50 text-xs text-blue-200">
+                        <strong class="text-blue-300 block mb-0.5">🎲 Exploration DC Check:</strong>
+                        ${escapeHTML(enc.dcCheck)}
+                    </div>
+                ` : ''}
+
+                ${enc.monsters && enc.monsters.length > 0 ? `
+                    <div class="space-y-1.5">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-rose-400 font-bold">Creatures Involved:</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${enc.monsters.map(m => `
+                                <div class="p-2 rounded-xl bg-ledger-900 border border-ledger-800 flex items-center justify-between text-xs">
+                                    <span class="font-bold text-white">${m.count}x ${escapeHTML(m.name)}</span>
+                                    <span class="text-[10px] font-mono text-slate-400">CR ${m.cr || 1} • HP ${m.hp} • AC ${m.ac}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${enc.tactics ? `
+                    <div class="text-xs text-slate-300">
+                        <strong class="text-amber-400">Tactics:</strong> ${escapeHTML(enc.tactics)}
+                    </div>
+                ` : ''}
+
+                ${enc.complication ? `
+                    <div class="text-xs text-slate-300">
+                        <strong class="text-amber-400">Complication:</strong> ${escapeHTML(enc.complication)}
+                    </div>
+                ` : ''}
+
+                ${enc.loot ? `
+                    <div class="p-2 rounded-xl bg-emerald-950/30 border border-emerald-800/50 text-xs text-emerald-200">
+                        <strong class="text-emerald-300">💰 Discovery Loot / Reward:</strong> ${escapeHTML(enc.loot)}
+                    </div>
+                ` : ''}
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    ${enc.monsters && enc.monsters.length > 0 ? `
+                        <button onclick="spawnOverlandEncounterToCombat(${JSON.stringify(enc.monsters).replace(/"/g, '&quot;')})" class="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-lg flex items-center gap-1.5 transition">
+                            <span>⚔️</span> <span>Push Monsters to Combat Tracker</span>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            resultBox.classList.remove('hidden');
+        }
+    } catch (e) {
+        showToast("Error rolling overland encounter.", "error");
+    }
+}
+
+async function spawnOverlandEncounterToCombat(monsters) {
+    if (!monsters || monsters.length === 0) return;
+    try {
+        const res = await fetch('/api/overworld/encounter/spawn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ monsters })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.combat) appState.combat = data.combat;
+            if (data.tokens && window.BattlemapController) {
+                if (!appState.battlemap) appState.battlemap = {};
+                if (!appState.battlemap.tokens) appState.battlemap.tokens = [];
+                appState.battlemap.tokens.push(...data.tokens);
+                try {
+                    const bmRes = await fetch('/api/battlemap');
+                    if (bmRes.ok) {
+                        const bmData = await bmRes.json();
+                        appState.battlemap = bmData;
+                    }
+                    if (typeof window.BattlemapController.renderDMTokens === 'function') {
+                        window.BattlemapController.renderDMTokens();
+                    }
+                } catch (bErr) {
+                    console.warn("Could not sync battlemap tokens immediately:", bErr);
+                }
+            }
+            closeModal('overworld-encounter-modal');
+            renderCombatTracker();
+            switchTab('combat');
+            showToast(`Spawned ${data.addedCombatants?.length || 'monsters'} into live Combat Tracker & Battlemap!`, "success");
+        }
+    } catch (e) {
+        showToast("Error spawning encounter to combat.", "error");
+    }
+}
+
+// -------------------------------------------------------------
+// PINS & PARTY MARKER
+// -------------------------------------------------------------
+async function movePartyMarker(x, y) {
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const marker = {
+        x: parseFloat(x.toFixed(1)),
+        y: parseFloat(y.toFixed(1)),
+        label: activeMap.partyMarker?.label || "Adventuring Party Camp",
+        visibleToPlayers: true,
+        terrain: activeMap.partyMarker?.terrain || "Forest",
+        dropTrail: true
+    };
+    activeMap.partyMarker = marker;
+    renderOverworldPins();
+    try {
+        const res = await fetch('/api/overworld/party-marker', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(marker)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworld();
+            showToast(`Party moved to (${x.toFixed(0)}%, ${y.toFixed(0)}%)`, "info");
+        }
+    } catch (e) {
+        console.error("Error updating party marker:", e);
+    }
+}
+
+function renderOverworldPins() {
+    const layer = document.getElementById('overworld-pins-layer');
+    if (!layer) return;
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const pins = activeMap.pins || [];
+    const party = activeMap.partyMarker || { x: 37.5, y: 50.0, label: "Adventuring Party" };
+
+    let html = '';
+
+    // Adventuring Party Marker
+    html += `
+        <div id="ow-party-marker" onclick="inspectPartyMarker(event)" style="left: ${party.x}%; top: ${party.y}%;" class="absolute -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group select-none" title="${escapeHTML(party.label || 'Adventuring Party')}">
+            <div class="relative flex items-center justify-center">
+                <span class="absolute w-8 h-8 rounded-full bg-emerald-400/40 animate-ping"></span>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 border-2 border-white shadow-[0_0_20px_rgba(16,185,129,0.9)] flex items-center justify-center text-xs text-white font-bold group-hover:scale-125 transition">
+                    🛡️
+                </div>
+            </div>
+            <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-2 py-0.5 rounded-full bg-emerald-950/95 border border-emerald-400 text-[10px] font-mono font-extrabold text-emerald-200 whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition z-30">
+                ${escapeHTML(party.label || 'Adventuring Party')}
+            </div>
+        </div>
+    `;
+
+    // Landmark Pins
+    pins.forEach(pin => {
+        const pinLabel = pin.label || pin.title || 'Landmark';
+        const isSelected = pin.id === appState.selectedOverworldPinId;
+        const isDiscovered = !!pin.discovered;
+        html += `
+            <div id="ow-pin-${pin.id}" onclick="selectOverworldPin('${pin.id}', event)" style="left: ${pin.x}%; top: ${pin.y}%;" class="ow-pin-marker absolute -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer group select-none" title="${escapeHTML(pinLabel)}">
+                <div class="relative flex items-center justify-center">
+                    ${isSelected ? `<span class="absolute w-10 h-10 rounded-full bg-amber-400/50 animate-pulse"></span>` : ''}
+                    <div class="w-7 h-7 rounded-full ${isDiscovered ? 'bg-ledger-950/90 border-2 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.5)] text-amber-200' : 'bg-ledger-950/90 border-2 border-slate-600 border-dashed text-slate-500'} flex items-center justify-center text-xs group-hover:scale-125 transition">
+                        ${pin.icon || '📍'}
+                    </div>
+                </div>
+                <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 px-2 py-0.5 rounded bg-ledger-950/95 border ${isSelected ? 'border-amber-400 text-amber-200' : 'border-ledger-700 text-slate-300'} text-[10px] font-display font-bold whitespace-nowrap shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition z-30">
+                    <span>${escapeHTML(pinLabel)}</span>
+                    ${!isDiscovered ? '<span class="text-slate-500 text-[9px] ml-1">(DM Only)</span>' : ''}
+                </div>
+            </div>
+        `;
+    });
+
+    layer.innerHTML = html;
+}
+
+function selectOverworldPin(pinId, e) {
+    if (e) e.stopPropagation();
+    appState.selectedOverworldPinId = pinId;
+    renderOverworldPins();
+    renderOverworldPinPopover();
+}
+
+function inspectPartyMarker(e) {
+    if (e) e.stopPropagation();
+    appState.selectedOverworldPinId = null;
+    renderOverworldPins();
+    renderOverworldPinPopover();
+}
+
+function renderOverworldPinList() {
+    const list = document.getElementById('overworld-pin-list');
+    const count = document.getElementById('overworld-pin-count');
+    if (!list) return;
+
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const pins = activeMap.pins || [];
+    if (count) count.textContent = `${pins.length} pins`;
+
+    const filterVal = (document.getElementById('ow-pin-filter')?.value || '').toLowerCase();
+    const filtered = pins.filter(p => (p.label || p.title || '').toLowerCase().includes(filterVal) || (p.type || '').toLowerCase().includes(filterVal));
+
+    if (filtered.length === 0) {
+        list.innerHTML = `<div class="text-[11px] text-slate-500 italic p-2 text-center">No landmarks matching filter.</div>`;
+        return;
+    }
+
+    list.innerHTML = filtered.map(p => {
+        const isSelected = p.id === appState.selectedOverworldPinId;
+        const pLabel = p.label || p.title || 'Landmark';
+        return `
+            <div onclick="selectOverworldPin('${p.id}', event)" class="flex items-center justify-between p-2 rounded-xl border cursor-pointer transition ${isSelected ? 'bg-amber-500/15 border-amber-500/50 text-white' : 'bg-ledger-950/80 border-ledger-800 hover:border-slate-600 text-slate-300'}">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-sm shrink-0">${p.icon || '📍'}</span>
+                    <span class="text-xs font-semibold truncate">${escapeHTML(pLabel)}</span>
+                </div>
+                <div class="flex items-center gap-1 shrink-0 text-[10px]">
+                    ${p.discovered ? '<span class="text-emerald-400" title="Visible on Player Screen">✓</span>' : '<span class="text-slate-500" title="DM Only">🔒</span>'}
+                    <span class="font-mono text-slate-400">(${Math.round(p.x)}%, ${Math.round(p.y)}%)</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterOverworldPinList() {
+    renderOverworldPinList();
+}
+
+function openAddOverworldPinModal(pinId = null, defaultX = 50, defaultY = 50) {
+    const modal = document.getElementById('overworld-pin-modal');
+    if (!modal) return;
+    const locSelect = document.getElementById('ow-pin-location-link');
+    if (locSelect) {
+        locSelect.innerHTML = `<option value="">-- Custom / Unlinked Pin --</option>` +
+            (appState.locations || []).map(l => `<option value="${l.id}">${escapeHTML(l.name)} (${l.type})</option>`).join('');
+    }
+
+    // Populate sub-map selector
+    const submapSelect = document.getElementById('ow-pin-submap-link');
+    if (submapSelect) {
+        const maps = (appState.overworld?.maps || []).filter(m => m.id !== appState.overworld?.activeMapId);
+        submapSelect.innerHTML = `<option value="">-- No Child Map (Standard Pin) --</option>` +
+            maps.map(m => `<option value="${m.id}">🗺️ [${m.type}] ${escapeHTML(m.title)}</option>`).join('');
+    }
+
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+
+    if (pinId) {
+        const pin = (activeMap.pins || []).find(p => p.id === pinId);
+        if (pin) {
+            document.getElementById('ow-pin-id').value = pin.id;
+            if (locSelect) locSelect.value = pin.locationId || '';
+            if (submapSelect) submapSelect.value = pin.subMapId || '';
+            document.getElementById('ow-pin-label').value = pin.label || pin.title || '';
+            document.getElementById('ow-pin-icon').value = pin.icon || '🏰';
+            document.getElementById('ow-pin-x').value = pin.x;
+            document.getElementById('ow-pin-y').value = pin.y;
+            document.getElementById('ow-pin-population').value = pin.population || '';
+            document.getElementById('ow-pin-danger').value = pin.danger || 'Moderate';
+            document.getElementById('ow-pin-notes').value = pin.notes || '';
+            document.getElementById('ow-pin-discovered').checked = !!pin.discovered;
+        }
+    } else {
+        document.getElementById('ow-pin-id').value = '';
+        if (locSelect) locSelect.value = '';
+        if (submapSelect) submapSelect.value = '';
+        document.getElementById('ow-pin-label').value = '';
+        document.getElementById('ow-pin-icon').value = '🏰';
+        document.getElementById('ow-pin-x').value = defaultX;
+        document.getElementById('ow-pin-y').value = defaultY;
+        document.getElementById('ow-pin-population').value = '';
+        document.getElementById('ow-pin-danger').value = 'Moderate';
+        document.getElementById('ow-pin-notes').value = '';
+        document.getElementById('ow-pin-discovered').checked = true;
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function onOverworldPinLocationSelect() {
+    const locId = document.getElementById('ow-pin-location-link')?.value;
+    if (!locId) return;
+    const loc = (appState.locations || []).find(l => l.id === locId);
+    if (!loc) return;
+    document.getElementById('ow-pin-label').value = loc.name;
+    document.getElementById('ow-pin-danger').value = loc.dangerLevel || 'Moderate';
+    document.getElementById('ow-pin-notes').value = loc.description || '';
+    if (loc.population) document.getElementById('ow-pin-population').value = loc.population;
+    if (loc.type === 'Settlement') document.getElementById('ow-pin-icon').value = '🏰';
+    else if (loc.type === 'Tavern / Inn') document.getElementById('ow-pin-icon').value = '🍺';
+    else if (loc.type === 'Dungeon / Ruins') document.getElementById('ow-pin-icon').value = '🏛️';
+    else if (loc.type === 'Wilderness') document.getElementById('ow-pin-icon').value = '🌲';
+}
+
+async function submitOverworldPinModal() {
+    const id = document.getElementById('ow-pin-id').value.trim();
+    const locationId = document.getElementById('ow-pin-location-link').value.trim();
+    const subMapId = document.getElementById('ow-pin-submap-link')?.value.trim() || '';
+    const label = document.getElementById('ow-pin-label').value.trim() || 'Landmark';
+    const icon = document.getElementById('ow-pin-icon').value;
+    const x = parseFloat(document.getElementById('ow-pin-x').value) || 50;
+    const y = parseFloat(document.getElementById('ow-pin-y').value) || 50;
+    const population = document.getElementById('ow-pin-population').value.trim();
+    const danger = document.getElementById('ow-pin-danger').value;
+    const notes = document.getElementById('ow-pin-notes').value.trim();
+    const discovered = document.getElementById('ow-pin-discovered').checked;
+
+    const payload = {
+        id: id || undefined,
+        locationId: locationId || undefined,
+        subMapId: subMapId || undefined,
+        label,
+        title: label,
+        icon,
+        x,
+        y,
+        population,
+        danger,
+        notes,
+        discovered
+    };
+
+    try {
+        const res = await fetch('/api/overworld/pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            if (payload.id) appState.selectedOverworldPinId = payload.id;
+            else if (data.pin?.id) appState.selectedOverworldPinId = data.pin.id;
+            closeModal('overworld-pin-modal');
+            renderOverworld();
+            populateTopFilterDropdowns();
+            showToast(`Saved lore pin: ${label}`, "success");
+        }
+    } catch (e) {
+        showToast("Error saving pin.", "error");
+    }
+}
+
+async function deleteOverworldPin(pinId) {
+    if (!confirm("Are you sure you want to remove this landmark pin?")) return;
+    try {
+        const res = await fetch(`/api/overworld/pin/${pinId}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            if (appState.selectedOverworldPinId === pinId) appState.selectedOverworldPinId = null;
+            renderOverworld();
+            populateTopFilterDropdowns();
+            showToast("Pin removed.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting pin.", "error");
+    }
+}
+
+async function toggleOverworldPinDiscovery(pinId) {
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const pin = (activeMap.pins || []).find(p => p.id === pinId);
+    if (!pin) return;
+    pin.discovered = !pin.discovered;
+    try {
+        const res = await fetch('/api/overworld/pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pin)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworld();
+            showToast(pin.discovered ? `Pin '${pin.label || pin.title}' is now visible to players!` : `Pin '${pin.label || pin.title}' hidden from players.`, "info");
+        }
+    } catch (e) {
+        showToast("Error toggling discovery.", "error");
+    }
+}
+
+async function saveOverworldSettings() {
+    const title = document.getElementById('overworld-title-input')?.value.trim() || 'Regional Map';
+    const scale = document.getElementById('overworld-scale-input')?.value.trim() || '1 Hex = 24 Miles';
+    try {
+        const res = await fetch('/api/overworld', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mapTitle: title, scale })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.overworld) appState.overworld = data.overworld;
+            renderOverworld();
+            showToast("Regional map settings saved.", "success");
+        }
+    } catch (e) {
+        console.error("Error saving overworld settings:", e);
+    }
+}
+
+function promptOverworldMapUrl() {
+    const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+    const currentUrl = activeMap.mapUrl || '/static/images/overworld_default.svg';
+    const newUrl = prompt("Enter regional map image URL or SVG path (Leave blank or type 'default' to reset to built-in cartography):", currentUrl);
+    if (newUrl === null) return;
+    const finalUrl = (newUrl.trim() === '' || newUrl.trim() === 'default') ? '/static/images/overworld_default.svg' : newUrl.trim();
+    activeMap.mapUrl = finalUrl;
+    const mapImg = document.getElementById('overworld-map-img');
+    if (mapImg) mapImg.src = finalUrl;
+    fetch('/api/overworld', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mapUrl: finalUrl })
+    });
+    showToast("Updated regional map image.", "info");
+}
+
+async function broadcastOverworldMapToPlayers() {
+    try {
+        const res = await fetch('/api/overworld/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: true })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.broadcast) {
+                appState.broadcast = data.broadcast;
+                renderBroadcastPill();
+            }
+            showToast("📡 Regional Overworld Map broadcast to Player Screen!", "success");
+        }
+    } catch (e) {
+        showToast("Error broadcasting overworld map.", "error");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 2. FACTION RELATIONS MATRIX & "FACTION TURN" ENGINE
+// -----------------------------------------------------------------------------
+function renderFactionRelations() {
+    const list = document.getElementById('faction-relations-list');
+    const hist = document.getElementById('faction-turn-history-list');
+    if (!list) return;
+
+    const relState = appState.factionRelations || {};
+    const relations = relState.relations || [];
+    const history = relState.turnHistory || [];
+
+    if (relations.length === 0) {
+        list.innerHTML = `<div class="text-xs text-slate-500 italic p-3 text-center">No inter-faction relations recorded yet. Click "+ Link Factions" to track alliances and wars.</div>`;
+    } else {
+        const statusColors = {
+            'War': 'bg-rose-950/80 text-rose-300 border-rose-700',
+            'Rivalry': 'bg-orange-950/80 text-orange-300 border-orange-700',
+            'Cautious Alliance': 'bg-amber-950/80 text-amber-300 border-amber-700',
+            'Friendly': 'bg-sky-950/80 text-sky-300 border-sky-700',
+            'Allied': 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
+        };
+
+        list.innerHTML = relations.map((r, idx) => {
+            const badgeClass = statusColors[r.status] || 'bg-ledger-950 text-slate-300 border-ledger-700';
+            return `
+                <div class="p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 flex items-center justify-between gap-2 transition hover:border-ledger-700">
+                    <div class="space-y-0.5 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-xs text-slate-100">${escapeHTML(r.factionA)}</span>
+                            <span class="text-slate-500 text-xs">↔</span>
+                            <span class="font-bold text-xs text-slate-100">${escapeHTML(r.factionB)}</span>
+                            <span class="px-2 py-0.2 rounded text-[10px] font-bold border ${badgeClass}">${escapeHTML(r.status)}</span>
+                        </div>
+                        ${r.note ? `<p class="text-[11px] text-slate-400 truncate">${escapeHTML(r.note)}</p>` : ''}
+                    </div>
+                    <button onclick="deleteFactionRelation(${idx})" class="text-slate-500 hover:text-rose-400 text-xs px-2 py-1 transition" title="Sever link">✕</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    if (hist) {
+        if (history.length === 0) {
+            hist.innerHTML = `<div class="text-xs text-slate-500 italic p-3 text-center">No faction turns run yet. Click "Run Faction Turn" to simulate between-session maneuvers.</div>`;
+        } else {
+            hist.innerHTML = history.slice(0, 10).map(h => `
+                <div class="p-2 rounded-xl bg-ledger-950 border border-ledger-800 text-xs space-y-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-bold text-purple-300">${escapeHTML(h.faction)}</span>
+                            <span class="font-mono text-[10px] text-slate-400">${escapeHTML(h.day || '')}</span>
+                        </div>
+                        <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-ledger-900 border border-purple-500/30 text-amber-300">d20: ${h.roll} • ${escapeHTML(h.outcomeType)}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-300 leading-tight">${escapeHTML(h.summary)}</p>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+function openAddFactionRelationModal() {
+    const modal = document.getElementById('faction-relation-modal');
+    if (!modal) return;
+    const facA = document.getElementById('frel-source');
+    const facB = document.getElementById('frel-target');
+    const factions = getActiveFactionsPool();
+
+    if (facA && facB) {
+        if (factions.length === 0) {
+            facA.innerHTML = `<option value="">-- No Factions in Campaign Profile --</option>`;
+            facB.innerHTML = `<option value="">-- No Factions in Campaign Profile --</option>`;
+            showToast("No factions found in current campaign profile. Create factions in the Factions tab first.", "warning");
+        } else {
+            facA.innerHTML = factions.map(f => `<option value="${escapeHTML(f)}">${escapeHTML(f)}</option>`).join('');
+            facB.innerHTML = factions.map(f => `<option value="${escapeHTML(f)}">${escapeHTML(f)}</option>`).join('');
+            if (factions.length > 1) {
+                facB.selectedIndex = 1;
+            }
+        }
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+async function submitFactionRelationModal() {
+    const facA = document.getElementById('frel-source')?.value.trim();
+    const facB = document.getElementById('frel-target')?.value.trim();
+    const status = document.getElementById('frel-status')?.value;
+    const note = document.getElementById('frel-note')?.value.trim();
+
+    if (!facA || !facB || facA === facB) {
+        showToast("Please choose two different valid factions.", "warning");
+        return;
+    }
+
+    const payload = { factionA: facA, factionB: facB, status, note };
+    try {
+        const res = await fetch('/api/factions/relations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.factionRelations) appState.factionRelations = data.factionRelations;
+            closeModal('faction-relation-modal');
+            renderFactionRelations();
+            showToast(`Relationship established: ${facA} ↔ ${facB}`, "success");
+        }
+    } catch (e) {
+        showToast("Error saving relation.", "error");
+    }
+}
+
+async function deleteFactionRelation(index) {
+    const relState = appState.factionRelations || {};
+    const relations = (relState.relations || []).slice();
+    relations.splice(index, 1);
+    try {
+        const res = await fetch('/api/factions/relations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ relations })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.factionRelations) appState.factionRelations = data.factionRelations;
+            renderFactionRelations();
+            showToast("Relationship severed.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting relation.", "error");
+    }
+}
+
+async function simulateFactionTurn() {
+    playDiceSound();
+    showToast("🎲 Rolling between-session Faction Turns...", "info");
+    try {
+        const res = await fetch('/api/factions/turn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ factionId: "all" })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.factions) appState.factions = data.factions;
+            if (data.factionRelations) appState.factionRelations = data.factionRelations;
+            if (data.rumors) appState.rumors = data.rumors;
+            if (data.timeline) appState.timeline = data.timeline;
+
+            renderFactions();
+            renderFactionRelations();
+            renderQuests();
+            renderTimeline();
+
+            const rumorCount = (data.generatedRumors || []).length;
+            showToast(`Faction turn completed! ${rumorCount} new rumor${rumorCount !== 1 ? 's' : ''} added to tavern board.`, "success");
+        }
+    } catch (e) {
+        showToast("Error running faction turn.", "error");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 3. PANTHEON, DEITIES & COSMIC CULTS + PIETY TRACKER
+// -----------------------------------------------------------------------------
+function renderPantheon() {
+    renderPietyTrackerStrip();
+
+    const grid = document.getElementById('pantheon-grid');
+    if (!grid) return;
+    const searchQ = (document.getElementById('pantheon-search')?.value || '').toLowerCase().trim();
+    const domainFilter = document.getElementById('pantheon-domain-filter')?.value || 'all';
+
+    let deities = appState.pantheon || [];
+    if (searchQ) {
+        deities = deities.filter(d =>
+            (d.name && d.name.toLowerCase().includes(searchQ)) ||
+            (d.title && d.title.toLowerCase().includes(searchQ)) ||
+            (d.domains && d.domains.some(dom => dom.toLowerCase().includes(searchQ))) ||
+            (d.tenets && d.tenets.some(t => t.toLowerCase().includes(searchQ)))
+        );
+    }
+    if (domainFilter !== 'all') {
+        deities = deities.filter(d => d.domains && d.domains.includes(domainFilter));
+    }
+
+    if (deities.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 italic">No deities or patrons match the current filter. Click "+ Add Deity / Patron" to expand the pantheon.</div>`;
+        return;
+    }
+
+    grid.innerHTML = deities.map(d => {
+        const domainsHtml = (d.domains || []).map(dom => `<span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">${escapeHTML(dom)}</span>`).join('');
+        const tenetsHtml = (d.tenets || []).map(t => `<li class="text-[11px] text-slate-300 leading-snug">✓ ${escapeHTML(t)}</li>`).join('');
+        const rivalsHtml = (d.rivals || []).map(r => `<span class="px-1.5 py-0.2 rounded text-[10px] bg-rose-950/60 border border-rose-800 text-rose-300">${escapeHTML(r)}</span>`).join(' ');
+
+        return `
+            <div class="bg-ledger-900 border border-ledger-700/80 rounded-2xl p-4 shadow-xl space-y-3 flex flex-col justify-between hover:border-amber-500/50 transition">
+                <div class="space-y-2.5">
+                    <!-- Header -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-3xl p-1.5 rounded-xl bg-ledger-950 border border-ledger-800">${d.symbolIcon || '☀️'}</span>
+                            <div>
+                                <h4 class="font-display font-bold text-base text-amber-300 leading-tight">${escapeHTML(d.name)}</h4>
+                                <p class="text-[11px] text-sky-400 font-semibold">${escapeHTML(d.title || '')}</p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-ledger-950 border border-ledger-800">${escapeHTML(d.alignment || 'Neutral')}</span>
+                    </div>
+
+                    <!-- Domains -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        ${domainsHtml}
+                    </div>
+
+                    <!-- Holy Symbol & Overview -->
+                    <div class="bg-ledger-950 border border-ledger-800 rounded-xl p-2.5 text-xs text-slate-300 space-y-1">
+                        <div class="text-[10px] font-mono uppercase text-slate-400">Holy Symbol: <strong class="text-amber-300 font-normal">${escapeHTML(d.symbol || '')}</strong></div>
+                        <p class="text-[11px] text-slate-300 leading-relaxed">${escapeHTML(d.description || '')}</p>
+                    </div>
+
+                    <!-- Tenets of Faith -->
+                    ${d.tenets && d.tenets.length > 0 ? `
+                        <div class="space-y-1">
+                            <span class="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">Sacred Tenets</span>
+                            <ul class="space-y-1 pl-1">
+                                ${tenetsHtml}
+                            </ul>
+                        </div>
+                    ` : ''}
+
+                    <!-- Rivals & Boons -->
+                    ${d.rivals && d.rivals.length > 0 ? `
+                        <div class="text-[11px] text-slate-400 flex items-center gap-1 flex-wrap">
+                            <span class="text-rose-400 font-semibold">Clashing Rivals:</span> ${rivalsHtml}
+                        </div>
+                    ` : ''}
+
+                    ${d.pietyBoons && d.pietyBoons['10'] ? `
+                        <div class="p-2 rounded-lg bg-sky-950/40 border border-sky-800/60 text-[10px] text-sky-200">
+                            <strong class="text-sky-300 block font-mono">⚡ Votary Boon (Piety 10+):</strong>
+                            ${escapeHTML(d.pietyBoons['10'])}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="pt-2 border-t border-ledger-800 flex items-center justify-between gap-2">
+                    <button onclick="broadcastDeity('${d.id}')" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs flex items-center gap-1.5 shadow transition">
+                        <span>📡</span> <span>Broadcast Symbol</span>
+                    </button>
+                    <div class="flex items-center gap-1">
+                        <button onclick="openAddDeityModal('${d.id}')" class="px-2 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-xs">Edit</button>
+                        <button onclick="deleteDeity('${d.id}')" class="px-2 py-1 rounded bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderPietyTrackerStrip() {
+    const grid = document.getElementById('pantheon-piety-tracker-grid');
+    if (!grid) return;
+    const party = appState.party || [];
+    const deities = appState.pantheon || [];
+
+    if (party.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-xs text-slate-500 italic p-2 text-center">No party members created yet. Add characters in Combat tab to track divine piety.</div>`;
+        return;
+    }
+
+    grid.innerHTML = party.map(pc => {
+        const score = pc.pietyScore || 1;
+        let rank = "Initiate";
+        let rankColor = "text-slate-400 bg-ledger-950 border-ledger-800";
+        if (score >= 50) { rank = "Champion"; rankColor = "text-amber-300 bg-amber-500/20 border-amber-500/40"; }
+        else if (score >= 25) { rank = "Disciple"; rankColor = "text-purple-300 bg-purple-500/20 border-purple-500/40"; }
+        else if (score >= 10) { rank = "Votary"; rankColor = "text-sky-300 bg-sky-500/20 border-sky-500/40"; }
+        else if (score >= 3) { rank = "Devotee"; rankColor = "text-emerald-300 bg-emerald-500/20 border-emerald-500/40"; }
+
+        return `
+            <div class="p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h5 class="font-bold text-xs text-slate-100">${escapeHTML(pc.name)}</h5>
+                        <p class="text-[10px] text-slate-400">${escapeHTML(pc.classRole || 'Adventurer')}</p>
+                    </div>
+                    <span class="px-2 py-0.2 rounded text-[10px] font-bold border ${rankColor}">${rank}</span>
+                </div>
+
+                <!-- Deity Selector -->
+                <div>
+                    <select onchange="assignPCDeity('${pc.id}', this.value)" class="w-full bg-ledger-900 border border-ledger-700 rounded px-2 py-1 text-[11px] text-slate-200">
+                        <option value="">-- No Chosen Deity / Patron --</option>
+                        ${deities.map(d => `<option value="${d.id}" ${pc.deityId === d.id ? 'selected' : ''}>${escapeHTML(d.name)} (${d.title || ''})</option>`).join('')}
+                    </select>
+                </div>
+
+                <!-- Piety Score Modifier -->
+                <div class="flex items-center justify-between pt-1 border-t border-ledger-900 text-xs">
+                    <span class="text-[10px] text-slate-400 font-mono">Piety Score:</span>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="modifyPCPiety('${pc.id}', -1)" class="w-5 h-5 rounded bg-ledger-900 hover:bg-rose-950 text-rose-300 border border-ledger-700 font-bold flex items-center justify-center">-</button>
+                        <span class="font-mono font-bold text-amber-300 w-6 text-center">${score}</span>
+                        <button onclick="modifyPCPiety('${pc.id}', 1)" class="w-5 h-5 rounded bg-ledger-900 hover:bg-emerald-950 text-emerald-300 border border-ledger-700 font-bold flex items-center justify-center">+</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function assignPCDeity(pcId, deityId) {
+    const deity = (appState.pantheon || []).find(d => d.id === deityId);
+    try {
+        const res = await fetch(`/api/party/${pcId}/piety`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deityId: deityId || "", deityName: deity ? deity.name : "" })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.party) appState.party = data.party;
+            renderPantheon();
+            renderPartyHUD();
+            showToast(`Deity updated for character.`, "info");
+        }
+    } catch (e) {
+        showToast("Error updating deity.", "error");
+    }
+}
+
+async function modifyPCPiety(pcId, delta) {
+    try {
+        const res = await fetch(`/api/party/${pcId}/piety`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delta })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.party) appState.party = data.party;
+            renderPantheon();
+            renderPartyHUD();
+            showToast("Piety score adjusted.", "info");
+        }
+    } catch (e) {
+        showToast("Error updating piety score.", "error");
+    }
+}
+
+function openAddDeityModal(deityId = null) {
+    const modal = document.getElementById('deity-modal');
+    if (!modal) return;
+    if (deityId) {
+        const d = (appState.pantheon || []).find(x => x.id === deityId);
+        if (d) {
+            document.getElementById('deity-input-id').value = d.id;
+            document.getElementById('deity-input-name').value = d.name || '';
+            document.getElementById('deity-input-icon').value = d.symbolIcon || '☀️';
+            document.getElementById('deity-input-title').value = d.title || '';
+            document.getElementById('deity-input-alignment').value = d.alignment || '';
+            document.getElementById('deity-input-domains').value = (d.domains || []).join(', ');
+            document.getElementById('deity-input-symbol').value = d.symbol || '';
+            document.getElementById('deity-input-tenets').value = (d.tenets || []).join('\n');
+            document.getElementById('deity-input-rivals').value = (d.rivals || []).join(', ');
+            document.getElementById('deity-input-boon').value = d.pietyBoons?.['10'] || '';
+            document.getElementById('deity-input-desc').value = d.description || '';
+        }
+    } else {
+        document.getElementById('deity-input-id').value = '';
+        document.getElementById('deity-input-name').value = '';
+        document.getElementById('deity-input-icon').value = '☀️';
+        document.getElementById('deity-input-title').value = '';
+        document.getElementById('deity-input-alignment').value = 'Neutral Good';
+        document.getElementById('deity-input-domains').value = 'Life, Light';
+        document.getElementById('deity-input-symbol').value = '';
+        document.getElementById('deity-input-tenets').value = '';
+        document.getElementById('deity-input-rivals').value = '';
+        document.getElementById('deity-input-boon').value = '';
+        document.getElementById('deity-input-desc').value = '';
+    }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+async function submitDeityModal() {
+    const id = document.getElementById('deity-input-id').value.trim();
+    const name = document.getElementById('deity-input-name').value.trim();
+    if (!name) {
+        showToast("Please enter a deity name.", "warning");
+        return;
+    }
+    const symbolIcon = document.getElementById('deity-input-icon').value.trim() || '☀️';
+    const title = document.getElementById('deity-input-title').value.trim();
+    const alignment = document.getElementById('deity-input-alignment').value.trim();
+    const domains = document.getElementById('deity-input-domains').value.split(',').map(s => s.trim()).filter(Boolean);
+    const symbol = document.getElementById('deity-input-symbol').value.trim();
+    const tenets = document.getElementById('deity-input-tenets').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const rivals = document.getElementById('deity-input-rivals').value.split(',').map(s => s.trim()).filter(Boolean);
+    const boon10 = document.getElementById('deity-input-boon').value.trim();
+    const description = document.getElementById('deity-input-desc').value.trim();
+
+    const payload = {
+        id: id || undefined,
+        name,
+        symbolIcon,
+        title,
+        alignment,
+        domains,
+        symbol,
+        tenets,
+        rivals,
+        description,
+        pietyBoons: {
+            "3": "Devotee: Minor divine guidance (add +1d4 to religion/insight).",
+            "10": boon10 || "Votary: Cast domain spell once per long rest.",
+            "25": "Disciple: Resistance to primary divine damage type.",
+            "50": "Champion: Supernatural aura of faith."
+        }
+    };
+
+    try {
+        const res = await fetch('/api/pantheon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.pantheon) appState.pantheon = data.pantheon;
+            closeModal('deity-modal');
+            renderPantheon();
+            showToast(`Saved deity: ${name}`, "success");
+        }
+    } catch (e) {
+        showToast("Error saving deity.", "error");
+    }
+}
+
+async function deleteDeity(deityId) {
+    if (!confirm("Are you sure you want to remove this deity?")) return;
+    try {
+        const res = await fetch(`/api/pantheon/${deityId}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.pantheon) appState.pantheon = data.pantheon;
+            renderPantheon();
+            showToast("Deity removed.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting deity.", "error");
+    }
+}
+
+async function broadcastDeity(deityId) {
+    try {
+        const res = await fetch(`/api/pantheon/${deityId}/broadcast`, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.broadcast) {
+                appState.broadcast = data.broadcast;
+                renderBroadcastPill();
+            }
+            showToast("📡 Divine Icon & Holy Tenets broadcast to Player Screen!", "success");
+        }
+    } catch (e) {
+        showToast("Error broadcasting deity.", "error");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 4. CAMPAIGN HISTORICAL TIMELINE & ERAS CHRONOLOGY
+// -----------------------------------------------------------------------------
+const DEFAULT_TIMELINE_ERAS_CLIENT = [
+    { id: 'mythic', name: 'The Ancient Mythic Age', icon: '✨', badgeColor: 'purple' },
+    { id: 'cataclysm', name: 'The Ruin & Cataclysm', icon: '🌋', badgeColor: 'rose' },
+    { id: 'iron', name: 'The Century of Iron', icon: '⚔️', badgeColor: 'amber' },
+    { id: 'current', name: 'Current Campaign Arc', icon: '🛡️', badgeColor: 'sky' }
+];
+
+function getTimelineEras() {
+    if (appState.timeline && Array.isArray(appState.timeline.eras) && appState.timeline.eras.length > 0) {
+        return appState.timeline.eras;
+    }
+    return DEFAULT_TIMELINE_ERAS_CLIENT;
+}
+
+function getTimelineEvents() {
+    if (Array.isArray(appState.timeline)) return appState.timeline;
+    if (appState.timeline && Array.isArray(appState.timeline.events)) return appState.timeline.events;
+    return [];
+}
+
+function getEraBadgeClass(color) {
+    switch (color) {
+        case 'purple': return 'bg-purple-950/80 text-purple-300 border-purple-700';
+        case 'rose': return 'bg-rose-950/80 text-rose-300 border-rose-700';
+        case 'amber': return 'bg-amber-950/80 text-amber-300 border-amber-700';
+        case 'emerald': return 'bg-emerald-950/80 text-emerald-300 border-emerald-700';
+        case 'indigo': return 'bg-indigo-950/80 text-indigo-300 border-indigo-700';
+        case 'sky':
+        default: return 'bg-sky-950/80 text-sky-300 border-sky-700';
+    }
+}
+
+function renderTimelineEraFilters() {
+    const bar = document.getElementById('timeline-era-filters-bar');
+    if (!bar) return;
+    const eras = getTimelineEras();
+    const activeEra = appState.timelineFilterEra || 'all';
+
+    let html = `<span class="text-[10px] font-mono uppercase tracking-wider text-slate-500 mr-1">Filter by Era:</span>`;
+    html += `
+        <button onclick="setTimelineEraFilter('all')" class="timeline-era-btn px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeEra === 'all' ? 'bg-amber-500 text-ledger-950 font-bold' : 'bg-ledger-950 border border-ledger-800 text-slate-300 hover:text-white'}">
+            All Eras
+        </button>
+    `;
+    eras.forEach(er => {
+        const isSelected = activeEra === er.id;
+        html += `
+            <button onclick="setTimelineEraFilter('${er.id}')" class="timeline-era-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition ${isSelected ? 'bg-amber-500 text-ledger-950 font-bold' : 'bg-ledger-950 border border-ledger-800 text-slate-300 hover:text-white'}">
+                <span>${er.icon || '⏳'}</span> <span>${escapeHTML(er.name)}</span>
+            </button>
+        `;
+    });
+    bar.innerHTML = html;
+}
+
+function setTimelineEraFilter(era) {
+    appState.timelineFilterEra = era;
+    renderTimelineEraFilters();
+    renderTimeline();
+}
+
+function renderTimeline() {
+    renderTimelineEraFilters();
+    const container = document.getElementById('timeline-feed-container');
+    if (!container) return;
+    const filterEra = appState.timelineFilterEra || 'all';
+    const searchQ = (document.getElementById('timeline-search')?.value || '').toLowerCase().trim();
+
+    const eras = getTimelineEras();
+    const eraMap = {};
+    eras.forEach(e => { eraMap[e.id] = e; });
+
+    let events = getTimelineEvents();
+    if (filterEra !== 'all') {
+        events = events.filter(e => e.era === filterEra);
+    }
+    if (searchQ) {
+        events = events.filter(e =>
+            (e.title && e.title.toLowerCase().includes(searchQ)) ||
+            (e.dateLabel && e.dateLabel.toLowerCase().includes(searchQ)) ||
+            (e.category && e.category.toLowerCase().includes(searchQ)) ||
+            (e.description && e.description.toLowerCase().includes(searchQ))
+        );
+    }
+
+    if (events.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-500 italic p-6 text-center">No chronicle events found for this era. Click "+ Add Event" or "Sync Quests".</div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="absolute left-2 sm:left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-amber-500/50 via-sky-500/50 to-purple-500/50"></div>
+        <div class="space-y-4">
+            ${events.map(ev => {
+                const eraDef = eraMap[ev.era] || { name: ev.era, badgeColor: 'sky', icon: '⏳' };
+                const badge = getEraBadgeClass(eraDef.badgeColor);
+                return `
+                    <div class="relative pl-6 sm:pl-8">
+                        <div class="absolute left-0 sm:left-2 top-3 w-4 h-4 rounded-full bg-ledger-950 border-2 border-amber-400 shadow-md flex items-center justify-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                        </div>
+
+                        <div class="bg-ledger-900 border border-ledger-700 rounded-2xl p-4 shadow-lg space-y-2 hover:border-slate-500 transition">
+                            <div class="flex items-start justify-between gap-2 flex-wrap">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-mono font-bold text-xs text-amber-300">${escapeHTML(ev.dateLabel)}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${badge}">${eraDef.icon || '⏳'} ${escapeHTML(ev.category || eraDef.name)}</span>
+                                    ${ev.isSessionLog ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Session Sync</span>' : ''}
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="openAddTimelineEventModal('${ev.id}')" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-ledger-800 transition">Edit</button>
+                                    <button onclick="deleteTimelineEvent('${ev.id}')" class="text-slate-500 hover:text-rose-400 text-xs px-2 py-0.5 rounded hover:bg-ledger-800 transition">Delete</button>
+                                </div>
+                            </div>
+
+                            <h4 class="font-display font-bold text-sm text-slate-100 leading-snug">${escapeHTML(ev.title)}</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">${escapeHTML(ev.description)}</p>
+
+                            ${(ev.location || (ev.factions && ev.factions.length > 0)) ? `
+                                <div class="flex items-center gap-3 pt-1 text-[11px] text-slate-400">
+                                    ${ev.location ? `<span>📍 ${escapeHTML(ev.location)}</span>` : ''}
+                                    ${ev.factions && ev.factions.length > 0 ? `<span>⚖️ ${escapeHTML(ev.factions.join(', '))}</span>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function openManageErasModal() {
+    renderTimelineErasModal();
+    openModal('timeline-eras-modal');
+}
+
+function renderTimelineErasModal() {
+    const listEl = document.getElementById('timeline-eras-list');
+    if (!listEl) return;
+    const eras = getTimelineEras();
+
+    listEl.innerHTML = eras.map(er => {
+        const badge = getEraBadgeClass(er.badgeColor);
+        return `
+            <div class="p-3 rounded-xl bg-ledger-950 border border-ledger-800 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="text-lg shrink-0">${er.icon || '⏳'}</span>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-200 text-xs">${escapeHTML(er.name)}</span>
+                            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold border ${badge}">${er.badgeColor}</span>
+                        </div>
+                        ${er.description ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${escapeHTML(er.description)}</p>` : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button onclick="editTimelineEra('${er.id}')" class="px-2 py-1 rounded bg-ledger-900 border border-ledger-700 text-slate-300 hover:text-white text-[11px] transition">Edit</button>
+                    ${eras.length > 1 ? `
+                        <button onclick="deleteTimelineEra('${er.id}')" class="px-2 py-1 rounded bg-rose-950/60 border border-rose-800 text-rose-300 hover:text-white text-[11px] transition">Delete</button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function editTimelineEra(eraId) {
+    const eras = getTimelineEras();
+    const er = eras.find(e => e.id === eraId);
+    if (!er) return;
+    document.getElementById('era-edit-id').value = er.id;
+    document.getElementById('era-edit-name').value = er.name || '';
+    document.getElementById('era-edit-icon').value = er.icon || '⏳';
+    document.getElementById('era-edit-color').value = er.badgeColor || 'sky';
+    document.getElementById('era-edit-desc').value = er.description || '';
+    const heading = document.getElementById('era-form-heading');
+    if (heading) heading.textContent = `Edit Historical Era: ${er.name}`;
+}
+
+function resetEraForm() {
+    document.getElementById('era-edit-id').value = '';
+    document.getElementById('era-edit-name').value = '';
+    document.getElementById('era-edit-icon').value = '⏳';
+    document.getElementById('era-edit-color').value = 'sky';
+    document.getElementById('era-edit-desc').value = '';
+    const heading = document.getElementById('era-form-heading');
+    if (heading) heading.textContent = '+ Add New Historical Era';
+}
+
+async function submitEraForm() {
+    const id = document.getElementById('era-edit-id').value.trim();
+    const name = document.getElementById('era-edit-name').value.trim();
+    const icon = document.getElementById('era-edit-icon').value.trim() || '⏳';
+    const badgeColor = document.getElementById('era-edit-color').value;
+    const description = document.getElementById('era-edit-desc').value.trim();
+
+    if (!name) {
+        showToast("Please enter an era name.", "warning");
+        return;
+    }
+
+    const payload = {
+        id: id || undefined,
+        name,
+        icon,
+        badgeColor,
+        description
+    };
+
+    try {
+        const res = await fetch('/api/timeline/eras', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.timeline) appState.timeline = data.timeline;
+            resetEraForm();
+            renderTimelineErasModal();
+            renderTimelineEraFilters();
+            renderTimeline();
+            showToast("Era saved successfully.", "success");
+        }
+    } catch (e) {
+        showToast("Error saving era.", "error");
+    }
+}
+
+async function deleteTimelineEra(eraId) {
+    if (!confirm("Are you sure you want to delete this era? Any events assigned to this era will be moved to another era.")) return;
+    try {
+        const res = await fetch(`/api/timeline/eras/${eraId}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.timeline) appState.timeline = data.timeline;
+            if (appState.timelineFilterEra === eraId) appState.timelineFilterEra = 'all';
+            renderTimelineErasModal();
+            renderTimelineEraFilters();
+            renderTimeline();
+            showToast("Era deleted.", "info");
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Failed to delete era.", "error");
+        }
+    } catch (e) {
+        showToast("Error deleting era.", "error");
+    }
+}
+
+function openAddTimelineEventModal(eventId = null) {
+    const modal = document.getElementById('timeline-event-modal');
+    if (!modal) return;
+
+    // Dynamically render era select options
+    const eraSelect = document.getElementById('tl-event-era');
+    if (eraSelect) {
+        const eras = getTimelineEras();
+        eraSelect.innerHTML = eras.map(er => `
+            <option value="${er.id}">${er.icon || '⏳'} ${escapeHTML(er.name)}</option>
+        `).join('');
+    }
+
+    if (eventId) {
+        const events = getTimelineEvents();
+        const ev = events.find(e => e.id === eventId);
+        if (ev) {
+            document.getElementById('tl-event-id').value = ev.id;
+            if (eraSelect) eraSelect.value = ev.era || 'current';
+            const catEl = document.getElementById('tl-event-category');
+            if (catEl) catEl.value = ev.category || 'Campaign Milestone';
+            document.getElementById('tl-event-date').value = ev.dateLabel || '';
+            document.getElementById('tl-event-order').value = ev.sortOrder || 100;
+            document.getElementById('tl-event-title').value = ev.title || '';
+            document.getElementById('tl-event-desc').value = ev.description || '';
+        }
+    } else {
+        const day = appState.timeWeather?.day || 1;
+        document.getElementById('tl-event-id').value = '';
+        if (eraSelect) eraSelect.value = appState.timelineFilterEra !== 'all' ? appState.timelineFilterEra : 'current';
+        const catEl = document.getElementById('tl-event-category');
+        if (catEl) catEl.value = 'Campaign Milestone';
+        document.getElementById('tl-event-date').value = `Day ${day} (348 P.R.)`;
+        document.getElementById('tl-event-order').value = 348000 + day;
+        document.getElementById('tl-event-title').value = '';
+        document.getElementById('tl-event-desc').value = '';
+    }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+async function submitTimelineEventModal() {
+    const id = document.getElementById('tl-event-id').value.trim();
+    const era = document.getElementById('tl-event-era').value;
+    const category = document.getElementById('tl-event-category')?.value.trim() || 'Campaign Milestone';
+    const dateLabel = document.getElementById('tl-event-date').value.trim() || 'Day 1';
+    const sortOrder = parseInt(document.getElementById('tl-event-order').value, 10) || 100;
+    const title = document.getElementById('tl-event-title').value.trim();
+    const description = document.getElementById('tl-event-desc').value.trim();
+
+    if (!title) {
+        showToast("Please enter an event title.", "warning");
+        return;
+    }
+
+    const payload = {
+        id: id || undefined,
+        era,
+        category,
+        dateLabel,
+        sortOrder,
+        title,
+        description
+    };
+
+    try {
+        const res = await fetch('/api/timeline', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.timeline) appState.timeline = data.timeline;
+            closeModal('timeline-event-modal');
+            renderTimeline();
+            showToast("Chronicle entry recorded.", "success");
+        }
+    } catch (e) {
+        showToast("Error saving timeline entry.", "error");
+    }
+}
+
+async function deleteTimelineEvent(eventId) {
+    if (!confirm("Are you sure you want to remove this chronicle entry?")) return;
+    try {
+        const res = await fetch(`/api/timeline/${eventId}`, { method: 'DELETE' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.timeline) appState.timeline = data.timeline;
+            renderTimeline();
+            showToast("Event removed.", "info");
+        }
+    } catch (e) {
+        showToast("Error deleting timeline event.", "error");
+    }
+}
+
+async function syncTimelineFromQuests() {
+    try {
+        const res = await fetch('/api/timeline/sync', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.timeline) appState.timeline = data.timeline;
+            renderTimeline();
+            showToast(`Chronicle synced! ${data.added || 0} completed quest milestones imported.`, "success");
+        }
+    } catch (e) {
+        showToast("Error syncing timeline.", "error");
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 5. WILDERNESS TRAVEL, HAZARDS & FORAGING CALCULATOR
+// -----------------------------------------------------------------------------
+const TERRAIN_HAZARDS = {
+    'Grassland': { dc: 10, forage: 'Abundant game & herbs (DC 10).', nav: 'Clear horizon; lost only on Nat 1.', hazard: 'None. Open skies and steady footing.' },
+    'Forest': { dc: 15, forage: 'Berries, mushrooms, fowl (DC 15).', nav: 'Dense canopy blocks landmarks (DC 15 Navigation).', hazard: 'Concealed roots & tangled brambles.' },
+    'Coast': { dc: 12, forage: 'Shellfish, kelp, tidal pools (DC 12).', nav: 'Follow water line (DC 12 Navigation).', hazard: 'Sudden rising tides & salt spray mud.' },
+    'Mountain': { dc: 16, forage: 'Mountain hare, hardy roots (DC 16).', nav: 'Misleading switchbacks (DC 16 Navigation).', hazard: 'Rockslides, scree slopes & freezing heights.' },
+    'Swamp': { dc: 16, forage: 'Marsh fowl, clean water rare (DC 16).', nav: 'Stagnant waterways look identical (DC 16 Navigation).', hazard: 'Quicksand, venomous leeches & miasma.' },
+    'Desert': { dc: 18, forage: 'Extreme scarcity; cactus pulp (DC 18).', nav: 'Shifting dunes & heat mirages (DC 18 Navigation).', hazard: 'Extreme Heat (DC 10+ Con saves), dehydration.' },
+    'Arctic': { dc: 18, forage: 'Subnivean game, ice fishing (DC 18).', nav: 'Blinding whiteout glare (DC 18 Navigation).', hazard: 'Extreme Cold, hypothermia, hidden crevasses.' },
+    'Underdark': { dc: 17, forage: 'Bioluminescent moss, cave worms (DC 17).', nav: 'No sun/stars; acoustic echoes (DC 17 Navigation).', hazard: 'Sinkholes, toxic spores, echoing footsteps.' }
+};
+
+const EXPLORATION_COMPLICATIONS = [
+    { title: "Abandoned Caravan", desc: "A merchant cart sits half-submerged in ditch mud. The mules are gone, but a locked strongbox or cargo manifest remains." },
+    { title: "Ancient Milestone", desc: "A moss-crusted granite obelisk from the Iron Empire marks distances in an extinct dialect. A secret cache is wedged beneath." },
+    { title: "Sudden Weather Shift", desc: "Violent headwinds and squalls surge in, halving visibility and extinguishing open torches for the next 2 hours." },
+    { title: "Rival Adventurers / Hunters", desc: "A trio of grizzled frontier rangers roast rabbit over a concealed campfire; willing to trade rumors for rations." },
+    { title: "Corrupted Wildlife / Strange Tracks", desc: "Oversized claw marks tear into ancient bark 10 feet up; fresh blood drips onto dry pine needles." },
+    { title: "Wayside Shrine to the Old Gods", desc: "A stone alcove consecrated with wildflowers and copper coins. Leaving an offering grants guidance on the next check." },
+    { title: "Washed Out Bridge / Ravine", desc: "The wooden span collapsed into rushing floodwaters. Requires DC 13 Athletics or finding a detour (+2 hours)." },
+    { title: "Fugitive in Hiding", desc: "A wounded mercenary bearing a faction insignia hides in the hollow of a dead oak, pleading for medical aid." },
+    { title: "Swarm of Blood Flies / Pestilence", desc: "A buzzing cloud of insects descends. Characters failing a DC 11 Con save suffer disadvantage on Perception until rested." },
+    { title: "Magical Anomaly / Ley Fissure", desc: "The hair on your arms stands up as arcane static fills the air. Detect Magic reveals an unstable planar rift." }
+];
+
+function renderTravel() {
+    if (appState.travel) {
+        if (appState.travel.pace) {
+            appState.travelPace = appState.travel.pace;
+            setTravelPace(appState.travel.pace, false);
+        }
+        const terrainSel = document.getElementById('travel-terrain-select');
+        if (terrainSel && appState.travel.terrain) terrainSel.value = appState.travel.terrain;
+
+        const roadSel = document.getElementById('travel-road-select');
+        if (roadSel && appState.travel.road) roadSel.value = appState.travel.road;
+
+        const distInput = document.getElementById('travel-distance-miles');
+        if (distInput && appState.travel.targetMiles) distInput.value = appState.travel.targetMiles;
+
+        const hoursInput = document.getElementById('travel-hours-input');
+        if (hoursInput && appState.travel.marchHours) hoursInput.value = appState.travel.marchHours;
+    }
+    updateTravelCalculator();
+    renderTravelMarchHistory();
+}
+
+function setTravelPace(pace, shouldSave = true) {
+    appState.travelPace = pace;
+    ['Slow', 'Normal', 'Fast'].forEach(p => {
+        const btn = document.getElementById(`travel-pace-btn-${p}`);
+        if (btn) {
+            if (p === pace) {
+                btn.className = "p-2.5 rounded-xl border-2 border-amber-500 bg-amber-500/10 text-left transition";
+            } else {
+                btn.className = "p-2.5 rounded-xl border border-ledger-700 bg-ledger-950 text-left hover:border-slate-600 transition";
+            }
+        }
+    });
+    const badge = document.getElementById('travel-pace-badge');
+    if (badge) {
+        if (pace === 'Slow') badge.textContent = 'Slow Pace (18 mi/day • Stealth Advantage)';
+        else if (pace === 'Fast') badge.textContent = 'Fast Pace (30 mi/day • -5 Passive Perception)';
+        else badge.textContent = 'Normal Pace (24 mi/day • Standard)';
+    }
+    updateTravelCalculator();
+    if (shouldSave) saveTravelSettingsAPI();
+}
+
+function updateTravelCalculator() {
+    const pace = appState.travelPace || 'Normal';
+    const terrain = document.getElementById('travel-terrain-select')?.value || 'Forest';
+    const road = document.getElementById('travel-road-select')?.value || 'trail';
+    const targetMiles = parseFloat(document.getElementById('travel-distance-miles')?.value) || 48;
+    const marchHours = parseFloat(document.getElementById('travel-hours-input')?.value) || 8;
+
+    let baseMph = pace === 'Slow' ? 2.25 : (pace === 'Fast' ? 3.75 : 3.0);
+    let roadMult = 1.0;
+    if (road === 'trackless') roadMult = 0.75;
+    else if (road === 'difficult') roadMult = 0.5;
+
+    const effectiveMph = baseMph * roadMult;
+    const milesToday = (effectiveMph * marchHours).toFixed(1);
+    const daysNeeded = (targetMiles / (effectiveMph * marchHours)).toFixed(1);
+
+    const isForcedMarch = marchHours > 8;
+    const forcedHours = Math.max(0, marchHours - 8);
+
+    const summaryBox = document.getElementById('travel-calc-summary');
+    if (summaryBox) {
+        summaryBox.innerHTML = `
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>Speed: <strong class="text-amber-300 font-mono">${effectiveMph.toFixed(2)} mph</strong></div>
+                <div>Distance Today: <strong class="text-emerald-300 font-mono">${milesToday} miles</strong></div>
+                <div>Total Days Required: <strong class="text-sky-300 font-mono">${daysNeeded} days</strong></div>
+                <div>Forced March: <strong class="${isForcedMarch ? 'text-rose-400 font-bold' : 'text-slate-400'}">${isForcedMarch ? `+${forcedHours} hrs (DC ${10 + forcedHours} Con)` : 'None (Standard)'}</strong></div>
+            </div>
+            ${isForcedMarch ? `
+                <div class="p-2 rounded bg-rose-950/50 border border-rose-800 text-[10px] text-rose-300">
+                    ⚠️ <strong>5.5e Forced March Rule:</strong> For each hour beyond 8, each character must make a DC ${10 + forcedHours} Constitution saving throw or gain 1 level of Exhaustion.
+                </div>
+            ` : ''}
+        `;
+    }
+
+    // Update Terrain Hazard & DC Pill
+    const info = TERRAIN_HAZARDS[terrain] || TERRAIN_HAZARDS['Forest'];
+    const dcPill = document.getElementById('travel-dc-pill');
+    if (dcPill) dcPill.textContent = `Terrain DC ${info.dc}`;
+
+    const hazardBox = document.getElementById('travel-terrain-hazard-box');
+    if (hazardBox) {
+        hazardBox.innerHTML = `
+            <div class="text-[11px]"><strong class="text-emerald-300">🌿 Foraging:</strong> ${escapeHTML(info.forage)}</div>
+            <div class="text-[11px]"><strong class="text-sky-300">🧭 Navigation:</strong> ${escapeHTML(info.nav)}</div>
+            <div class="text-[11px]"><strong class="text-rose-300">⚠️ Hazards:</strong> ${escapeHTML(info.hazard)}</div>
+        `;
+    }
+}
+
+async function saveTravelSettingsAPI() {
+    const pace = appState.travelPace || 'Normal';
+    const terrain = document.getElementById('travel-terrain-select')?.value || 'Forest';
+    const road = document.getElementById('travel-road-select')?.value || 'trail';
+    const targetMiles = parseFloat(document.getElementById('travel-distance-miles')?.value) || 48;
+    const marchHours = parseFloat(document.getElementById('travel-hours-input')?.value) || 8;
+
+    if (!appState.travel) appState.travel = { history: [] };
+    appState.travel.pace = pace;
+    appState.travel.terrain = terrain;
+    appState.travel.road = road;
+    appState.travel.targetMiles = targetMiles;
+    appState.travel.marchHours = marchHours;
+
+    try {
+        await fetch('/api/travel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pace, terrain, road, targetMiles, marchHours })
+        });
+    } catch (e) {
+        console.error("Error saving travel settings:", e);
+    }
+}
+
+function renderTravelMarchHistory() {
+    const container = document.getElementById('travel-march-history-list');
+    if (!container) return;
+    const history = (appState.travel && appState.travel.history) ? appState.travel.history : [];
+    if (history.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-500 italic p-4 text-center">No overland marches logged yet. Click "Log March & Advance Clock" to record party travel.</div>`;
+        return;
+    }
+    container.innerHTML = history.slice().reverse().map(entry => {
+        const isCamp = entry.type === 'camp';
+        const formattedTime = `Day ${entry.day || 1}, ${String(entry.hour || 0).padStart(2, '0')}:00`;
+
+        if (isCamp) {
+            return `
+                <div class="p-2.5 rounded-xl bg-gradient-to-r from-emerald-950/70 to-ledger-950 border border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 font-bold shrink-0 text-sm">🏕️</span>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-emerald-300">${escapeHTML(entry.label || 'Overland Campsite')}</span>
+                                <span class="px-1.5 py-0.5 rounded border text-[10px] font-mono bg-emerald-900/60 border-emerald-600 text-emerald-200">Camp Pitched</span>
+                                <span class="text-[10px] text-slate-400 font-mono">${formattedTime} • ${escapeHTML(entry.terrain || 'Wilderness')}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-300 mt-0.5">
+                                ${escapeHTML(entry.notes || 'Pitched camp for party rest and recuperation.')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] font-mono text-slate-500 shrink-0">
+                        ${entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        const paceColor = entry.pace === 'Fast' ? 'text-rose-400 bg-rose-950/40 border-rose-800' : (entry.pace === 'Slow' ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800' : 'text-amber-400 bg-amber-950/40 border-amber-800');
+        return `
+            <div class="p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold shrink-0">🥾</span>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-slate-200">${formattedTime}</span>
+                            <span class="px-1.5 py-0.2 rounded border text-[10px] font-mono ${paceColor}">${entry.pace || 'Normal'} Pace</span>
+                            <span class="text-[10px] text-slate-400 font-mono">${entry.terrain || 'Wilderness'} (${entry.road || 'trail'})</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            Marched <strong class="text-amber-300 font-mono">${entry.marchHours || 8} hours</strong> — Traveled <strong class="text-emerald-300 font-mono">${entry.miles || 0} miles</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-[10px] font-mono text-slate-500 shrink-0">
+                    ${entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function executeWildernessMarch() {
+    const marchHours = parseInt(document.getElementById('travel-hours-input')?.value, 10) || 8;
+    const pace = appState.travelPace || 'Normal';
+    const terrain = document.getElementById('travel-terrain-select')?.value || 'Forest';
+    const road = document.getElementById('travel-road-select')?.value || 'trail';
+    const targetMiles = parseFloat(document.getElementById('travel-distance-miles')?.value) || 48;
+
+    let baseMph = pace === 'Slow' ? 2.25 : (pace === 'Fast' ? 3.75 : 3.0);
+    let roadMult = 1.0;
+    if (road === 'trackless') roadMult = 0.75;
+    else if (road === 'difficult') roadMult = 0.5;
+    const effectiveMph = baseMph * roadMult;
+    const milesToday = parseFloat((effectiveMph * marchHours).toFixed(1));
+
+    try {
+        const res = await fetch('/api/travel/march', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                marchHours,
+                pace,
+                terrain,
+                road,
+                miles: milesToday
+            })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.travel) {
+                appState.travel = data.travel;
+            }
+            if (data.timeWeather) {
+                appState.timeWeather = data.timeWeather;
+                renderTimeWeatherHUD();
+            }
+            renderTravelMarchHistory();
+            showToast(`Overland march logged: Marched ${milesToday} miles (${marchHours} hrs) through ${terrain}! Clock advanced.`, "success");
+            if (data.expiredTimers && data.expiredTimers.length > 0) {
+                showToast(`Timers expired: ${data.expiredTimers.join(', ')}`, "warning");
+            }
+        } else {
+            showToast("Failed to log overland march.", "error");
+        }
+    } catch (e) {
+        console.error("Travel march error:", e);
+        showToast("Error advancing travel time.", "error");
+    }
+}
+
+function rollTravelNavigationCheck() {
+    playDiceSound();
+    const terrain = document.getElementById('travel-terrain-select')?.value || 'Forest';
+    const bonus = parseInt(document.getElementById('travel-nav-bonus')?.value, 10) || 0;
+    const dc = TERRAIN_HAZARDS[terrain]?.dc || 15;
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const total = d20 + bonus;
+    const isSuccess = total >= dc;
+
+    const box = document.getElementById('travel-check-result-box');
+    if (box) {
+        box.innerHTML = `
+            <div class="flex items-center justify-between border-b border-ledger-800 pb-1.5 mb-1.5">
+                <span class="font-bold text-sky-300">🧭 Navigation Roll: ${d20} + ${bonus} = <strong class="text-base">${total}</strong> (vs DC ${dc})</span>
+                <span class="px-2 py-0.2 rounded text-[10px] font-bold ${isSuccess ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' : 'bg-rose-950 text-rose-300 border border-rose-700'}">${isSuccess ? 'ON COURSE' : 'LOST'}</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-snug">
+                ${isSuccess ? '✓ The party maintains steady bearing along landmarks without straying from the intended trail.' : '✕ Disoriented in difficult terrain! The party drifts off course, losing 1d4 hours or miles to backtracking.'}
+            </p>
+        `;
+    }
+}
+
+function rollTravelForagingCheck() {
+    playDiceSound();
+    const terrain = document.getElementById('travel-terrain-select')?.value || 'Forest';
+    const bonus = parseInt(document.getElementById('travel-forage-bonus')?.value, 10) || 0;
+    const dc = TERRAIN_HAZARDS[terrain]?.dc || 15;
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const total = d20 + bonus;
+    const isSuccess = total >= dc;
+
+    const box = document.getElementById('travel-check-result-box');
+    if (box) {
+        const foodPounds = Math.floor(Math.random() * 6) + 1 + Math.max(0, bonus);
+        box.innerHTML = `
+            <div class="flex items-center justify-between border-b border-ledger-800 pb-1.5 mb-1.5">
+                <span class="font-bold text-emerald-300">🌿 Foraging Roll: ${d20} + ${bonus} = <strong class="text-base">${total}</strong> (vs DC ${dc})</span>
+                <span class="px-2 py-0.2 rounded text-[10px] font-bold ${isSuccess ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' : 'bg-rose-950 text-rose-300 border border-rose-700'}">${isSuccess ? 'SUCCESS' : 'FAILED'}</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-snug">
+                ${isSuccess ? `✓ Abundant foraging! Gathered <strong class="text-amber-300">${foodPounds} lbs of edible rations & potable water</strong> for the party.` : '✕ Barren stretch; failed to locate sufficient edible game or clean drinking water.'}
+            </p>
+        `;
+    }
+}
+
+function rollWildernessComplication() {
+    playDiceSound();
+    const event = EXPLORATION_COMPLICATIONS[Math.floor(Math.random() * EXPLORATION_COMPLICATIONS.length)];
+    const box = document.getElementById('travel-complication-result-box');
+    if (box) {
+        box.innerHTML = `
+            <div class="space-y-1">
+                <div class="flex items-center gap-1.5 text-amber-300 font-bold text-xs">
+                    <span>🎲</span> <span>${escapeHTML(event.title)}</span>
+                </div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">${escapeHTML(event.desc)}</p>
+            </div>
+            <div class="pt-2 border-t border-ledger-900 flex justify-end">
+                <button onclick="rollWildernessComplication()" class="text-[10px] text-purple-300 hover:text-white underline">Reroll Table</button>
+            </div>
+        `;
+    }
+    showToast(`Roadside Discovery: ${event.title}`, "info");
+}
+
+// -----------------------------------------------------------------------------
+// 6. PLAYER INVENTORY, CURRENCY & SHARED PARTY STASH
+// -----------------------------------------------------------------------------
+function openPartyInventoryModal(targetId = 'stash') {
+    appState.activeInventoryTab = targetId || 'stash';
+    const modal = document.getElementById('party-inventory-modal');
+    if (!modal) return;
+    renderPartyInventoryModal();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function setInventoryTab(tabId) {
+    appState.activeInventoryTab = tabId;
+    renderPartyInventoryModal();
+}
+
+function renderPartyInventoryModal() {
+    const tabsContainer = document.getElementById('inventory-modal-tabs');
+    const bodyContainer = document.getElementById('inventory-modal-body');
+    const totalGpEl = document.getElementById('inventory-party-total-gp');
+    if (!tabsContainer || !bodyContainer) return;
+
+    const party = appState.party || [];
+    const stash = appState.partyStash || { coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+    const activeTab = appState.activeInventoryTab || 'stash';
+
+    // Calculate total party wealth
+    let totalGp = (stash.coins?.pp || 0) * 10 + (stash.coins?.gp || 0) + (stash.coins?.sp || 0) * 0.1 + (stash.coins?.cp || 0) * 0.01;
+    party.forEach(pc => {
+        const c = pc.currency || { pp: 0, gp: 0, sp: 0, cp: 0 };
+        totalGp += (c.pp || 0) * 10 + (c.gp || 0) + (c.sp || 0) * 0.1 + (c.cp || 0) * 0.01;
+    });
+    if (totalGpEl) totalGpEl.textContent = `${totalGp.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} GP`;
+
+    // Render Tabs
+    let tabsHtml = `
+        <button onclick="setInventoryTab('stash')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition ${activeTab === 'stash' ? 'bg-amber-500 text-ledger-950 shadow' : 'bg-ledger-900 border border-ledger-700 text-slate-300 hover:text-white'}">
+            <span>🎒</span> <span>Shared Party Stash</span>
+            <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono ${activeTab === 'stash' ? 'bg-ledger-950 text-amber-300' : 'bg-ledger-800 text-slate-400'}">${(stash.items || []).length}</span>
+        </button>
+    `;
+    party.forEach(pc => {
+        const count = (pc.inventory || []).length;
+        const isCurrent = activeTab === pc.id;
+        tabsHtml += `
+            <button onclick="setInventoryTab('${pc.id}')" class="px-3 py-1.5 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition ${isCurrent ? 'bg-amber-500 text-ledger-950 shadow font-bold' : 'bg-ledger-900 border border-ledger-700 text-slate-300 hover:text-white'}">
+                <span>🛡️</span> <span>${escapeHTML(pc.name)}</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isCurrent ? 'bg-ledger-950 text-amber-300' : 'bg-ledger-800 text-slate-400'}">${count}</span>
+            </button>
+        `;
+    });
+    tabsContainer.innerHTML = tabsHtml;
+
+    // Render Tab Body
+    if (activeTab === 'stash') {
+        renderSharedStashView(bodyContainer, stash);
+    } else {
+        const pc = party.find(p => p.id === activeTab);
+        if (pc) renderPCInventoryView(bodyContainer, pc);
+        else renderSharedStashView(bodyContainer, stash);
+    }
+}
+
+function renderSharedStashView(container, stash) {
+    const coins = stash.coins || { pp: 0, gp: 0, sp: 0, cp: 0 };
+    const items = stash.items || [];
+    let totalWeight = items.reduce((acc, it) => acc + (parseFloat(it.weight) || 0) * (it.quantity || 1), 0);
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <!-- Stash Header & Coin Purse -->
+            <div class="bg-ledger-950/80 border border-ledger-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🧰</span>
+                        <h4 class="font-display font-bold text-sm sm:text-base text-amber-300">Party Bag of Holding / Wagon Vault</h4>
+                    </div>
+                    <p class="text-xs text-slate-400">Total weight stored: <strong class="text-slate-200 font-mono">${totalWeight.toFixed(1)} lbs</strong></p>
+                </div>
+
+                <!-- Coin Purse Controls -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    ${['pp', 'gp', 'sp', 'cp'].map(c => `
+                        <div class="bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1.5 flex items-center gap-2 text-xs">
+                            <span class="font-bold uppercase text-[10px] text-amber-400 font-mono">${c}</span>
+                            <span class="font-mono font-bold text-slate-100">${coins[c] || 0}</span>
+                            <div class="flex items-center gap-1 ml-1">
+                                <button onclick="modifyCurrency('stash', '${c}', -10)" class="w-4 h-4 rounded bg-ledger-800 hover:bg-rose-950 text-slate-400 text-[10px] flex items-center justify-center">-</button>
+                                <button onclick="modifyCurrency('stash', '${c}', 10)" class="w-4 h-4 rounded bg-ledger-800 hover:bg-emerald-950 text-emerald-300 text-[10px] flex items-center justify-center">+</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                    <button onclick="setCurrencyPrompt('stash')" class="px-2 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] font-semibold transition">Adjust</button>
+                </div>
+            </div>
+
+            <!-- Items Table & Add Button -->
+            <div class="bg-ledger-950/80 border border-ledger-800 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h5 class="font-display font-bold text-xs uppercase tracking-wider text-amber-400">Stashed Party Equipment & Loot</h5>
+                    <button onclick="openCompendiumItemPicker('stash')" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow transition">
+                        + Add Item to Stash
+                    </button>
+                </div>
+
+                ${items.length === 0 ? `
+                    <div class="text-xs text-slate-500 italic p-6 text-center">The party stash is currently empty. Add items from shop loot or custom entries.</div>
+                ` : `
+                    <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                        ${items.map((it, idx) => `
+                            <div class="p-3 rounded-xl bg-ledger-900 border border-ledger-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <div class="space-y-0.5 min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-bold text-slate-100 text-xs">${escapeHTML(it.name)}</span>
+                                        <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-ledger-950 border border-ledger-700 text-amber-300">${it.rarity || 'Common'}</span>
+                                        <span class="text-[10px] text-slate-400">(${it.category || 'Gear'})</span>
+                                        ${it.weight ? `<span class="text-[10px] text-slate-400 font-mono">• ${it.weight} lbs</span>` : ''}
+                                    </div>
+                                    ${it.notes ? `<p class="text-[11px] text-slate-400 truncate">${escapeHTML(it.notes)}</p>` : ''}
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-700 rounded-lg px-2 py-0.5 text-xs font-mono">
+                                        <button onclick="modifyItemQty('stash', ${idx}, -1)" class="text-slate-400 hover:text-white">-</button>
+                                        <span class="px-1 font-bold text-slate-200">${it.quantity || 1}</span>
+                                        <button onclick="modifyItemQty('stash', ${idx}, 1)" class="text-slate-400 hover:text-white">+</button>
+                                    </div>
+                                    <select onchange="transferItem('stash', this.value, ${idx})" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2 py-1 text-[11px] text-slate-200">
+                                        <option value="">Give to PC...</option>
+                                        ${(appState.party || []).map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('')}
+                                    </select>
+                                    <button onclick="deleteInventoryItem('stash', ${idx})" class="text-slate-500 hover:text-rose-400 p-1 text-xs" title="Delete Item">🗑️</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function renderPCInventoryView(container, pc) {
+    const coins = pc.currency || { pp: 0, gp: 0, sp: 0, cp: 0 };
+    const items = pc.inventory || [];
+    const str = pc.str || 10;
+    const maxWeight = pc.maxCarryWeight || (str * 15);
+    const totalWeight = items.reduce((acc, it) => acc + (parseFloat(it.weight) || 0) * (it.quantity || 1), 0);
+    const isOverCapacity = totalWeight > maxWeight;
+    const isHeavilyEncumbered = totalWeight > (str * 10);
+
+    // 5.5e Attunement (Max 3 Slots)
+    const attunedItems = items.filter(it => it.attuned);
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <!-- PC Header & Capacity Bar -->
+            <div class="bg-ledger-950/80 border border-ledger-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🛡️</span>
+                        <h4 class="font-display font-bold text-sm sm:text-base text-amber-300">${escapeHTML(pc.name)}'s Gear & Coin Purse</h4>
+                        <span class="text-[10px] text-slate-400 font-mono">(${escapeHTML(pc.classRole || '')})</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span>Encumbrance: <strong class="font-mono ${isOverCapacity ? 'text-rose-400' : 'text-slate-200'}">${totalWeight.toFixed(1)} / ${maxWeight} lbs</strong></span>
+                        ${isOverCapacity ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-950 border border-rose-700 text-rose-300">OVER CARRY LIMIT</span>' : (isHeavilyEncumbered ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-950 border border-amber-700 text-amber-300">-20ft Speed</span>' : '')}
+                    </div>
+                </div>
+
+                <!-- Coin Purse Controls -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    ${['pp', 'gp', 'sp', 'cp'].map(c => `
+                        <div class="bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1.5 flex items-center gap-2 text-xs">
+                            <span class="font-bold uppercase text-[10px] text-amber-400 font-mono">${c}</span>
+                            <span class="font-mono font-bold text-slate-100">${coins[c] || 0}</span>
+                            <div class="flex items-center gap-1 ml-1">
+                                <button onclick="modifyCurrency('${pc.id}', '${c}', -5)" class="w-4 h-4 rounded bg-ledger-800 hover:bg-rose-950 text-slate-400 text-[10px] flex items-center justify-center">-</button>
+                                <button onclick="modifyCurrency('${pc.id}', '${c}', 5)" class="w-4 h-4 rounded bg-ledger-800 hover:bg-emerald-950 text-emerald-300 text-[10px] flex items-center justify-center">+</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                    <button onclick="setCurrencyPrompt('${pc.id}')" class="px-2 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-[11px] font-semibold transition">Adjust</button>
+                </div>
+            </div>
+
+            <!-- 5.5e Attunement Tracker (3 Slots) -->
+            <div class="bg-ledger-950/80 border border-ledger-800 rounded-2xl p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-display font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                        <span>🔮</span> <span>5.5e Magic Item Attunement (${attunedItems.length} / 3 Slots)</span>
+                    </span>
+                    <span class="text-[10px] font-mono text-slate-400">Short Rest to Attune / End Attunement</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    ${[0, 1, 2].map(slotIdx => {
+                        const att = attunedItems[slotIdx];
+                        return `
+                            <div class="p-2 rounded-xl border ${att ? 'bg-purple-950/30 border-purple-800/60 text-purple-200' : 'bg-ledger-900/60 border-ledger-800 text-slate-500'} flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="w-2 h-2 rounded-full ${att ? 'bg-purple-400 animate-pulse' : 'bg-slate-700'}"></span>
+                                    <span class="font-medium truncate">${att ? escapeHTML(att.name) : 'Empty Slot'}</span>
+                                </div>
+                                ${att ? `<button onclick="toggleAttuneItem('${pc.id}', ${items.indexOf(att)})" class="text-slate-400 hover:text-rose-400 text-[10px]">Unattune</button>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- Inventory Items Table -->
+            <div class="bg-ledger-950/80 border border-ledger-800 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h5 class="font-display font-bold text-xs uppercase tracking-wider text-amber-400">Equipped Gear & Backpack</h5>
+                    <button onclick="openCompendiumItemPicker('${pc.id}')" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow transition">
+                        + Add Item to Character
+                    </button>
+                </div>
+
+                ${items.length === 0 ? `
+                    <div class="text-xs text-slate-500 italic p-6 text-center">No inventory items recorded for this character.</div>
+                ` : `
+                    <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                        ${items.map((it, idx) => `
+                            <div class="p-3 rounded-xl bg-ledger-900 border ${it.equipped ? 'border-amber-500/50 bg-amber-500/5' : 'border-ledger-700/80'} flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <div class="space-y-0.5 min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <button onclick="toggleEquipItem('${pc.id}', ${idx})" class="px-2 py-0.5 rounded text-[10px] font-bold transition ${it.equipped ? 'bg-amber-500 text-ledger-950' : 'bg-ledger-950 border border-ledger-700 text-slate-400 hover:text-white'}">
+                                            ${it.equipped ? '⚔️ Equipped' : 'Equip'}
+                                        </button>
+                                        <span class="font-bold text-slate-100 text-xs">${escapeHTML(it.name)}</span>
+                                        <span class="px-1.5 py-0.2 rounded text-[10px] font-mono bg-ledger-950 border border-ledger-700 text-amber-300">${it.rarity || 'Common'}</span>
+                                        ${it.weight ? `<span class="text-[10px] text-slate-400 font-mono">• ${it.weight} lbs</span>` : ''}
+                                        ${it.attuned ? '<span class="px-1.5 py-0.2 rounded text-[10px] bg-purple-950 border border-purple-800 text-purple-300 font-bold">Attuned</span>' : ''}
+                                    </div>
+                                    ${it.notes ? `<p class="text-[11px] text-slate-400 truncate">${escapeHTML(it.notes)}</p>` : ''}
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <button onclick="toggleAttuneItem('${pc.id}', ${idx})" class="px-2 py-1 rounded bg-ledger-950 border border-purple-800/80 text-purple-300 hover:bg-purple-950 text-[11px] font-semibold transition" title="Toggle 5.5e Attunement">
+                                        ${it.attuned ? '🔮 Attuned' : '🔮 Attune'}
+                                    </button>
+                                    <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-700 rounded-lg px-2 py-0.5 text-xs font-mono">
+                                        <button onclick="modifyItemQty('${pc.id}', ${idx}, -1)" class="text-slate-400 hover:text-white">-</button>
+                                        <span class="px-1 font-bold text-slate-200">${it.quantity || 1}</span>
+                                        <button onclick="modifyItemQty('${pc.id}', ${idx}, 1)" class="text-slate-400 hover:text-white">+</button>
+                                    </div>
+                                    <button onclick="transferItem('${pc.id}', 'stash', ${idx})" class="px-2 py-1 rounded bg-ledger-950 border border-ledger-700 text-slate-300 hover:text-white text-[11px]" title="Move to Party Bag">
+                                        🎒 Stash
+                                    </button>
+                                    <button onclick="deleteInventoryItem('${pc.id}', ${idx})" class="text-slate-500 hover:text-rose-400 p-1 text-xs" title="Delete Item">🗑️</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function quickAddItemToInventory(targetId) {
+    const name = prompt("Enter item name (e.g. Potion of Healing, Longsword +1, 50ft Rope):");
+    if (!name || !name.trim()) return;
+    const qtyStr = prompt("Quantity:", "1");
+    const weightStr = prompt("Weight (lbs per item):", "1");
+    const qty = parseInt(qtyStr, 10) || 1;
+    const weight = parseFloat(weightStr) || 1;
+
+    const newItem = {
+        id: `inv-${Date.now().toString(36)}`,
+        name: name.trim(),
+        quantity: qty,
+        weight: weight,
+        category: "Equipment",
+        rarity: "Common",
+        equipped: false,
+        attuned: false,
+        notes: ""
+    };
+
+    if (targetId === 'stash') {
+        const stash = appState.partyStash || { coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+        if (!stash.items) stash.items = [];
+        stash.items.push(newItem);
+        savePartyStashAPI(stash);
+    } else {
+        const pc = (appState.party || []).find(p => p.id === targetId);
+        if (!pc) return;
+        if (!pc.inventory) pc.inventory = [];
+        pc.inventory.push(newItem);
+        savePCInventoryAPI(targetId, pc.inventory);
+    }
+    renderPartyInventoryModal();
+}
+
+// -----------------------------------------------------------------------------
+// COMPENDIUM ITEM PICKER (FOR INVENTORY / STASH)
+// -----------------------------------------------------------------------------
+async function openCompendiumItemPicker(targetId = 'stash') {
+    appState.itemPickerTarget = targetId;
+    appState.itemPickerCategory = 'All';
+
+    const modal = document.getElementById('inventory-compendium-picker-modal');
+    if (!modal) return;
+
+    if (!appState.items || appState.items.length === 0) {
+        try {
+            const res = await fetch('/api/items');
+            if (res.ok) {
+                const fetched = await res.json();
+                if (Array.isArray(fetched)) appState.items = fetched;
+            }
+        } catch (e) {
+            console.error("Error fetching items for picker:", e);
+        }
+    }
+
+    const label = document.getElementById('inv-picker-target-label');
+    if (label) {
+        if (targetId === 'stash') {
+            label.textContent = "Adding items from 5.5e compendium to Shared Party Stash / Bag of Holding.";
+        } else {
+            const pc = (appState.party || []).find(p => p.id === targetId);
+            label.textContent = `Adding items from 5.5e compendium to ${pc ? pc.name : 'Character'}'s inventory.`;
+        }
+    }
+
+    const searchInput = document.getElementById('inv-picker-search');
+    if (searchInput) searchInput.value = '';
+
+    renderCompendiumPickerCategories();
+    renderCompendiumPickerItems();
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function renderCompendiumPickerCategories() {
+    const container = document.getElementById('inv-picker-category-filters');
+    if (!container) return;
+
+    const categories = ['All', 'Weapon', 'Armor', 'Potion', 'Ring', 'Scroll', 'Wand', 'Staff', 'Wondrous Item', 'Adventuring Gear'];
+    const activeCat = appState.itemPickerCategory || 'All';
+
+    container.innerHTML = categories.map(cat => {
+        const isActive = activeCat.toLowerCase() === cat.toLowerCase();
+        return `
+            <button onclick="setCompendiumPickerCategory('${cat}')" class="px-2.5 py-1 rounded-lg font-medium transition whitespace-nowrap ${isActive ? 'bg-amber-500 text-ledger-950 font-bold shadow' : 'bg-ledger-900 border border-ledger-700 text-slate-300 hover:text-white'}">
+                ${cat}
+            </button>
+        `;
+    }).join('');
+}
+
+function setCompendiumPickerCategory(cat) {
+    appState.itemPickerCategory = cat;
+    renderCompendiumPickerCategories();
+    renderCompendiumPickerItems();
+}
+
+function filterCompendiumPickerItems() {
+    renderCompendiumPickerItems();
+}
+
+function renderCompendiumPickerItems() {
+    const list = document.getElementById('inv-picker-items-list');
+    const countLabel = document.getElementById('inv-picker-count-label');
+    if (!list) return;
+
+    const query = (document.getElementById('inv-picker-search')?.value || '').toLowerCase().trim();
+    const activeCat = (appState.itemPickerCategory || 'All').toLowerCase();
+
+    let items = appState.items || [];
+
+    if (activeCat !== 'all') {
+        items = items.filter(it => {
+            const type = (it.type || it.category || '').toLowerCase();
+            return type.includes(activeCat);
+        });
+    }
+
+    if (query) {
+        items = items.filter(it => {
+            const name = (it.name || '').toLowerCase();
+            const desc = (it.description || '').toLowerCase();
+            const type = (it.type || it.category || '').toLowerCase();
+            const rarity = (it.rarity || '').toLowerCase();
+            return name.includes(query) || desc.includes(query) || type.includes(query) || rarity.includes(query);
+        });
+    }
+
+    if (countLabel) {
+        countLabel.textContent = `Showing ${items.length} items from compendium`;
+    }
+
+    if (items.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-12 text-slate-500 space-y-2">
+                <div class="text-2xl">🔍</div>
+                <p class="text-xs">No items match your search or category filter.</p>
+                <button onclick="openCustomItemFromPicker()" class="mt-2 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition">
+                    + Create Custom Item
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = items.map((it, idx) => {
+        const rarity = it.rarity || 'Common';
+        let rarityClass = 'bg-slate-800 text-slate-300 border-slate-700';
+        if (rarity === 'Uncommon') rarityClass = 'bg-emerald-950 text-emerald-300 border-emerald-700';
+        else if (rarity === 'Rare') rarityClass = 'bg-sky-950 text-sky-300 border-sky-700';
+        else if (rarity === 'Very Rare') rarityClass = 'bg-purple-950 text-purple-300 border-purple-700';
+        else if (rarity === 'Legendary' || rarity === 'Artifact') rarityClass = 'bg-amber-950 text-amber-300 border-amber-700';
+
+        const safeId = `comp-item-${idx}`;
+        const desc = (it.description || '').slice(0, 130);
+
+        return `
+            <div class="p-3 rounded-2xl bg-ledger-950/80 border border-ledger-800 hover:border-ledger-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="space-y-1 min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-bold text-slate-100 text-xs">${escapeHTML(it.name)}</span>
+                        <span class="px-1.5 py-0.2 rounded border text-[10px] font-mono ${rarityClass}">${rarity}</span>
+                        <span class="text-[10px] text-slate-400">(${escapeHTML(it.type || it.category || 'Gear')})</span>
+                        ${it.weight ? `<span class="text-[10px] text-slate-400 font-mono">• ${it.weight} lbs</span>` : ''}
+                        ${it.cost ? `<span class="text-[10px] text-amber-300 font-mono font-bold">• ${escapeHTML(it.cost)}</span>` : ''}
+                    </div>
+                    ${desc ? `<p class="text-[11px] text-slate-400 line-clamp-1">${escapeHTML(desc)}</p>` : ''}
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-1 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-xs">
+                        <label class="text-[10px] text-slate-400">Qty:</label>
+                        <input id="${safeId}-qty" type="number" min="1" max="99" value="1" class="w-10 bg-transparent text-center font-mono font-bold text-white focus:outline-none">
+                    </div>
+                    <button onclick="addItemFromPicker('${escapeHTML(it.id || it.name)}', '${safeId}-qty')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition shadow flex items-center gap-1">
+                        <span>+ Add</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function addItemFromPicker(itemIdOrName, qtyInputId) {
+    const targetId = appState.itemPickerTarget || 'stash';
+    const qtyInput = document.getElementById(qtyInputId);
+    const qty = parseInt(qtyInput ? qtyInput.value : 1, 10) || 1;
+
+    let item = (appState.items || []).find(x => x.id === itemIdOrName || x.name === itemIdOrName);
+    if (!item) {
+        showToast("Item not found in compendium.", "warning");
+        return;
+    }
+
+    const newItem = {
+        id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+        name: item.name,
+        quantity: qty,
+        weight: parseFloat(item.weight) || 0,
+        category: item.type || item.category || "Equipment",
+        rarity: item.rarity || "Common",
+        equipped: false,
+        attuned: false,
+        notes: item.description ? item.description.slice(0, 200) : ""
+    };
+
+    if (targetId === 'stash') {
+        const stash = appState.partyStash || { coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+        if (!stash.items) stash.items = [];
+        const existing = stash.items.find(x => x.name.toLowerCase() === newItem.name.toLowerCase());
+        if (existing) {
+            existing.quantity = (existing.quantity || 1) + qty;
+        } else {
+            stash.items.push(newItem);
+        }
+        await savePartyStashAPI(stash);
+        showToast(`Added ${qty}x ${item.name} to Shared Party Stash!`, "success");
+    } else {
+        const pc = (appState.party || []).find(p => p.id === targetId);
+        if (!pc) return;
+        if (!pc.inventory) pc.inventory = [];
+        const existing = pc.inventory.find(x => x.name.toLowerCase() === newItem.name.toLowerCase());
+        if (existing) {
+            existing.quantity = (existing.quantity || 1) + qty;
+        } else {
+            pc.inventory.push(newItem);
+        }
+        await savePCInventoryAPI(targetId, pc.inventory);
+        showToast(`Added ${qty}x ${item.name} to ${pc.name}'s inventory!`, "success");
+    }
+    renderPartyInventoryModal();
+}
+
+function openCustomItemFromPicker() {
+    const targetId = appState.itemPickerTarget || 'stash';
+    closeModal('inventory-compendium-picker-modal');
+    quickAddItemToInventory(targetId);
+}
+
+async function toggleEquipItem(pcId, itemIndex) {
+    const pc = (appState.party || []).find(p => p.id === pcId);
+    if (!pc || !pc.inventory || !pc.inventory[itemIndex]) return;
+    pc.inventory[itemIndex].equipped = !pc.inventory[itemIndex].equipped;
+    await savePCInventoryAPI(pcId, pc.inventory);
+    renderPartyInventoryModal();
+}
+
+async function toggleAttuneItem(pcId, itemIndex) {
+    const pc = (appState.party || []).find(p => p.id === pcId);
+    if (!pc || !pc.inventory || !pc.inventory[itemIndex]) return;
+    const it = pc.inventory[itemIndex];
+    if (!it.attuned) {
+        const currentCount = pc.inventory.filter(x => x.attuned).length;
+        if (currentCount >= 3) {
+            showToast("5.5e Rule: Characters may only attune to a maximum of 3 magic items at once.", "warning");
+            return;
+        }
+        it.attuned = true;
+    } else {
+        it.attuned = false;
+    }
+    await savePCInventoryAPI(pcId, pc.inventory);
+    renderPartyInventoryModal();
+}
+
+async function modifyItemQty(targetId, itemIndex, delta) {
+    if (targetId === 'stash') {
+        const stash = appState.partyStash || { coins: {}, items: [] };
+        if (!stash.items || !stash.items[itemIndex]) return;
+        stash.items[itemIndex].quantity = (stash.items[itemIndex].quantity || 1) + delta;
+        if (stash.items[itemIndex].quantity <= 0) {
+            stash.items.splice(itemIndex, 1);
+        }
+        await savePartyStashAPI(stash);
+    } else {
+        const pc = (appState.party || []).find(p => p.id === targetId);
+        if (!pc || !pc.inventory || !pc.inventory[itemIndex]) return;
+        pc.inventory[itemIndex].quantity = (pc.inventory[itemIndex].quantity || 1) + delta;
+        if (pc.inventory[itemIndex].quantity <= 0) {
+            pc.inventory.splice(itemIndex, 1);
+        }
+        await savePCInventoryAPI(targetId, pc.inventory);
+    }
+    renderPartyInventoryModal();
+}
+
+async function deleteInventoryItem(targetId, itemIndex) {
+    if (targetId === 'stash') {
+        const stash = appState.partyStash || { coins: {}, items: [] };
+        if (!stash.items || !stash.items[itemIndex]) return;
+        stash.items.splice(itemIndex, 1);
+        await savePartyStashAPI(stash);
+    } else {
+        const pc = (appState.party || []).find(p => p.id === targetId);
+        if (!pc || !pc.inventory || !pc.inventory[itemIndex]) return;
+        pc.inventory.splice(itemIndex, 1);
+        await savePCInventoryAPI(targetId, pc.inventory);
+    }
+    renderPartyInventoryModal();
+}
+
+async function transferItem(sourceId, targetId, itemIndex) {
+    if (!targetId) return;
+    let itemToTransfer = null;
+
+    if (sourceId === 'stash') {
+        const stash = appState.partyStash || { coins: {}, items: [] };
+        if (!stash.items || !stash.items[itemIndex]) return;
+        itemToTransfer = Object.assign({}, stash.items[itemIndex]);
+        stash.items.splice(itemIndex, 1);
+        await savePartyStashAPI(stash);
+    } else {
+        const sourcePC = (appState.party || []).find(p => p.id === sourceId);
+        if (!sourcePC || !sourcePC.inventory || !sourcePC.inventory[itemIndex]) return;
+        itemToTransfer = Object.assign({}, sourcePC.inventory[itemIndex]);
+        sourcePC.inventory.splice(itemIndex, 1);
+        await savePCInventoryAPI(sourceId, sourcePC.inventory);
+    }
+
+    if (targetId === 'stash') {
+        const stash = appState.partyStash || { coins: {}, items: [] };
+        if (!stash.items) stash.items = [];
+        itemToTransfer.equipped = false;
+        itemToTransfer.attuned = false;
+        stash.items.push(itemToTransfer);
+        await savePartyStashAPI(stash);
+        showToast(`Transferred ${itemToTransfer.name} to Party Stash.`, "info");
+    } else {
+        const destPC = (appState.party || []).find(p => p.id === targetId);
+        if (!destPC) return;
+        if (!destPC.inventory) destPC.inventory = [];
+        itemToTransfer.equipped = false;
+        itemToTransfer.attuned = false;
+        destPC.inventory.push(itemToTransfer);
+        await savePCInventoryAPI(targetId, destPC.inventory);
+        showToast(`Gave ${itemToTransfer.name} to ${destPC.name}.`, "info");
+    }
+
+    renderPartyInventoryModal();
+}
+
+async function modifyCurrency(targetId, coin, delta) {
+    if (targetId === 'stash') {
+        const stash = appState.partyStash || { coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+        if (!stash.coins) stash.coins = { pp: 0, gp: 0, sp: 0, cp: 0 };
+        stash.coins[coin] = Math.max(0, (stash.coins[coin] || 0) + delta);
+        await savePartyStashAPI(stash);
+    } else {
+        const pc = (appState.party || []).find(p => p.id === targetId);
+        if (!pc) return;
+        if (!pc.currency) pc.currency = { pp: 0, gp: 0, sp: 0, cp: 0 };
+        pc.currency[coin] = Math.max(0, (pc.currency[coin] || 0) + delta);
+        await savePCCurrencyAPI(targetId, pc.currency);
+    }
+    renderPartyInventoryModal();
+    renderShopInventory();
+}
+
+async function setCurrencyPrompt(targetId) {
+    const isStash = targetId === 'stash';
+    const current = isStash ? (appState.partyStash?.coins || {}) : ((appState.party || []).find(p => p.id === targetId)?.currency || {});
+    const gpStr = prompt(`Set GP amount (Current: ${current.gp || 0}):`, current.gp || 0);
+    if (gpStr === null) return;
+    const gp = Math.max(0, parseInt(gpStr, 10) || 0);
+
+    if (isStash) {
+        const stash = appState.partyStash || { coins: {}, items: [] };
+        if (!stash.coins) stash.coins = {};
+        stash.coins.gp = gp;
+        await savePartyStashAPI(stash);
+    } else {
+        const pc = (appState.party || []).find(p => p.id === targetId);
+        if (!pc) return;
+        if (!pc.currency) pc.currency = {};
+        pc.currency.gp = gp;
+        await savePCCurrencyAPI(targetId, pc.currency);
+    }
+    renderPartyInventoryModal();
+    renderShopInventory();
+}
+
+async function savePartyStashAPI(stash) {
+    try {
+        const res = await fetch('/api/party/stash', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(stash)
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.partyStash) appState.partyStash = data.partyStash;
+        }
+    } catch (e) {
+        console.error("Error saving party stash:", e);
+    }
+}
+
+async function savePCInventoryAPI(pcId, inventory) {
+    try {
+        const res = await fetch(`/api/party/${pcId}/inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inventory })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.party) appState.party = data.party;
+        }
+    } catch (e) {
+        console.error("Error saving PC inventory:", e);
+    }
+}
+
+async function savePCCurrencyAPI(pcId, currency) {
+    try {
+        const res = await fetch(`/api/party/${pcId}/inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currency })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.party) appState.party = data.party;
+        }
+    } catch (e) {
+        console.error("Error saving PC currency:", e);
+    }
+}
+
+function giveItemToParty(itemIdOrObj) {
+    let item = typeof itemIdOrObj === 'string' ? (appState.items || []).find(x => x.id === itemIdOrObj) : itemIdOrObj;
+    if (!item) {
+        showToast("Item not found.", "warning");
+        return;
+    }
+
+    const party = appState.party || [];
+    const options = ["0: Shared Party Stash / Bag of Holding"].concat(party.map((p, i) => `${i + 1}: ${p.name}`));
+    const choice = prompt(`Give '${item.name}' to:\n\n${options.join('\n')}\n\nEnter number (0 for Stash):`, "0");
+    if (choice === null) return;
+    const num = parseInt(choice.trim(), 10);
+
+    const newItem = {
+        id: `inv-${Date.now().toString(36)}`,
+        name: item.name,
+        quantity: 1,
+        weight: parseFloat(item.weight) || 1,
+        category: item.type || "Equipment",
+        rarity: item.rarity || "Common",
+        equipped: false,
+        attuned: false,
+        notes: item.description ? item.description.slice(0, 150) : ""
+    };
+
+    if (isNaN(num) || num <= 0 || num > party.length) {
+        const stash = appState.partyStash || { coins: {}, items: [] };
+        if (!stash.items) stash.items = [];
+        stash.items.push(newItem);
+        savePartyStashAPI(stash);
+        showToast(`Added '${item.name}' to Shared Party Stash!`, "success");
+    } else {
+        const targetPC = party[num - 1];
+        if (!targetPC.inventory) targetPC.inventory = [];
+        targetPC.inventory.push(newItem);
+        savePCInventoryAPI(targetPC.id, targetPC.inventory);
+        showToast(`Given '${item.name}' to ${targetPC.name}!`, "success");
+    }
+}
+
 window.onload = async function() {
     initSidebarState();
     loadArcaneSettings();
@@ -9198,10 +14887,16 @@ window.onload = async function() {
     renderItemsView();
     renderSecrets();
     renderHandouts();
+    renderOverworld();
+    renderFactionRelations();
+    renderPantheon();
+    renderTimeline();
+    renderTravel();
     generateShop();
     renderBroadcastPill();
     renderCampaignSettingsCard();
     renderModuleToggles();
     if (window.LightingEngine) window.LightingEngine.init();
 };
+
 

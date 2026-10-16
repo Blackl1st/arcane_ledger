@@ -1,0 +1,51 @@
+{
+  "currency": {
+    "pp": 2,
+    "gp": 240,
+    "sp": 85,
+    "cp": 40
+  },
+  "items": [
+    {
+      "id": "stash-1",
+      "name": "Bag of Holding",
+      "category": "Wondrous Item",
+      "rarity": "Uncommon",
+      "qty": 1,
+      "weight": 5.0,
+      "cost": "400 gp",
+      "notes": "Holds up to 500 lbs (max 64 cubic feet), always weighs 5 lbs."
+    },
+    {
+      "id": "stash-2",
+      "name": "Potion of Healing (Greater)",
+      "category": "Potion",
+      "rarity": "Uncommon",
+      "qty": 2,
+      "weight": 0.5,
+      "cost": "150 gp",
+      "notes": "Bonus Action to drink or administer: restores 4d4 + 4 HP."
+    },
+    {
+      "id": "stash-3",
+      "name": "Spell Scroll of Revivify",
+      "category": "Scroll",
+      "rarity": "Uncommon",
+      "qty": 1,
+      "weight": 0.1,
+      "cost": "300 gp",
+      "notes": "3rd-level Cleric/Paladin scroll; no 300 gp diamond needed when cast from scroll."
+    },
+    {
+      "id": "stash-4",
+      "name": "50ft Hempen Rope, Grappling Hook & Crowbar",
+      "category": "Adventuring Gear",
+      "rarity": "Mundane",
+      "qty": 1,
+      "weight": 16.0,
+      "cost": "6 gp",
+      "notes": "Party dungeoneering kit stored in the Bag of Holding."
+    }
+  ],
+  "notes": "Shared party treasury, gemstones, and unassigned dungeon salvage."
+}

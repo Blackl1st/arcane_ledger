@@ -22,7 +22,7 @@
         "id": "clk-syndicate-heist",
         "title": "Arcane Vault Infiltration",
         "totalTicks": 6,
-        "currentTicks": 5,
+        "currentTicks": 3,
         "outcome": "The Syndicate breaches the Highspire treasury and steals the Sun-Crest Amulet, sending the city into martial lockdown.",
         "active": true
       },
@@ -59,7 +59,7 @@
         "id": "clk-gauntlet-raid",
         "title": "Martial Sweep of the Sunken Ward",
         "totalTicks": 6,
-        "currentTicks": 4,
+        "currentTicks": 5,
         "outcome": "The Gauntlet places the lower docks under 24-hour curfew and arrests all suspected smugglers.",
         "active": true
       }
@@ -87,7 +87,7 @@
         "id": "clk-scales-monopoly",
         "title": "Buyout of Ironbound Foundries",
         "totalTicks": 4,
-        "currentTicks": 1,
+        "currentTicks": 3,
         "outcome": "Consortium secures majority stake in all weapon forges, raising gear prices by 25%.",
         "active": true
       }
@@ -114,7 +114,7 @@
         "id": "clk-eclipse-ritual",
         "title": "Shadowfell Eclipse Awakening Ritual",
         "totalTicks": 8,
-        "currentTicks": 5,
+        "currentTicks": 6,
         "outcome": "A rift to the Shadowfell tears open beneath the city fountain, unleashing specters into the night.",
         "active": true
       }
@@ -142,7 +142,7 @@
         "id": "clk-labor-strike",
         "title": "General Dockworkers Strike",
         "totalTicks": 4,
-        "currentTicks": 2,
+        "currentTicks": 3,
         "outcome": "Dockworkers shut down all cargo handling, stranding noble galleons in port.",
         "active": true
       }

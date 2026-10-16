@@ -1,0 +1,138 @@
+{
+  "eras": [
+    {
+      "id": "mythic",
+      "name": "The Ancient Mythic Age",
+      "icon": "⚡",
+      "badgeColor": "purple",
+      "description": "The dawn of gods, primal dragons, and the shaping of the world."
+    },
+    {
+      "id": "cataclysm",
+      "name": "The Ruin & Cataclysm",
+      "icon": "🔥",
+      "badgeColor": "rose",
+      "description": "Planar cataclysm, shattered continents, and sunken kingdoms."
+    },
+    {
+      "id": "iron",
+      "name": "The Century of Iron",
+      "icon": "⚔️",
+      "badgeColor": "amber",
+      "description": "Rise of mortal empires, grand citadels, and mercantile guilds."
+    },
+    {
+      "id": "current",
+      "name": "Current Campaign Arc",
+      "icon": "🗡️",
+      "badgeColor": "sky",
+      "description": "Active campaign timeline and live party milestones."
+    }
+  ],
+  "events": [
+    {
+      "id": "tl-mythic-1",
+      "era": "mythic",
+      "dateLabel": "Year -3200 (Mythic Dawn)",
+      "sortOrder": -3200,
+      "title": "The Forging of the World-Spire & First Iron-Oak",
+      "category": "Mythic Lore",
+      "location": "Oakhaven Market Square",
+      "factions": [],
+      "description": "Aureon and Sylvara bind the primordial elemental chaos beneath the Shattered Coast and plant the colossal Iron-Oak at the heart of what will become Oakhaven.",
+      "isSessionLog": false,
+      "sourceId": ""
+    },
+    {
+      "id": "tl-mythic-2",
+      "era": "mythic",
+      "dateLabel": "Year -1850 (Mythic Dawn)",
+      "sortOrder": -1850,
+      "title": "The First Dragon Concord of the Ironpeaks",
+      "category": "Ancient History",
+      "location": "Ironpeak Citadel Outskirts",
+      "factions": [],
+      "description": "Ancient metallic and chromatic wyrms carve out the northern mountain vaults before retreating into centuries-long slumber.",
+      "isSessionLog": false,
+      "sourceId": ""
+    },
+    {
+      "id": "tl-cataclysm-1",
+      "era": "cataclysm",
+      "dateLabel": "Year 0 (The Cataclysm)",
+      "sortOrder": 0,
+      "title": "The Night of Falling Stars & Sinking of Old Oakhaven",
+      "category": "Cataclysm",
+      "location": "The Sunken Ward",
+      "factions": [
+        "Circle of the Pale Moon"
+      ],
+      "description": "A catastrophic planar rift tears open above the coast. Half of Old Oakhaven collapses beneath the sea, creating the flooded Sunken Ward and submerging the royal catacombs.",
+      "isSessionLog": false,
+      "sourceId": ""
+    },
+    {
+      "id": "tl-cataclysm-2",
+      "era": "cataclysm",
+      "dateLabel": "Year 14 P.R. (Post-Ruin)",
+      "sortOrder": 14,
+      "title": "Sealing of the Obsidian Sanctum",
+      "category": "Arcane Seal",
+      "location": "The Sunken Ward Catacombs",
+      "factions": [
+        "Order of the Silver Gauntlet"
+      ],
+      "description": "Archmages and Dawn-Paladins lock the Shadowfell breach beneath the catacombs using the Obsidian Key, swearing an oath to guard the seal forever.",
+      "isSessionLog": false,
+      "sourceId": ""
+    },
+    {
+      "id": "tl-iron-1",
+      "era": "iron",
+      "dateLabel": "Year 240 P.R. (Century of Iron)",
+      "sortOrder": 240,
+      "title": "Founding of the Cinder-Forge & Silver Bastion",
+      "category": "Political",
+      "location": "The Cinder-Forge District",
+      "factions": [
+        "The Ironbound Union",
+        "Order of the Silver Gauntlet"
+      ],
+      "description": "Dwarven smith-clans ignite the great blast furnaces of the Cinder-Forge while the Order of the Silver Gauntlet raises the white marble walls of Highspire.",
+      "isSessionLog": false,
+      "sourceId": ""
+    },
+    {
+      "id": "tl-iron-2",
+      "era": "iron",
+      "dateLabel": "Year 312 P.R. (Century of Iron)",
+      "sortOrder": 312,
+      "title": "The Grand Exchange Charter & Rise of the Syndicate",
+      "category": "Political",
+      "location": "Highspire Noble Quarter",
+      "factions": [
+        "The Gilded Scales Consortium",
+        "The Obsidian Syndicate"
+      ],
+      "description": "The Gilded Scales Consortium secures monopoly rights over maritime trade, inadvertently driving independent captains into the arms of the Obsidian Syndicate.",
+      "isSessionLog": false,
+      "sourceId": ""
+    },
+    {
+      "id": "tl-current-1",
+      "era": "current",
+      "dateLabel": "Day 1 (348 P.R.)",
+      "sortOrder": 348001,
+      "title": "The Adventuring Party Convenes at the Rusted Anchor",
+      "category": "Campaign Milestone",
+      "location": "The Rusted Anchor Tavern",
+      "factions": [
+        "Order of the Silver Gauntlet",
+        "The Obsidian Syndicate"
+      ],
+      "description": "Our heroes gather in Oakhaven as tensions boil over between the Silver Gauntlet, the striking Ironbound dockworkers, and whispers of a Pale Moon ritual in the catacombs.",
+      "isSessionLog": true,
+      "sourceId": "campaign-start"
+    }
+  ]
+}

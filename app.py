@@ -10,6 +10,7 @@ import struct
 import time
 import uuid
 import zipfile
+import zlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -71,6 +72,12 @@ CAMPAIGN_SCOPED_FILES = {
     "encounters.json",
     "session_notes.json",
     "world.json",
+    "overworld.json",
+    "pantheon.json",
+    "timeline.json",
+    "faction_relations.json",
+    "party_stash.json",
+    "travel.json",
 }
 
 DEFAULT_MODULES = {
@@ -82,6 +89,15 @@ DEFAULT_MODULES = {
     "items": True,
     "rules": True,
     "world": True,
+    "overworld": True,
+    "locations": True,
+    "factions": True,
+    "quests": True,
+    "pantheon": True,
+    "timeline": True,
+    "travel": True,
+    "secrets": True,
+    "handouts": True,
     "npcs": True,
     "loot": True,
     "notes": True,
@@ -92,10 +108,12 @@ PLAYSTYLE_PRESETS = {
     "full": {
         "id": "full",
         "name": "Full Tabletop Immersion",
-        "description": "All 12 modules enabled: Tactical Battlemap, Smart Lighting, Audio, Compendiums, Combat Tracker, and World Lore.",
+        "description": "All modules enabled: Tactical Battlemap, Smart Lighting, Audio, Compendiums, Combat Tracker, and World Lore & Exploration.",
         "modules": {
             "combat": True, "battlemap": True, "bestiary": True, "encounters": True,
             "spells": True, "items": True, "rules": True, "world": True,
+            "overworld": True, "locations": True, "factions": True, "quests": True,
+            "pantheon": True, "timeline": True, "travel": True, "secrets": True, "handouts": True,
             "npcs": True, "loot": True, "notes": True, "audio": True
         }
     },
@@ -106,6 +124,8 @@ PLAYSTYLE_PRESETS = {
         "modules": {
             "combat": True, "battlemap": False, "bestiary": True, "encounters": True,
             "spells": True, "items": True, "rules": True, "world": True,
+            "overworld": True, "locations": True, "factions": True, "quests": True,
+            "pantheon": True, "timeline": True, "travel": True, "secrets": True, "handouts": True,
             "npcs": True, "loot": True, "notes": True, "audio": True
         }
     },
@@ -116,6 +136,8 @@ PLAYSTYLE_PRESETS = {
         "modules": {
             "combat": False, "battlemap": False, "bestiary": True, "encounters": True,
             "spells": True, "items": True, "rules": True, "world": True,
+            "overworld": True, "locations": True, "factions": True, "quests": True,
+            "pantheon": True, "timeline": True, "travel": True, "secrets": True, "handouts": True,
             "npcs": True, "loot": True, "notes": True, "audio": False
         }
     },
@@ -126,6 +148,8 @@ PLAYSTYLE_PRESETS = {
         "modules": {
             "combat": True, "battlemap": False, "bestiary": False, "encounters": False,
             "spells": False, "items": False, "rules": True, "world": False,
+            "overworld": False, "locations": False, "factions": False, "quests": False,
+            "pantheon": False, "timeline": False, "travel": False, "secrets": False, "handouts": False,
             "npcs": False, "loot": False, "notes": True, "audio": False
         }
     }
@@ -275,6 +299,14 @@ class Character(BaseModel):
     heroicInspiration: bool = False
     deathSaves: DeathSaves = DeathSaves()
     notes: str = ""
+    spellSlots: Optional[Dict[str, Any]] = None
+    resources: Optional[List[Dict[str, Any]]] = None
+    inventory: Optional[List[Dict[str, Any]]] = None
+    currency: Optional[Dict[str, int]] = None
+    maxCarryWeight: Optional[int] = 150
+    deityId: Optional[str] = ""
+    deityName: Optional[str] = ""
+    pietyScore: Optional[int] = 1
 
 class Condition(BaseModel):
     name: str
@@ -405,6 +437,7 @@ class LocationItem(BaseModel):
     name: str
     type: str = "Settlement"
     danger: str = "Low"
+    population: Optional[str] = ""
     summary: str = ""
     description: str = ""
     factions: List[str] = []
@@ -508,6 +541,8 @@ class BroadcastPayload(BaseModel):
     imageUrl: str = ""
     items: Optional[List[Dict[str, Any]]] = None
     handout: Optional[Dict[str, Any]] = None
+    overworld: Optional[Dict[str, Any]] = None
+    deity: Optional[Dict[str, Any]] = None
 
 class SnapshotCreate(BaseModel):
     label: str = ""
@@ -556,6 +591,7 @@ class BattlemapFogUpdate(BaseModel):
     fogMask: Optional[str] = None
     reset: Optional[bool] = False
     revealAll: Optional[bool] = False
+    mapId: Optional[str] = None
 
 class BattlemapPing(BaseModel):
     x: float
@@ -671,9 +707,640 @@ async def battlemap_view():
         return FileResponse(str(map_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "Battlemap screen template not found"}
 
+def get_default_overworld_state(locations: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+    if locations is None:
+        locations = read_json("locations.json", [])
+    preset_coords = {
+        "loc-sunken-ward": {"x": 30.0, "y": 63.0, "population": "4,200 (Dockside Slums)", "discovered": True, "icon": "⚓"},
+        "loc-oakhaven-market": {"x": 37.5, "y": 50.0, "population": "18,500 (Crown Capital)", "discovered": True, "icon": "🏰"},
+        "loc-rusted-anchor": {"x": 33.0, "y": 58.0, "population": "120 Patrons (Harbor Inn)", "discovered": True, "icon": "🍺"},
+        "loc-cinder-forge": {"x": 45.0, "y": 43.0, "population": "6,800 (Industrial Foundries)", "discovered": True, "icon": "⚒️"},
+        "loc-highspire-quarter": {"x": 39.5, "y": 38.0, "population": "3,100 (High Nobility)", "discovered": True, "icon": "👑"},
+        "loc-sunken-catacombs": {"x": 55.5, "y": 74.0, "population": "Uninhabited (Undead Crypts)", "discovered": False, "icon": "💀"},
+    }
+    pins = []
+    for idx, loc in enumerate(locations):
+        loc_id = loc.get("id", f"loc-{idx}")
+        preset = preset_coords.get(loc_id, {})
+        loc_type = (loc.get("type") or "Settlement").lower()
+        default_icon = "🏰"
+        if "tavern" in loc_type or "inn" in loc_type:
+            default_icon = "🍺"
+        elif "dungeon" in loc_type or "ruin" in loc_type or "crypt" in loc_type:
+            default_icon = "💀"
+        elif "district" in loc_type:
+            default_icon = "🏘️"
+        elif "wilderness" in loc_type or "forest" in loc_type:
+            default_icon = "🌲"
+
+        pins.append({
+            "id": f"pin-{loc_id}",
+            "locationId": loc_id,
+            "title": loc.get("name", "Landmark"),
+            "type": loc.get("type", "Settlement"),
+            "danger": loc.get("danger", "Low"),
+            "population": loc.get("population") or preset.get("population", "1,500 Citizens"),
+            "x": preset.get("x", round(25.0 + ((idx * 13) % 55), 1)),
+            "y": preset.get("y", round(25.0 + ((idx * 17) % 55), 1)),
+            "discovered": preset.get("discovered", idx < 4),
+            "icon": preset.get("icon", default_icon),
+            "notes": loc.get("summary", "")
+        })
+
+    # Add two extra wilderness/frontier POIs if default campaign
+    if any(p["locationId"] == "loc-oakhaven-market" for p in pins):
+        pins.extend([
+            {
+                "id": "pin-ironpeak-citadel",
+                "locationId": "",
+                "title": "Ironpeak Citadel Outskirts",
+                "type": "Fortress / Outpost",
+                "danger": "High",
+                "population": "450 Garrisoned Dwarves & Watchmen",
+                "x": 45.0,
+                "y": 19.5,
+                "discovered": True,
+                "icon": "🛡️",
+                "notes": "Mountain pass fortress guarding the northern silver mines against frost giants and wyverns."
+            },
+            {
+                "id": "pin-whispering-standing-stones",
+                "locationId": "",
+                "title": "The Whispering Standing Stones",
+                "type": "Wilderness Landmark",
+                "danger": "High",
+                "population": "Druidic Circle & Fey Spirits",
+                "x": 48.5,
+                "y": 46.5,
+                "discovered": False,
+                "icon": "🌲",
+                "notes": "Ancient moss-covered monoliths deep in the Whispering Woods where the Feywild veil grows thin."
+            }
+        ])
+
+    main_map = {
+        "id": "map-main",
+        "title": "Realm of the Shattered Coast",
+        "subtitle": "Grand Strategic Cartography • 1 Hex = 24 Miles",
+        "type": "Kingdom",
+        "scale": "1 Hex = 24 Miles",
+        "scaleMilesPerHex": 24,
+        "mapUrl": "/static/images/overworld_default.svg",
+        "partyMarker": {
+            "x": 37.5,
+            "y": 50.0,
+            "label": "Adventuring Party",
+            "visibleToPlayers": True,
+            "terrain": "Forest"
+        },
+        "hexGrid": {
+            "enabled": True,
+            "opacity": 0.25,
+            "size": 36
+        },
+        "fog": {
+            "enabled": True,
+            "revealedPoints": [
+                {"x": 37.5, "y": 50.0, "radius": 9.0}
+            ]
+        },
+        "trail": [
+            {
+                "id": "tr-initial-camp",
+                "x": 37.5,
+                "y": 50.0,
+                "day": 1,
+                "hour": 8,
+                "label": "Camp at Oakhaven",
+                "type": "camp",
+                "notes": "Expedition base camp near the Iron-Oak."
+            }
+        ],
+        "pins": pins
+    }
+    return {
+        "activeMapId": "map-main",
+        "maps": [main_map],
+        "mapTitle": main_map["title"],
+        "mapSubtitle": main_map["subtitle"],
+        "mapUrl": main_map["mapUrl"],
+        "scaleMilesPerHex": 24,
+        "fogUnexplored": True,
+        "hexGrid": main_map["hexGrid"],
+        "fog": main_map["fog"],
+        "trail": main_map["trail"],
+        "partyMarker": main_map["partyMarker"],
+        "pins": pins
+    }
+
+def get_default_faction_relations() -> Dict[str, Any]:
+    return {
+        "relations": [
+            {
+                "id": "rel-1",
+                "factionA": "Order of the Silver Gauntlet",
+                "factionB": "The Obsidian Syndicate",
+                "status": "War",
+                "note": "Martial sweeps of the Sunken Ward vs. midnight smuggler ambushes."
+            },
+            {
+                "id": "rel-2",
+                "factionA": "Order of the Silver Gauntlet",
+                "factionB": "The Gilded Scales Consortium",
+                "status": "Allied",
+                "note": "The Consortium funds Gauntlet patrols in exchange for harbor security."
+            },
+            {
+                "id": "rel-3",
+                "factionA": "Order of the Silver Gauntlet",
+                "factionB": "Circle of the Pale Moon",
+                "status": "War",
+                "note": "Inquisitorial purge against forbidden Shadowfell and necromantic rituals."
+            },
+            {
+                "id": "rel-4",
+                "factionA": "The Gilded Scales Consortium",
+                "factionB": "The Ironbound Union",
+                "status": "Rivalry",
+                "note": "Hostile buyout of Cinder-Forge foundries has sparked union strike threats."
+            },
+            {
+                "id": "rel-5",
+                "factionA": "The Obsidian Syndicate",
+                "factionB": "The Ironbound Union",
+                "status": "Rivalry",
+                "note": "Union dockworkers resist Syndicate protection rackets on the piers."
+            },
+            {
+                "id": "rel-6",
+                "factionA": "The Obsidian Syndicate",
+                "factionB": "Circle of the Pale Moon",
+                "status": "Friendly",
+                "note": "Secret smuggling Pact: Syndicate moves necrotic focus crystals into the Catacombs."
+            }
+        ],
+        "standingMilestones": {
+            "Allied": {
+                "score": "+2 or higher",
+                "badge": "🛡️ Sworn Ally",
+                "boons": [
+                    "20% Discount on faction-affiliated merchants, smiths, and spellcasting services",
+                    "Access to Faction Safehouses (uninterrupted Long Rests & hidden caches)",
+                    "Call Reinforcements: 1/Session summon a CR 2 Faction Veteran or Spy squad to aid the party"
+                ]
+            },
+            "Friendly": {
+                "score": "+1",
+                "badge": "🤝 Trusted Friend",
+                "boons": [
+                    "10% Discount on faction goods and priority access to lucrative Quest Bounties",
+                    "Free passage through faction checkpoints and dockside toll gates",
+                    "Advantage on Charisma (Persuasion) checks with faction officers"
+                ]
+            },
+            "Neutral": {
+                "score": "0",
+                "badge": "⚖️ Unaligned",
+                "boons": [
+                    "Standard market prices (100% base cost) and normal legal scrutiny",
+                    "Can accept public contract bounties to earn standing"
+                ]
+            },
+            "Suspicious": {
+                "score": "-1",
+                "badge": "😠 Watched & Distrusted",
+                "boons": [
+                    "25% Price Markup at faction-controlled shops and fences",
+                    "Disadvantage on Charisma checks with faction members; informants report party movements",
+                    "Frequent stops and contraband searches by patrol guards or guild enforcers"
+                ]
+            },
+            "Hostile": {
+                "score": "-2 or lower",
+                "badge": "⚔️ Marked Enemy",
+                "boons": [
+                    "Active Bounty Placed: Faction hit squads, assassins, or arrest patrols hunt the party",
+                    "Refused service at all faction businesses; safehouses locked down",
+                    "Faction actively works to sabotage party quests (+1 tick to rival Tension Clocks)"
+                ]
+            }
+        },
+        "turnHistory": []
+    }
+
+def get_default_pantheon() -> List[Dict[str, Any]]:
+    return [
+        {
+            "id": "deity-aureon",
+            "name": "Aureon, The Dawnfather",
+            "title": "Sovereign of the Unbroken Sun & Forge of Law",
+            "category": "Prime Deity",
+            "alignment": "Lawful Good",
+            "domains": ["Light", "Life", "Order"],
+            "symbol": "Golden Sunburst emblazoned over a Crowned Anvil",
+            "symbolIcon": "☀️",
+            "worshippers": "Paladins of the Silver Gauntlet, Clerics, Judges, Smiths, and Sun-Sworn Magistrates",
+            "rivals": ["Vespera, The Whispering Shadow", "Malakor, The Chained Fiend"],
+            "tenets": [
+                "Bring the light of truth to shadow-haunted places; suffer no undead abomination to walk.",
+                "Honor sworn oaths and defend the weak with steel and shield.",
+                "Temper justice with mercy, but strike down unrepentant tyranny without hesitation."
+            ],
+            "pietyBoons": {
+                "3": "Devotee of the Dawn (Piety 3+): You can cast Light at will, and you gain Advantage on saving throws against being Blinded or Frightened.",
+                "10": "Sun-Blessed Warden (Piety 10+): You can cast Daylight or Crusader's Mantle once per Long Rest without expending a spell slot.",
+                "25": "Radiant Aegis (Piety 25+): You gain Resistance to Radiant and Necrotic damage. When you use Help or Healing Word, the ally gains Temp HP equal to your level.",
+                "50": "Champion of the Unbroken Sun (Piety 50+): Increase Wisdom or Charisma by +2 (to a max of 22). Your weapon and spell attacks deal an extra 1d8 Radiant damage."
+            },
+            "description": "Worshipped inside the grand marble cathedral of Highspire, Aureon is the radiant architect of civilization, righteous law, and solar renewal."
+        },
+        {
+            "id": "deity-sylvara",
+            "name": "Sylvara, Mother of the Wild Weave",
+            "title": "Keeper of the Ancient Oak & Emerald Tide",
+            "category": "Prime Deity",
+            "alignment": "Neutral Good",
+            "domains": ["Nature", "Tempest", "Life"],
+            "symbol": "Silver Crescent Moon cradled within Antlered Oak Branches",
+            "symbolIcon": "🌿",
+            "worshippers": "Druids, Rangers, Sailors, Herbalists, and Wardens of the Whispering Woods",
+            "rivals": ["Malakor, The Chained Fiend"],
+            "tenets": [
+                "Preserve the ancient groves, rivers, and wild beasts from greedy despoilers.",
+                "Walk in harmony with the cycle of storm, bloom, and autumn decay.",
+                "Shelter travelers lost in the wilds who show respect to the old ways."
+            ],
+            "pietyBoons": {
+                "3": "Child of the Root (Piety 3+): You learn Druidcraft and can cast Speak with Animals once per Short Rest.",
+                "10": "Walker of the Canopy (Piety 10+): Difficult terrain composed of nonmagical plants or mud doesn't cost you extra movement; cast Pass without Trace 1/Long Rest.",
+                "25": "Storm-Bough Guardian (Piety 25+): Resistance to Lightning and Poison damage. Summoned beasts/fey gain +10 temporary HP.",
+                "50": "Avatar of the Wild Weave (Piety 50+): Increase Wisdom or Constitution by +2 (max 22). Cast Commune with Nature or Awaken 1/Long Rest without components."
+            },
+            "description": "Revered at the Iron-Oak of Oakhaven and the standing stones of the Whispering Woods, Sylvara embodies the untamed heartbeat of the natural world."
+        },
+        {
+            "id": "deity-kordath",
+            "name": "Kordath, Lord of the Iron Storm",
+            "title": "The Thunder-Strider & Patron of Valor",
+            "category": "Prime Deity",
+            "alignment": "Chaotic Neutral",
+            "domains": ["War", "Tempest", "Strength"],
+            "symbol": "Crossed Greatswords struck by a Forked Lightning Bolt",
+            "symbolIcon": "⚡",
+            "worshippers": "Barbarians, Fighters, Gladiators, Mercenaries, and Storm-Sailors",
+            "rivals": ["Malakor, The Chained Fiend", "Vespera, The Whispering Shadow"],
+            "tenets": [
+                "Test your mettle against worthy foes; never cower before overwhelming odds.",
+                "Strength is meant to break chains, never to forge them.",
+                "Celebrate victory with thunderous song and honor the glorious dead."
+            ],
+            "pietyBoons": {
+                "3": "Thunderous Grip (Piety 3+): Your carrying capacity doubles, and you gain Advantage on Athletics checks to grapple or shove.",
+                "10": "Stormborn Charge (Piety 10+): Cast Thunderwave or Heroism (2nd level) 1/Long Rest. +5 ft. walking speed.",
+                "25": "Fury of the Gale (Piety 25+): When you score a Critical Hit, thunder erupts dealing 2d8 Thunder damage to the target and pushing it 10 ft.",
+                "50": "Scion of the Iron Storm (Piety 50+): Increase Strength or Constitution by +2 (max 22). Immunity to Thunder damage and the Prone condition."
+            },
+            "description": "His shrines are found in arena halls, mountain peaks, and ship prows. Kordath laughs in the hurricane and blesses warriors who charge headlong into peril."
+        },
+        {
+            "id": "deity-oghma-vael",
+            "name": "Oghma-Vael, Keeper of the Eternal Ledger",
+            "title": "The All-Seeing Scribe & Weaver of Stars",
+            "category": "Prime Deity",
+            "alignment": "True Neutral",
+            "domains": ["Knowledge", "Arcana", "Twilight"],
+            "symbol": "An Open Silver Tome surmounted by a Starry Eye and Quill",
+            "symbolIcon": "👁️",
+            "worshippers": "Wizards, Bards, Artificers, Cartographers, Archivists, and Detectives",
+            "rivals": ["Vespera, The Whispering Shadow"],
+            "tenets": [
+                "No true knowledge should be burned; record history faithfully in the great ledger.",
+                "Unravel riddles, ciphers, and arcane mysteries wherever they lie hidden.",
+                "Wield magic with discipline, lest hubris invite a second Cataclysm."
+            ],
+            "pietyBoons": {
+                "3": "Scholar's Eye (Piety 3+): Cast Comprehend Languages or Identify as a Ritual in 1 Action once per Long Rest. +2 to Passive Investigation.",
+                "10": "Astral Recall (Piety 10+): Gain proficiency or Expertise in Arcana or History. Cast Augury or Detect Thoughts 1/Long Rest.",
+                "25": "Weaver's Ward (Piety 25+): Advantage on Concentration saving throws and saving throws against Illusion spells.",
+                "50": "Archmage of the Eternal Ledger (Piety 50+): Increase Intelligence or Wisdom by +2 (max 22). Recover one adicionales 5th-level or lower spell slot on a Short Rest."
+            },
+            "description": "Patron of the Arcane Ledger itself, Oghma-Vael records every deed, spell, and fallen empire across the planes."
+        },
+        {
+            "id": "deity-vespera",
+            "name": "Vespera, The Whispering Shadow",
+            "title": "Lady of the Eclipse, Secrets & Silent Blades",
+            "category": "Cosmic Cult / Dark Deity",
+            "alignment": "Neutral Evil",
+            "domains": ["Trickery", "Death", "Grave"],
+            "symbol": "A Weeping Obsidian Mask beneath a Total Lunar Eclipse",
+            "symbolIcon": "🌙",
+            "worshippers": "Circle of the Pale Moon, Obsidian Syndicate Assassins, Shadow Monks, Warlocks",
+            "rivals": ["Aureon, The Dawnfather", "Oghma-Vael, Keeper of the Eternal Ledger"],
+            "tenets": [
+                "Every secret is a blade; hold it to the throat of the powerful.",
+                "Move unseen in the dark; let the light-blinded fools boast while you claim the prize.",
+                "Thin the veil between the mortal world and the eternal quiet of the Shadowfell."
+            ],
+            "pietyBoons": {
+                "3": "Cloak of Dusk (Piety 3+): You gain Darkvision out to 60 ft. (or +30 ft. if you already have it) and Advantage on Stealth checks in dim light.",
+                "10": "Shadow Step Initiate (Piety 10+): Cast Invisibility or Darkness once per Long Rest without a spell slot.",
+                "25": "Whisper in the Vein (Piety 25+): Once per turn when you hit a creature with Advantage, deal an extra 2d6 Necrotic or Psychic damage.",
+                "50": "Harbinger of the Eclipse (Piety 50+): Increase Dexterity or Charisma by +2 (max 22). You can teleport 60 ft. between shadows as a Bonus Action."
+            },
+            "description": "Venerated in the flooded vaults of the Sunken Ward Catacombs, Vespera promises forbidden power to those who embrace the coming eclipse."
+        },
+        {
+            "id": "deity-malakor",
+            "name": "Malakor, The Chained Fiend of the Pit",
+            "title": "Archdevil of Ash, Blood Contracts & Iron Tyranny",
+            "category": "Fiendish Patron / Cult",
+            "alignment": "Lawful Evil",
+            "domains": ["War", "Fiend Patron", "Order"],
+            "symbol": "A Crown of Nine Burning Iron Spikes dripping Molten Gold",
+            "symbolIcon": "🔥",
+            "worshippers": "Fiend Warlocks, Ruthless Usurers, Tyrants, Oathbreaker Knights, Infernal Cultists",
+            "rivals": ["Aureon, The Dawnfather", "Sylvara, Mother of the Wild Weave", "Kordath, Lord of the Iron Storm"],
+            "tenets": [
+                "Bind the desperate in ironclad pacts; every favor carries a compounding price.",
+                "Rule through fear, discipline, and overwhelming hellfire.",
+                "Seek the Obsidian Key to unbind the ancient planar seals."
+            ],
+            "pietyBoons": {
+                "3": "Hellfire Brand (Piety 3+): You gain Resistance to Fire damage and learn the Thaumaturgy cantrip.",
+                "10": "Infernal Rebuke (Piety 10+): Cast Hellish Rebuke (2nd level) or Command (2nd level) 1/Long Rest.",
+                "25": "Soul-Tax Collector (Piety 25+): Whenever you reduce a hostile creature to 0 HP, you gain Temporary HP equal to your level + Charisma modifier.",
+                "50": "Paragon of the Nine Chains (Piety 50+): Increase Charisma or Intelligence by +2 (max 22). Fire damage you deal ignores Fire Resistance."
+            },
+            "description": "An ancient archfiend bound beneath the world during the Cataclysm whose whispers offer wealth, vengeance, and eldritch mastery."
+        }
+    ]
+
+DEFAULT_TIMELINE_ERAS = [
+    {"id": "mythic", "name": "The Ancient Mythic Age", "icon": "⚡", "badgeColor": "purple", "description": "The dawn of gods, primal dragons, and the shaping of the world."},
+    {"id": "cataclysm", "name": "The Ruin & Cataclysm", "icon": "🔥", "badgeColor": "rose", "description": "Planar cataclysm, shattered continents, and sunken kingdoms."},
+    {"id": "iron", "name": "The Century of Iron", "icon": "⚔️", "badgeColor": "amber", "description": "Rise of mortal empires, grand citadels, and mercantile guilds."},
+    {"id": "current", "name": "Current Campaign Arc", "icon": "🗡️", "badgeColor": "sky", "description": "Active campaign timeline and live party milestones."}
+]
+
+def get_default_timeline_events() -> List[Dict[str, Any]]:
+    return [
+        {
+            "id": "tl-mythic-1",
+            "era": "mythic",
+            "dateLabel": "Year -3200 (Mythic Dawn)",
+            "sortOrder": -3200,
+            "title": "The Forging of the World-Spire & First Iron-Oak",
+            "category": "Mythic Lore",
+            "location": "Oakhaven Market Square",
+            "factions": [],
+            "description": "Aureon and Sylvara bind the primordial elemental chaos beneath the Shattered Coast and plant the colossal Iron-Oak at the heart of what will become Oakhaven.",
+            "isSessionLog": False,
+            "sourceId": ""
+        },
+        {
+            "id": "tl-mythic-2",
+            "era": "mythic",
+            "dateLabel": "Year -1850 (Mythic Dawn)",
+            "sortOrder": -1850,
+            "title": "The First Dragon Concord of the Ironpeaks",
+            "category": "Ancient History",
+            "location": "Ironpeak Citadel Outskirts",
+            "factions": [],
+            "description": "Ancient metallic and chromatic wyrms carve out the northern mountain vaults before retreating into centuries-long slumber.",
+            "isSessionLog": False,
+            "sourceId": ""
+        },
+        {
+            "id": "tl-cataclysm-1",
+            "era": "cataclysm",
+            "dateLabel": "Year 0 (The Cataclysm)",
+            "sortOrder": 0,
+            "title": "The Night of Falling Stars & Sinking of Old Oakhaven",
+            "category": "Cataclysm",
+            "location": "The Sunken Ward",
+            "factions": ["Circle of the Pale Moon"],
+            "description": "A catastrophic planar rift tears open above the coast. Half of Old Oakhaven collapses beneath the sea, creating the flooded Sunken Ward and submerging the royal catacombs.",
+            "isSessionLog": False,
+            "sourceId": ""
+        },
+        {
+            "id": "tl-cataclysm-2",
+            "era": "cataclysm",
+            "dateLabel": "Year 14 P.R. (Post-Ruin)",
+            "sortOrder": 14,
+            "title": "Sealing of the Obsidian Sanctum",
+            "category": "Arcane Seal",
+            "location": "The Sunken Ward Catacombs",
+            "factions": ["Order of the Silver Gauntlet"],
+            "description": "Archmages and Dawn-Paladins lock the Shadowfell breach beneath the catacombs using the Obsidian Key, swearing an oath to guard the seal forever.",
+            "isSessionLog": False,
+            "sourceId": ""
+        },
+        {
+            "id": "tl-iron-1",
+            "era": "iron",
+            "dateLabel": "Year 240 P.R. (Century of Iron)",
+            "sortOrder": 240,
+            "title": "Founding of the Cinder-Forge & Silver Bastion",
+            "category": "Political",
+            "location": "The Cinder-Forge District",
+            "factions": ["The Ironbound Union", "Order of the Silver Gauntlet"],
+            "description": "Dwarven smith-clans ignite the great blast furnaces of the Cinder-Forge while the Order of the Silver Gauntlet raises the white marble walls of Highspire.",
+            "isSessionLog": False,
+            "sourceId": ""
+        },
+        {
+            "id": "tl-iron-2",
+            "era": "iron",
+            "dateLabel": "Year 312 P.R. (Century of Iron)",
+            "sortOrder": 312,
+            "title": "The Grand Exchange Charter & Rise of the Syndicate",
+            "category": "Political",
+            "location": "Highspire Noble Quarter",
+            "factions": ["The Gilded Scales Consortium", "The Obsidian Syndicate"],
+            "description": "The Gilded Scales Consortium secures monopoly rights over maritime trade, inadvertently driving independent captains into the arms of the Obsidian Syndicate.",
+            "isSessionLog": False,
+            "sourceId": ""
+        },
+        {
+            "id": "tl-current-1",
+            "era": "current",
+            "dateLabel": "Day 1 (348 P.R.)",
+            "sortOrder": 348001,
+            "title": "The Adventuring Party Convenes at the Rusted Anchor",
+            "category": "Campaign Milestone",
+            "location": "The Rusted Anchor Tavern",
+            "factions": ["Order of the Silver Gauntlet", "The Obsidian Syndicate"],
+            "description": "Our heroes gather in Oakhaven as tensions boil over between the Silver Gauntlet, the striking Ironbound dockworkers, and whispers of a Pale Moon ritual in the catacombs.",
+            "isSessionLog": True,
+            "sourceId": "campaign-start"
+        }
+    ]
+
+def get_default_timeline() -> Dict[str, Any]:
+    return {
+        "eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS],
+        "events": get_default_timeline_events()
+    }
+
+def normalize_timeline(data: Any) -> Dict[str, Any]:
+    if isinstance(data, list):
+        return {
+            "eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS],
+            "events": data
+        }
+    if isinstance(data, dict):
+        if "eras" not in data or not isinstance(data.get("eras"), list):
+            data["eras"] = [dict(e) for e in DEFAULT_TIMELINE_ERAS]
+        if "events" not in data or not isinstance(data.get("events"), list):
+            data["events"] = []
+        return data
+    return get_default_timeline()
+
+def get_default_travel_state() -> Dict[str, Any]:
+    return {
+        "pace": "Normal",
+        "terrain": "Forest",
+        "road": "trail",
+        "targetMiles": 48,
+        "marchHours": 8,
+        "navBonus": 0,
+        "forageBonus": 0,
+        "history": []
+    }
+
+def get_default_party_stash() -> Dict[str, Any]:
+    return {
+        "currency": {"pp": 2, "gp": 240, "sp": 85, "cp": 40},
+        "items": [
+            {
+                "id": "stash-1",
+                "name": "Bag of Holding",
+                "category": "Wondrous Item",
+                "rarity": "Uncommon",
+                "qty": 1,
+                "weight": 5.0,
+                "cost": "400 gp",
+                "notes": "Holds up to 500 lbs (max 64 cubic feet), always weighs 5 lbs."
+            },
+            {
+                "id": "stash-2",
+                "name": "Potion of Healing (Greater)",
+                "category": "Potion",
+                "rarity": "Uncommon",
+                "qty": 2,
+                "weight": 0.5,
+                "cost": "150 gp",
+                "notes": "Bonus Action to drink or administer: restores 4d4 + 4 HP."
+            },
+            {
+                "id": "stash-3",
+                "name": "Spell Scroll of Revivify",
+                "category": "Scroll",
+                "rarity": "Uncommon",
+                "qty": 1,
+                "weight": 0.1,
+                "cost": "300 gp",
+                "notes": "3rd-level Cleric/Paladin scroll; no 300 gp diamond needed when cast from scroll."
+            },
+            {
+                "id": "stash-4",
+                "name": "50ft Hempen Rope, Grappling Hook & Crowbar",
+                "category": "Adventuring Gear",
+                "rarity": "Mundane",
+                "qty": 1,
+                "weight": 16.0,
+                "cost": "6 gp",
+                "notes": "Party dungeoneering kit stored in the Bag of Holding."
+            }
+        ],
+        "notes": "Shared party treasury, gemstones, and unassigned dungeon salvage."
+    }
+
+def ensure_party_inventory_defaults(party: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    starter_kits = {
+        "pc-1": {
+            "deityId": "deity-kordath",
+            "deityName": "Kordath, Lord of the Iron Storm",
+            "pietyScore": 4,
+            "maxCarryWeight": 240,
+            "currency": {"pp": 0, "gp": 65, "sp": 18, "cp": 12},
+            "inventory": [
+                {"id": "inv-101", "name": "Heavy Warhammer +1", "category": "Weapon", "rarity": "Uncommon", "qty": 1, "weight": 4.0, "equipped": True, "attuned": False, "notes": "1d8+1 bludgeoning (Versatile 1d10+1) • Push Mastery"},
+                {"id": "inv-102", "name": "Dwarven Plate Armor", "category": "Armor", "rarity": "Mundane", "qty": 1, "weight": 65.0, "equipped": True, "attuned": False, "notes": "AC 18 • Heavy Armor"},
+                {"id": "inv-103", "name": "Gauntlets of Ogre Power", "category": "Wondrous Item", "rarity": "Uncommon", "qty": 1, "weight": 1.0, "equipped": True, "attuned": True, "notes": "STR score becomes 19 while attuned."},
+                {"id": "inv-104", "name": "Potion of Healing", "category": "Potion", "rarity": "Common", "qty": 2, "weight": 0.5, "equipped": False, "attuned": False, "notes": "2d4 + 2 HP (Bonus Action)"}
+            ]
+        },
+        "pc-2": {
+            "deityId": "deity-oghma-vael",
+            "deityName": "Oghma-Vael, Keeper of the Eternal Ledger",
+            "pietyScore": 5,
+            "maxCarryWeight": 120,
+            "currency": {"pp": 1, "gp": 88, "sp": 30, "cp": 5},
+            "inventory": [
+                {"id": "inv-201", "name": "Arcane Grimoire +1", "category": "Wondrous Item", "rarity": "Uncommon", "qty": 1, "weight": 3.0, "equipped": True, "attuned": True, "notes": "+1 to Wizard spell attack rolls and Spell Save DC."},
+                {"id": "inv-202", "name": "Cloak of Protection", "category": "Wondrous Item", "rarity": "Uncommon", "qty": 1, "weight": 1.0, "equipped": True, "attuned": True, "notes": "+1 bonus to AC and all Saving Throws."},
+                {"id": "inv-203", "name": "Pearl of Power", "category": "Wondrous Item", "rarity": "Uncommon", "qty": 1, "weight": 0.2, "equipped": True, "attuned": True, "notes": "Action: Recover up to a 3rd-level expended spell slot (1/Day)."},
+                {"id": "inv-204", "name": "Component Pouch & Fine Inks", "category": "Adventuring Gear", "rarity": "Mundane", "qty": 1, "weight": 2.0, "equipped": True, "attuned": False, "notes": "Contains 100 gp of spell scribing inks."}
+            ]
+        },
+        "pc-3": {
+            "deityId": "deity-vespera",
+            "deityName": "Vespera, The Whispering Shadow",
+            "pietyScore": 3,
+            "maxCarryWeight": 150,
+            "currency": {"pp": 3, "gp": 115, "sp": 44, "cp": 29},
+            "inventory": [
+                {"id": "inv-301", "name": "Shortsword of Warning", "category": "Weapon", "rarity": "Uncommon", "qty": 1, "weight": 2.0, "equipped": True, "attuned": True, "notes": "1d6 piercing (Vex Mastery) • Advantage on Initiative rolls, party cannot be surprised."},
+                {"id": "inv-302", "name": "Studded Leather Armor", "category": "Armor", "rarity": "Mundane", "qty": 1, "weight": 13.0, "equipped": True, "attuned": False, "notes": "AC 12 + DEX Mod"},
+                {"id": "inv-303", "name": "Boots of Elvenkind", "category": "Wondrous Item", "rarity": "Uncommon", "qty": 1, "weight": 1.0, "equipped": True, "attuned": False, "notes": "Silent footsteps; Advantage on Stealth checks to move silently."},
+                {"id": "inv-304", "name": "Masterwork Thieves' Tools", "category": "Tool", "rarity": "Mundane", "qty": 1, "weight": 1.0, "equipped": True, "attuned": False, "notes": "Utilize as a Bonus Action via Fast Hands."}
+            ]
+        },
+        "pc-4": {
+            "deityId": "deity-aureon",
+            "deityName": "Aureon, The Dawnfather",
+            "pietyScore": 11,
+            "maxCarryWeight": 180,
+            "currency": {"pp": 0, "gp": 52, "sp": 15, "cp": 0},
+            "inventory": [
+                {"id": "inv-401", "name": "Amulet of the Devout +1", "category": "Wondrous Item", "rarity": "Uncommon", "qty": 1, "weight": 1.0, "equipped": True, "attuned": True, "notes": "+1 Spell Attack/Save DC; 1/Day use Channel Divinity without expending a use."},
+                {"id": "inv-402", "name": "Mace & Sun-Crest Shield", "category": "Weapon", "rarity": "Mundane", "qty": 1, "weight": 10.0, "equipped": True, "attuned": False, "notes": "Holy Symbol of Aureon emblazoned on shield (+2 AC)."},
+                {"id": "inv-403", "name": "Chain Mail", "category": "Armor", "rarity": "Mundane", "qty": 1, "weight": 55.0, "equipped": True, "attuned": False, "notes": "AC 16 • Heavy Armor"},
+                {"id": "inv-404", "name": "300 gp Diamond (Revivify)", "category": "Adventuring Gear", "rarity": "Rare", "qty": 2, "weight": 0.1, "equipped": False, "attuned": False, "notes": "Material component for Revivify."}
+            ]
+        }
+    }
+    changed = False
+    for pc in party:
+        pc_id = pc.get("id", "")
+        preset = starter_kits.get(pc_id, {})
+        if pc.get("inventory") is None:
+            pc["inventory"] = preset.get("inventory", [
+                {"id": f"inv-{uuid.uuid4().hex[:6]}", "name": "Adventurer's Pack & Rations (5 days)", "category": "Adventuring Gear", "rarity": "Mundane", "qty": 1, "weight": 15.0, "equipped": True, "attuned": False, "notes": "Bedroll, torches, flint & steel, waterskin."}
+            ])
+            changed = True
+        if pc.get("currency") is None:
+            pc["currency"] = preset.get("currency", {"pp": 0, "gp": 25, "sp": 10, "cp": 0})
+            changed = True
+        if not pc.get("maxCarryWeight"):
+            pc["maxCarryWeight"] = preset.get("maxCarryWeight", 150)
+            changed = True
+        if pc.get("deityId") is None or (pc_id in starter_kits and not pc.get("deityId")):
+            pc["deityId"] = preset.get("deityId", "")
+            pc["deityName"] = preset.get("deityName", "")
+            pc["pietyScore"] = preset.get("pietyScore", 1)
+            changed = True
+    if changed:
+        write_json("party.json", party)
+    return party
+
 @app.get("/api/state")
 async def get_full_state():
     party = read_json("party.json", [])
+    party = ensure_party_inventory_defaults(party)
     combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
     roster = read_json("roster.json", [])
     world = read_json("world.json", {
@@ -700,6 +1367,13 @@ async def get_full_state():
     else:
         quests_list = quests_data.get("quests", [])
         rumors_list = quests_data.get("rumors", [])
+
+    overworld = read_json("overworld.json", get_default_overworld_state(locations))
+    faction_relations = read_json("faction_relations.json", get_default_faction_relations())
+    pantheon = read_json("pantheon.json", get_default_pantheon())
+    timeline = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    party_stash = read_json("party_stash.json", get_default_party_stash())
+    travel = read_json("travel.json", get_default_travel_state())
 
     broadcast = read_json("broadcast.json", {
         "active": False,
@@ -736,9 +1410,15 @@ async def get_full_state():
 
     return {
         "party": party,
+        "partyStash": party_stash,
         "combat": combat,
         "roster": roster,
         "world": world,
+        "overworld": overworld,
+        "factionRelations": faction_relations,
+        "pantheon": pantheon,
+        "timeline": timeline,
+        "travel": travel,
         "rules": rules,
         "notes": notes,
         "timeWeather": time_weather,
@@ -780,6 +1460,91 @@ def get_enriched_campaigns() -> List[Dict[str, Any]]:
         c_copy["partyCount"] = count
         enriched_campaigns.append(c_copy)
     return enriched_campaigns
+
+# -----------------------------------------------------------------------------
+# TABLETOP BATTLEMAP & FOG OF WAR (3RD SCREEN IN-TABLE TV) - CONFIG & DEFAULTS
+# -----------------------------------------------------------------------------
+DEFAULT_BATTLEMAPS_CATALOG = [
+    {
+        "id": "dungeon_crypt",
+        "name": "Forgotten Dungeon Crypt",
+        "url": "/static/images/battlemaps/dungeon_crypt.svg",
+        "width": 2000,
+        "height": 1500,
+        "defaultGridSize": 50,
+        "theme": "dungeon",
+        "type": "preset",
+        "createdAt": 1728950000
+    },
+    {
+        "id": "forest_river",
+        "name": "Whispering Woods & River Crossing",
+        "url": "/static/images/battlemaps/forest_river.svg",
+        "width": 2000,
+        "height": 1500,
+        "defaultGridSize": 50,
+        "theme": "forest",
+        "type": "preset",
+        "createdAt": 1728950000
+    },
+    {
+        "id": "tavern_cellar",
+        "name": "Smuggler's Tavern Cellar",
+        "url": "/static/images/battlemaps/tavern_cellar.svg",
+        "width": 2000,
+        "height": 1500,
+        "defaultGridSize": 50,
+        "theme": "tavern",
+        "type": "preset",
+        "createdAt": 1728950000
+    }
+]
+
+def get_shared_battlemaps_catalog() -> List[Dict[str, Any]]:
+    if not BATTLEMAPS_CATALOG_FILE.exists():
+        save_shared_battlemaps_catalog(DEFAULT_BATTLEMAPS_CATALOG)
+        return list(DEFAULT_BATTLEMAPS_CATALOG)
+    try:
+        with open(BATTLEMAPS_CATALOG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list) and len(data) > 0:
+                return data
+    except Exception as e:
+        print(f"Error loading battlemap catalog: {e}")
+    return list(DEFAULT_BATTLEMAPS_CATALOG)
+
+def save_shared_battlemaps_catalog(catalog: List[Dict[str, Any]]) -> None:
+    try:
+        with open(BATTLEMAPS_CATALOG_FILE, "w", encoding="utf-8") as f:
+            json.dump(catalog, f, indent=2)
+    except Exception as e:
+        print(f"Error saving battlemap catalog: {e}")
+
+def get_default_battlemap_state():
+    catalog = get_shared_battlemaps_catalog()
+    first_map = catalog[0] if catalog else DEFAULT_BATTLEMAPS_CATALOG[0]
+    return {
+        "activeMapId": first_map["id"],
+        "activeMapUrl": first_map["url"],
+        "activeMapName": first_map["name"],
+        "gridSize": first_map.get("defaultGridSize", 50),
+        "gridVisible": True,
+        "gridColor": "rgba(255, 255, 255, 0.22)",
+        "fogEnabled": True,
+        "fogMask": None,
+        "mapFogMasks": {},
+        "rotation": 0,
+        "panX": 0,
+        "panY": 0,
+        "zoom": 1.0,
+        "locked": False,
+        "pings": [],
+        "tokens": [],
+        "templates": [],
+        "activeRuler": None,
+        "maps": catalog,
+        "updatedAt": time.time()
+    }
 
 # Campaign Profiles & Module Manager Endpoints
 @app.get("/api/campaigns")
@@ -828,7 +1593,7 @@ async def create_campaign(payload: CampaignCreate):
         empty_encounters = []
         empty_secrets = []
         empty_handouts = []
-        empty_battlemap = {"mapUrl": "", "gridSize": 50, "gridOffsetX": 0, "gridOffsetY": 0, "tokens": [], "fog": []}
+        empty_battlemap = get_default_battlemap_state()
 
         defaults = {
             "party.json": empty_party,
@@ -845,6 +1610,12 @@ async def create_campaign(payload: CampaignCreate):
             "secrets.json": empty_secrets,
             "handouts.json": empty_handouts,
             "battlemap.json": empty_battlemap,
+            "overworld.json": get_default_overworld_state([]),
+            "faction_relations.json": {"relations": [], "turnHistory": []},
+            "pantheon.json": [],
+            "timeline.json": {"eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS], "events": []},
+            "party_stash.json": {"currency": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}, "items": []},
+            "travel.json": get_default_travel_state(),
         }
         for fname, dval in defaults.items():
             with open(camp_dir / fname, "w", encoding="utf-8") as f:
@@ -1176,13 +1947,52 @@ async def save_npc(npc: NPC):
         roster.insert(0, npc_dict)
     
     write_json("roster.json", roster)
-    return {"status": "success", "npc": npc_dict, "roster": roster}
+
+    # Bidirectional sync: NPC location <-> Locations notable figures
+    npc_name = npc_dict.get("name", "").strip()
+    npc_loc = npc_dict.get("location", "").strip()
+    locations = read_json("locations.json", [])
+    locs_changed = False
+
+    if npc_name:
+        for loc in locations:
+            loc_name = loc.get("name", "").strip()
+            if "notableNpcs" not in loc or not isinstance(loc["notableNpcs"], list):
+                loc["notableNpcs"] = []
+            
+            if npc_loc and loc_name.lower() == npc_loc.lower():
+                if not any(n.lower() == npc_name.lower() for n in loc["notableNpcs"]):
+                    loc["notableNpcs"].append(npc_name)
+                    locs_changed = True
+            else:
+                if any(n.lower() == npc_name.lower() for n in loc["notableNpcs"]):
+                    loc["notableNpcs"] = [n for n in loc["notableNpcs"] if n.lower() != npc_name.lower()]
+                    locs_changed = True
+
+    if locs_changed:
+        write_json("locations.json", locations)
+
+    return {"status": "success", "npc": npc_dict, "roster": roster, "locations": locations if locs_changed else None}
 
 @app.delete("/api/roster/{npc_id}")
 async def delete_npc(npc_id: str):
     roster = read_json("roster.json", [])
+    deleted_npc = next((item for item in roster if item.get("id") == npc_id), None)
     roster = [item for item in roster if item.get("id") != npc_id]
     write_json("roster.json", roster)
+
+    if deleted_npc and deleted_npc.get("name"):
+        d_name = deleted_npc["name"].strip().lower()
+        locations = read_json("locations.json", [])
+        locs_changed = False
+        for loc in locations:
+            if "notableNpcs" in loc and isinstance(loc["notableNpcs"], list):
+                if any(n.lower() == d_name for n in loc["notableNpcs"]):
+                    loc["notableNpcs"] = [n for n in loc["notableNpcs"] if n.lower() != d_name]
+                    locs_changed = True
+        if locs_changed:
+            write_json("locations.json", locations)
+
     return {"status": "success", "roster": roster}
 
 # World Settings
@@ -1291,9 +2101,35 @@ async def save_time_weather(state: TimeWeatherState):
     write_json("time_weather.json", state.dict())
     return {"status": "success", "state": state.dict()}
 
+@app.post("/api/time-weather/set")
+async def set_time_weather(payload: Dict[str, Any]):
+    state = read_json("time_weather.json", {
+        "day": 1, "hour": 9, "minute": 0,
+        "weather": {"temperature": "Mild", "wind": "Calm", "precipitation": "Clear", "tacticalEffect": "None"},
+        "moonPhase": "Waxing Crescent",
+        "activeTimers": []
+    })
+    if "day" in payload:
+        state["day"] = max(1, int(payload["day"]))
+    if "hour" in payload:
+        state["hour"] = max(0, min(23, int(payload["hour"])))
+    if "minute" in payload:
+        state["minute"] = max(0, min(59, int(payload["minute"])))
+    if "moonPhase" in payload:
+        state["moonPhase"] = payload["moonPhase"]
+    if "weather" in payload and isinstance(payload["weather"], dict):
+        state["weather"].update(payload["weather"])
+
+    write_json("time_weather.json", state)
+    return {"status": "success", "timeWeather": state}
+
 @app.post("/api/time-weather/advance")
 async def advance_time(payload: Dict[str, Any]):
-    minutes_to_add = int(payload.get("minutes", 10))
+    hours_to_add = int(payload.get("hours", 0))
+    minutes_to_add = int(payload.get("minutes", 0)) + (hours_to_add * 60)
+    if minutes_to_add == 0 and "minutes" not in payload and "hours" not in payload:
+        minutes_to_add = 10
+
     state = read_json("time_weather.json", {
         "day": 1, "hour": 9, "minute": 0,
         "weather": {"temperature": "Mild", "wind": "Calm", "precipitation": "Clear", "tacticalEffect": "None"},
@@ -1335,6 +2171,7 @@ async def advance_time(payload: Dict[str, Any]):
     return {
         "status": "success",
         "state": state,
+        "timeWeather": state,
         "expiredTimers": expired_timers
     }
 
@@ -1445,6 +2282,11 @@ async def save_location(loc: LocationItem):
     if not l_dict.get("id"):
         l_dict["id"] = "loc-" + str(uuid.uuid4())[:8]
 
+    # Find previous location state if editing
+    prev_loc = next((l for l in locations if l.get("id") == l_dict["id"]), None)
+    prev_notables = set(n.lower() for n in (prev_loc.get("notableNpcs", []) if prev_loc else []))
+    new_notables = set(n.lower() for n in (l_dict.get("notableNpcs", []) or []))
+
     updated = False
     for i, l in enumerate(locations):
         if l.get("id") == l_dict["id"]:
@@ -1455,13 +2297,52 @@ async def save_location(loc: LocationItem):
         locations.insert(0, l_dict)
 
     write_json("locations.json", locations)
-    return {"status": "success", "location": l_dict, "locations": locations}
+
+    # Bidirectional sync: Location notable figures <-> Roster NPC location
+    roster = read_json("roster.json", [])
+    roster_changed = False
+    for npc_item in roster:
+        npc_name = npc_item.get("name")
+        if not npc_name:
+            continue
+        npc_name_lower = npc_name.strip().lower()
+        # If NPC is in this location's notable figures, update their location to this location's name
+        if npc_name_lower in new_notables:
+            if npc_item.get("location") != l_dict["name"]:
+                npc_item["location"] = l_dict["name"]
+                roster_changed = True
+        # If NPC was removed from this location's notable figures, clear their location if it was this location
+        elif prev_loc and npc_name_lower in prev_notables:
+            prev_name = (prev_loc.get("name") or "").strip().lower()
+            cur_name = l_dict["name"].strip().lower()
+            loc_val = (npc_item.get("location") or "").strip().lower()
+            if loc_val == prev_name or loc_val == cur_name:
+                npc_item["location"] = ""
+                roster_changed = True
+
+    if roster_changed:
+        write_json("roster.json", roster)
+
+    return {"status": "success", "location": l_dict, "locations": locations, "roster": roster if roster_changed else None}
 
 @app.delete("/api/locations/{location_id}")
 async def delete_location(location_id: str):
     locations = read_json("locations.json", [])
+    loc_to_delete = next((l for l in locations if l.get("id") == location_id), None)
     locations = [l for l in locations if l.get("id") != location_id]
     write_json("locations.json", locations)
+
+    if loc_to_delete and loc_to_delete.get("name"):
+        del_name = loc_to_delete["name"].strip().lower()
+        roster = read_json("roster.json", [])
+        roster_changed = False
+        for npc_item in roster:
+            if (npc_item.get("location") or "").strip().lower() == del_name:
+                npc_item["location"] = ""
+                roster_changed = True
+        if roster_changed:
+            write_json("roster.json", roster)
+
     return {"status": "success", "locations": locations}
 
 # -------------------------------------------------------------
@@ -1572,6 +2453,32 @@ async def delete_faction_clock(faction_id: str, clock_id: str):
     write_json("factions.json", factions)
     return {"status": "success", "factions": factions}
 
+def auto_sync_quest_to_timeline(q_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if q_dict.get("status") != "Completed":
+        return None
+    timeline = read_json("timeline.json", get_default_timeline())
+    q_id = q_dict.get("id", "")
+    if q_id and any(ev.get("sourceId") == q_id for ev in timeline):
+        return None
+    tw = read_json("time_weather.json", {"day": 1, "hour": 9, "minute": 0})
+    day_num = int(tw.get("day", 1))
+    new_ev = {
+        "id": f"tl-qst-{uuid.uuid4().hex[:8]}",
+        "era": "current",
+        "dateLabel": f"Day {day_num} (348 P.R.)",
+        "sortOrder": 348000 + day_num,
+        "title": f"Quest Completed: {q_dict.get('title', 'Milestone')}",
+        "category": "Quest Completed",
+        "location": q_dict.get("location") or "Shattered Coast",
+        "factions": [q_dict.get("giver")] if q_dict.get("giver") else [],
+        "description": q_dict.get("summary") or f"The party successfully completed '{q_dict.get('title')}' (Reward: {q_dict.get('reward') or 'Renown'}).",
+        "isSessionLog": True,
+        "sourceId": q_id
+    }
+    timeline.append(new_ev)
+    write_json("timeline.json", timeline)
+    return new_ev
+
 # -------------------------------------------------------------
 # PHASE 3: QUESTS & RUMORS BOARD
 # -------------------------------------------------------------
@@ -1607,7 +2514,8 @@ async def save_quest(quest: QuestItem):
 
     data["quests"] = quests
     write_json("quests.json", data)
-    return {"status": "success", "quest": q_dict, "quests": quests}
+    timeline_event = auto_sync_quest_to_timeline(q_dict)
+    return {"status": "success", "quest": q_dict, "quests": quests, "timelineEvent": timeline_event}
 
 @app.delete("/api/quests/{quest_id}")
 async def delete_quest(quest_id: str):
@@ -1640,11 +2548,13 @@ async def toggle_quest_objective(quest_id: str, obj_id: str):
         raise HTTPException(status_code=404, detail="Quest or Objective not found")
 
     all_done = all(obj.get("completed", False) for obj in target_quest.get("objectives", []))
+    timeline_event = None
     if all_done and len(target_quest.get("objectives", [])) > 0:
         target_quest["status"] = "Completed"
+        timeline_event = auto_sync_quest_to_timeline(target_quest)
 
     write_json("quests.json", data)
-    return {"status": "success", "quest": target_quest, "objective": target_obj}
+    return {"status": "success", "quest": target_quest, "objective": target_obj, "timelineEvent": timeline_event}
 
 @app.post("/api/rumors")
 async def save_rumor(rumor: RumorItem):
@@ -1677,6 +2587,1464 @@ async def delete_rumor(rumor_id: str):
     data["rumors"] = [r for r in data.get("rumors", []) if r.get("id") != rumor_id]
     write_json("quests.json", data)
     return {"status": "success", "rumors": data["rumors"]}
+
+# -------------------------------------------------------------
+# OVERWORLD / REGIONAL MAP & EXPLORATION SUITE
+# -------------------------------------------------------------
+def ensure_overworld_schema(overworld: Dict[str, Any], locations: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+    if not isinstance(overworld, dict):
+        overworld = get_default_overworld_state(locations)
+
+    if "maps" not in overworld or not isinstance(overworld["maps"], list) or len(overworld["maps"]) == 0:
+        main_map = {
+            "id": "map-main",
+            "title": overworld.get("mapTitle", "Realm of the Shattered Coast"),
+            "subtitle": overworld.get("mapSubtitle", "Grand Strategic Cartography • 1 Hex = 24 Miles"),
+            "type": "Kingdom",
+            "scale": overworld.get("scale", "1 Hex = 24 Miles"),
+            "scaleMilesPerHex": overworld.get("scaleMilesPerHex", 24),
+            "mapUrl": overworld.get("mapUrl", "/static/images/overworld_default.svg"),
+            "partyMarker": overworld.get("partyMarker", {
+                "x": 37.5, "y": 50.0, "label": "Adventuring Party", "visibleToPlayers": True, "terrain": "Forest"
+            }),
+            "hexGrid": overworld.get("hexGrid", {"enabled": True, "opacity": 0.25, "size": 36}),
+            "fog": overworld.get("fog", {"enabled": True, "revealedPoints": [{"x": 37.5, "y": 50.0, "radius": 9.0}]}),
+            "trail": overworld.get("trail", []),
+            "pins": overworld.get("pins", [])
+        }
+        overworld["maps"] = [main_map]
+        overworld["activeMapId"] = "map-main"
+
+    active_id = overworld.get("activeMapId")
+    active_map = next((m for m in overworld["maps"] if m.get("id") == active_id), overworld["maps"][0])
+    overworld["activeMapId"] = active_map.get("id", "map-main")
+
+    if "hexGrid" not in active_map or not isinstance(active_map["hexGrid"], dict):
+        active_map["hexGrid"] = {"enabled": True, "opacity": 0.25, "size": 36}
+    if "fog" not in active_map or not isinstance(active_map["fog"], dict):
+        active_map["fog"] = {"enabled": True, "revealedPoints": [{"x": 37.5, "y": 50.0, "radius": 9.0}]}
+    if "trail" not in active_map or not isinstance(active_map["trail"], list):
+        active_map["trail"] = []
+    if "pins" not in active_map or not isinstance(active_map["pins"], list):
+        active_map["pins"] = []
+    if "partyMarker" not in active_map or not isinstance(active_map["partyMarker"], dict):
+        active_map["partyMarker"] = {"x": 37.5, "y": 50.0, "label": "Adventuring Party", "visibleToPlayers": True, "terrain": "Forest"}
+    if "type" not in active_map:
+        active_map["type"] = "Kingdom"
+    if "scaleMilesPerHex" not in active_map:
+        active_map["scaleMilesPerHex"] = 24
+
+    if "tiers" not in overworld or not isinstance(overworld["tiers"], list) or not overworld["tiers"]:
+        overworld["tiers"] = ["Kingdom", "Province", "Settlement", "Dungeon"]
+
+    # Synchronize root keys with active map for backwards compatibility
+    overworld["mapTitle"] = active_map.get("title", "Regional Map")
+    overworld["mapSubtitle"] = active_map.get("subtitle", "")
+    overworld["mapUrl"] = active_map.get("mapUrl", "/static/images/overworld_default.svg")
+    overworld["scaleMilesPerHex"] = active_map.get("scaleMilesPerHex", 24)
+    overworld["partyMarker"] = active_map.get("partyMarker")
+    overworld["pins"] = active_map.get("pins", [])
+    overworld["hexGrid"] = active_map.get("hexGrid")
+    overworld["fog"] = active_map.get("fog")
+    overworld["trail"] = active_map.get("trail", [])
+    overworld["fogUnexplored"] = active_map.get("fog", {}).get("enabled", True)
+
+    return overworld
+
+def get_active_map_ref(overworld: Dict[str, Any]) -> Dict[str, Any]:
+    active_id = overworld.get("activeMapId", "map-main")
+    for m in overworld.get("maps", []):
+        if m.get("id") == active_id:
+            return m
+    if overworld.get("maps"):
+        return overworld["maps"][0]
+    return {}
+
+def find_bestiary_monster(catalog: List[Dict[str, Any]], name_query: str) -> Optional[Dict[str, Any]]:
+    if not name_query or not catalog:
+        return None
+    q = name_query.strip().lower()
+
+    # 1. Exact name match
+    for m in catalog:
+        if m.get("name", "").strip().lower() == q:
+            return m
+
+    # 2. Exact match with common suffixes (e.g. "Goblin" -> "Goblin Warrior", "Sahuagin" -> "Sahuagin Warrior")
+    for suffix in ["Warrior", "Minion"]:
+        cand = f"{q} {suffix}".lower()
+        for m in catalog:
+            if m.get("name", "").strip().lower() == cand:
+                return m
+
+    # 3. Non-boss substring match if query doesn't specify boss/captain
+    q_is_boss = "boss" in q or "captain" in q
+    substring_matches = [m for m in catalog if q in m.get("name", "").lower()]
+    if substring_matches:
+        if not q_is_boss:
+            non_boss = [m for m in substring_matches if "boss" not in m.get("name", "").lower() and "captain" not in m.get("name", "").lower()]
+            if non_boss:
+                return non_boss[0]
+        return substring_matches[0]
+
+    # 4. Word-by-word match
+    words = [w for w in q.split() if len(w) > 2]
+    if words:
+        for m in catalog:
+            m_lower = m.get("name", "").lower()
+            if all(w in m_lower for w in words):
+                return m
+
+    return None
+
+OVERLAND_2024_ENCOUNTERS = {
+    "Forest": [
+        {
+            "id": "enc-forest-1",
+            "title": "Owlbear Territory & Gnawed Elk",
+            "category": "combat",
+            "danger": "Moderate",
+            "narrative": "Deep scratches scar the pine trunks ten feet above the ground. The musk of fresh blood and musk leads to a massive, feathered carnivore crouched over a half-eaten forest elk.",
+            "dcCheck": "DC 14 Wisdom (Survival) to spot the scent markers before blundering into line of sight, or DC 13 Dexterity save to avoid snapping dried deadfall.",
+            "monsters": [{"name": "Owlbear", "count": 1, "cr": 3}],
+            "tactics": "The Owlbear screeches with ear-piercing fury and charges the largest martial combatant, attempting to Pin and Shred with its Beak.",
+            "complication": "Dense undergrowth counts as Difficult Terrain (halving speed).",
+            "loot": "A silver signet ring (25 gp) in the gullet, plus 3 pristine Owlbear feather quills (15 gp each).",
+            "atmosphere": "Emerald Deepwoods"
+        },
+        {
+            "id": "enc-forest-2",
+            "title": "Midnight Dire Wolf Pack",
+            "category": "combat",
+            "danger": "Moderate",
+            "narrative": "Yellow eyes gleam between ancient gnarled boles. Low guttering snarls echo from both sides of the game trail as an alpha and hunting pack encircle the party.",
+            "dcCheck": "DC 13 Wisdom (Perception) to notice the circling flankers before combat begins.",
+            "monsters": [{"name": "Dire Wolf", "count": 3, "cr": 1}],
+            "tactics": "Dire Wolves utilize Pack Tactics to grant each other Advantage, focusing on tripping PCs to the ground.",
+            "complication": "Howling wind causes torches to flicker and limits darkvision beyond 40 feet.",
+            "loot": "Heavy winter pelts worth 40 gp total.",
+            "atmosphere": "Moonlit Shadows"
+        },
+        {
+            "id": "enc-forest-3",
+            "title": "Ancient Moss-Grave & Whispering Dryad",
+            "category": "discovery",
+            "danger": "Low",
+            "narrative": "A stone crypt choked with elderberry bushes hums with fey magic. A willow dryad steps from the bark, demanding an offering of clean water or song to reveal a hidden secret.",
+            "dcCheck": "DC 12 Charisma (Persuasion or Performance) to gain the Dryad's blessing.",
+            "monsters": [],
+            "tactics": "Non-hostile unless the grove is damaged.",
+            "complication": "Fey glamour causes compass needles and navigation checks to spin erratically.",
+            "loot": "Charm of the Woodland (Advantage on next 3 Survival checks) and 2 Potions of Healing nestled in moss.",
+            "atmosphere": "Fey Twilight"
+        },
+        {
+            "id": "enc-forest-4",
+            "title": "Goblin Snare-Trench Ambush",
+            "category": "combat",
+            "danger": "Low",
+            "narrative": "A tripwire hidden under oak leaves snaps! A log pendulum swings from overhead as cackling goblins loose shortbows from tree blinds.",
+            "dcCheck": "DC 14 Dexterity save to dodge the 2d10 bludgeoning pendulum.",
+            "monsters": [{"name": "Goblin", "count": 4, "cr": 0.25}],
+            "tactics": "Goblins use Nimble Escape each turn to Disengage or Hide behind tree trunks.",
+            "complication": "Concealed pit trap (10 ft deep, 1d6 fall damage).",
+            "loot": "Stolen merchant lockbox with 32 gp, 45 sp, and a vial of antitoxin.",
+            "atmosphere": "Amber Canopy"
+        }
+    ],
+    "Mountain": [
+        {
+            "id": "enc-mountain-1",
+            "title": "Wyvern Roost on the Razor Crag",
+            "category": "combat",
+            "danger": "Deadly",
+            "narrative": "A deafening screech echoes across the canyon as a reptilian shadow blotches out the mountain sun. Leathery wings beat the thin alpine air as a Wyvern dives with its venomous stinger.",
+            "dcCheck": "DC 15 Dexterity save against surprise dive-bomb attack.",
+            "monsters": [{"name": "Wyvern", "count": 1, "cr": 6}],
+            "tactics": "Dives from altitude, attempts to grapple a light target and drop them onto the scree slope (fall damage), then stings with DC 15 Con save vs 7d6 poison.",
+            "complication": "High altitude: characters without cold-weather gear make DC 10 Con saves vs Exhaustion.",
+            "loot": "Wyvern venom sac (worth 200 gp to alchemists), and broken dwarven prospector skeleton with a +1 Dagger.",
+            "atmosphere": "Alpine Gale"
+        },
+        {
+            "id": "enc-mountain-2",
+            "title": "Crag Scree Avalanche & Lost Hermit",
+            "category": "hazard",
+            "danger": "Moderate",
+            "narrative": "A thunderous crack resounds from the peak above. Thousands of tons of loose granite and ice plummet down the switchback trail directly toward the party!",
+            "dcCheck": "DC 14 Strength (Athletics) or Dexterity (Acrobatics) to scramble into a sheltered rock overhang; failure deals 4d10 bludgeoning.",
+            "monsters": [],
+            "tactics": "Environmental hazard requiring quick positioning or spell utility.",
+            "complication": "Trail is obliterated, requiring 2 hours of clearing or a DC 15 climb.",
+            "loot": "Dislodged quartz vein yields uncut gemstones worth 75 gp.",
+            "atmosphere": "Storm Grey"
+        },
+        {
+            "id": "enc-mountain-3",
+            "title": "Chimera Overlook",
+            "category": "combat",
+            "danger": "Deadly",
+            "narrative": "Perched on a natural stone archway, a three-headed horror—lion, goat, and red dragon—surveys the pass with smoldering breath.",
+            "dcCheck": "DC 15 Wisdom (Perception) to spot the dragon head exhaling smoke plumes.",
+            "monsters": [{"name": "Chimera", "count": 1, "cr": 6}],
+            "tactics": "Opens with 7d8 Fire Breath (DC 15 Dex), then flies into melee with Claws, Horns, and Bite.",
+            "complication": "Narrow 5-ft ledge. Shoving creatures risks a 50-ft drop into jagged rocks.",
+            "loot": "Chimera horns (50 gp), 180 gp scattered in its high nest, and a Potion of Greater Healing.",
+            "atmosphere": "Crimson Horizon"
+        }
+    ],
+    "Swamp": [
+        {
+            "id": "enc-swamp-1",
+            "title": "Sunken Hydra in the Black Fen",
+            "category": "combat",
+            "danger": "Deadly",
+            "narrative": "Sulfuric bubbles burble to the surface of the black mire. Five serpent heads crowned with spined frills rise simultaneously, hissing in terrible unison.",
+            "dcCheck": "DC 14 Wisdom (Nature) to recall that fire damage prevents severed heads from regenerating.",
+            "monsters": [{"name": "Hydra", "count": 1, "cr": 8}],
+            "tactics": "Makes multiple reactive Opportunity Attacks and targets bleeding creatures.",
+            "complication": "Knee-deep water is Difficult Terrain; extinguishing fire requires actions.",
+            "loot": "Sunken treasure chest in the mud with 220 gp, 110 sp, and an Elixir of Health.",
+            "atmosphere": "Toxic Miasma"
+        },
+        {
+            "id": "enc-swamp-2",
+            "title": "Will-o'-Wisps & Quicksand Bog",
+            "category": "hazard",
+            "danger": "Moderate",
+            "narrative": "Gentle blue orbs dance across the cypress trunks, whispering words of safety and treasure. Step forward, and the ground gives way into churning quicksand!",
+            "dcCheck": "DC 13 Intelligence (Arcana) or Wisdom (Perception) to see through the lures; DC 14 Strength (Athletics) to escape sinking.",
+            "monsters": [{"name": "Will-o'-Wisp", "count": 2, "cr": 2}],
+            "tactics": "Wait for victims to begin sinking into quicksand, then shock them with lightning.",
+            "complication": "Quicksand pulls creatures under; submerged creatures begin suffocating.",
+            "loot": "Silver necklace with emerald pendant (85 gp) clinging to a buried skeletal hand.",
+            "atmosphere": "Spectral Glow"
+        }
+    ],
+    "Road": [
+        {
+            "id": "enc-road-1",
+            "title": "Overturned Wagon & Highwayman Ambush",
+            "category": "combat",
+            "danger": "Low",
+            "narrative": "A merchant's grain wagon lies on its side across the stone bridge, crates splintered. Crossbowmen rise from behind ditch blinds while their captain demands an exorbitant 'toll'.",
+            "dcCheck": "DC 13 Wisdom (Insight) to sense the staged nature of the wreck before crossing the bridge.",
+            "monsters": [
+                {"name": "Bandit Captain", "count": 1, "cr": 2},
+                {"name": "Bandit", "count": 4, "cr": 0.125}
+            ],
+            "tactics": "Bandits shoot from behind half-cover (+2 AC), while Captain engages in melee with Dagger and Scimitar.",
+            "complication": "Bridge is bottlenecked; horses cannot pass without clearing debris.",
+            "loot": "Lockbox with 85 gp, 3 bottles of fine Elverquisst wine (20 gp each), and forged guard transit papers.",
+            "atmosphere": "Amber Sunset"
+        },
+        {
+            "id": "enc-road-2",
+            "title": "Wandering Merchant Caravan of Oakhaven",
+            "category": "social",
+            "danger": "Safe",
+            "narrative": "Three stout draft horses pull colorful vardo wagons flanked by singing sellswords. The caravan master, a jolly halfling named Barnaby, offers fresh bread and exotic traveling wares.",
+            "dcCheck": "DC 10 Charisma to barter for a 10% discount on rations and travel gear.",
+            "monsters": [],
+            "tactics": "Caravan guards (Veterans) defend if attacked.",
+            "complication": "Caravan travels in the opposite direction and shares fresh rumors from the capital.",
+            "loot": "Offers travel rations, lantern oil, healer's kits, and 1 Potion of Climbing for sale at standard book price.",
+            "atmosphere": "Golden Lantern"
+        }
+    ],
+    "Plains": [
+        {
+            "id": "enc-plains-1",
+            "title": "Manticore Hunting over the Grasslands",
+            "category": "combat",
+            "danger": "Moderate",
+            "narrative": "The open steppe offers nowhere to hide. A leonine beast with bat wings and a spined scorpion tail swoops in circles, raining iron tail spikes into the dirt.",
+            "dcCheck": "DC 13 Dexterity save to take cover behind a horse or wagon when tail spikes fire.",
+            "monsters": [{"name": "Manticore", "count": 1, "cr": 3}],
+            "tactics": "Maintains flight distance while firing 3 Tail Spikes per round, landing only when targets are pinned.",
+            "complication": "Treeless flatlands offer zero natural cover.",
+            "loot": "Manticore tail spikes (make 6 piercing darts +1) and 60 gp in an old soldier's belt pouch.",
+            "atmosphere": "Open Steppe Gold"
+        }
+    ],
+    "Desert": [
+        {
+            "id": "enc-desert-1",
+            "title": "Chasm of the Giant Scorpions",
+            "category": "combat",
+            "danger": "Moderate",
+            "narrative": "The baking dunes tremble as twin chittering carapaces erupt from beneath the red sands, claws snapping like iron shears.",
+            "dcCheck": "DC 13 Dexterity save vs being Grappled by large claws.",
+            "monsters": [{"name": "Giant Scorpion", "count": 2, "cr": 3}],
+            "tactics": "Grapple targets with both claws, then strike with lethal stinger poison (DC 12 Con vs 4d10).",
+            "complication": "Extreme heat: disadvantage on checks without constant water hydration.",
+            "loot": "Scorpion chitin (can be crafted into light medium armor) and 45 gp.",
+            "atmosphere": "Scorching Sun"
+        }
+    ],
+    "Coastal": [
+        {
+            "id": "enc-coastal-1",
+            "title": "Sahuagin Tide-Raiders at the Coves",
+            "category": "combat",
+            "danger": "Moderate",
+            "narrative": "Foaming breakers crash over the tidepools as webbed humanoid forms armed with coral tridents surge from the surf, smelling blood on the wind.",
+            "dcCheck": "DC 14 Wisdom (Perception) to notice the glistening dorsal fins amidst the sea spray.",
+            "monsters": [
+                {"name": "Sahuagin", "count": 3, "cr": 0.5},
+                {"name": "Reef Shark", "count": 1, "cr": 0.5}
+            ],
+            "tactics": "Sahuagin have Blood Frenzy (advantage on targets without full HP).",
+            "complication": "Slippery wet rocks require DC 10 Acrobatics checks when dashing.",
+            "loot": "Pearls worth 60 gp and carved whalebone idol.",
+            "atmosphere": "Storm Waves"
+        }
+    ],
+    "Underdark": [
+        {
+            "id": "enc-underdark-1",
+            "title": "Phase Spider Nest in the Fungal Chasm",
+            "category": "combat",
+            "danger": "Moderate",
+            "narrative": "Bioluminescent mushrooms cast sickly violet light across a chasm strung with shimmering ether-webs. Without warning, an eight-legged terror blinks into existence right behind the rearguard!",
+            "dcCheck": "DC 14 Passive Perception to spot the shimmering planar distortion before the spider bites.",
+            "monsters": [{"name": "Phase Spider", "count": 2, "cr": 3}],
+            "tactics": "Shifts between Ethereal and Material plane, biting to inject paralyzing poison then vanishing.",
+            "complication": "Pitch darkness; webs count as difficult terrain and burn with foul smoke.",
+            "loot": "Phase spider silk glands (can craft 2 Potions of Invisibility components) and 90 gp.",
+            "atmosphere": "Bioluminescent Violet"
+        }
+    ]
+}
+
+@app.get("/api/overworld")
+async def get_overworld():
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    # Persist schema migration if needed
+    if raw != overworld:
+        write_json("overworld.json", overworld)
+    return overworld
+
+@app.post("/api/overworld")
+async def save_overworld(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    if "mapTitle" in payload:
+        active_map["title"] = payload["mapTitle"]
+    if "mapSubtitle" in payload:
+        active_map["subtitle"] = payload["mapSubtitle"]
+    if "mapUrl" in payload:
+        active_map["mapUrl"] = payload["mapUrl"]
+    if "scale" in payload:
+        active_map["scale"] = payload["scale"]
+    if "scaleMilesPerHex" in payload:
+        active_map["scaleMilesPerHex"] = payload["scaleMilesPerHex"]
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "overworld": overworld}
+
+@app.post("/api/overworld/maps")
+async def create_or_update_overworld_map(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+
+    map_id = payload.get("id")
+    existing_map = next((m for m in overworld.get("maps", []) if m.get("id") == map_id), None) if map_id else None
+
+    if existing_map:
+        if "title" in payload and payload["title"]: existing_map["title"] = payload["title"]
+        if "subtitle" in payload: existing_map["subtitle"] = payload["subtitle"]
+        if "type" in payload and payload["type"]: existing_map["type"] = payload["type"]
+        if "scaleMilesPerHex" in payload: existing_map["scaleMilesPerHex"] = int(payload["scaleMilesPerHex"])
+        if "scale" in payload and payload["scale"]: existing_map["scale"] = payload["scale"]
+        elif "scaleMilesPerHex" in payload: existing_map["scale"] = f"1 Hex = {payload['scaleMilesPerHex']} Miles"
+        if "mapUrl" in payload and payload["mapUrl"]: existing_map["mapUrl"] = payload["mapUrl"]
+        target_map = existing_map
+    else:
+        map_id = f"map-{uuid.uuid4().hex[:8]}"
+        new_map = {
+            "id": map_id,
+            "title": payload.get("title", "New Regional Map"),
+            "subtitle": payload.get("subtitle", "Exploration Tier"),
+            "type": payload.get("type", "Province"),
+            "scale": payload.get("scale") or f"1 Hex = {payload.get('scaleMilesPerHex', 6)} Miles",
+            "scaleMilesPerHex": int(payload.get("scaleMilesPerHex", 6)),
+            "mapUrl": payload.get("mapUrl") or "/static/images/overworld_default.svg",
+            "partyMarker": {
+                "x": 50.0, "y": 50.0, "label": "Adventuring Party", "visibleToPlayers": True, "terrain": "Forest"
+            },
+            "hexGrid": {"enabled": True, "opacity": 0.25, "size": 36},
+            "fog": {"enabled": True, "revealedPoints": [{"x": 50.0, "y": 50.0, "radius": 9.0}]},
+            "trail": [],
+            "pins": []
+        }
+        overworld["maps"].append(new_map)
+        target_map = new_map
+
+    if payload.get("activate", True):
+        overworld["activeMapId"] = map_id
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "map": target_map, "overworld": overworld}
+
+@app.get("/api/overworld/tiers")
+async def get_overworld_tiers():
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    return {"status": "success", "tiers": overworld.get("tiers", ["Kingdom", "Province", "Settlement", "Dungeon"])}
+
+@app.post("/api/overworld/tiers")
+async def add_overworld_tier(payload: Dict[str, Any]):
+    name = (payload.get("tier") or payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Tier name cannot be empty")
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    tiers = overworld.setdefault("tiers", ["Kingdom", "Province", "Settlement", "Dungeon"])
+    if name not in tiers:
+        tiers.append(name)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "tiers": tiers, "overworld": overworld}
+
+@app.delete("/api/overworld/tiers/{tier_name}")
+async def delete_overworld_tier(tier_name: str):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    tiers = overworld.setdefault("tiers", ["Kingdom", "Province", "Settlement", "Dungeon"])
+    if len(tiers) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the only remaining map tier.")
+    tiers = [t for t in tiers if t.lower() != tier_name.lower()]
+    overworld["tiers"] = tiers
+    write_json("overworld.json", overworld)
+    return {"status": "success", "tiers": tiers, "overworld": overworld}
+
+@app.post("/api/overworld/maps/switch")
+async def switch_overworld_map(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+
+    target_id = payload.get("mapId")
+    if target_id and any(m.get("id") == target_id for m in overworld.get("maps", [])):
+        overworld["activeMapId"] = target_id
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "overworld": overworld}
+
+@app.delete("/api/overworld/maps/{map_id}")
+async def delete_overworld_map(map_id: str):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+
+    if len(overworld.get("maps", [])) <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the only remaining map tier.")
+
+    overworld["maps"] = [m for m in overworld.get("maps", []) if m.get("id") != map_id]
+    if overworld.get("activeMapId") == map_id:
+        overworld["activeMapId"] = overworld["maps"][0]["id"]
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "overworld": overworld}
+
+@app.post("/api/overworld/pin")
+async def save_overworld_pin(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    pins = active_map.get("pins", [])
+    pin_id = payload.get("id") or f"pin-{uuid.uuid4().hex[:8]}"
+    pin_data = {
+        "id": pin_id,
+        "locationId": payload.get("locationId", ""),
+        "subMapId": payload.get("subMapId", ""),
+        "title": payload.get("title", "New Landmark"),
+        "type": payload.get("type", "Settlement"),
+        "danger": payload.get("danger", "Low"),
+        "population": payload.get("population", "Unknown"),
+        "x": float(payload.get("x", 50.0)),
+        "y": float(payload.get("y", 50.0)),
+        "discovered": bool(payload.get("discovered", True)),
+        "icon": payload.get("icon", "📍"),
+        "notes": payload.get("notes", "")
+    }
+    idx = next((i for i, p in enumerate(pins) if p.get("id") == pin_id), None)
+    if idx is not None:
+        pins[idx] = pin_data
+    else:
+        pins.append(pin_data)
+    active_map["pins"] = pins
+
+    # If discovered, automatically add a fog reveal point around it
+    if pin_data["discovered"]:
+        reveals = active_map.setdefault("fog", {}).setdefault("revealedPoints", [])
+        if not any(abs(r.get("x", 0) - pin_data["x"]) < 2 and abs(r.get("y", 0) - pin_data["y"]) < 2 for r in reveals):
+            reveals.append({"x": pin_data["x"], "y": pin_data["y"], "radius": 7.0})
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "pin": pin_data, "overworld": overworld}
+
+@app.delete("/api/overworld/pin/{pin_id}")
+async def delete_overworld_pin(pin_id: str):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    active_map["pins"] = [p for p in active_map.get("pins", []) if p.get("id") != pin_id]
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "overworld": overworld}
+
+@app.post("/api/overworld/party-marker")
+async def update_overworld_party_marker(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    marker = active_map.setdefault("partyMarker", {"x": 37.5, "y": 50.0, "label": "Adventuring Party", "visibleToPlayers": True, "terrain": "Forest"})
+    prev_x = marker.get("x")
+    prev_y = marker.get("y")
+
+    if "x" in payload:
+        marker["x"] = round(float(payload["x"]), 2)
+    if "y" in payload:
+        marker["y"] = round(float(payload["y"]), 2)
+    if "label" in payload:
+        marker["label"] = payload["label"]
+    if "visibleToPlayers" in payload:
+        marker["visibleToPlayers"] = bool(payload["visibleToPlayers"])
+    if "terrain" in payload:
+        marker["terrain"] = payload["terrain"]
+
+    # Add reveal circle around new party location
+    reveals = active_map.setdefault("fog", {}).setdefault("revealedPoints", [])
+    reveals.append({"x": marker["x"], "y": marker["y"], "radius": 8.5})
+
+    # If dropTrail or significant movement (> 2% displacement), log waypoint
+    if payload.get("dropTrail", True):
+        dist = ((marker["x"] - (prev_x or marker["x"]))**2 + (marker["y"] - (prev_y or marker["y"]))**2)**0.5
+        if dist > 1.5:
+            tw = read_json("time_weather.json", {"day": 1, "hour": 9})
+            trail = active_map.setdefault("trail", [])
+            trail.append({
+                "id": f"tr-{uuid.uuid4().hex[:6]}",
+                "x": marker["x"],
+                "y": marker["y"],
+                "day": tw.get("day", 1),
+                "hour": tw.get("hour", 9),
+                "label": f"March Day {tw.get('day', 1)}",
+                "type": "march"
+            })
+            if len(trail) > 50:
+                trail.pop(0)
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "partyMarker": marker, "overworld": overworld}
+
+@app.post("/api/overworld/hex-grid")
+async def update_overworld_hex_grid(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    grid = active_map.setdefault("hexGrid", {"enabled": True, "opacity": 0.25, "size": 36})
+    if "enabled" in payload:
+        grid["enabled"] = bool(payload["enabled"])
+    if "opacity" in payload:
+        grid["opacity"] = float(payload["opacity"])
+    if "size" in payload:
+        grid["size"] = int(payload["size"])
+    if "scaleMilesPerHex" in payload:
+        active_map["scaleMilesPerHex"] = int(payload["scaleMilesPerHex"])
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "hexGrid": grid, "overworld": overworld}
+
+@app.post("/api/overworld/fog/reveal")
+async def reveal_overworld_fog(payload: Dict[str, Any]):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    fog = active_map.setdefault("fog", {"enabled": True, "revealedPoints": []})
+    reveals = fog.setdefault("revealedPoints", [])
+    x = float(payload.get("x", 50.0))
+    y = float(payload.get("y", 50.0))
+    radius = float(payload.get("radius", 8.0))
+    reveals.append({"x": round(x, 2), "y": round(y, 2), "radius": round(radius, 2)})
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "fog": fog, "overworld": overworld}
+
+@app.post("/api/overworld/fog/shroud")
+async def shroud_overworld_fog(payload: Dict[str, Any] = None):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    payload = payload or {}
+    fog = active_map.setdefault("fog", {"enabled": True, "revealedPoints": []})
+    if payload.get("resetAll", False):
+        pm = active_map.get("partyMarker", {"x": 37.5, "y": 50.0})
+        fog["revealedPoints"] = [{"x": pm.get("x", 37.5), "y": pm.get("y", 50.0), "radius": 8.0}]
+    else:
+        x = float(payload.get("x", 0))
+        y = float(payload.get("y", 0))
+        radius = float(payload.get("radius", 8.0))
+        fog["revealedPoints"] = [
+            r for r in fog.get("revealedPoints", [])
+            if ((r.get("x", 0) - x)**2 + (r.get("y", 0) - y)**2)**0.5 > radius
+        ]
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "fog": fog, "overworld": overworld}
+
+@app.post("/api/overworld/fog/toggle")
+async def toggle_overworld_fog(payload: Dict[str, Any] = None):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    fog = active_map.setdefault("fog", {"enabled": True, "revealedPoints": []})
+    if payload and "enabled" in payload:
+        fog["enabled"] = bool(payload["enabled"])
+    else:
+        fog["enabled"] = not fog.get("enabled", True)
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "fog": fog, "overworld": overworld}
+
+@app.post("/api/overworld/trail/camp")
+async def drop_overworld_campsite(payload: Dict[str, Any] = None):
+    payload = payload or {}
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    pm = active_map.get("partyMarker", {"x": 37.5, "y": 50.0})
+    tw = read_json("time_weather.json", {"day": 1, "hour": 20})
+    travel_data = read_json("travel.json", {"history": []})
+
+    camp_id = f"camp-{uuid.uuid4().hex[:6]}"
+    day_num = tw.get("day", 1)
+    hour_num = tw.get("hour", 20)
+    label = payload.get("label") or f"Night {day_num} Camp"
+    notes = payload.get("notes") or f"Campsite pitched at {hour_num:02d}:00. Terrain: {pm.get('terrain', 'Wilderness')}."
+
+    trail = active_map.setdefault("trail", [])
+    camp_waypoint = {
+        "id": camp_id,
+        "x": pm.get("x", 37.5),
+        "y": pm.get("y", 50.0),
+        "day": day_num,
+        "hour": hour_num,
+        "label": label,
+        "type": "camp",
+        "notes": notes
+    }
+    trail.append(camp_waypoint)
+
+    # Sync into travel history
+    travel_data.setdefault("history", []).append({
+        "id": f"camp-{camp_id}",
+        "type": "camp",
+        "label": label,
+        "day": day_num,
+        "hour": hour_num,
+        "marchHours": 0,
+        "pace": travel_data.get("pace", "Normal"),
+        "terrain": pm.get("terrain", "Wilderness"),
+        "road": travel_data.get("road", "trail"),
+        "miles": 0.0,
+        "notes": f"Pitched {label}. {notes}",
+        "timestamp": datetime.now().isoformat()
+    })
+    write_json("travel.json", travel_data)
+
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "camp": camp_waypoint, "overworld": overworld, "travel": travel_data}
+
+@app.delete("/api/overworld/trail/{trail_id}")
+async def delete_overworld_trail_point(trail_id: str):
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    active_map["trail"] = [t for t in active_map.get("trail", []) if t.get("id") != trail_id]
+    overworld = ensure_overworld_schema(overworld, locations)
+    write_json("overworld.json", overworld)
+    return {"status": "success", "overworld": overworld}
+
+@app.post("/api/overworld/settlement/rest")
+async def rest_party_at_settlement(payload: Dict[str, Any] = None):
+    payload = payload or {}
+    rest_type = payload.get("restType", "long")
+    loc_name = payload.get("locationName", "Tavern")
+
+    tw = read_json("time_weather.json", {"day": 1, "hour": 9, "minute": 0, "weather": {}, "moonPhase": "Full Moon"})
+    party = read_json("party.json", [])
+    stash = read_json("party_stash.json", {"items": [], "coins": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}})
+
+    if rest_type == "long":
+        current_hr = tw.get("hour", 9) + 8
+        tw["day"] = tw.get("day", 1) + (current_hr // 24)
+        tw["hour"] = current_hr % 24
+        tw["minute"] = 0
+
+        # Fully restore HP, reset death saves
+        for pc in party:
+            pc["currentHp"] = pc.get("maxHp", 10)
+            pc["tempHp"] = 0
+            pc["deathSaves"] = {"successes": 0, "failures": 0}
+
+        # Deduct 1 ration per PC from stash if available
+        rations_consumed = 0
+        party_count = len(party)
+        for item in stash.get("items", []):
+            if "ration" in item.get("name", "").lower() and item.get("qty", 0) > 0:
+                consume = min(party_count - rations_consumed, item["qty"])
+                item["qty"] -= consume
+                rations_consumed += consume
+                if rations_consumed >= party_count:
+                    break
+
+        summary = f"The party completed a Long Rest (8 hours) at {loc_name}. HP fully restored to maximum, death saves reset, and daily abilities refreshed. Game clock advanced to Day {tw['day']}, {tw['hour']:02d}:00."
+    else:
+        current_hr = tw.get("hour", 9) + 1
+        tw["day"] = tw.get("day", 1) + (current_hr // 24)
+        tw["hour"] = current_hr % 24
+        summary = f"The party took a Short Rest (1 hour) at {loc_name}. Game clock advanced to {tw['hour']:02d}:{tw.get('minute', 0):02d}."
+
+    write_json("time_weather.json", tw)
+    write_json("party.json", party)
+    write_json("party_stash.json", stash)
+
+    return {
+        "status": "success",
+        "summary": summary,
+        "restType": rest_type,
+        "timeWeather": tw,
+        "party": party
+    }
+
+@app.post("/api/overworld/encounter/roll")
+async def roll_overland_encounter(payload: Dict[str, Any] = None):
+    payload = payload or {}
+    terrain = payload.get("terrain", "Forest")
+    danger = payload.get("danger", "all")
+    time_of_day = payload.get("timeOfDay", "Day")
+
+    encounters_pool = OVERLAND_2024_ENCOUNTERS.get(terrain, OVERLAND_2024_ENCOUNTERS["Forest"])
+    if danger != "all":
+        filtered = [e for e in encounters_pool if e.get("danger", "").lower() == danger.lower()]
+        if filtered:
+            encounters_pool = filtered
+
+    chosen = dict(random.choice(encounters_pool))
+
+    # Match monsters against monsters.json catalog
+    monsters_catalog = read_json("monsters.json", [])
+    resolved_monsters = []
+    for m in chosen.get("monsters", []):
+        name = m.get("name")
+        matched = find_bestiary_monster(monsters_catalog, name)
+        resolved_monsters.append({
+            "name": matched.get("name") if matched else name,
+            "count": m.get("count", 1),
+            "cr": matched.get("cr") if matched else m.get("cr", 1),
+            "hp": int(matched.get("hp", 20)) if matched else 20,
+            "ac": int(matched.get("ac", 12)) if matched else 12,
+            "size": matched.get("size", "Medium") if matched else "Medium",
+            "monsterId": matched.get("id") if matched else None
+        })
+    chosen["monsters"] = resolved_monsters
+    chosen["terrain"] = terrain
+    chosen["timeOfDay"] = time_of_day
+
+    return {"status": "success", "encounter": chosen}
+
+@app.post("/api/overworld/encounter/spawn")
+async def spawn_overland_encounter_to_combat(payload: Dict[str, Any]):
+    monsters_list = payload.get("monsters", [])
+    if not monsters_list:
+        raise HTTPException(status_code=400, detail="No monsters specified for combat")
+
+    combat = read_json("combat.json", {"inCombat": True, "round": 1, "currentTurnIndex": 0, "combatants": []})
+    combat["inCombat"] = True
+    catalog = read_json("monsters.json", [])
+    bstate = read_json("battlemap.json", get_default_battlemap_state())
+    existing_tokens = bstate.get("tokens", [])
+
+    token_index = len(existing_tokens)
+    base_x = 950.0
+    base_y = 650.0
+
+    added_names = []
+    new_combatants = []
+    new_tokens = []
+
+    for item in monsters_list:
+        m_name = item.get("name", "Beast")
+        count = max(1, min(12, int(item.get("count", 1))))
+
+        matched = find_bestiary_monster(catalog, m_name)
+
+        hp = int(matched.get("hp", 10)) if matched else int(item.get("hp", 20))
+        ac = int(matched.get("ac", 10)) if matched else int(item.get("ac", 12))
+        dex = matched.get("stats", {}).get("dex", 10) if matched else 10
+        dex_mod = (dex - 10) // 2
+        cr_str = str(matched.get("cr", item.get("cr", "1"))) if matched else str(item.get("cr", "1"))
+        cr_val = float(cr_str) if cr_str.replace('.', '', 1).isdigit() else 0.25
+        is_boss = cr_val >= 10 or ("boss" in m_name.lower()) or ("dragon" in m_name.lower())
+        color = "#a855f7" if is_boss else "#ef4444"
+        m_size = matched.get("size", "Medium") if matched else item.get("size", "Medium")
+        size_squares = get_monster_size_squares(m_size)
+        m_id = matched.get("id") if matched else (item.get("monsterId") or f"m-{uuid.uuid4().hex[:6]}")
+        img_url = (matched.get("imageUrl") if matched else None) or f"/static/images/monsters/{m_id}.webp"
+
+        for i in range(count):
+            init_roll = float(random.randint(1, 20) + dex_mod)
+            name_suffix = f" {i + 1}" if count > 1 else ""
+            combatant_id = f"mob-{m_id}-{int(time.time()*1000)}-{token_index}"
+            full_name = f"{m_name}{name_suffix}"
+
+            combatant = {
+                "id": combatant_id,
+                "name": full_name,
+                "type": "monster",
+                "monsterId": m_id,
+                "size": m_size,
+                "initiative": init_roll,
+                "tieBreaker": round(dex_mod + random.uniform(0.01, 0.99), 2),
+                "currentHp": hp,
+                "maxHp": hp,
+                "tempHp": 0,
+                "ac": ac,
+                "conditions": [],
+                "concentrating": False,
+                "hidden": False,
+                "visibleToPlayers": True,
+                "imageUrl": img_url,
+                "healthStatus": "Healthy",
+                "statusColor": "emerald",
+                "notes": f"CR {cr_str} | Spd: {matched.get('speed', '30 ft.') if matched else '30 ft.'}"
+            }
+            new_combatants.append(combatant)
+            added_names.append(full_name)
+
+            col = token_index % 5
+            row = token_index // 5
+            token_x = base_x + col * 75.0
+            token_y = base_y + row * 75.0
+
+            token = {
+                "id": f"token_{uuid.uuid4().hex[:8]}",
+                "name": full_name,
+                "monsterId": m_id,
+                "combatantId": combatant_id,
+                "size": m_size,
+                "sizeSquares": size_squares,
+                "x": token_x,
+                "y": token_y,
+                "imageUrl": img_url,
+                "currentHp": hp,
+                "maxHp": hp,
+                "color": color,
+                "visibleToPlayers": True
+            }
+            new_tokens.append(token)
+            token_index += 1
+
+    combat.setdefault("combatants", []).extend(new_combatants)
+    combat["combatants"].sort(key=lambda c: (c.get("initiative", 0), c.get("tieBreaker", 0)), reverse=True)
+    write_json("combat.json", combat)
+
+    # Save tokens to battlemap.json
+    existing_tokens.extend(new_tokens)
+    bstate["tokens"] = existing_tokens
+    bstate["updatedAt"] = time.time()
+    write_json("battlemap.json", bstate)
+
+    return {
+        "status": "success",
+        "addedCombatants": added_names,
+        "combat": combat,
+        "tokens": new_tokens
+    }
+
+@app.post("/api/overworld/broadcast")
+async def broadcast_overworld_to_players():
+    locations = read_json("locations.json", [])
+    raw = read_json("overworld.json", None)
+    overworld = ensure_overworld_schema(raw, locations)
+    active_map = get_active_map_ref(overworld)
+
+    fog = active_map.get("fog", {"enabled": True, "revealedPoints": []})
+    fog_enabled = fog.get("enabled", True)
+    visible_pins = [p for p in active_map.get("pins", []) if (p.get("discovered", False) or not fog_enabled)]
+
+    player_overworld = {
+        "mapTitle": active_map.get("title", "Regional Map"),
+        "mapSubtitle": active_map.get("subtitle", "Overland Journey & Discovered Landmarks"),
+        "type": active_map.get("type", "Kingdom"),
+        "mapUrl": active_map.get("mapUrl", "/static/images/overworld_default.svg"),
+        "scaleMilesPerHex": active_map.get("scaleMilesPerHex", 24),
+        "partyMarker": active_map.get("partyMarker", {"x": 37.5, "y": 50.0, "label": "Adventuring Party", "visibleToPlayers": True}),
+        "hexGrid": active_map.get("hexGrid", {"enabled": True, "opacity": 0.25, "size": 36}),
+        "fog": active_map.get("fog", {"enabled": True, "revealedPoints": []}),
+        "trail": active_map.get("trail", []),
+        "pins": visible_pins
+    }
+    broadcast_data = {
+        "active": True,
+        "title": player_overworld["mapTitle"],
+        "subtitle": f"{player_overworld['mapSubtitle']} • {len(visible_pins)} Discovered Landmarks",
+        "content": "Cartographic projection of the party's overland journey and known points of interest.",
+        "type": "regional_map",
+        "imageUrl": player_overworld["mapUrl"],
+        "overworld": player_overworld
+    }
+    write_json("broadcast.json", broadcast_data)
+    return {"status": "success", "broadcast": broadcast_data}
+
+# -------------------------------------------------------------
+# FACTION RELATIONS MATRIX & BETWEEN-SESSION "FACTION TURN" ENGINE
+# -------------------------------------------------------------
+@app.get("/api/factions/relations")
+async def get_faction_relations():
+    return read_json("faction_relations.json", get_default_faction_relations())
+
+@app.post("/api/factions/relations")
+async def save_faction_relation(payload: Dict[str, Any]):
+    state = read_json("faction_relations.json", get_default_faction_relations())
+    if "relations" in payload and isinstance(payload["relations"], list):
+        state["relations"] = payload["relations"]
+    elif "factionA" in payload and "factionB" in payload:
+        fac_a = payload["factionA"].strip()
+        fac_b = payload["factionB"].strip()
+        status = payload.get("status", "Neutral")
+        note = payload.get("note", "")
+        rel_id = payload.get("id") or f"rel-{uuid.uuid4().hex[:6]}"
+        relations = state.get("relations", [])
+        existing = next((r for r in relations if {r.get("factionA"), r.get("factionB")} == {fac_a, fac_b}), None)
+        if existing:
+            existing["status"] = status
+            existing["note"] = note
+        else:
+            relations.append({"id": rel_id, "factionA": fac_a, "factionB": fac_b, "status": status, "note": note})
+        state["relations"] = relations
+    write_json("faction_relations.json", state)
+    return {"status": "success", "factionRelations": state}
+
+@app.post("/api/factions/turn")
+async def run_faction_turn_simulator(payload: Optional[Dict[str, Any]] = None):
+    payload = payload or {}
+    target_faction_id = payload.get("factionId", "all")
+    factions = read_json("factions.json", [])
+    rel_state = read_json("faction_relations.json", get_default_faction_relations())
+    quests_data = read_json("quests.json", {"quests": [], "rumors": []})
+    if isinstance(quests_data, list):
+        quests_data = {"quests": quests_data, "rumors": []}
+    rumors = quests_data.get("rumors", [])
+    tw = read_json("time_weather.json", {"day": 1})
+    day_num = tw.get("day", 1)
+
+    maneuver_templates = [
+        "dispatched covert agents to secure leverage in {hq}",
+        "pressured rival merchants and fortified checkpoints near {hq}",
+        "intercepted a courier carrying sensitive dispatches from {rival}",
+        "recruited veteran mercenaries to accelerate their agenda: {goal}",
+        "bribed harbor officials to divert supplies toward {hq}"
+    ]
+
+    turn_events = []
+    generated_rumors = []
+
+    for fac in factions:
+        if target_faction_id != "all" and fac.get("id") != target_faction_id:
+            continue
+        roll = random.randint(1, 20)
+        fac_name = fac.get("name", "Faction")
+        hq = fac.get("headquarters") or "the city wards"
+        rivals = fac.get("rivals") or ["rival factions"]
+        rival_name = random.choice(rivals)
+        goal_short = (fac.get("goals") or "expanding influence")[:75]
+
+        clocks = fac.get("clocks", [])
+        active_clocks = [c for c in clocks if c.get("currentTicks", 0) < c.get("totalTicks", 4)]
+
+        if roll >= 15:
+            ticks_added = 2 if roll == 20 else 1
+            outcome_type = "Major Breakthrough" if roll == 20 else "Goal Advanced"
+        elif roll >= 8:
+            ticks_added = 1
+            outcome_type = "Steady Progress"
+        else:
+            ticks_added = 0
+            outcome_type = "Stymied by Rivals"
+
+        clock_msg = ""
+        completed_clock_outcome = ""
+        if ticks_added > 0 and active_clocks:
+            chosen_clock = active_clocks[0]
+            old_t = chosen_clock.get("currentTicks", 0)
+            max_t = chosen_clock.get("totalTicks", 4)
+            new_t = min(max_t, old_t + ticks_added)
+            chosen_clock["currentTicks"] = new_t
+            clock_msg = f"Clock '{chosen_clock.get('title')}' advanced ({old_t} → {new_t}/{max_t})."
+            if new_t >= max_t:
+                completed_clock_outcome = chosen_clock.get("outcome") or f"{fac_name} completed '{chosen_clock.get('title')}'!"
+                rumor_text = f"[FACTION EVENT] {completed_clock_outcome}"
+                veracity = "True"
+            else:
+                maneuver = random.choice(maneuver_templates).format(hq=hq, rival=rival_name, goal=goal_short)
+                rumor_text = f"Whispers in {hq} claim that {fac_name} {maneuver} ({chosen_clock.get('title')}: {new_t}/{max_t})."
+                veracity = "Partially True" if roll < 15 else "True"
+
+            new_rumor = {
+                "id": f"rum-fac-{uuid.uuid4().hex[:6]}",
+                "text": rumor_text,
+                "source": f"Faction Turn ({fac_name})",
+                "location": hq,
+                "veracity": veracity,
+                "active": True
+            }
+            rumors.insert(0, new_rumor)
+            generated_rumors.append(new_rumor)
+        else:
+            clock_msg = f"Opposition from {rival_name} stalled {fac_name}'s operations this turn."
+
+        ev_record = {
+            "id": f"ft-{uuid.uuid4().hex[:6]}",
+            "day": f"Day {day_num}",
+            "faction": fac_name,
+            "roll": roll,
+            "outcomeType": outcome_type,
+            "summary": clock_msg,
+            "completedOutcome": completed_clock_outcome
+        }
+        turn_events.append(ev_record)
+
+        # If a clock completed, also record in campaign timeline!
+        if completed_clock_outcome:
+            timeline = read_json("timeline.json", get_default_timeline())
+            timeline.append({
+                "id": f"tl-fac-{uuid.uuid4().hex[:6]}",
+                "era": "current",
+                "dateLabel": f"Day {day_num} (348 P.R.)",
+                "sortOrder": 348000 + int(day_num),
+                "title": f"Faction Milestone: {fac_name}",
+                "category": "Faction Turn",
+                "location": hq,
+                "factions": [fac_name],
+                "description": completed_clock_outcome,
+                "isSessionLog": True,
+                "sourceId": fac.get("id", "")
+            })
+            write_json("timeline.json", timeline)
+
+    quests_data["rumors"] = rumors
+    write_json("quests.json", quests_data)
+    write_json("factions.json", factions)
+
+    history = rel_state.get("turnHistory", [])
+    rel_state["turnHistory"] = (turn_events + history)[:25]
+    write_json("faction_relations.json", rel_state)
+
+    return {
+        "status": "success",
+        "events": turn_events,
+        "generatedRumors": generated_rumors,
+        "factions": factions,
+        "rumors": rumors,
+        "factionRelations": rel_state,
+        "timeline": read_json("timeline.json", get_default_timeline())
+    }
+
+# -------------------------------------------------------------
+# PANTHEON, DEITIES & COSMIC CULTS + PIETY TRACKER
+# -------------------------------------------------------------
+@app.get("/api/pantheon")
+async def get_pantheon():
+    return read_json("pantheon.json", get_default_pantheon())
+
+@app.post("/api/pantheon")
+async def save_deity(payload: Dict[str, Any]):
+    pantheon = read_json("pantheon.json", get_default_pantheon())
+    deity_id = payload.get("id") or f"deity-{uuid.uuid4().hex[:8]}"
+    deity_data = {
+        "id": deity_id,
+        "name": payload.get("name", "Unnamed Deity"),
+        "title": payload.get("title", "Immortal Sovereign"),
+        "category": payload.get("category", "Prime Deity"),
+        "alignment": payload.get("alignment", "Neutral"),
+        "domains": payload.get("domains", ["Life"]),
+        "symbol": payload.get("symbol", "Sacred Emblem"),
+        "symbolIcon": payload.get("symbolIcon", "✨"),
+        "worshippers": payload.get("worshippers", ""),
+        "rivals": payload.get("rivals", []),
+        "tenets": payload.get("tenets", []),
+        "pietyBoons": payload.get("pietyBoons", {
+            "3": "Devotee Boon (Piety 3+): Minor divine blessing.",
+            "10": "Votary Boon (Piety 10+): Once per Long Rest domain spell.",
+            "25": "Disciple Boon (Piety 25+): Supernatural resistance and aura.",
+            "50": "Champion Boon (Piety 50+): +2 to primary ability score (max 22)."
+        }),
+        "description": payload.get("description", ""),
+        "imageUrl": payload.get("imageUrl", "")
+    }
+    idx = next((i for i, d in enumerate(pantheon) if d.get("id") == deity_id), None)
+    if idx is not None:
+        pantheon[idx] = deity_data
+    else:
+        pantheon.insert(0, deity_data)
+    write_json("pantheon.json", pantheon)
+    return {"status": "success", "deity": deity_data, "pantheon": pantheon}
+
+@app.delete("/api/pantheon/{deity_id}")
+async def delete_deity(deity_id: str):
+    pantheon = read_json("pantheon.json", get_default_pantheon())
+    pantheon = [d for d in pantheon if d.get("id") != deity_id]
+    write_json("pantheon.json", pantheon)
+    return {"status": "success", "pantheon": pantheon}
+
+@app.post("/api/pantheon/{deity_id}/broadcast")
+async def broadcast_deity_symbol(deity_id: str):
+    pantheon = read_json("pantheon.json", get_default_pantheon())
+    deity = next((d for d in pantheon if d.get("id") == deity_id), None)
+    if not deity:
+        raise HTTPException(status_code=404, detail="Deity not found")
+
+    domains_str = ", ".join(deity.get("domains", []))
+    tenets_list = deity.get("tenets", [])
+    tenets_text = "\n".join([f"• {t}" for t in tenets_list])
+    content_body = f"Holy Symbol: {deity.get('symbolIcon', '✨')} {deity.get('symbol', '')}\n\n{deity.get('description', '')}\n\nTenets of Faith:\n{tenets_text}"
+
+    broadcast_data = {
+        "active": True,
+        "title": deity.get("name", "Divine Icon"),
+        "subtitle": f"{deity.get('title', '')} • {deity.get('alignment', '')} • Domains: {domains_str}",
+        "content": content_body,
+        "type": "deity",
+        "imageUrl": deity.get("imageUrl", ""),
+        "deity": deity
+    }
+    write_json("broadcast.json", broadcast_data)
+    return {"status": "success", "broadcast": broadcast_data}
+
+@app.post("/api/party/{pc_id}/piety")
+async def update_pc_piety(pc_id: str, payload: Dict[str, Any]):
+    party = read_json("party.json", [])
+    party = ensure_party_inventory_defaults(party)
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="PC not found")
+
+    if "deityId" in payload:
+        pc["deityId"] = payload["deityId"]
+    if "deityName" in payload:
+        pc["deityName"] = payload["deityName"]
+    if "delta" in payload:
+        pc["pietyScore"] = max(0, int(pc.get("pietyScore") or 1) + int(payload["delta"]))
+    elif "pietyScore" in payload:
+        pc["pietyScore"] = max(0, int(payload["pietyScore"]))
+
+    write_json("party.json", party)
+    return {"status": "success", "pc": pc, "party": party}
+
+# -------------------------------------------------------------
+# CAMPAIGN HISTORICAL TIMELINE & ERAS CHRONOLOGY
+# -------------------------------------------------------------
+@app.get("/api/timeline")
+async def get_timeline():
+    return normalize_timeline(read_json("timeline.json", get_default_timeline()))
+
+@app.post("/api/timeline")
+async def save_timeline_event(payload: Dict[str, Any]):
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    events = tl_data.get("events", [])
+    ev_id = payload.get("id") or f"tl-{uuid.uuid4().hex[:8]}"
+    ev_data = {
+        "id": ev_id,
+        "era": payload.get("era", "current"),
+        "dateLabel": payload.get("dateLabel", "Day 1 (348 P.R.)"),
+        "sortOrder": int(payload.get("sortOrder", 348001)),
+        "title": payload.get("title", "Historical Event"),
+        "category": payload.get("category", "Campaign Milestone"),
+        "location": payload.get("location", ""),
+        "factions": payload.get("factions", []),
+        "description": payload.get("description", ""),
+        "isSessionLog": bool(payload.get("isSessionLog", False)),
+        "sourceId": payload.get("sourceId", "")
+    }
+    idx = next((i for i, e in enumerate(events) if e.get("id") == ev_id), None)
+    if idx is not None:
+        events[idx] = ev_data
+    else:
+        events.append(ev_data)
+    events.sort(key=lambda x: x.get("sortOrder", 0))
+    tl_data["events"] = events
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "event": ev_data, "timeline": tl_data}
+
+@app.delete("/api/timeline/{event_id}")
+async def delete_timeline_event(event_id: str):
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data["events"] = [e for e in tl_data.get("events", []) if e.get("id") != event_id]
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "timeline": tl_data}
+
+@app.post("/api/timeline/eras")
+async def save_timeline_era(payload: Dict[str, Any]):
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    eras = tl_data.get("eras", [])
+    era_id = payload.get("id")
+    if not era_id:
+        clean_name = "".join(c.lower() if c.isalnum() else "_" for c in payload.get("name", "era")).strip("_")[:12]
+        era_id = f"era_{clean_name}_{uuid.uuid4().hex[:4]}"
+    
+    era_data = {
+        "id": era_id,
+        "name": payload.get("name", "New Era"),
+        "icon": payload.get("icon", "⏳"),
+        "badgeColor": payload.get("badgeColor", "sky"),
+        "description": payload.get("description", "")
+    }
+    idx = next((i for i, er in enumerate(eras) if er.get("id") == era_id), None)
+    if idx is not None:
+        eras[idx] = era_data
+    else:
+        eras.append(era_data)
+    tl_data["eras"] = eras
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "era": era_data, "timeline": tl_data}
+
+@app.delete("/api/timeline/eras/{era_id}")
+async def delete_timeline_era(era_id: str):
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    eras = [er for er in tl_data.get("eras", []) if er.get("id") != era_id]
+    if not eras:
+        raise HTTPException(status_code=400, detail="Cannot delete all eras. At least one era must remain.")
+    tl_data["eras"] = eras
+    fallback_era = eras[0]["id"]
+    for ev in tl_data.get("events", []):
+        if ev.get("era") == era_id:
+            ev["era"] = fallback_era
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "timeline": tl_data}
+
+@app.post("/api/timeline/sync")
+async def sync_session_log_to_timeline():
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    events = tl_data.get("events", [])
+    existing_sources = {e.get("sourceId") for e in events if e.get("sourceId")}
+    quests_data = read_json("quests.json", {"quests": [], "rumors": []})
+    quests = quests_data.get("quests", []) if isinstance(quests_data, dict) else quests_data
+    notes = read_json("session_notes.json", [])
+    tw = read_json("time_weather.json", {"day": 1})
+    day_num = int(tw.get("day", 1))
+    added = 0
+
+    for q in quests:
+        q_id = q.get("id")
+        if q.get("status") == "Completed" and q_id and q_id not in existing_sources:
+            events.append({
+                "id": f"tl-qst-{uuid.uuid4().hex[:6]}",
+                "era": "current",
+                "dateLabel": f"Day {day_num} (348 P.R.)",
+                "sortOrder": 348000 + day_num,
+                "title": f"Quest Completed: {q.get('title')}",
+                "category": "Quest Completed",
+                "location": q.get("location") or "Shattered Coast",
+                "factions": [q.get("giver")] if q.get("giver") else [],
+                "description": q.get("summary") or f"Completed quest '{q.get('title')}'.",
+                "isSessionLog": True,
+                "sourceId": q_id
+            })
+            existing_sources.add(q_id)
+            added += 1
+
+    for n in notes:
+        n_id = n.get("id")
+        if n.get("tag") in ("quest", "combat") and n_id and n_id not in existing_sources:
+            text = n.get("text", "")
+            events.append({
+                "id": f"tl-note-{uuid.uuid4().hex[:6]}",
+                "era": "current",
+                "dateLabel": n.get("timestamp") or f"Day {day_num} (348 P.R.)",
+                "sortOrder": 348000 + day_num,
+                "title": text[:68] + ("..." if len(text) > 68 else ""),
+                "category": f"Session Log (#{n.get('tag')})",
+                "location": "",
+                "factions": [],
+                "description": text,
+                "isSessionLog": True,
+                "sourceId": n_id
+            })
+            existing_sources.add(n_id)
+            added += 1
+
+    events.sort(key=lambda x: x.get("sortOrder", 0))
+    tl_data["events"] = events
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "added": added, "timeline": tl_data}
+
+# -------------------------------------------------------------
+# WILDERNESS TRAVEL, HAZARDS & FORAGING CALCULATOR
+# -------------------------------------------------------------
+@app.get("/api/travel")
+async def get_travel_state():
+    return read_json("travel.json", get_default_travel_state())
+
+@app.post("/api/travel")
+async def save_travel_state(payload: Dict[str, Any]):
+    state = read_json("travel.json", get_default_travel_state())
+    state.update(payload)
+    write_json("travel.json", state)
+    return {"status": "success", "travel": state}
+
+@app.post("/api/travel/march")
+async def log_travel_march(payload: Dict[str, Any]):
+    march_hours = int(payload.get("marchHours", 8))
+    pace = payload.get("pace", "Normal")
+    terrain = payload.get("terrain", "Forest")
+    road = payload.get("road", "trail")
+    miles = float(payload.get("miles", 24.0))
+    notes = payload.get("notes", "")
+
+    # Advance campaign in-game clock
+    time_state = read_json("time_weather.json", {
+        "day": 1, "hour": 9, "minute": 0,
+        "weather": {"temperature": "Mild", "wind": "Calm", "precipitation": "Clear", "tacticalEffect": "None"},
+        "moonPhase": "Waxing Crescent",
+        "activeTimers": []
+    })
+    minutes_to_add = march_hours * 60
+    current_min = time_state.get("minute", 0) + minutes_to_add
+    extra_hours = current_min // 60
+    time_state["minute"] = current_min % 60
+    current_hour = time_state.get("hour", 9) + extra_hours
+    extra_days = current_hour // 24
+    time_state["hour"] = current_hour % 24
+    time_state["day"] = time_state.get("day", 1) + extra_days
+
+    # Update timers
+    expired_timers = []
+    remaining_timers = []
+    for timer in time_state.get("activeTimers", []):
+        rem = timer.get("remainingMinutes", 0) - minutes_to_add
+        if rem <= 0:
+            expired_timers.append(timer.get("name", "Timer"))
+        else:
+            timer["remainingMinutes"] = rem
+            remaining_timers.append(timer)
+    time_state["activeTimers"] = remaining_timers
+
+    write_json("time_weather.json", time_state)
+
+    # Append to travel march history
+    travel_state = read_json("travel.json", get_default_travel_state())
+    history = travel_state.get("history", [])
+    march_entry = {
+        "id": f"march-{uuid.uuid4().hex[:6]}",
+        "day": time_state.get("day", 1),
+        "hour": time_state.get("hour", 9),
+        "marchHours": march_hours,
+        "pace": pace,
+        "terrain": terrain,
+        "road": road,
+        "miles": miles,
+        "notes": notes,
+        "timestamp": datetime.now().isoformat()
+    }
+    travel_state["history"] = [march_entry] + history[:50]
+    travel_state["pace"] = pace
+    travel_state["terrain"] = terrain
+    travel_state["road"] = road
+    travel_state["marchHours"] = march_hours
+    write_json("travel.json", travel_state)
+
+    return {
+        "status": "success",
+        "travel": travel_state,
+        "timeWeather": time_state,
+        "entry": march_entry,
+        "expiredTimers": expired_timers
+    }
+
+# -------------------------------------------------------------
+# PLAYER INVENTORY, CURRENCY & SHARED PARTY STASH
+# -------------------------------------------------------------
+@app.get("/api/party/stash")
+async def get_party_stash():
+    return read_json("party_stash.json", get_default_party_stash())
+
+@app.post("/api/party/stash")
+async def save_party_stash(payload: Dict[str, Any]):
+    stash = read_json("party_stash.json", get_default_party_stash())
+    stash.update(payload)
+    write_json("party_stash.json", stash)
+    return {"status": "success", "partyStash": stash}
+
+@app.post("/api/party/{pc_id}/inventory")
+async def update_pc_inventory(pc_id: str, payload: Dict[str, Any]):
+    party = read_json("party.json", [])
+    party = ensure_party_inventory_defaults(party)
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="PC not found")
+
+    if "currency" in payload and isinstance(payload["currency"], dict):
+        pc["currency"] = payload["currency"]
+    if "maxCarryWeight" in payload:
+        pc["maxCarryWeight"] = int(payload["maxCarryWeight"])
+    if "inventory" in payload and isinstance(payload["inventory"], list):
+        pc["inventory"] = payload["inventory"]
+    elif "item" in payload and isinstance(payload["item"], dict):
+        inv = pc.get("inventory", [])
+        item = payload["item"]
+        item_id = item.get("id") or f"inv-{uuid.uuid4().hex[:6]}"
+        item["id"] = item_id
+        idx = next((i for i, x in enumerate(inv) if x.get("id") == item_id), None)
+        if idx is not None:
+            inv[idx] = item
+        else:
+            inv.append(item)
+        pc["inventory"] = inv
+
+    write_json("party.json", party)
+    return {"status": "success", "pc": pc, "party": party}
+
 
 # -------------------------------------------------------------
 # SECRETS & CLUES ENGINE (LAZY DM PREP & DISCOVERY)
@@ -2726,90 +5094,58 @@ async def update_pc_resource(pc_id: str, payload: Dict[str, Any]):
 # -----------------------------------------------------------------------------
 # TABLETOP BATTLEMAP & FOG OF WAR (3RD SCREEN IN-TABLE TV)
 # -----------------------------------------------------------------------------
-DEFAULT_BATTLEMAPS_CATALOG = [
-    {
-        "id": "dungeon_crypt",
-        "name": "Forgotten Dungeon Crypt",
-        "url": "/static/images/battlemaps/dungeon_crypt.svg",
-        "width": 2000,
-        "height": 1500,
-        "defaultGridSize": 50,
-        "theme": "dungeon",
-        "type": "preset",
-        "createdAt": 1728950000
-    },
-    {
-        "id": "forest_river",
-        "name": "Whispering Woods & River Crossing",
-        "url": "/static/images/battlemaps/forest_river.svg",
-        "width": 2000,
-        "height": 1500,
-        "defaultGridSize": 50,
-        "theme": "forest",
-        "type": "preset",
-        "createdAt": 1728950000
-    },
-    {
-        "id": "tavern_cellar",
-        "name": "Smuggler's Tavern Cellar",
-        "url": "/static/images/battlemaps/tavern_cellar.svg",
-        "width": 2000,
-        "height": 1500,
-        "defaultGridSize": 50,
-        "theme": "tavern",
-        "type": "preset",
-        "createdAt": 1728950000
-    }
-]
-
-def get_shared_battlemaps_catalog() -> List[Dict[str, Any]]:
-    if not BATTLEMAPS_CATALOG_FILE.exists():
-        save_shared_battlemaps_catalog(DEFAULT_BATTLEMAPS_CATALOG)
-        return list(DEFAULT_BATTLEMAPS_CATALOG)
+def is_transparent_mask(mask_str: Optional[str]) -> bool:
+    if not mask_str or not isinstance(mask_str, str) or not mask_str.startswith("data:image/png;base64,"):
+        return False
     try:
-        with open(BATTLEMAPS_CATALOG_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list) and len(data) > 0:
-                return data
-    except Exception as e:
-        print(f"Error loading battlemap catalog: {e}")
-    return list(DEFAULT_BATTLEMAPS_CATALOG)
-
-def save_shared_battlemaps_catalog(catalog: List[Dict[str, Any]]) -> None:
-    try:
-        with open(BATTLEMAPS_CATALOG_FILE, "w", encoding="utf-8") as f:
-            json.dump(catalog, f, indent=2)
-    except Exception as e:
-        print(f"Error saving battlemap catalog: {e}")
-
-def get_default_battlemap_state():
-    catalog = get_shared_battlemaps_catalog()
-    first_map = catalog[0] if catalog else DEFAULT_BATTLEMAPS_CATALOG[0]
-    return {
-        "activeMapId": first_map["id"],
-        "activeMapUrl": first_map["url"],
-        "activeMapName": first_map["name"],
-        "gridSize": first_map.get("defaultGridSize", 50),
-        "gridVisible": True,
-        "gridColor": "rgba(255, 255, 255, 0.22)",
-        "fogEnabled": True,
-        "fogMask": None,
-        "rotation": 0,
-        "panX": 0,
-        "panY": 0,
-        "zoom": 1.0,
-        "locked": False,
-        "pings": [],
-        "tokens": [],
-        "templates": [],
-        "activeRuler": None,
-        "maps": catalog,
-        "updatedAt": time.time()
-    }
+        data = base64.b64decode(mask_str.split(",")[1])
+        if len(data) < 26 or data[25] != 6:  # color type 6 = RGBA
+            return False
+        w = int.from_bytes(data[16:20], "big")
+        h = int.from_bytes(data[20:24], "big")
+        idat = b""
+        i = 8
+        while i < len(data) - 4:
+            length = int.from_bytes(data[i:i+4], "big")
+            if data[i+4:i+8] == b"IDAT":
+                idat += data[i+8:i+8+length]
+            i += 12 + length
+        decomp = zlib.decompress(idat)
+        row_len = 1 + w * 4
+        # Fast sampling: sample rows first
+        for r in range(0, h, max(1, h // 50)):
+            row_start = r * row_len + 1
+            for c in range(3, w * 4, 4 * 10):
+                if decomp[row_start + c] > 10:
+                    return False
+        # Full scan if no alpha in sample
+        for r in range(h):
+            row_start = r * row_len + 1
+            for c in range(3, w * 4, 4):
+                if decomp[row_start + c] > 10:
+                    return False
+        return True
+    except Exception:
+        return False
 
 @app.get("/api/battlemap")
 async def get_battlemap():
-    state = read_json("battlemap.json", get_default_battlemap_state())
+    defaults = get_default_battlemap_state()
+    state = read_json("battlemap.json", defaults)
+    for k, v in defaults.items():
+        if k not in state or state[k] is None:
+            state[k] = v
+
+    if not isinstance(state.get("mapFogMasks"), dict):
+        state["mapFogMasks"] = {}
+
+    # Clean any corrupted 100% transparent masks
+    if is_transparent_mask(state.get("fogMask")):
+        state["fogMask"] = None
+    for mid, msk in list(state["mapFogMasks"].items()):
+        if is_transparent_mask(msk):
+            state["mapFogMasks"][mid] = None
+
     catalog = get_shared_battlemaps_catalog()
     state["maps"] = catalog
 
@@ -2823,6 +5159,14 @@ async def get_battlemap():
         state["activeMapName"] = matched["name"]
         if "defaultGridSize" in matched:
             state["gridSize"] = matched["defaultGridSize"]
+
+    # Sync fogMask and mapFogMasks
+    curr_id = state.get("activeMapId")
+    if curr_id:
+        if curr_id in state["mapFogMasks"]:
+            state["fogMask"] = state["mapFogMasks"][curr_id]
+        elif state.get("fogMask"):
+            state["mapFogMasks"][curr_id] = state["fogMask"]
 
     now = time.time()
     if state and "pings" in state and isinstance(state["pings"], list):
@@ -2902,6 +5246,10 @@ async def update_battlemap_state(update: BattlemapStateUpdate):
     state = read_json("battlemap.json", get_default_battlemap_state())
     update_dict = {k: v for k, v in update.dict().items() if v is not None}
     state.update(update_dict)
+    if state.get("fogEnabled") is None:
+        state["fogEnabled"] = True
+    if "mapFogMasks" not in state or not isinstance(state.get("mapFogMasks"), dict):
+        state["mapFogMasks"] = {}
     state["updatedAt"] = time.time()
     write_json("battlemap.json", state)
     return {"status": "success", "state": state}
@@ -2909,12 +5257,30 @@ async def update_battlemap_state(update: BattlemapStateUpdate):
 @app.post("/api/battlemap/fog")
 async def update_battlemap_fog(update: BattlemapFogUpdate):
     state = read_json("battlemap.json", get_default_battlemap_state())
+    if state.get("fogEnabled") is None:
+        state["fogEnabled"] = True
+    if "mapFogMasks" not in state or not isinstance(state.get("mapFogMasks"), dict):
+        state["mapFogMasks"] = {}
+
+    target_map_id = update.mapId or state.get("activeMapId")
+
     if update.reset:
         state["fogMask"] = None
+        if target_map_id:
+            state["mapFogMasks"][target_map_id] = None
     elif update.revealAll:
         state["fogMask"] = "REVEALED_ALL"
+        if target_map_id:
+            state["mapFogMasks"][target_map_id] = "REVEALED_ALL"
     elif update.fogMask is not None:
-        state["fogMask"] = update.fogMask
+        if is_transparent_mask(update.fogMask):
+            state["fogMask"] = None
+            if target_map_id:
+                state["mapFogMasks"][target_map_id] = None
+        else:
+            state["fogMask"] = update.fogMask
+            if target_map_id:
+                state["mapFogMasks"][target_map_id] = update.fogMask
     state["updatedAt"] = time.time()
     write_json("battlemap.json", state)
     return {"status": "success", "updatedAt": state["updatedAt"]}
@@ -3118,11 +5484,19 @@ async def generate_battlemap(req: BattlemapGenerateRequest):
         if req.deployImmediately:
             state = read_json("battlemap.json", get_default_battlemap_state())
             state["maps"] = catalog
+            if state.get("fogEnabled") is None:
+                state["fogEnabled"] = True
+            if "mapFogMasks" not in state or not isinstance(state["mapFogMasks"], dict):
+                state["mapFogMasks"] = {}
+            old_map_id = state.get("activeMapId")
+            if old_map_id and state.get("fogMask"):
+                state["mapFogMasks"][old_map_id] = state["fogMask"]
             state["activeMapId"] = map_id
             state["activeMapUrl"] = map_entry["url"]
             state["activeMapName"] = map_entry["name"]
             state["gridSize"] = gen.grid_size
             state["fogMask"] = None
+            state["mapFogMasks"][map_id] = None
             state["panX"] = 0
             state["panY"] = 0
             state["zoom"] = 1.0
@@ -3145,12 +5519,25 @@ async def select_battlemap(payload: BattlemapSelect):
     selected = next((m for m in catalog if m["id"] == payload.mapId), None)
     if not selected:
         raise HTTPException(status_code=404, detail="Map not found in shared catalog")
+
+    if state.get("fogEnabled") is None:
+        state["fogEnabled"] = True
+    if "mapFogMasks" not in state or not isinstance(state["mapFogMasks"], dict):
+        state["mapFogMasks"] = {}
+
+    old_map_id = state.get("activeMapId")
+    if old_map_id and state.get("fogMask"):
+        if is_transparent_mask(state.get("fogMask")):
+            state["mapFogMasks"][old_map_id] = None
+        else:
+            state["mapFogMasks"][old_map_id] = state["fogMask"]
+
     state["activeMapId"] = selected["id"]
     state["activeMapUrl"] = selected["url"]
     state["activeMapName"] = selected["name"]
     if "defaultGridSize" in selected:
         state["gridSize"] = selected["defaultGridSize"]
-    state["fogMask"] = None
+    state["fogMask"] = state["mapFogMasks"].get(selected["id"], None)
     state["panX"] = 0
     state["panY"] = 0
     state["zoom"] = 1.0
@@ -3191,10 +5578,20 @@ async def upload_battlemap_file(file: UploadFile = File(...)):
 
     state = read_json("battlemap.json", get_default_battlemap_state())
     state["maps"] = catalog
+    if state.get("fogEnabled") is None:
+        state["fogEnabled"] = True
+    if "mapFogMasks" not in state or not isinstance(state["mapFogMasks"], dict):
+        state["mapFogMasks"] = {}
+
+    old_map_id = state.get("activeMapId")
+    if old_map_id and state.get("fogMask"):
+        state["mapFogMasks"][old_map_id] = state["fogMask"]
+
     state["activeMapId"] = map_id
     state["activeMapUrl"] = map_url
     state["activeMapName"] = map_name
     state["fogMask"] = None
+    state["mapFogMasks"][map_id] = None
     state["panX"] = 0
     state["panY"] = 0
     state["zoom"] = 1.0

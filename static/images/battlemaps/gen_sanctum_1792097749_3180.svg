@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1500" width="2000" height="1500">
+<defs>
+    <radialGradient id="lightGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#b45309" stop-opacity="0.45"/>
+      <stop offset="75%" stop-color="#000000" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="propShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="8" dy="12" stdDeviation="6" flood-color="#000000" flood-opacity="0.85"/>
+    </filter>
+    <filter id="waterGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#38bdf8" flood-opacity="0.4"/>
+    </filter>
+
+    <pattern id="flagstone" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="#1c1f26"/>
+      <rect x="2" y="2" width="46" height="46" fill="#252a34" rx="2" stroke="#13151a" stroke-width="2"/>
+      <rect x="52" y="2" width="46" height="46" fill="#21252e" rx="2" stroke="#13151a" stroke-width="2"/>
+      <rect x="2" y="52" width="46" height="46" fill="#232731" rx="2" stroke="#13151a" stroke-width="2"/>
+      <rect x="52" y="52" width="46" height="46" fill="#272d38" rx="2" stroke="#13151a" stroke-width="2"/>
+    </pattern>
+    <pattern id="dungeonWall" width="50" height="25" patternUnits="userSpaceOnUse">
+      <rect width="50" height="25" fill="#0d0e12"/>
+      <rect x="1" y="1" width="48" height="23" fill="#181b22" stroke="#090a0d" stroke-width="1.5"/>
+    </pattern>
+  </defs>
+  <!-- Void Void -->
+  <rect width="2000" height="1500" fill="#090a0d"/>
+  <!-- Floor -->
+  <rect x="100" y="100" width="1800" height="1300" fill="url(#flagstone)"/>
+  <!-- Outer Walls -->
+  <rect x="75" y="75" width="1850" height="1350" fill="none" stroke="url(#dungeonWall)" stroke-width="50"/>
+
+  <!-- Room Dividing Walls & Doorways -->
+  <rect x="100" y="742" width="643" height="50" fill="url(#dungeonWall)"/>
+  <rect x="943" y="742" width="957" height="50" fill="url(#dungeonWall)"/>
+  <rect x="818" y="100" width="50" height="567" fill="url(#dungeonWall)"/>
+  <rect x="818" y="867" width="50" height="533" fill="url(#dungeonWall)"/>
+  <!-- Stone Pillars (Tactical Cover) -->
+  <g filter="url(#propShadow)">
+
+    <circle cx="710" cy="450" r="25" fill="#181a20" stroke="#0f1115" stroke-width="2"/>
+    <circle cx="710" cy="450" r="21" fill="#3f4553" stroke="#4b5563" stroke-width="3"/>
+
+    <circle cx="710" cy="760" r="25" fill="#181a20" stroke="#0f1115" stroke-width="2"/>
+    <circle cx="710" cy="760" r="21" fill="#3f4553" stroke="#4b5563" stroke-width="3"/>
+
+    <circle cx="700" cy="1040" r="25" fill="#181a20" stroke="#0f1115" stroke-width="2"/>
+    <circle cx="700" cy="1040" r="21" fill="#3f4553" stroke="#4b5563" stroke-width="3"/>
+
+    <circle cx="1300" cy="460" r="25" fill="#181a20" stroke="#0f1115" stroke-width="2"/>
+    <circle cx="1300" cy="460" r="21" fill="#3f4553" stroke="#4b5563" stroke-width="3"/>
+
+    <circle cx="1310" cy="740" r="25" fill="#181a20" stroke="#0f1115" stroke-width="2"/>
+    <circle cx="1310" cy="740" r="21" fill="#3f4553" stroke="#4b5563" stroke-width="3"/>
+
+    <circle cx="1310" cy="1040" r="25" fill="#181a20" stroke="#0f1115" stroke-width="2"/>
+    <circle cx="1310" cy="1040" r="21" fill="#3f4553" stroke="#4b5563" stroke-width="3"/>
+  </g>
+  <!-- Seed-Randomized Tombs & Props -->
+  <g filter="url(#propShadow)">
+
+    <rect x="300" y="200" width="80" height="140" rx="5" fill="#333a48" stroke="#4b5563" stroke-width="2"/>
+    <rect x="306" y="206" width="68" height="128" rx="3" fill="#1f242e"/>
+    <text x="340" y="276" font-family="serif" font-size="20" fill="#64748b" text-anchor="middle">†</text>
+
+    <rect x="300" y="425" width="80" height="140" rx="5" fill="#333a48" stroke="#4b5563" stroke-width="2"/>
+    <rect x="306" y="431" width="68" height="128" rx="3" fill="#1f242e"/>
+    <text x="340" y="501" font-family="serif" font-size="20" fill="#64748b" text-anchor="middle">†</text>
+
+    <rect x="250" y="650" width="80" height="140" rx="5" fill="#333a48" stroke="#4b5563" stroke-width="2"/>
+    <rect x="256" y="656" width="68" height="128" rx="3" fill="#1f242e"/>
+    <text x="290" y="726" font-family="serif" font-size="20" fill="#64748b" text-anchor="middle">†</text>
+
+    <rect x="200" y="875" width="80" height="140" rx="5" fill="#333a48" stroke="#4b5563" stroke-width="2"/>
+    <rect x="206" y="881" width="68" height="128" rx="3" fill="#1f242e"/>
+    <text x="240" y="951" font-family="serif" font-size="20" fill="#64748b" text-anchor="middle">†</text>
+  </g>
+
+  <circle cx="150" cy="150" r="140" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="150" cy="150" r="10" fill="#f59e0b" stroke="#1e293b" stroke-width="3"/>
+
+  <circle cx="1850" cy="150" r="140" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="1850" cy="150" r="10" fill="#f59e0b" stroke="#1e293b" stroke-width="3"/>
+
+  <circle cx="150" cy="1350" r="140" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="150" cy="1350" r="10" fill="#f59e0b" stroke="#1e293b" stroke-width="3"/>
+
+  <circle cx="1850" cy="1350" r="140" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="1850" cy="1350" r="10" fill="#f59e0b" stroke="#1e293b" stroke-width="3"/>
+
+  <circle cx="1000" cy="150" r="140" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="1000" cy="150" r="10" fill="#f59e0b" stroke="#1e293b" stroke-width="3"/>
+
+  <circle cx="1000" cy="1350" r="140" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="1000" cy="1350" r="10" fill="#f59e0b" stroke="#1e293b" stroke-width="3"/>
+
+  <!-- Torchlit Perimeter Vignette -->
+  <radialGradient id="torchVignette" cx="50%" cy="50%" r="70%">
+    <stop offset="30%" stop-color="#000000" stop-opacity="0"/>
+    <stop offset="80%" stop-color="#000000" stop-opacity="0.45"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.8"/>
+  </radialGradient>
+  <rect width="2000" height="1500" fill="url(#torchVignette)" pointer-events="none"/>
+</svg>

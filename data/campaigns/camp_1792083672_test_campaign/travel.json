@@ -1,0 +1,99 @@
+{
+  "pace": "Normal",
+  "terrain": "Forest",
+  "road": "trail",
+  "targetMiles": 48,
+  "marchHours": 8,
+  "navBonus": 0,
+  "forageBonus": 0,
+  "history": [
+    {
+      "id": "march-camp-9d405c",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 07:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:28:29.837202"
+    },
+    {
+      "id": "march-camp-6aaeab",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 07:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:29:06.791513"
+    },
+    {
+      "id": "march-camp-e48518",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 07:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:34:32.131272"
+    },
+    {
+      "id": "march-camp-c4f57a",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 07:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:34:54.999362"
+    },
+    {
+      "id": "march-camp-e0f910",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 8,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 24.0,
+      "notes": "Established Night 1 Camp. Campsite pitched at 07:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T22:35:05.299156"
+    },
+    {
+      "id": "camp-camp-1dc908",
+      "type": "camp",
+      "label": "Test Camp",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 0,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 0.0,
+      "notes": "Pitched Test Camp. Deep forest campsite",
+      "timestamp": "2026-10-15T23:17:06.467848"
+    },
+    {
+      "id": "camp-camp-8782aa",
+      "type": "camp",
+      "label": "Night 1 Camp",
+      "day": 1,
+      "hour": 7,
+      "marchHours": 0,
+      "pace": "Normal",
+      "terrain": "Forest",
+      "road": "trail",
+      "miles": 0.0,
+      "notes": "Pitched Night 1 Camp. Campsite pitched at 07:00. Terrain: Forest.",
+      "timestamp": "2026-10-15T23:27:57.031351"
+    }
+  ]
+}

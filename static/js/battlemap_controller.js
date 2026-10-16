@@ -322,12 +322,48 @@ window.BattlemapController = (function() {
     }
 
     async function pushFogMask() {
+        if (!isMapLoaded || state.fogEnabled === false || state.fogMask === "REVEALED_ALL") {
+            return;
+        }
+
+        // Validate that offscreenFog contains actual shroud; never push a 100% transparent mask
+        try {
+            const imgData = offscreenCtx.getImageData(0, 0, mapWidth, mapHeight).data;
+            let hasFog = false;
+            const step = Math.max(1, Math.floor((mapWidth * mapHeight) / 5000));
+            for (let i = 3; i < imgData.length; i += 4 * step) {
+                if (imgData[i] > 10) {
+                    hasFog = true;
+                    break;
+                }
+            }
+            if (!hasFog) {
+                for (let i = 3; i < imgData.length; i += 4) {
+                    if (imgData[i] > 10) {
+                        hasFog = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasFog) {
+                // If completely cleared, treat as revealAll
+                await fetch('/api/battlemap/fog', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ revealAll: true, mapId: state.activeMapId })
+                });
+                return;
+            }
+        } catch (e) {
+            // Fall through if getImageData fails (e.g. cross-origin canvas security)
+        }
+
         const maskDataUrl = offscreenFog.toDataURL('image/png');
         try {
             await fetch('/api/battlemap/fog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fogMask: maskDataUrl })
+                body: JSON.stringify({ fogMask: maskDataUrl, mapId: state.activeMapId })
             });
         } catch (err) {
             console.error("Failed to push fog mask:", err);
@@ -340,14 +376,17 @@ window.BattlemapController = (function() {
     function loadActiveMap() {
         if (!mapImgEl) return;
         isMapLoaded = false;
-        mapImgEl.onload = () => {
+
+        const onImageReady = () => {
             mapWidth = mapImgEl.naturalWidth || 2000;
             mapHeight = mapImgEl.naturalHeight || 1500;
 
             // Set size of all canvases
             [gridCanvas, dmFogCanvas, previewCanvas, offscreenFog].forEach(c => {
-                c.width = mapWidth;
-                c.height = mapHeight;
+                if (c) {
+                    c.width = mapWidth;
+                    c.height = mapHeight;
+                }
             });
 
             viewportEl.style.width = `${mapWidth}px`;
@@ -355,16 +394,57 @@ window.BattlemapController = (function() {
 
             isMapLoaded = true;
 
+            if (state.fogEnabled === undefined || state.fogEnabled === null) {
+                state.fogEnabled = true;
+            }
+
+            // Clear offscreen canvas first to avoid stale artifacts
+            offscreenCtx.clearRect(0, 0, mapWidth, mapHeight);
+
             // Initialize Fog Mask
             if (state.fogMask && state.fogMask !== "REVEALED_ALL") {
                 const img = new Image();
                 img.onload = () => {
                     offscreenCtx.clearRect(0, 0, mapWidth, mapHeight);
                     offscreenCtx.drawImage(img, 0, 0, mapWidth, mapHeight);
+
+                    // Self-healing: verify the loaded mask isn't completely transparent
+                    let hasFog = false;
+                    try {
+                        const imgData = offscreenCtx.getImageData(0, 0, mapWidth, mapHeight).data;
+                        const step = Math.max(1, Math.floor((mapWidth * mapHeight) / 5000));
+                        for (let i = 3; i < imgData.length; i += 4 * step) {
+                            if (imgData[i] > 10) {
+                                hasFog = true;
+                                break;
+                            }
+                        }
+                        if (!hasFog) {
+                            for (let i = 3; i < imgData.length; i += 4) {
+                                if (imgData[i] > 10) {
+                                    hasFog = true;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        hasFog = true;
+                    }
+
+                    if (!hasFog) {
+                        console.warn("Corrupted all-transparent fog mask detected. Re-initializing to 100% shroud.");
+                        offscreenCtx.fillStyle = '#000000';
+                        offscreenCtx.fillRect(0, 0, mapWidth, mapHeight);
+                        state.fogMask = null;
+                        if (state.activeMapId && state.mapFogMasks) {
+                            state.mapFogMasks[state.activeMapId] = null;
+                        }
+                    }
+
                     renderDMFog();
                 };
                 img.src = state.fogMask;
-            } else if (state.fogMask === "REVEALED_ALL" || !state.fogEnabled) {
+            } else if (state.fogMask === "REVEALED_ALL" || state.fogEnabled === false) {
                 offscreenCtx.clearRect(0, 0, mapWidth, mapHeight);
                 renderDMFog();
             } else {
@@ -378,7 +458,14 @@ window.BattlemapController = (function() {
             renderDMTokens();
             fitMapToWorkspace();
         };
-        mapImgEl.src = state.activeMapUrl;
+
+        mapImgEl.onload = onImageReady;
+        if (!mapImgEl.src || !mapImgEl.src.endsWith(state.activeMapUrl)) {
+            mapImgEl.src = state.activeMapUrl;
+        }
+        if (mapImgEl.complete && mapImgEl.naturalWidth > 0 && mapImgEl.src.endsWith(state.activeMapUrl)) {
+            onImageReady();
+        }
     }
 
     function fitMapToWorkspace() {
@@ -433,7 +520,7 @@ window.BattlemapController = (function() {
         if (!isMapLoaded || !dmFogCtx) return;
         dmFogCtx.clearRect(0, 0, mapWidth, mapHeight);
 
-        if (!state.fogEnabled || state.fogMask === "REVEALED_ALL") {
+        if (state.fogEnabled === false || state.fogMask === "REVEALED_ALL") {
             return;
         }
 
@@ -448,7 +535,7 @@ window.BattlemapController = (function() {
     }
 
     function isPointInFog(x, y) {
-        if (!state.fogEnabled || state.fogMask === "REVEALED_ALL") return false;
+        if (state.fogEnabled === false || state.fogMask === "REVEALED_ALL") return false;
         if (!offscreenCtx || !isMapLoaded) return false;
         try {
             const clampedX = Math.max(0, Math.min(mapWidth - 1, Math.floor(x)));
@@ -2010,7 +2097,7 @@ window.BattlemapController = (function() {
             await fetch('/api/battlemap/fog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ revealAll: true })
+                body: JSON.stringify({ revealAll: true, mapId: state.activeMapId })
             });
         } catch (err) {
             console.error(err);
@@ -2026,7 +2113,7 @@ window.BattlemapController = (function() {
             await fetch('/api/battlemap/fog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reset: true })
+                body: JSON.stringify({ reset: true, mapId: state.activeMapId })
             });
         } catch (err) {
             console.error(err);
@@ -2534,6 +2621,9 @@ window.BattlemapController = (function() {
 
     async function onMapSelect(mapId) {
         try {
+            if (isMapLoaded && state.activeMapId && state.fogEnabled !== false && state.fogMask !== "REVEALED_ALL") {
+                await pushFogMask();
+            }
             const res = await fetch('/api/battlemap/select', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -1,0 +1,184 @@
+{
+  "relations": [
+    {
+      "id": "rel-1",
+      "factionA": "Order of the Silver Gauntlet",
+      "factionB": "The Obsidian Syndicate",
+      "status": "War",
+      "note": "Martial sweeps of the Sunken Ward vs. midnight smuggler ambushes."
+    },
+    {
+      "id": "rel-2",
+      "factionA": "Order of the Silver Gauntlet",
+      "factionB": "The Gilded Scales Consortium",
+      "status": "Allied",
+      "note": "The Consortium funds Gauntlet patrols in exchange for harbor security."
+    },
+    {
+      "id": "rel-3",
+      "factionA": "Order of the Silver Gauntlet",
+      "factionB": "Circle of the Pale Moon",
+      "status": "War",
+      "note": "Inquisitorial purge against forbidden Shadowfell and necromantic rituals."
+    },
+    {
+      "id": "rel-4",
+      "factionA": "The Gilded Scales Consortium",
+      "factionB": "The Ironbound Union",
+      "status": "Rivalry",
+      "note": "Hostile buyout of Cinder-Forge foundries has sparked union strike threats."
+    },
+    {
+      "id": "rel-5",
+      "factionA": "The Obsidian Syndicate",
+      "factionB": "The Ironbound Union",
+      "status": "Rivalry",
+      "note": "Union dockworkers resist Syndicate protection rackets on the piers."
+    },
+    {
+      "id": "rel-6",
+      "factionA": "The Obsidian Syndicate",
+      "factionB": "Circle of the Pale Moon",
+      "status": "Friendly",
+      "note": "Secret smuggling Pact: Syndicate moves necrotic focus crystals into the Catacombs."
+    }
+  ],
+  "standingMilestones": {
+    "Allied": {
+      "score": "+2 or higher",
+      "badge": "🛡️ Sworn Ally",
+      "boons": [
+        "20% Discount on faction-affiliated merchants, smiths, and spellcasting services",
+        "Access to Faction Safehouses (uninterrupted Long Rests & hidden caches)",
+        "Call Reinforcements: 1/Session summon a CR 2 Faction Veteran or Spy squad to aid the party"
+      ]
+    },
+    "Friendly": {
+      "score": "+1",
+      "badge": "🤝 Trusted Friend",
+      "boons": [
+        "10% Discount on faction goods and priority access to lucrative Quest Bounties",
+        "Free passage through faction checkpoints and dockside toll gates",
+        "Advantage on Charisma (Persuasion) checks with faction officers"
+      ]
+    },
+    "Neutral": {
+      "score": "0",
+      "badge": "⚖️ Unaligned",
+      "boons": [
+        "Standard market prices (100% base cost) and normal legal scrutiny",
+        "Can accept public contract bounties to earn standing"
+      ]
+    },
+    "Suspicious": {
+      "score": "-1",
+      "badge": "😠 Watched & Distrusted",
+      "boons": [
+        "25% Price Markup at faction-controlled shops and fences",
+        "Disadvantage on Charisma checks with faction members; informants report party movements",
+        "Frequent stops and contraband searches by patrol guards or guild enforcers"
+      ]
+    },
+    "Hostile": {
+      "score": "-2 or lower",
+      "badge": "⚔️ Marked Enemy",
+      "boons": [
+        "Active Bounty Placed: Faction hit squads, assassins, or arrest patrols hunt the party",
+        "Refused service at all faction businesses; safehouses locked down",
+        "Faction actively works to sabotage party quests (+1 tick to rival Tension Clocks)"
+      ]
+    }
+  },
+  "turnHistory": [
+    {
+      "id": "ft-decd83",
+      "day": "Day 1",
+      "faction": "The Obsidian Syndicate",
+      "roll": 10,
+      "outcomeType": "Steady Progress",
+      "summary": "Clock 'Arcane Vault Infiltration' advanced (2 → 3/6).",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-845265",
+      "day": "Day 1",
+      "faction": "Order of the Silver Gauntlet",
+      "roll": 6,
+      "outcomeType": "Stymied by Rivals",
+      "summary": "Opposition from The Obsidian Syndicate stalled Order of the Silver Gauntlet's operations this turn.",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-41b2d1",
+      "day": "Day 1",
+      "faction": "The Gilded Scales Consortium",
+      "roll": 8,
+      "outcomeType": "Steady Progress",
+      "summary": "Clock 'Buyout of Ironbound Foundries' advanced (2 → 3/4).",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-5d2641",
+      "day": "Day 1",
+      "faction": "Circle of the Pale Moon",
+      "roll": 1,
+      "outcomeType": "Stymied by Rivals",
+      "summary": "Opposition from Order of the Silver Gauntlet stalled Circle of the Pale Moon's operations this turn.",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-abb54d",
+      "day": "Day 1",
+      "faction": "The Ironbound Union",
+      "roll": 13,
+      "outcomeType": "Steady Progress",
+      "summary": "Clock 'General Dockworkers Strike' advanced (2 → 3/4).",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-9f9b18",
+      "day": "Day 1",
+      "faction": "The Obsidian Syndicate",
+      "roll": 19,
+      "outcomeType": "Goal Advanced",
+      "summary": "Clock 'Arcane Vault Infiltration' advanced (5 → 6/6).",
+      "completedOutcome": "The Syndicate breaches the Highspire treasury and steals the Sun-Crest Amulet, sending the city into martial lockdown."
+    },
+    {
+      "id": "ft-105c12",
+      "day": "Day 1",
+      "faction": "Order of the Silver Gauntlet",
+      "roll": 18,
+      "outcomeType": "Goal Advanced",
+      "summary": "Clock 'Martial Sweep of the Sunken Ward' advanced (4 → 5/6).",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-9f6e40",
+      "day": "Day 1",
+      "faction": "The Gilded Scales Consortium",
+      "roll": 14,
+      "outcomeType": "Steady Progress",
+      "summary": "Clock 'Buyout of Ironbound Foundries' advanced (1 → 2/4).",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-4e58b9",
+      "day": "Day 1",
+      "faction": "Circle of the Pale Moon",
+      "roll": 16,
+      "outcomeType": "Goal Advanced",
+      "summary": "Clock 'Shadowfell Eclipse Awakening Ritual' advanced (5 → 6/8).",
+      "completedOutcome": ""
+    },
+    {
+      "id": "ft-3fcc48",
+      "day": "Day 1",
+      "faction": "The Ironbound Union",
+      "roll": 4,
+      "outcomeType": "Stymied by Rivals",
+      "summary": "Opposition from The Gilded Scales Consortium stalled The Ironbound Union's operations this turn.",
+      "completedOutcome": ""
+    }
+  ]
+}

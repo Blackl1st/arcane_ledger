@@ -31,5 +31,41 @@
     "theme": "tavern",
     "type": "preset",
     "createdAt": 1728950000
+  },
+  {
+    "id": "gen_forest_1792095599_32db",
+    "name": "Druid's Ancient Oak Glade",
+    "url": "/static/images/battlemaps/gen_forest_1792095599_32db.svg",
+    "width": 1500,
+    "height": 1000,
+    "defaultGridSize": 50,
+    "theme": "forest",
+    "type": "generated",
+    "createdAt": 1792095599.491616,
+    "seed": 264234
+  },
+  {
+    "id": "gen_ruins_1792095698_1b91",
+    "name": "Fallen Citadel Courtyard",
+    "url": "/static/images/battlemaps/gen_ruins_1792095698_1b91.svg",
+    "width": 2500,
+    "height": 1750,
+    "defaultGridSize": 50,
+    "theme": "ruins",
+    "type": "generated",
+    "createdAt": 1792095698.7725732,
+    "seed": 447228
+  },
+  {
+    "id": "gen_sanctum_1792097749_3180",
+    "name": "Catacombs of the Pale Lord",
+    "url": "/static/images/battlemaps/gen_sanctum_1792097749_3180.svg",
+    "width": 2000,
+    "height": 1500,
+    "defaultGridSize": 50,
+    "theme": "sanctum",
+    "type": "generated",
+    "createdAt": 1792097749.0794275,
+    "seed": 472267
   }
 ]

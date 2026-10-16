@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "id": "npc-1792123036624-710",
+    "name": "Neega Ironjaw",
+    "epithet": "",
+    "species": "Orc / Half-Orc (she/her)",
+    "role": "Ferryman",
+    "category": "Commoner & Labor",
+    "voice": "Crisp, military bark—clips words short and refers to everyone by title or species and adjusts their spectacles or collar every time money is mentioned.",
+    "appearance": "Broad-shouldered and barrel-chested, with a booming laugh and a braided beard, wearing a patchwork travel cloak held together by a silver Elven brooch they clearly didn't buy.",
+    "personality": "Weary, pragmatic, and just trying to survive until the end of the week; is trying to sell a stolen map before the original owner's bounty hunters track them down.",
+    "backstory": "Trained at an arcane academy until they were expelled for experimenting with forbidden necromantic texts; now plies their trade in back alleys.",
+    "secret": "They accidentally bought a cursed dagger from a wild-eyed adventurer yesterday; strange whispers now echo from their lockbox at midnight.",
+    "faction": "",
+    "factionStanding": "Paid Informant (sells rumors for coin)",
+    "location": "Oakhaven",
+    "loot": "2 gp, 5 sp, a glass eye that faintly glows near illusions, a receipt from an apothecary for 'nightshade extract', and a salted jerky strip.",
+    "statName": "Commoner (CR 0)",
+    "statAcHp": "AC 10 | HP 4 (1d8)",
+    "statDetails": "Spd 30ft | Club +2 (1d4) | Passive Perc 10 | All stats +0",
+    "notes": ""
+  },
+  {
+    "id": "npc-1792121123136-89",
+    "name": "Maren Vance",
+    "epithet": "\"The Velvet Knife\"",
+    "species": "Tiefling (she/her)",
+    "role": "Shady Fence & Pawnbroker",
+    "category": "Underworld & Criminal",
+    "voice": "Speaks in a gravelly, conspiratorial rasp, leaning in far too close while methodically flipping a worn silver coin across their knuckles.",
+    "appearance": "Immaculately groomed hair streaked with premature silver and a faint smell of lavender, wearing a blood-and-grease-stained leather apron over surprisingly expensive silk cuffs.",
+    "personality": "Cynical, mercenary, and amused by heroic idealism; wants to scrape together 200 gp before the new moon to pay off a syndicate blood-debt.",
+    "backstory": "Grew up as an urchin running messages for the local thieves' guild before buying a legitimate storefront with money from a heist gone wrong.",
+    "secret": "Their basement cellar breaks through into an ancient, unmapped smuggling tunnel leading directly beneath the magistrate's manor.",
+    "faction": "The Obsidian Syndicate (Smugglers & Thieves)",
+    "factionStanding": "Reluctant Member (bound by debt or blackmail)",
+    "location": "Oakhaven",
+    "loot": "14 sp, 6 cp, a brass ring etched with an unfamiliar guild cipher, and a crumpled debt ledger with three names crossed out in red ink.",
+    "statName": "Spy (CR 1)",
+    "statAcHp": "AC 12 | HP 27 (6d8)",
+    "statDetails": "Cunning Action | Sneak Attack (+2d6) | Deception/Insight/Investigation +5",
+    "notes": "Runs 'The Tarnished Crown' pawnshop. Bought a silver goblet from the Rogue in Session 1."
+  }
+]

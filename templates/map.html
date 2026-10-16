@@ -547,7 +547,7 @@
             if (!isImageLoaded) return;
 
             // If Fog is disabled or fully revealed
-            if (!mapState.fogEnabled || mapState.fogMask === "REVEALED_ALL") {
+            if (mapState.fogEnabled === false || mapState.fogMask === "REVEALED_ALL") {
                 fogCanvas.style.opacity = '0';
                 return;
             }
@@ -566,6 +566,36 @@
             maskImg.onload = () => {
                 fogCtx.clearRect(0, 0, naturalWidth, naturalHeight);
                 fogCtx.drawImage(maskImg, 0, 0, naturalWidth, naturalHeight);
+
+                // Fail-safe: Check if mask actually has any fog pixels.
+                // If it's completely transparent, default to pitch-black shroud to protect player secrets.
+                let hasFog = false;
+                try {
+                    const imgData = fogCtx.getImageData(0, 0, naturalWidth, naturalHeight).data;
+                    const sampleStep = Math.max(1, Math.floor((naturalWidth * naturalHeight) / 5000));
+                    for (let i = 3; i < imgData.length; i += 4 * sampleStep) {
+                        if (imgData[i] > 10) {
+                            hasFog = true;
+                            break;
+                        }
+                    }
+                    if (!hasFog) {
+                        for (let i = 3; i < imgData.length; i += 4) {
+                            if (imgData[i] > 10) {
+                                hasFog = true;
+                                break;
+                            }
+                        }
+                    }
+                } catch(e) {
+                    hasFog = true;
+                }
+
+                if (!hasFog) {
+                    console.warn("Player map: loaded fog mask is completely transparent. Defaulting to solid shroud for privacy.");
+                    fogCtx.fillStyle = '#000000';
+                    fogCtx.fillRect(0, 0, naturalWidth, naturalHeight);
+                }
             };
             maskImg.src = mapState.fogMask;
         }

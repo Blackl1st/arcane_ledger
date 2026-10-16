@@ -1,0 +1,403 @@
+{
+  "mapTitle": "Realm of the Shattered Coast",
+  "mapSubtitle": "Grand Strategic Cartography • 1 Hex = 24 Miles",
+  "mapUrl": "/static/images/overworld_default.svg",
+  "scaleMilesPerHex": 24,
+  "fogUnexplored": true,
+  "partyMarker": {
+    "x": 49.3,
+    "y": 57.0,
+    "label": "Fellowship Vanguard",
+    "visibleToPlayers": true,
+    "terrain": "Forest"
+  },
+  "pins": [
+    {
+      "id": "pin-loc-sunken-ward",
+      "locationId": "loc-sunken-ward",
+      "title": "The Sunken Ward",
+      "type": "District",
+      "danger": "Moderate",
+      "population": "4,200 (Dockside Slums)",
+      "x": 30.0,
+      "y": 63.0,
+      "discovered": true,
+      "icon": "⚓",
+      "notes": "Flooded dockside slums infested with cutpurses and smugglers."
+    },
+    {
+      "id": "pin-loc-oakhaven-market",
+      "locationId": "loc-oakhaven-market",
+      "title": "Oakhaven Market Square",
+      "type": "Settlement",
+      "danger": "Safe",
+      "population": "18,500 (Crown Capital)",
+      "x": 37.5,
+      "y": 50.0,
+      "discovered": true,
+      "icon": "🏰",
+      "notes": "The bustling economic heartbeat of the city centered around an ancient Iron-Oak."
+    },
+    {
+      "id": "pin-loc-rusted-anchor",
+      "locationId": "loc-rusted-anchor",
+      "title": "The Rusted Anchor Tavern",
+      "type": "Tavern / Inn",
+      "danger": "Low",
+      "population": "120 Patrons (Harbor Inn)",
+      "x": 33.0,
+      "y": 58.0,
+      "discovered": true,
+      "icon": "🍺",
+      "notes": "A salty, weathered watering hole popular with sailors, bounty hunters, and mercenaries."
+    },
+    {
+      "id": "pin-loc-cinder-forge",
+      "locationId": "loc-cinder-forge",
+      "title": "The Cinder-Forge District",
+      "type": "District",
+      "danger": "Low",
+      "population": "6,800 (Industrial Foundries)",
+      "x": 45.0,
+      "y": 43.0,
+      "discovered": true,
+      "icon": "⚒️",
+      "notes": "Industrial quarter echoing with hammer strikes and glowing with coal-fired blast furnaces."
+    },
+    {
+      "id": "pin-loc-highspire-quarter",
+      "locationId": "loc-highspire-quarter",
+      "title": "Highspire Noble Quarter",
+      "type": "Settlement",
+      "danger": "Safe",
+      "population": "3,100 (High Nobility)",
+      "x": 39.5,
+      "y": 38.0,
+      "discovered": true,
+      "icon": "👑",
+      "notes": "Pristine white marble estates, manicured gardens, and private magical libraries."
+    },
+    {
+      "id": "pin-loc-sunken-catacombs",
+      "locationId": "loc-sunken-catacombs",
+      "title": "The Sunken Ward Catacombs",
+      "type": "Dungeon / Ruins",
+      "danger": "Deadly",
+      "population": "Uninhabited (Undead Crypts)",
+      "x": 55.5,
+      "y": 74.0,
+      "discovered": false,
+      "icon": "💀",
+      "notes": "Ancient pre-cataclysm crypts flooded with black water and walking dead."
+    },
+    {
+      "id": "pin-ironpeak-citadel",
+      "locationId": "",
+      "title": "Ironpeak Citadel Outskirts",
+      "type": "Fortress / Outpost",
+      "danger": "High",
+      "population": "450 Garrisoned Dwarves & Watchmen",
+      "x": 45.0,
+      "y": 19.5,
+      "discovered": true,
+      "icon": "🛡️",
+      "notes": "Mountain pass fortress guarding the northern silver mines against frost giants and wyverns."
+    },
+    {
+      "id": "pin-whispering-standing-stones",
+      "locationId": "",
+      "title": "The Whispering Standing Stones",
+      "type": "Wilderness Landmark",
+      "danger": "High",
+      "population": "Druidic Circle & Fey Spirits",
+      "x": 48.5,
+      "y": 46.5,
+      "discovered": false,
+      "icon": "🌲",
+      "notes": "Ancient moss-covered monoliths deep in the Whispering Woods where the Feywild veil grows thin."
+    }
+  ],
+  "maps": [
+    {
+      "id": "map-main",
+      "title": "Realm of the Shattered Coast",
+      "subtitle": "Grand Strategic Cartography • 1 Hex = 24 Miles",
+      "type": "Kingdom",
+      "scale": "1 Hex = 24 Miles",
+      "scaleMilesPerHex": 24,
+      "mapUrl": "/static/images/overworld_default.svg",
+      "partyMarker": {
+        "x": 49.3,
+        "y": 57.0,
+        "label": "Fellowship Vanguard",
+        "visibleToPlayers": true,
+        "terrain": "Forest"
+      },
+      "hexGrid": {
+        "enabled": true,
+        "opacity": 0.25,
+        "size": 36
+      },
+      "fog": {
+        "enabled": true,
+        "revealedPoints": [
+          {
+            "x": 37.5,
+            "y": 50.0,
+            "radius": 9.0
+          },
+          {
+            "x": 42.0,
+            "y": 55.0,
+            "radius": 8.5
+          },
+          {
+            "x": 37.5,
+            "y": 50.0,
+            "radius": 8.5
+          },
+          {
+            "x": 49.3,
+            "y": 57.0,
+            "radius": 8.5
+          }
+        ]
+      },
+      "trail": [
+        {
+          "id": "tr-1651d2",
+          "x": 42.0,
+          "y": 55.0,
+          "day": 1,
+          "hour": 9,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-500b09",
+          "x": 42.0,
+          "y": 55.0,
+          "day": 1,
+          "hour": 9,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 09:00. Terrain: Forest."
+        },
+        {
+          "id": "tr-dfb6d4",
+          "x": 37.5,
+          "y": 50.0,
+          "day": 1,
+          "hour": 11,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "tr-ddfe95",
+          "x": 49.3,
+          "y": 57.0,
+          "day": 1,
+          "hour": 11,
+          "label": "March Day 1",
+          "type": "march"
+        },
+        {
+          "id": "camp-a35761",
+          "x": 49.3,
+          "y": 57.0,
+          "day": 1,
+          "hour": 11,
+          "label": "Night 1 Camp",
+          "type": "camp",
+          "notes": "Campsite pitched at 11:00. Terrain: Forest."
+        }
+      ],
+      "pins": [
+        {
+          "id": "pin-loc-sunken-ward",
+          "locationId": "loc-sunken-ward",
+          "title": "The Sunken Ward",
+          "type": "District",
+          "danger": "Moderate",
+          "population": "4,200 (Dockside Slums)",
+          "x": 30.0,
+          "y": 63.0,
+          "discovered": true,
+          "icon": "⚓",
+          "notes": "Flooded dockside slums infested with cutpurses and smugglers."
+        },
+        {
+          "id": "pin-loc-oakhaven-market",
+          "locationId": "loc-oakhaven-market",
+          "title": "Oakhaven Market Square",
+          "type": "Settlement",
+          "danger": "Safe",
+          "population": "18,500 (Crown Capital)",
+          "x": 37.5,
+          "y": 50.0,
+          "discovered": true,
+          "icon": "🏰",
+          "notes": "The bustling economic heartbeat of the city centered around an ancient Iron-Oak."
+        },
+        {
+          "id": "pin-loc-rusted-anchor",
+          "locationId": "loc-rusted-anchor",
+          "title": "The Rusted Anchor Tavern",
+          "type": "Tavern / Inn",
+          "danger": "Low",
+          "population": "120 Patrons (Harbor Inn)",
+          "x": 33.0,
+          "y": 58.0,
+          "discovered": true,
+          "icon": "🍺",
+          "notes": "A salty, weathered watering hole popular with sailors, bounty hunters, and mercenaries."
+        },
+        {
+          "id": "pin-loc-cinder-forge",
+          "locationId": "loc-cinder-forge",
+          "title": "The Cinder-Forge District",
+          "type": "District",
+          "danger": "Low",
+          "population": "6,800 (Industrial Foundries)",
+          "x": 45.0,
+          "y": 43.0,
+          "discovered": true,
+          "icon": "⚒️",
+          "notes": "Industrial quarter echoing with hammer strikes and glowing with coal-fired blast furnaces."
+        },
+        {
+          "id": "pin-loc-highspire-quarter",
+          "locationId": "loc-highspire-quarter",
+          "title": "Highspire Noble Quarter",
+          "type": "Settlement",
+          "danger": "Safe",
+          "population": "3,100 (High Nobility)",
+          "x": 39.5,
+          "y": 38.0,
+          "discovered": true,
+          "icon": "👑",
+          "notes": "Pristine white marble estates, manicured gardens, and private magical libraries."
+        },
+        {
+          "id": "pin-loc-sunken-catacombs",
+          "locationId": "loc-sunken-catacombs",
+          "title": "The Sunken Ward Catacombs",
+          "type": "Dungeon / Ruins",
+          "danger": "Deadly",
+          "population": "Uninhabited (Undead Crypts)",
+          "x": 55.5,
+          "y": 74.0,
+          "discovered": false,
+          "icon": "💀",
+          "notes": "Ancient pre-cataclysm crypts flooded with black water and walking dead."
+        },
+        {
+          "id": "pin-ironpeak-citadel",
+          "locationId": "",
+          "title": "Ironpeak Citadel Outskirts",
+          "type": "Fortress / Outpost",
+          "danger": "High",
+          "population": "450 Garrisoned Dwarves & Watchmen",
+          "x": 45.0,
+          "y": 19.5,
+          "discovered": true,
+          "icon": "🛡️",
+          "notes": "Mountain pass fortress guarding the northern silver mines against frost giants and wyverns."
+        },
+        {
+          "id": "pin-whispering-standing-stones",
+          "locationId": "",
+          "title": "The Whispering Standing Stones",
+          "type": "Wilderness Landmark",
+          "danger": "High",
+          "population": "Druidic Circle & Fey Spirits",
+          "x": 48.5,
+          "y": 46.5,
+          "discovered": false,
+          "icon": "🌲",
+          "notes": "Ancient moss-covered monoliths deep in the Whispering Woods where the Feywild veil grows thin."
+        }
+      ]
+    }
+  ],
+  "activeMapId": "map-main",
+  "hexGrid": {
+    "enabled": true,
+    "opacity": 0.25,
+    "size": 36
+  },
+  "fog": {
+    "enabled": true,
+    "revealedPoints": [
+      {
+        "x": 37.5,
+        "y": 50.0,
+        "radius": 9.0
+      },
+      {
+        "x": 42.0,
+        "y": 55.0,
+        "radius": 8.5
+      },
+      {
+        "x": 37.5,
+        "y": 50.0,
+        "radius": 8.5
+      },
+      {
+        "x": 49.3,
+        "y": 57.0,
+        "radius": 8.5
+      }
+    ]
+  },
+  "trail": [
+    {
+      "id": "tr-1651d2",
+      "x": 42.0,
+      "y": 55.0,
+      "day": 1,
+      "hour": 9,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-500b09",
+      "x": 42.0,
+      "y": 55.0,
+      "day": 1,
+      "hour": 9,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 09:00. Terrain: Forest."
+    },
+    {
+      "id": "tr-dfb6d4",
+      "x": 37.5,
+      "y": 50.0,
+      "day": 1,
+      "hour": 11,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "tr-ddfe95",
+      "x": 49.3,
+      "y": 57.0,
+      "day": 1,
+      "hour": 11,
+      "label": "March Day 1",
+      "type": "march"
+    },
+    {
+      "id": "camp-a35761",
+      "x": 49.3,
+      "y": 57.0,
+      "day": 1,
+      "hour": 11,
+      "label": "Night 1 Camp",
+      "type": "camp",
+      "notes": "Campsite pitched at 11:00. Terrain: Forest."
+    }
+  ]
+}

@@ -1,4 +1,36 @@
 {
-  "quests": [],
-  "rumors": []
+  "quests": [
+    {
+      "id": "qst-a74e9024",
+      "title": "Big Bomb, Don't Care",
+      "giver": "Maren Vance",
+      "location": "Oakhaven",
+      "status": "Active",
+      "reward": "10,000gp",
+      "summary": "You better run. It's about to blow.",
+      "objectives": [
+        {
+          "id": "obj-1-1792122273116",
+          "text": "Find a spot to hide.",
+          "completed": false
+        },
+        {
+          "id": "obj-2-1792122273116",
+          "text": "Hope you don't get blown up.",
+          "completed": false
+        }
+      ],
+      "notes": ""
+    }
+  ],
+  "rumors": [
+    {
+      "id": "rum-2eaf33ff",
+      "text": "Bad stuff happens here",
+      "source": "Maren Vance",
+      "location": "Oakhaven",
+      "veracity": "True",
+      "active": true
+    }
+  ]
 }

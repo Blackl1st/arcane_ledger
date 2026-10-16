@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1000" width="1500" height="1000">
+<defs>
+    <radialGradient id="lightGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fef08a" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#eab308" stop-opacity="0.45"/>
+      <stop offset="75%" stop-color="#000000" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="propShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="8" dy="12" stdDeviation="6" flood-color="#000000" flood-opacity="0.85"/>
+    </filter>
+    <filter id="waterGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#38bdf8" flood-opacity="0.4"/>
+    </filter>
+</defs>
+  <!-- Forest Grassland Floor -->
+  <rect width="1500" height="1000" fill="#1c3d1b"/>
+
+  <!-- Glade Clearings & Interconnecting Dirt Paths -->
+  <circle cx="500" cy="500" r="333" fill="#285a26"/>
+  <circle cx="1000" cy="333" r="250" fill="#285a26"/>
+  <circle cx="1000" cy="666" r="250" fill="#285a26"/>
+  <path d="M 500,500 Q 750,500 1000,333 M 500,500 Q 750,500 1000,666" stroke="#654321" stroke-width="100" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <!-- Ancient Forest Trees (Cover) -->
+  <g filter="url(#propShadow)">
+
+    <circle cx="979" cy="125" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="979" cy="125" r="63" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="975" cy="121" r="37" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1221" cy="900" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1221" cy="900" r="80" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1217" cy="896" r="48" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1064" cy="818" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1064" cy="818" r="56" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1060" cy="814" r="33" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="158" cy="231" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="158" cy="231" r="58" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="154" cy="227" r="34" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1026" cy="493" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1026" cy="493" r="77" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1022" cy="489" r="46" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1277" cy="807" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1277" cy="807" r="57" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1273" cy="803" r="34" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1398" cy="104" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1398" cy="104" r="66" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1394" cy="100" r="39" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="874" cy="370" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="874" cy="370" r="57" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="870" cy="366" r="34" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="370" cy="359" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="370" cy="359" r="71" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="366" cy="355" r="42" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="632" cy="458" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="632" cy="458" r="64" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="628" cy="454" r="38" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="862" cy="145" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="862" cy="145" r="57" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="858" cy="141" r="34" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1301" cy="770" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1301" cy="770" r="76" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1297" cy="766" r="45" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1315" cy="880" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1315" cy="880" r="73" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1311" cy="876" r="43" fill="#1d5920" opacity="0.6"/>
+
+    <circle cx="1303" cy="198" r="17" fill="#382212" stroke="#1c1109" stroke-width="2"/>
+    <circle cx="1303" cy="198" r="55" fill="#144216" stroke="#0b280d" stroke-width="3" opacity="0.9"/>
+    <circle cx="1299" cy="194" r="33" fill="#1d5920" opacity="0.6"/>
+  </g>
+
+  <!-- Adventurer Campfire -->
+  <circle cx="250" cy="250" r="125" fill="url(#lightGlow)" pointer-events="none"/>
+  <circle cx="250" cy="250" r="20" fill="#f59e0b" stroke="#b45309" stroke-width="3"/>
+
+  <!-- Daylight Ambient Sunbeams -->
+  <linearGradient id="sunbeam" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#fef08a" stop-opacity="0.08"/>
+    <stop offset="50%" stop-color="#ffffff" stop-opacity="0.03"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.12"/>
+  </linearGradient>
+  <rect width="1500" height="1000" fill="url(#sunbeam)" pointer-events="none"/>
+</svg>

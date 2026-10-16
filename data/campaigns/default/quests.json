@@ -5,7 +5,7 @@
       "title": "The Drowned Bell of St. Jude",
       "giver": "Sister Andrea / Father Alistair",
       "location": "The Sunken Ward Catacombs",
-      "status": "Active",
+      "status": "Completed",
       "reward": "350 GP + 1x Potion of Water Breathing & Silver Reliquary",
       "summary": "Recover the consecrated silver bell sunken in the flooded catacombs before cultists defile it with necromantic ichor.",
       "objectives": [
@@ -120,6 +120,62 @@
     }
   ],
   "rumors": [
+    {
+      "id": "rum-fac-268584",
+      "text": "Whispers in Great Hearth Hall (Cinder-Forge) claim that The Ironbound Union bribed harbor officials to divert supplies toward Great Hearth Hall (Cinder-Forge) (General Dockworkers Strike: 3/4).",
+      "source": "Faction Turn (The Ironbound Union)",
+      "location": "Great Hearth Hall (Cinder-Forge)",
+      "veracity": "Partially True",
+      "active": true
+    },
+    {
+      "id": "rum-fac-09dfdc",
+      "text": "Whispers in The Grand Exchange Plaza claim that The Gilded Scales Consortium pressured rival merchants and fortified checkpoints near The Grand Exchange Plaza (Buyout of Ironbound Foundries: 3/4).",
+      "source": "Faction Turn (The Gilded Scales Consortium)",
+      "location": "The Grand Exchange Plaza",
+      "veracity": "Partially True",
+      "active": true
+    },
+    {
+      "id": "rum-fac-7d49ae",
+      "text": "Whispers in The Salt Vaults (Sunken Ward) claim that The Obsidian Syndicate dispatched covert agents to secure leverage in The Salt Vaults (Sunken Ward) (Arcane Vault Infiltration: 3/6).",
+      "source": "Faction Turn (The Obsidian Syndicate)",
+      "location": "The Salt Vaults (Sunken Ward)",
+      "veracity": "Partially True",
+      "active": true
+    },
+    {
+      "id": "rum-fac-b735ae",
+      "text": "Whispers in The Sunken Ward Catacombs / Tower of Mist claim that Circle of the Pale Moon pressured rival merchants and fortified checkpoints near The Sunken Ward Catacombs / Tower of Mist (Shadowfell Eclipse Awakening Ritual: 6/8).",
+      "source": "Faction Turn (Circle of the Pale Moon)",
+      "location": "The Sunken Ward Catacombs / Tower of Mist",
+      "veracity": "True",
+      "active": true
+    },
+    {
+      "id": "rum-fac-ad979a",
+      "text": "Whispers in The Grand Exchange Plaza claim that The Gilded Scales Consortium dispatched covert agents to secure leverage in The Grand Exchange Plaza (Buyout of Ironbound Foundries: 2/4).",
+      "source": "Faction Turn (The Gilded Scales Consortium)",
+      "location": "The Grand Exchange Plaza",
+      "veracity": "Partially True",
+      "active": true
+    },
+    {
+      "id": "rum-fac-87484f",
+      "text": "Whispers in Highspire Bastion of the Dawn claim that Order of the Silver Gauntlet intercepted a courier carrying sensitive dispatches from The Obsidian Syndicate (Martial Sweep of the Sunken Ward: 5/6).",
+      "source": "Faction Turn (Order of the Silver Gauntlet)",
+      "location": "Highspire Bastion of the Dawn",
+      "veracity": "True",
+      "active": true
+    },
+    {
+      "id": "rum-fac-4165ee",
+      "text": "[FACTION EVENT] The Syndicate breaches the Highspire treasury and steals the Sun-Crest Amulet, sending the city into martial lockdown.",
+      "source": "Faction Turn (The Obsidian Syndicate)",
+      "location": "The Salt Vaults (Sunken Ward)",
+      "veracity": "True",
+      "active": true
+    },
     {
       "id": "rum-1",
       "text": "Fishermen swear they saw green witchfire glowing under the water by the old sunken bell tower at low tide.",
