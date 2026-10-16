@@ -39,13 +39,23 @@ try:
 except Exception:
     pass
 
-# Setup file logging for crash diagnostics
+# Setup dual file and console logging for crash diagnostics
 LOG_FILE = BASE_DIR / "launcher.log"
-logging.basicConfig(
-    filename=str(LOG_FILE),
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+
+try:
+    file_handler = logging.FileHandler(str(LOG_FILE), encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+except Exception:
+    pass
+
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
 logging.info(f"Arcane Ledger Desktop Launcher starting. Frozen={getattr(sys, 'frozen', False)}, Platform={sys.platform}")
 logging.info(f"RESOURCE_DIR={RESOURCE_DIR}, BASE_DIR={BASE_DIR}")
 
@@ -54,14 +64,29 @@ HOST = "127.0.0.1"
 URL = f"http://{HOST}:{PORT}"
 
 backend_error = None
+server_instance = None
 
 def is_server_running(host=HOST, port=PORT, timeout=1.0) -> bool:
-    """Check if port 8000 is open and responding."""
+    """Check if Arcane Ledger backend is active and responding to HTTP requests."""
     try:
         with socket.create_connection((host, port), timeout=timeout):
-            return True
+            pass
     except (OSError, ConnectionRefusedError):
         return False
+
+    # Confirm it's actually an Arcane Ledger server responding
+    try:
+        req = urllib.request.Request(f"http://{host}:{port}/api/auth/status")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status in (200, 401, 403)
+    except Exception:
+        # Fallback check on root URL
+        try:
+            req = urllib.request.Request(f"http://{host}:{port}/")
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
 
 def wait_for_server(timeout=15.0) -> bool:
     """Wait until the FastAPI backend responds to HTTP requests."""
@@ -71,25 +96,27 @@ def wait_for_server(timeout=15.0) -> bool:
             logging.error(f"Backend startup encountered an error: {backend_error}")
             return False
         if is_server_running():
-            try:
-                with urllib.request.urlopen(f"{URL}/api/auth/status", timeout=1.0) as resp:
-                    if resp.status in (200, 401, 403):
-                        logging.info("Backend HTTP healthcheck passed.")
-                        return True
-            except Exception as e:
-                logging.debug(f"HTTP healthcheck retry: {e}")
+            logging.info("Backend HTTP healthcheck passed.")
+            return True
         time.sleep(0.25)
     return False
 
 def start_backend_frozen():
-    """In frozen PyInstaller mode, run uvicorn in a daemon thread."""
-    global backend_error
+    """In frozen PyInstaller mode, run uvicorn in a worker thread."""
+    global backend_error, server_instance
     try:
         logging.info("Starting uvicorn server in background thread...")
-        # Add RESOURCE_DIR to sys.path so app and its modules are found
         if str(RESOURCE_DIR) not in sys.path:
             sys.path.insert(0, str(RESOURCE_DIR))
-        uvicorn.run(app.app, host="0.0.0.0", port=PORT, log_level="warning")
+        config = uvicorn.Config(
+            app.app,
+            host="0.0.0.0",
+            port=PORT,
+            log_level="warning",
+            loop="asyncio"
+        )
+        server_instance = uvicorn.Server(config)
+        server_instance.run()
     except Exception as e:
         backend_error = traceback.format_exc()
         logging.error(f"Fatal exception in backend server thread:\n{backend_error}")
@@ -138,15 +165,70 @@ def show_alert_dialog(title: str, message: str):
     """Show native alert dialog if startup fails."""
     logging.error(f"Alert Dialog: [{title}] {message}")
     if sys.platform == "darwin":
-        clean_msg = message.replace('"', '\\"').replace("'", "\\'")
-        clean_title = title.replace('"', '\\"').replace("'", "\\'")
-        os.system(f"""osascript -e 'display alert "{clean_title}" message "{clean_msg}" as critical' 2>/dev/null""")
+        clean_msg = message.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+        clean_title = title.replace('\\', '\\\\').replace('"', '\\"')
+        script = f'display alert "{clean_title}" message "{clean_msg}" as critical'
+        try:
+            subprocess.run(["osascript", "-e", script], check=False)
+        except Exception:
+            pass
     elif sys.platform == "win32":
         try:
             import ctypes
             ctypes.windll.user32.MessageBoxW(0, message, title, 0x10)
         except Exception:
             pass
+
+def is_browser_running_for_profile(profile_dir: Path) -> bool:
+    """Check if Chromium is actively running with the specified user-data-dir."""
+    # 1. Check Chromium's SingletonLock symlink (target is hostname-pid)
+    lock_file = profile_dir / "SingletonLock"
+    if lock_file.is_symlink():
+        try:
+            target = os.readlink(str(lock_file))
+            pid_str = target.rsplit("-", 1)[-1]
+            pid = int(pid_str)
+            os.kill(pid, 0)
+            return True
+        except (ValueError, OSError):
+            pass
+    elif lock_file.exists():
+        return True
+
+    # 2. Check pgrep on POSIX for matching profile path
+    if sys.platform != "win32":
+        try:
+            res = subprocess.run(["pgrep", "-f", str(profile_dir)], capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                return True
+        except Exception:
+            pass
+
+    return False
+
+def keep_process_alive_while_browser_running(profile_dir: Path):
+    """Keep the server process alive as long as the browser window is active."""
+    # Give the browser up to 10 seconds to start and create its profile directory lock
+    for _ in range(20):
+        time.sleep(0.5)
+        if is_browser_running_for_profile(profile_dir):
+            break
+
+    logging.info("Browser process detected. Server keepalive active.")
+    consecutive_misses = 0
+    try:
+        while True:
+            time.sleep(1.0)
+            if is_browser_running_for_profile(profile_dir):
+                consecutive_misses = 0
+            else:
+                consecutive_misses += 1
+                # If profile lock is absent for 3 consecutive seconds, window was closed
+                if consecutive_misses >= 3:
+                    logging.info("Browser window closed. Exiting desktop launcher.")
+                    break
+    except KeyboardInterrupt:
+        logging.info("Shutdown requested via KeyboardInterrupt.")
 
 def launch_desktop_window():
     """Launch the browser in standalone app mode."""
@@ -156,8 +238,7 @@ def launch_desktop_window():
     except Exception:
         pass
 
-    # macOS specific: use macOS LaunchServices 'open' command to launch app mode
-    # This prevents macOS from triggering scary 'App Management / delete other apps' permission prompts
+    # macOS: use LaunchServices 'open -W' to prevent TCC 'delete other apps' warnings
     if sys.platform == "darwin":
         mac_browser_apps = ["Google Chrome", "Microsoft Edge", "Brave Browser"]
         chosen_browser = None
@@ -169,15 +250,26 @@ def launch_desktop_window():
         if chosen_browser:
             logging.info(f"Launching app window via macOS LaunchServices with {chosen_browser}...")
             cmd = [
-                "open", "-n", "-a", chosen_browser,
+                "open", "-W", "-n", "-a", chosen_browser,
                 "--args",
                 f"--app={URL}",
                 f"--user-data-dir={profile_dir}",
-                "--window-size=1600,1000"
+                "--window-size=1600,1000",
+                "--no-first-run",
+                "--no-default-browser-check"
             ]
             try:
+                start_t = time.time()
                 proc = subprocess.Popen(cmd)
                 proc.wait()
+                elapsed = time.time() - start_t
+                logging.info(f"Browser launch process completed (elapsed={elapsed:.2f}s)")
+                
+                # If open -W returned quickly (< 3.0s), LaunchServices exited asynchronously.
+                # In that case, enter the keepalive monitoring loop so Uvicorn does NOT die.
+                if elapsed < 3.0:
+                    logging.info("open command returned quickly; engaging profile monitoring loop...")
+                    keep_process_alive_while_browser_running(profile_dir)
                 return
             except Exception as e:
                 logging.error(f"Error launching via open -a {chosen_browser}: {e}")
@@ -222,6 +314,7 @@ def launch_desktop_window():
         pass
 
 def main():
+    global server_instance
     server_process = None
     started_by_us = False
 
@@ -263,6 +356,11 @@ def main():
     except Exception as e:
         logging.error(f"Exception during desktop window loop: {e}\n{traceback.format_exc()}")
     finally:
+        # Gracefully shut down in-process uvicorn server if running
+        if server_instance:
+            logging.info("Signaling in-process uvicorn server to stop...")
+            server_instance.should_exit = True
+
         # If we spawned an external subprocess, cleanly terminate it on window close
         if started_by_us and server_process:
             logging.info("Closing Arcane Ledger backend server subprocess...")
