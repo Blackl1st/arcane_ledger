@@ -3610,6 +3610,15 @@
                             </div>
                         </div>
 
+                        <!-- macOS App Translocation Warning (Shown if app is in Downloads) -->
+                        <div id="updater-mac-location-tip" class="hidden p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+                            <span class="text-base leading-none mt-0.5">💡</span>
+                            <div class="space-y-1">
+                                <p class="font-bold text-amber-300">macOS Notice: App in Downloads Folder</p>
+                                <p class="text-slate-300 text-[11px] leading-relaxed">Arcane Ledger is currently running from your <strong>Downloads</strong> folder. macOS isolates downloads in temporary read-only storage ("App Translocation"). To ensure in-place updates work smoothly, please drag <strong>ArcaneLedger.app</strong> into your <strong>/Applications</strong> folder.</p>
+                            </div>
+                        </div>
+
                         <!-- Progress Bar (shown when downloading) -->
                         <div id="updater-progress-container" class="hidden space-y-1.5 pt-2">
                             <div class="flex items-center justify-between text-xs font-mono">

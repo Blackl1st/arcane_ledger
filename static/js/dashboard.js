@@ -15832,6 +15832,15 @@ async function initUpdater() {
             }
             updateChannelBadge();
 
+            const macLocationTip = document.getElementById('updater-mac-location-tip');
+            if (macLocationTip) {
+                if (data.is_translocated || data.in_downloads) {
+                    macLocationTip.classList.remove('hidden');
+                } else {
+                    macLocationTip.classList.add('hidden');
+                }
+            }
+
             // If auto-check enabled, trigger background check after 1.5s delay
             if (data.auto_check !== false) {
                 setTimeout(() => {
@@ -15945,6 +15954,15 @@ async function checkForUpdates(manual = false) {
 
         if (statusSub) {
             statusSub.textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
+        }
+
+        const macLocationTip = document.getElementById('updater-mac-location-tip');
+        if (macLocationTip) {
+            if (data.is_translocated || data.in_downloads) {
+                macLocationTip.classList.remove('hidden');
+            } else {
+                macLocationTip.classList.add('hidden');
+            }
         }
 
         if (!res.ok || !data.success) {

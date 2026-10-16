@@ -315,6 +315,16 @@ def check_for_updates_internal(force: bool = False, token: Optional[str] = None)
             if update_state.status in ("idle", "checking", "available"):
                 update_state.status = "idle"
 
+    is_mac = sys.platform == "darwin"
+    is_translocated = False
+    in_downloads = False
+    if is_mac and getattr(sys, "frozen", False):
+        exe_str = str(Path(sys.executable).resolve())
+        if "AppTranslocation" in exe_str or "/private/var" in exe_str:
+            is_translocated = True
+        if "/Downloads/" in exe_str or (Path.home() / "Downloads" / "ArcaneLedger.app").exists():
+            in_downloads = True
+
     return {
         "success": True,
         "update_available": update_available,
@@ -322,7 +332,10 @@ def check_for_updates_internal(force: bool = False, token: Optional[str] = None)
         "latest_version": tag_name,
         "release": rel_info,
         "is_frozen": getattr(sys, "frozen", False),
-        "is_dev": not getattr(sys, "frozen", False) and (RESOURCE_DIR / ".git").is_dir()
+        "is_dev": not getattr(sys, "frozen", False) and (RESOURCE_DIR / ".git").is_dir(),
+        "is_translocated": is_translocated,
+        "in_downloads": in_downloads,
+        "platform": sys.platform
     }
 
 
@@ -450,6 +463,10 @@ def execute_patch_and_restart() -> Dict[str, Any]:
                     target_app = Path("/Applications/ArcaneLedger.app")
                 elif (Path.home() / "Applications" / "ArcaneLedger.app").exists():
                     target_app = Path.home() / "Applications" / "ArcaneLedger.app"
+                elif (Path.home() / "Downloads" / "ArcaneLedger.app").exists():
+                    target_app = Path.home() / "Downloads" / "ArcaneLedger.app"
+                elif (Path.home() / "Desktop" / "ArcaneLedger.app").exists():
+                    target_app = Path.home() / "Desktop" / "ArcaneLedger.app"
                 else:
                     target_app = Path("/Applications/ArcaneLedger.app")
         else:
@@ -492,6 +509,16 @@ fi
 
 # 3. Safe Atomic Swap on macOS
 TARGET_PARENT="$(dirname "$TARGET_APP")"
+
+# If /Applications is not writable without root, fall back to ~/Applications/ArcaneLedger.app
+if [ ! -w "$TARGET_PARENT" ] && [ "$TARGET_APP" = "/Applications/ArcaneLedger.app" ]; then
+    echo "Notice: /Applications is not writable by current user."
+    echo "Falling back to user applications directory: $HOME/Applications/ArcaneLedger.app"
+    mkdir -p "$HOME/Applications" 2>/dev/null
+    TARGET_APP="$HOME/Applications/ArcaneLedger.app"
+    TARGET_PARENT="$HOME/Applications"
+fi
+
 BACKUP_APP="$TARGET_PARENT/.ArcaneLedger_backup_$$"
 STAGED_TEMP="$TARGET_PARENT/.ArcaneLedger_new_$$"
 
@@ -620,7 +647,20 @@ class UpdateSettingsRequest(BaseModel):
 @router.get("/status")
 async def get_status():
     """Retrieve current update check and download status."""
-    return update_state.to_dict()
+    res = update_state.to_dict()
+    is_mac = sys.platform == "darwin"
+    is_translocated = False
+    in_downloads = False
+    if is_mac and getattr(sys, "frozen", False):
+        exe_str = str(Path(sys.executable).resolve())
+        if "AppTranslocation" in exe_str or "/private/var" in exe_str:
+            is_translocated = True
+        if "/Downloads/" in exe_str or (Path.home() / "Downloads" / "ArcaneLedger.app").exists():
+            in_downloads = True
+    res["is_translocated"] = is_translocated
+    res["in_downloads"] = in_downloads
+    res["platform"] = sys.platform
+    return res
 
 
 @router.get("/check")
