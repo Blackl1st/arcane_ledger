@@ -8,6 +8,7 @@ import secrets
 import shutil
 import socket
 import struct
+import sys
 import time
 import uuid
 import zipfile
@@ -24,10 +25,17 @@ from pydantic import BaseModel
 
 from map_generator import ProceduralMapGenerator, get_random_title
 
-BASE_DIR = Path(__file__).resolve().parent
+# Resource & Data Directory Resolution (Handles Live Dev & PyInstaller Frozen App)
+if getattr(sys, "frozen", False):
+    RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    RESOURCE_DIR = Path(__file__).resolve().parent
+    BASE_DIR = RESOURCE_DIR
+
 DATA_DIR = BASE_DIR / "data"
-STATIC_DIR = BASE_DIR / "static"
-TEMPLATES_DIR = BASE_DIR / "templates"
+STATIC_DIR = RESOURCE_DIR / "static"
+TEMPLATES_DIR = RESOURCE_DIR / "templates"
 BACKUPS_DIR = DATA_DIR / "backups"
 AUDIO_DIR = STATIC_DIR / "audio"
 IMAGES_DIR = STATIC_DIR / "images"
@@ -45,6 +53,21 @@ AUDIO_DIR.mkdir(exist_ok=True)
 IMAGES_DIR.mkdir(exist_ok=True)
 BATTLEMAPS_DIR.mkdir(parents=True, exist_ok=True)
 CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
+
+# If running frozen and user data directory is not yet seeded, copy default assets from bundle
+if getattr(sys, "frozen", False) and not CAMPAIGNS_MANIFEST_FILE.exists():
+    bundled_data = RESOURCE_DIR / "data"
+    if bundled_data.exists():
+        for item in bundled_data.iterdir():
+            dest = DATA_DIR / item.name
+            if not dest.exists():
+                try:
+                    if item.is_dir():
+                        shutil.copytree(item, dest)
+                    else:
+                        shutil.copy2(item, dest)
+                except Exception as _e:
+                    print(f"Error seeding bundled data for {item.name}: {_e}")
 
 # -------------------------------------------------------------
 # SECURITY & LOCAL NETWORK ACCESS CONTROLS
@@ -6654,5 +6677,9 @@ if __name__ == "__main__":
     print("  Host DM Command Center:    http://127.0.0.1:8000")
     print(f"  Local Network Player HUD:  http://{lan_ip}:8000/player")
     print(f"  Local Network Battlemap:   http://{lan_ip}:8000/map")
+    print(f"  Player Mobile Companion:   http://{lan_ip}:8000/companion")
     print("=======================================================\n")
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    if getattr(sys, "frozen", False):
+        uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    else:
+        uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

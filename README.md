@@ -277,25 +277,34 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Launch the Server
+### 3. Launch the Application
 
-**Using the startup script:**
-* **macOS / Linux**: Double-click `start.command` in Finder or run `./run.sh` in Terminal
-* **Windows**: Double-click `run.bat`
+**Dedicated Native Desktop Window (Recommended):**
+* **Windows (Silent / No Terminal)**: Double-click **`Arcane Ledger.vbs`** for an instant chromeless desktop window with live code reloading.
+* **Windows (With Console Logs)**: Double-click **`Arcane Ledger.bat`**.
+* **macOS / Linux**: Double-click **`start.command`** in Finder or run `./run.sh` in Terminal.
 
-**Manual command line launch:**
+**Direct Command Line:**
 ```bash
-source venv/bin/activate   # On Windows: venv\Scripts\activate
-python app.py
+python desktop_launcher.py   # Launches in native desktop app window
+# OR
+python app.py                # Launches standard server on port 8000
 ```
 
-The server will start at:
-```
-=======================================================
-  ARCANE LEDGER - D&D 5.5e (2024) DM DASHBOARD
-  Open your browser to: http://127.0.0.1:8000
-=======================================================
-```
+To stop the background server anytime on Windows, double-click **`Stop Arcane Ledger.bat`**.
+
+---
+
+### 📦 Standalone Releases (Zero Python Installation Required)
+
+For players or DMs who want to run Arcane Ledger without installing Python or Git:
+* Ready-to-use standalone bundles are built automatically via **GitHub Actions** on every release.
+* Go to the **[Releases](https://github.com/Blackl1st/arcane_ledger/releases)** tab in GitHub:
+  * **Windows**: Download `ArcaneLedger-Windows-x64.zip`, extract, and double-click `ArcaneLedger.exe`.
+  * **macOS**: Download `ArcaneLedger-macOS.zip`, extract, and open `ArcaneLedger.app` (Right-click → Open on first launch).
+* All campaign data, battlemaps, and settings persist in the local `data/` folder next to the application.
+
+---
 
 ### 4. Access the Interfaces
 * **DM Dashboard**: [http://127.0.0.1:8000](http://127.0.0.1:8000) *(bypasses PIN automatically on the host computer)*
