@@ -17,13 +17,14 @@ import subprocess
 import urllib.request
 import urllib.error
 import urllib.parse
+import ssl
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.0.6"
+CURRENT_VERSION = "1.0.7"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -114,6 +115,28 @@ class GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
         return new_req
 
 
+def create_github_opener(unverified: bool = False):
+    """Build a urllib opener with GithubRedirectHandler and appropriate SSL context."""
+    handlers = [GithubRedirectHandler()]
+    if unverified:
+        try:
+            ctx = ssl._create_unverified_context()
+            handlers.append(urllib.request.HTTPSHandler(context=ctx))
+        except Exception:
+            pass
+    else:
+        ctx = None
+        try:
+            import certifi
+            if os.path.exists(certifi.where()):
+                ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            pass
+        if ctx:
+            handlers.append(urllib.request.HTTPSHandler(context=ctx))
+    return urllib.request.build_opener(*handlers)
+
+
 class UpdateState:
     """Thread-safe state manager for background check, download, and patch operations."""
     def __init__(self):
@@ -190,10 +213,21 @@ def fetch_latest_release(token: Optional[str] = None, channel: str = "stable") -
         headers["Authorization"] = f"Bearer {token.strip()}"
 
     req = urllib.request.Request(list_url, headers=headers)
-    opener = urllib.request.build_opener(GithubRedirectHandler())
 
     try:
-        with opener.open(req, timeout=10) as resp:
+        try:
+            opener = create_github_opener(unverified=False)
+            resp = opener.open(req, timeout=15)
+        except (urllib.error.URLError, ssl.SSLError) as ssl_err:
+            err_str = str(ssl_err).lower()
+            if not isinstance(ssl_err, urllib.error.HTTPError) and any(k in err_str for k in ("certificate", "cert", "ssl", "verify failed")):
+                logging.warning(f"SSL verification failed on host ({ssl_err}); retrying with unverified SSL context...")
+                opener = create_github_opener(unverified=True)
+                resp = opener.open(req, timeout=15)
+            else:
+                raise ssl_err
+
+        with resp:
             releases = json.loads(resp.read().decode("utf-8"))
             if not isinstance(releases, list) or not releases:
                 raise HTTPException(status_code=404, detail="No releases found in repository.")
@@ -306,8 +340,6 @@ def download_worker(asset_info: Dict[str, Any], token: Optional[str]):
         version_label = update_state.target_version or "latest"
         zip_path = UPDATES_DIR / f"ArcaneLedger_update_{version_label}.zip"
 
-        opener = urllib.request.build_opener(GithubRedirectHandler())
-
         # If token is present, request the asset via the API with application/octet-stream
         if token and token.strip() and asset_info.get("asset_url"):
             req_url = asset_info["asset_url"]
@@ -327,7 +359,19 @@ def download_worker(asset_info: Dict[str, Any], token: Optional[str]):
 
         req = urllib.request.Request(req_url, headers=headers)
 
-        with opener.open(req, timeout=45) as resp:
+        try:
+            opener = create_github_opener(unverified=False)
+            resp = opener.open(req, timeout=60)
+        except (urllib.error.URLError, ssl.SSLError) as ssl_err:
+            err_str = str(ssl_err).lower()
+            if not isinstance(ssl_err, urllib.error.HTTPError) and any(k in err_str for k in ("certificate", "cert", "ssl", "verify failed")):
+                logging.warning(f"SSL verification failed on download ({ssl_err}); retrying with unverified SSL context...")
+                opener = create_github_opener(unverified=True)
+                resp = opener.open(req, timeout=60)
+            else:
+                raise ssl_err
+
+        with resp:
             content_length = resp.headers.get("Content-Length")
             total = int(content_length) if content_length else update_state.total_bytes
             with update_state.lock:

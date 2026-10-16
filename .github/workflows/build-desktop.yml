@@ -41,7 +41,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller pillow pywebview pythonnet
+          pip install pyinstaller pillow pywebview pythonnet certifi
 
       - name: Package with PyInstaller
         run: |
@@ -52,6 +52,7 @@ jobs:
             --add-data "data;data" `
             --add-data "tools;tools" `
             --collect-all "webview" `
+            --collect-all "certifi" `
             --hidden-import "app" `
             --hidden-import "updater" `
             --hidden-import "map_generator" `
@@ -104,7 +105,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller pillow pywebview pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-Quartz pyobjc-framework-WebKit
+          pip install pyinstaller pillow pywebview pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-Quartz pyobjc-framework-WebKit certifi
 
       - name: Package with PyInstaller
         run: |
@@ -116,6 +117,7 @@ jobs:
             --add-data "data:data" \
             --add-data "tools:tools" \
             --collect-all "webview" \
+            --collect-all "certifi" \
             --hidden-import "app" \
             --hidden-import "updater" \
             --hidden-import "map_generator" \
