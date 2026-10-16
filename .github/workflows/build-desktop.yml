@@ -61,6 +61,7 @@ jobs:
             --hidden-import "uvicorn.protocols.websockets.auto" `
             --hidden-import "uvicorn.lifespans" `
             --hidden-import "uvicorn.lifespans.auto" `
+            --icon "static/icon.ico" `
             desktop_launcher.py
 
       - name: Create Windows Distribution Zip
@@ -112,6 +113,7 @@ jobs:
             --hidden-import "uvicorn.protocols.websockets.auto" \
             --hidden-import "uvicorn.lifespans" \
             --hidden-import "uvicorn.lifespans.auto" \
+            --icon "static/icon.png" \
             desktop_launcher.py
 
       - name: Create macOS Distribution Zip
