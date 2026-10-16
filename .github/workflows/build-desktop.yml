@@ -51,6 +51,12 @@ jobs:
             --add-data "static;static" `
             --add-data "data;data" `
             --add-data "tools;tools" `
+            --hidden-import "app" `
+            --hidden-import "map_generator" `
+            --hidden-import "fastapi" `
+            --hidden-import "uvicorn" `
+            --hidden-import "pydantic" `
+            --hidden-import "qrcode" `
             --hidden-import "uvicorn.logging" `
             --hidden-import "uvicorn.loops" `
             --hidden-import "uvicorn.loops.auto" `
@@ -103,6 +109,12 @@ jobs:
             --add-data "static:static" \
             --add-data "data:data" \
             --add-data "tools:tools" \
+            --hidden-import "app" \
+            --hidden-import "map_generator" \
+            --hidden-import "fastapi" \
+            --hidden-import "uvicorn" \
+            --hidden-import "pydantic" \
+            --hidden-import "qrcode" \
             --hidden-import "uvicorn.logging" \
             --hidden-import "uvicorn.loops" \
             --hidden-import "uvicorn.loops.auto" \
@@ -118,9 +130,8 @@ jobs:
 
       - name: Create macOS Distribution Zip
         run: |
-          cd dist
-          zip -r ../ArcaneLedger-macOS.zip ArcaneLedger.app ArcaneLedger 2>/dev/null || zip -r ../ArcaneLedger-macOS.zip .
-          cd ..
+          chmod -R +x dist/ArcaneLedger.app/Contents/MacOS/
+          ditto -c -k --keepParent dist/ArcaneLedger.app ArcaneLedger-macOS.zip
 
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4

@@ -28,10 +28,19 @@ from map_generator import ProceduralMapGenerator, get_random_title
 # Resource & Data Directory Resolution (Handles Live Dev & PyInstaller Frozen App)
 if getattr(sys, "frozen", False):
     RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
-    BASE_DIR = Path(sys.executable).resolve().parent
+    if sys.platform == "darwin":
+        # On macOS, store writable user data in ~/Documents/ArcaneLedger to avoid bundle write restrictions
+        BASE_DIR = Path.home() / "Documents" / "ArcaneLedger"
+    else:
+        BASE_DIR = Path(sys.executable).resolve().parent
 else:
     RESOURCE_DIR = Path(__file__).resolve().parent
     BASE_DIR = RESOURCE_DIR
+
+try:
+    BASE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 DATA_DIR = BASE_DIR / "data"
 STATIC_DIR = RESOURCE_DIR / "static"
@@ -45,14 +54,18 @@ CAMPAIGNS_MANIFEST_FILE = DATA_DIR / "campaigns.json"
 BATTLEMAPS_CATALOG_FILE = DATA_DIR / "battlemaps_catalog.json"
 SECURITY_FILE = DATA_DIR / "security.json"
 
-DATA_DIR.mkdir(exist_ok=True)
-STATIC_DIR.mkdir(exist_ok=True)
-TEMPLATES_DIR.mkdir(exist_ok=True)
-BACKUPS_DIR.mkdir(exist_ok=True)
-AUDIO_DIR.mkdir(exist_ok=True)
-IMAGES_DIR.mkdir(exist_ok=True)
-BATTLEMAPS_DIR.mkdir(parents=True, exist_ok=True)
-CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
+for d in [DATA_DIR, BACKUPS_DIR, CAMPAIGNS_DIR]:
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception as _e:
+        print(f"Warning: could not create writable directory {d}: {_e}")
+
+# Read-only resource dirs: attempt creation only if not already present
+for d in [STATIC_DIR, TEMPLATES_DIR, AUDIO_DIR, IMAGES_DIR, BATTLEMAPS_DIR]:
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
 
 # If running frozen and user data directory is not yet seeded, copy default assets from bundle
 if getattr(sys, "frozen", False) and not CAMPAIGNS_MANIFEST_FILE.exists():

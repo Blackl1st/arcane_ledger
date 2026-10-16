@@ -9,22 +9,50 @@ import os
 import sys
 import time
 import socket
+import logging
+import traceback
 import subprocess
 import threading
 import urllib.request
 from pathlib import Path
 
+# Explicit top-level imports ensure PyInstaller static analyzer bundles these modules
+import uvicorn
+import map_generator
+import app
+
 # Determine directory paths
 if getattr(sys, "frozen", False):
     RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
-    BASE_DIR = Path(sys.executable).resolve().parent
+    if sys.platform == "darwin":
+        # On macOS, store writable data in ~/Documents/ArcaneLedger to avoid read-only bundle translocation
+        BASE_DIR = Path.home() / "Documents" / "ArcaneLedger"
+    else:
+        BASE_DIR = Path(sys.executable).resolve().parent
 else:
     RESOURCE_DIR = Path(__file__).resolve().parent
     BASE_DIR = RESOURCE_DIR
 
+try:
+    BASE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
+# Setup file logging for crash diagnostics
+LOG_FILE = BASE_DIR / "launcher.log"
+logging.basicConfig(
+    filename=str(LOG_FILE),
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logging.info(f"Arcane Ledger Desktop Launcher starting. Frozen={getattr(sys, 'frozen', False)}, Platform={sys.platform}")
+logging.info(f"RESOURCE_DIR={RESOURCE_DIR}, BASE_DIR={BASE_DIR}")
+
 PORT = 8000
 HOST = "127.0.0.1"
 URL = f"http://{HOST}:{PORT}"
+
+backend_error = None
 
 def is_server_running(host=HOST, port=PORT, timeout=1.0) -> bool:
     """Check if port 8000 is open and responding."""
@@ -38,24 +66,32 @@ def wait_for_server(timeout=15.0) -> bool:
     """Wait until the FastAPI backend responds to HTTP requests."""
     start = time.time()
     while time.time() - start < timeout:
+        if backend_error:
+            logging.error(f"Backend startup encountered an error: {backend_error}")
+            return False
         if is_server_running():
             try:
                 with urllib.request.urlopen(f"{URL}/api/auth/status", timeout=1.0) as resp:
                     if resp.status in (200, 401, 403):
+                        logging.info("Backend HTTP healthcheck passed.")
                         return True
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"HTTP healthcheck retry: {e}")
         time.sleep(0.25)
     return False
 
 def start_backend_frozen():
     """In frozen PyInstaller mode, run uvicorn in a daemon thread."""
-    import uvicorn
-    # Add RESOURCE_DIR to sys.path so app and its modules are found
-    if str(RESOURCE_DIR) not in sys.path:
-        sys.path.insert(0, str(RESOURCE_DIR))
-    import app
-    uvicorn.run(app.app, host="0.0.0.0", port=PORT, log_level="warning")
+    global backend_error
+    try:
+        logging.info("Starting uvicorn server in background thread...")
+        # Add RESOURCE_DIR to sys.path so app and its modules are found
+        if str(RESOURCE_DIR) not in sys.path:
+            sys.path.insert(0, str(RESOURCE_DIR))
+        uvicorn.run(app.app, host="0.0.0.0", port=PORT, log_level="warning")
+    except Exception as e:
+        backend_error = traceback.format_exc()
+        logging.error(f"Fatal exception in backend server thread:\n{backend_error}")
 
 def find_app_browser() -> Optional[str]:
     """Find a Chromium-based browser supporting --app mode."""
@@ -97,13 +133,31 @@ def shutil_which(cmd):
     import shutil
     return shutil.which(cmd)
 
+def show_alert_dialog(title: str, message: str):
+    """Show native alert dialog if startup fails."""
+    logging.error(f"Alert Dialog: [{title}] {message}")
+    if sys.platform == "darwin":
+        clean_msg = message.replace('"', '\\"').replace("'", "\\'")
+        clean_title = title.replace('"', '\\"').replace("'", "\\'")
+        os.system(f"""osascript -e 'display alert "{clean_title}" message "{clean_msg}" as critical' 2>/dev/null""")
+    elif sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, message, title, 0x10)
+        except Exception:
+            pass
+
 def launch_desktop_window():
     """Launch the browser in standalone app mode."""
     browser_exe = find_app_browser()
     profile_dir = BASE_DIR / "data" / ".app_profile"
-    profile_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        profile_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     
     if browser_exe:
+        logging.info(f"Launching app window with browser: {browser_exe}")
         cmd = [
             browser_exe,
             f"--app={URL}",
@@ -118,13 +172,22 @@ def launch_desktop_window():
             proc.wait()
             return
         except Exception as e:
-            print(f"Error launching app-mode browser: {e}")
+            logging.error(f"Error launching app-mode browser: {e}")
+
+    # macOS specific: launch via 'open' command if Chrome/Edge not installed
+    if sys.platform == "darwin":
+        logging.info("Opening default browser via macOS 'open' command...")
+        subprocess.Popen(["open", URL])
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            return
 
     # Fallback: Open in default system browser
     import webbrowser
-    print("Opening in default system web browser...")
+    logging.info("Opening in default system web browser...")
     webbrowser.open(URL)
-    # If using fallback, keep process alive until user hits Ctrl+C
     try:
         while True:
             time.sleep(1)
@@ -138,7 +201,7 @@ def main():
     # 1. Start server if not running
     if not is_server_running():
         started_by_us = True
-        print("Starting Arcane Ledger backend server...")
+        logging.info("Port 8000 is inactive. Starting Arcane Ledger backend server...")
         if getattr(sys, "frozen", False):
             # In compiled binary: start thread
             t = threading.Thread(target=start_backend_frozen, daemon=True)
@@ -146,7 +209,6 @@ def main():
         else:
             # In live dev mode: start subprocess pointing to app.py
             app_script = RESOURCE_DIR / "app.py"
-            # On Windows, creationflags=0x08000000 (CREATE_NO_WINDOW) prevents console popup
             creationflags = 0x08000000 if sys.platform == "win32" else 0
             server_process = subprocess.Popen(
                 [sys.executable, str(app_script)],
@@ -155,21 +217,28 @@ def main():
             )
 
         if not wait_for_server(timeout=15.0):
-            print("Failed to start Arcane Ledger backend. Exiting.")
+            err_details = backend_error or "Timed out waiting for port 8000."
+            logging.error(f"Failed to start Arcane Ledger backend: {err_details}")
+            show_alert_dialog(
+                "Arcane Ledger Failed to Start",
+                f"The backend server could not be started.\n\nDetails: {err_details[:200]}\n\nCheck log at:\n{LOG_FILE}"
+            )
             if server_process:
                 server_process.terminate()
             sys.exit(1)
     else:
-        print("Arcane Ledger backend is already running on port 8000.")
+        logging.info("Arcane Ledger backend is already running on port 8000.")
 
     # 2. Open desktop window
-    print(f"Opening Arcane Ledger DM Command Center ({URL})...")
+    logging.info(f"Opening Arcane Ledger DM Command Center ({URL})...")
     try:
         launch_desktop_window()
+    except Exception as e:
+        logging.error(f"Exception during desktop window loop: {e}\n{traceback.format_exc()}")
     finally:
         # If we spawned an external subprocess, cleanly terminate it on window close
         if started_by_us and server_process:
-            print("Closing Arcane Ledger backend server...")
+            logging.info("Closing Arcane Ledger backend server subprocess...")
             try:
                 server_process.terminate()
                 server_process.wait(timeout=3)
@@ -181,4 +250,8 @@ def main():
 
 if __name__ == "__main__":
     from typing import Optional
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.critical(f"Unhandled exception in main:\n{traceback.format_exc()}")
+        show_alert_dialog("Arcane Ledger Fatal Error", f"Unexpected error: {e}\nSee {LOG_FILE}")
