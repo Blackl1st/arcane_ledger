@@ -15,6 +15,7 @@ import subprocess
 import threading
 import urllib.request
 from pathlib import Path
+from typing import Optional, Dict, Any, List
 
 # Explicit top-level imports ensure PyInstaller static analyzer bundles these modules
 import uvicorn
@@ -249,7 +250,6 @@ def main():
                     pass
 
 if __name__ == "__main__":
-    from typing import Optional
     try:
         main()
     except Exception as e:
