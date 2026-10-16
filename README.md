@@ -53,6 +53,7 @@ Arcane Ledger provides three specialized interfaces out of the box:
 * **Full God-Mode Control**: Real-time initiative ordering, monster statblocks, live hit points, spell slots, resource counters, and fog-of-war brush.
 * **Instant SRD Reference**: Search 330+ monsters, 340+ spells, and 2024 rules with zero page flipping.
 * **Smart Atmosphere**: Integrated multi-track ambient audio mixer and direct WebSocket hardware control of Aputure/Amaran studio lighting.
+* **PIN Protection & Localhost Auto-Bypass**: Full security lockout for external LAN devices while granting zero-friction instant access to the DM on the host computer.
 
 ### 2. Player Display Screen (`/player`)
 * **Projector / Wall TV HUD**: Displays the current initiative order, round tracker, active turn banner, party health state, and in-game calendar/weather.
@@ -207,6 +208,13 @@ Arcane Ledger provides three specialized interfaces out of the box:
   - ⚡ **Minimalist DM**: Compact setup keeping only the Combat Tracker, Party Vitals HUD, Scratchpad Notes, and Rules Engine.
   - 🛠️ **Custom Configuration**: Fine-tune individual switches for any combination of tools.
 
+### 🔒 DM Passcode Protection & Tabletop Wi-Fi Security
+- **Anti-Snooping Tabletop Security**: Keep players connecting over the local Wi-Fi network (phones, tablets, laptops) strictly on player displays (`/player` and `/map`) without letting them snoop on secret DM notes, monster HP, hidden battlemaps, or encounter budgets.
+- **Zero-Friction Localhost Auto-Bypass**: The DM running Arcane Ledger on the host machine (`127.0.0.1`) experiences zero friction or passcode prompts.
+- **Dedicated Fantasy Lock Screen (`templates/dm_lock.html`)**: Beautiful dark-fantasy PIN entry screen with animated digit boxes, touch/virtual keypad, physical keyboard listener, error shaking animation, and instant escape links to `/player` and `/map`.
+- **Connect Tabletop Players Modal & QR Code**: Built-in LAN IP detection (`http://192.168.x.x:8000/player`) with a 1-click copyable link and dynamically generated SVG QR code for instant phone camera scanning at the physical table.
+- **Configurable in System Settings**: Enable or disable PIN protection, customize your 4-digit PIN, or toggle Localhost Auto-Bypass anytime from the Settings tab.
+
 ---
 
 ## 🚀 Quick Start
@@ -258,11 +266,11 @@ The server will start at:
 ```
 
 ### 4. Access the Interfaces
-* **DM Dashboard**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+* **DM Dashboard**: [http://127.0.0.1:8000](http://127.0.0.1:8000) *(bypasses PIN automatically on the host computer)*
 * **Player Screen**: [http://127.0.0.1:8000/player](http://127.0.0.1:8000/player)
 * **Tabletop Battlemap**: [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map)
 
-> **Tip (Local Wi-Fi Play)**: To connect tablets or player laptops on the same Wi-Fi network, navigate to `http://<YOUR_COMPUTER_LOCAL_IP>:8000/player`.
+> **Tip (Tabletop Wi-Fi & QR Code)**: Click the **Connect Players** button in the DM topbar to display a scannable QR code and direct local network link (e.g. `http://192.168.x.x:8000/player`). Tabletop players connecting from phones, tablets, or laptops over Wi-Fi are automatically routed to safe player displays and locked out of the DM console unless authorized with your DM passcode.
 
 ---
 
@@ -357,6 +365,7 @@ arcane_ledger/
 ├── README.md                   # Project documentation
 │
 ├── data/                       # Local JSON database (human-readable, atomic saves)
+│   ├── security.json           # DM security configuration (PIN, localhost bypass, session expiry)
 │   ├── campaigns.json          # Multi-campaign profiles manifest & active profile selector
 │   ├── campaigns/              # Per-campaign isolated data directories (party, combat, etc.)
 │   ├── battlemaps_catalog.json # Shared multi-campaign global battlemaps catalog
@@ -381,6 +390,7 @@ arcane_ledger/
 │
 ├── templates/                  # Jinja2 HTML5 frontends
 │   ├── index.html              # Main DM Command Center dashboard
+│   ├── dm_lock.html            # Dark-fantasy PIN keypad & lock screen for unauthorized LAN devices
 │   ├── player.html             # Dedicated player broadcast display screen
 │   └── map.html                # Dedicated in-table horizontal battlemap screen
 │

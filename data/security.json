@@ -1,0 +1,6 @@
+{
+  "pinEnabled": true,
+  "pin": "1234",
+  "localhostBypass": true,
+  "sessionDurationHours": 48
+}

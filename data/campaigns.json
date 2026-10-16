@@ -1,12 +1,12 @@
 {
-  "activeCampaignId": "camp_1792083672_test_campaign",
+  "activeCampaignId": "default",
   "campaigns": [
     {
       "id": "default",
       "name": "Default Campaign",
       "description": "Primary adventuring party and world state",
       "createdAt": "2026-10-15T12:46:32.107257",
-      "lastPlayed": "2026-10-16T00:13:18.219495",
+      "lastPlayed": "2026-10-16T00:51:11.649865",
       "preset": "custom",
       "modules": {
         "combat": true,

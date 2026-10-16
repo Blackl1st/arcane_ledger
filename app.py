@@ -4,6 +4,7 @@ import io
 import json
 import os
 import random
+import secrets
 import shutil
 import socket
 import struct
@@ -34,6 +35,7 @@ BATTLEMAPS_DIR = IMAGES_DIR / "battlemaps"
 CAMPAIGNS_DIR = DATA_DIR / "campaigns"
 CAMPAIGNS_MANIFEST_FILE = DATA_DIR / "campaigns.json"
 BATTLEMAPS_CATALOG_FILE = DATA_DIR / "battlemaps_catalog.json"
+SECURITY_FILE = DATA_DIR / "security.json"
 
 DATA_DIR.mkdir(exist_ok=True)
 STATIC_DIR.mkdir(exist_ok=True)
@@ -44,6 +46,96 @@ IMAGES_DIR.mkdir(exist_ok=True)
 BATTLEMAPS_DIR.mkdir(parents=True, exist_ok=True)
 CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
 
+# -------------------------------------------------------------
+# SECURITY & LOCAL NETWORK ACCESS CONTROLS
+# -------------------------------------------------------------
+def get_security_config() -> Dict[str, Any]:
+    default_cfg = {
+        "pinEnabled": True,
+        "pin": "1234",
+        "localhostBypass": True,
+        "sessionDurationHours": 48
+    }
+    if not SECURITY_FILE.exists():
+        try:
+            with open(SECURITY_FILE, "w", encoding="utf-8") as f:
+                json.dump(default_cfg, f, indent=2)
+        except Exception as e:
+            print(f"Error creating security.json: {e}")
+        return default_cfg
+    try:
+        with open(SECURITY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            for k, v in default_cfg.items():
+                if k not in data:
+                    data[k] = v
+            return data
+    except Exception as e:
+        print(f"Error reading security.json: {e}")
+        return default_cfg
+
+def save_security_config(cfg: Dict[str, Any]) -> bool:
+    temp_path = DATA_DIR / "security.json.tmp"
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        temp_path.replace(SECURITY_FILE)
+        return True
+    except Exception as e:
+        print(f"Error saving security.json: {e}")
+        if temp_path.exists():
+            temp_path.unlink()
+        return False
+
+def get_local_lan_ip() -> str:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return "127.0.0.1"
+
+# In-memory registry of active authenticated DM sessions
+ACTIVE_DM_SESSIONS: Dict[str, Dict[str, Any]] = {}
+
+def clean_expired_sessions():
+    now = time.time()
+    expired = [t for t, s in ACTIVE_DM_SESSIONS.items() if s.get("expires_at", 0) < now]
+    for t in expired:
+        ACTIVE_DM_SESSIONS.pop(t, None)
+
+def is_request_localhost(request: Request) -> bool:
+    client_host = request.client.host if request.client else "127.0.0.1"
+    return client_host in ("127.0.0.1", "::1", "localhost", "testclient")
+
+def is_dm_authenticated(request: Request) -> bool:
+    cfg = get_security_config()
+    if not cfg.get("pinEnabled", True):
+        return True
+        
+    if cfg.get("localhostBypass", True) and is_request_localhost(request):
+        return True
+        
+    token = request.cookies.get("arcane_dm_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+            
+    if token and token in ACTIVE_DM_SESSIONS:
+        session = ACTIVE_DM_SESSIONS[token]
+        if time.time() < session.get("expires_at", 0):
+            return True
+        else:
+            ACTIVE_DM_SESSIONS.pop(token, None)
+            
+    return False
+
 app = FastAPI(title="Arcane Ledger: D&D 5.5e DM Dashboard", version="1.0.0")
 
 app.add_middleware(
@@ -53,6 +145,58 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def dm_security_middleware(request: Request, call_next):
+    path = request.url.path
+    
+    # Static files and favicon are always open
+    if path.startswith("/static") or path == "/favicon.ico":
+        return await call_next(request)
+        
+    # Public endpoints needed by players, tabletop TV displays, and authentication
+    PUBLIC_PATHS = {
+        "/player",
+        "/map",
+        "/api/player-state",
+        "/api/battlemap",
+        "/api/auth/login",
+        "/api/auth/status",
+        "/api/auth/logout",
+        "/api/auth/qr-code"
+    }
+    
+    if path in PUBLIC_PATHS:
+        return await call_next(request)
+        
+    # If DM is authenticated (or localhost auto-bypass active), allow access
+    if is_dm_authenticated(request):
+        return await call_next(request)
+        
+    # Unauthenticated handling:
+    # 1. Main DM Dashboard (GET /): serve DM Lock Screen
+    if path == "/" and request.method == "GET":
+        lock_file = TEMPLATES_DIR / "dm_lock.html"
+        if lock_file.exists():
+            return FileResponse(str(lock_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+            
+    # 2. Protected API calls: return 401 Unauthorized
+    if path.startswith("/api/"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "status": "error",
+                "error": "unauthorized",
+                "message": "DM Passcode required to access this console endpoint."
+            }
+        )
+        
+    # Any other unauthenticated page route redirects to lock screen
+    lock_file = TEMPLATES_DIR / "dm_lock.html"
+    if lock_file.exists():
+        return FileResponse(str(lock_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        
+    return await call_next(request)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -685,13 +829,135 @@ class CampaignUpdate(BaseModel):
     preset: Optional[str] = None
     modules: Optional[Dict[str, bool]] = None
 
+class LoginRequest(BaseModel):
+    pin: str
+    remember: bool = True
+
+class UpdateSecurityRequest(BaseModel):
+    pinEnabled: Optional[bool] = None
+    newPin: Optional[str] = None
+    currentPin: Optional[str] = None
+    localhostBypass: Optional[bool] = None
+
 # Routes
 @app.get("/")
-async def root():
+async def root(request: Request):
+    if not is_dm_authenticated(request):
+        lock_file = TEMPLATES_DIR / "dm_lock.html"
+        if lock_file.exists():
+            return FileResponse(str(lock_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     index_file = TEMPLATES_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "Arcane Ledger 5.5e DM Dashboard backend is running"}
+
+@app.post("/api/auth/login")
+async def auth_login(payload: LoginRequest, request: Request):
+    clean_expired_sessions()
+    cfg = get_security_config()
+    configured_pin = str(cfg.get("pin", "1234")).strip()
+    submitted_pin = str(payload.pin).strip()
+    
+    if submitted_pin != configured_pin:
+        raise HTTPException(status_code=401, detail="Incorrect DM Passcode")
+        
+    token = secrets.token_hex(24)
+    duration_hours = int(cfg.get("sessionDurationHours", 48)) if payload.remember else 12
+    expires_at = time.time() + (duration_hours * 3600)
+    
+    client_ip = request.client.host if request.client else "unknown"
+    ACTIVE_DM_SESSIONS[token] = {
+        "created_at": time.time(),
+        "expires_at": expires_at,
+        "ip": client_ip
+    }
+    
+    response = JSONResponse(content={
+        "status": "success",
+        "authenticated": True,
+        "token": token,
+        "expiresAt": expires_at
+    })
+    response.set_cookie(
+        key="arcane_dm_token",
+        value=token,
+        max_age=duration_hours * 3600,
+        httponly=True,
+        samesite="lax",
+        path="/"
+    )
+    return response
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: Request):
+    token = request.cookies.get("arcane_dm_token")
+    if token:
+        ACTIVE_DM_SESSIONS.pop(token, None)
+    response = JSONResponse(content={"status": "success", "authenticated": False})
+    response.delete_cookie("arcane_dm_token", path="/")
+    return response
+
+@app.get("/api/auth/status")
+async def auth_status(request: Request):
+    clean_expired_sessions()
+    cfg = get_security_config()
+    is_authed = is_dm_authenticated(request)
+    is_local = is_request_localhost(request)
+    lan_ip = get_local_lan_ip()
+    
+    return {
+        "pinEnabled": cfg.get("pinEnabled", True),
+        "localhostBypass": cfg.get("localhostBypass", True),
+        "authenticated": is_authed,
+        "isLocalhost": is_local,
+        "lanIp": lan_ip,
+        "playerUrl": f"http://{lan_ip}:8000/player",
+        "mapUrl": f"http://{lan_ip}:8000/map"
+    }
+
+@app.get("/api/auth/qr-code")
+async def get_player_qr_code():
+    lan_ip = get_local_lan_ip()
+    player_url = f"http://{lan_ip}:8000/player"
+    try:
+        import qrcode
+        import qrcode.image.svg
+        factory = qrcode.image.svg.SvgPathImage
+        img = qrcode.make(player_url, image_factory=factory)
+        buf = io.BytesIO()
+        img.save(buf)
+        svg_content = buf.getvalue().decode("utf-8")
+        return {"status": "success", "url": player_url, "svg": svg_content}
+    except Exception as e:
+        return {"status": "error", "url": player_url, "error": str(e), "svg": None}
+
+@app.post("/api/auth/update-settings")
+async def update_security_settings(payload: UpdateSecurityRequest, request: Request):
+    if not is_dm_authenticated(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    cfg = get_security_config()
+    
+    if payload.newPin is not None:
+        new_pin_clean = str(payload.newPin).strip()
+        if len(new_pin_clean) < 4:
+            raise HTTPException(status_code=400, detail="PIN must be at least 4 digits")
+            
+        current_pin_cfg = str(cfg.get("pin", "1234")).strip()
+        if not is_request_localhost(request):
+            if not payload.currentPin or str(payload.currentPin).strip() != current_pin_cfg:
+                raise HTTPException(status_code=400, detail="Current PIN is required and must match")
+                
+        cfg["pin"] = new_pin_clean
+        
+    if payload.pinEnabled is not None:
+        cfg["pinEnabled"] = bool(payload.pinEnabled)
+        
+    if payload.localhostBypass is not None:
+        cfg["localhostBypass"] = bool(payload.localhostBypass)
+        
+    save_security_config(cfg)
+    return {"status": "success", "security": cfg}
 
 @app.get("/player")
 async def player_view():
@@ -5728,8 +5994,11 @@ async def clear_battlemap_tokens():
     return {"status": "success", "tokens": []}
 
 if __name__ == "__main__":
+    lan_ip = get_local_lan_ip()
     print("\n=======================================================")
     print("  ARCANE LEDGER - D&D 5.5e (2024) DM DASHBOARD")
-    print("  Open your browser to: http://127.0.0.1:8000")
+    print("  Host DM Command Center:    http://127.0.0.1:8000")
+    print(f"  Local Network Player HUD:  http://{lan_ip}:8000/player")
+    print(f"  Local Network Battlemap:   http://{lan_ip}:8000/map")
     print("=======================================================\n")
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

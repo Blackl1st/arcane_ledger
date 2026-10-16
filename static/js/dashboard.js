@@ -14866,6 +14866,214 @@ function giveItemToParty(itemIdOrObj) {
     }
 }
 
+// -------------------------------------------------------------
+// LOCAL NETWORK ACCESS & DM PASSCODE PROTECTION CONTROLS
+// -------------------------------------------------------------
+let cachedSecurityStatus = null;
+
+async function loadSecuritySettingsUI() {
+    try {
+        const res = await fetch('/api/auth/status');
+        if (res.ok) {
+            const data = await res.json();
+            cachedSecurityStatus = data;
+            
+            const pinToggle = document.getElementById('sec-toggle-pin-enabled');
+            if (pinToggle) pinToggle.checked = Boolean(data.pinEnabled);
+            
+            const bypassToggle = document.getElementById('sec-toggle-localhost-bypass');
+            if (bypassToggle) bypassToggle.checked = Boolean(data.localhostBypass);
+            
+            const badge = document.getElementById('security-active-badge');
+            if (badge) {
+                if (data.pinEnabled) {
+                    badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-700";
+                    badge.textContent = "Protected";
+                } else {
+                    badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-950 text-amber-400 border border-amber-700";
+                    badge.textContent = "Unprotected (No PIN)";
+                }
+            }
+
+            const curWrap = document.getElementById('sec-current-pin-wrap');
+            if (curWrap) {
+                if (!data.isLocalhost) {
+                    curWrap.classList.remove('hidden');
+                } else {
+                    curWrap.classList.add('hidden');
+                }
+            }
+
+            const statusIcon = document.getElementById('connect-security-status-icon');
+            const statusText = document.getElementById('connect-security-status-text');
+            if (statusIcon) statusIcon.textContent = data.pinEnabled ? '🔒' : '⚠️';
+            if (statusText) {
+                statusText.textContent = data.pinEnabled ? 'Protected' : 'Open (PIN Disabled)';
+                statusText.className = data.pinEnabled ? 'text-emerald-400 font-mono' : 'text-amber-400 font-mono';
+            }
+        }
+    } catch (e) {
+        console.warn("Could not fetch security status:", e);
+    }
+}
+
+async function openConnectPlayersModal() {
+    openModal('connect-players-modal');
+    const urlInput = document.getElementById('connect-player-url');
+    const qrContainer = document.getElementById('connect-qr-container');
+    const copyBtnText = document.getElementById('copy-btn-text');
+    if (copyBtnText) copyBtnText.textContent = "Copy";
+
+    if (!cachedSecurityStatus) {
+        await loadSecuritySettingsUI();
+    }
+
+    const playerUrl = cachedSecurityStatus?.playerUrl || `${window.location.origin}/player`;
+    if (urlInput) urlInput.value = playerUrl;
+
+    if (qrContainer) {
+        qrContainer.innerHTML = '<span class="text-slate-400 font-mono text-xs animate-pulse">Loading QR Code...</span>';
+        try {
+            const res = await fetch('/api/auth/qr-code');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.svg) {
+                    qrContainer.innerHTML = data.svg;
+                    const svgEl = qrContainer.querySelector('svg');
+                    if (svgEl) {
+                        svgEl.setAttribute('width', '180');
+                        svgEl.setAttribute('height', '180');
+                        svgEl.style.maxWidth = '100%';
+                        svgEl.style.height = 'auto';
+                    }
+                } else {
+                    qrContainer.innerHTML = `<a href="${playerUrl}" target="_blank" class="text-center font-mono text-xs text-indigo-600 underline font-bold break-all p-2">${playerUrl}</a>`;
+                }
+            } else {
+                qrContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 break-all">${playerUrl}</span>`;
+            }
+        } catch (e) {
+            qrContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 break-all">${playerUrl}</span>`;
+        }
+    }
+}
+
+function copyPlayerUrl() {
+    const input = document.getElementById('connect-player-url');
+    if (!input || !input.value) return;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            const btnText = document.getElementById('copy-btn-text');
+            if (btnText) btnText.textContent = "Copied!";
+            showToast("Player URL copied to clipboard!", "success");
+            setTimeout(() => {
+                if (btnText) btnText.textContent = "Copy";
+            }, 2000);
+        }).catch(() => {
+            input.select();
+            document.execCommand('copy');
+            showToast("Player URL copied!", "success");
+        });
+    } else {
+        input.select();
+        document.execCommand('copy');
+        showToast("Player URL copied!", "success");
+    }
+}
+
+async function toggleSecurityPinEnabled(enabled) {
+    try {
+        const res = await fetch('/api/auth/update-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pinEnabled: enabled })
+        });
+        if (res.ok) {
+            showToast(`DM Passcode Protection ${enabled ? 'Enabled' : 'Disabled'}`, enabled ? 'success' : 'warning');
+            loadSecuritySettingsUI();
+        } else {
+            showToast("Failed to update security settings", "error");
+        }
+    } catch (e) {
+        showToast("Error updating security settings", "error");
+    }
+}
+
+async function toggleSecurityLocalhostBypass(bypass) {
+    try {
+        const res = await fetch('/api/auth/update-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ localhostBypass: bypass })
+        });
+        if (res.ok) {
+            showToast(`Localhost Auto-Bypass ${bypass ? 'Enabled' : 'Disabled'}`, 'info');
+            loadSecuritySettingsUI();
+        } else {
+            showToast("Failed to update localhost bypass", "error");
+        }
+    } catch (e) {
+        showToast("Error updating localhost bypass", "error");
+    }
+}
+
+async function saveNewDmPin() {
+    const newPinInput = document.getElementById('sec-input-new-pin');
+    const curPinInput = document.getElementById('sec-input-current-pin');
+    const newPin = newPinInput ? newPinInput.value.trim() : '';
+    const curPin = curPinInput ? curPinInput.value.trim() : '';
+
+    if (!newPin || newPin.length < 4) {
+        showToast("New passcode must be at least 4 digits", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/update-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                newPin: newPin,
+                currentPin: curPin || undefined
+            })
+        });
+
+        if (res.ok) {
+            showToast("DM Passcode updated successfully!", "success");
+            if (newPinInput) newPinInput.value = '';
+            if (curPinInput) curPinInput.value = '';
+            loadSecuritySettingsUI();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.detail || "Failed to update passcode", "error");
+        }
+    } catch (e) {
+        showToast("Error saving new passcode", "error");
+    }
+}
+
+async function testDmLockScreen() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        localStorage.removeItem('arcane_dm_token');
+        showToast("Locking DM Console...", "info");
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
+    } catch (e) {
+        window.location.reload();
+    }
+}
+
+window.openConnectPlayersModal = openConnectPlayersModal;
+window.copyPlayerUrl = copyPlayerUrl;
+window.toggleSecurityPinEnabled = toggleSecurityPinEnabled;
+window.toggleSecurityLocalhostBypass = toggleSecurityLocalhostBypass;
+window.saveNewDmPin = saveNewDmPin;
+window.testDmLockScreen = testDmLockScreen;
+window.loadSecuritySettingsUI = loadSecuritySettingsUI;
+
 window.onload = async function() {
     initSidebarState();
     loadArcaneSettings();
@@ -14896,6 +15104,7 @@ window.onload = async function() {
     renderBroadcastPill();
     renderCampaignSettingsCard();
     renderModuleToggles();
+    loadSecuritySettingsUI();
     if (window.LightingEngine) window.LightingEngine.init();
 };
 

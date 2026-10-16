@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arcane Ledger • DM Master Console Locked</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ledger: {
+                            950: '#07090e',
+                            900: '#0d1117',
+                            800: '#161c26',
+                            700: '#232f42',
+                            600: '#33435d',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        serif: ['Cinzel', 'Georgia', 'serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #07090e;
+            color: #f1f5f9;
+            background-image: 
+                radial-gradient(circle at 50% 15%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 10% 90%, rgba(220, 38, 38, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 90% 90%, rgba(99, 102, 241, 0.06) 0%, transparent 50%);
+            background-attachment: fixed;
+        }
+        .parchment-card {
+            border-color: rgba(245, 158, 11, 0.35);
+            background: linear-gradient(180deg, rgba(20, 27, 38, 0.96) 0%, rgba(10, 14, 21, 0.98) 100%);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), inset 0 0 25px rgba(245, 158, 11, 0.04);
+        }
+        .pin-box {
+            transition: all 0.18s ease;
+        }
+        .pin-box.filled {
+            border-color: #f59e0b;
+            background-color: rgba(245, 158, 11, 0.15);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+        }
+        .pin-box.active {
+            border-color: #fbbf24;
+            transform: scale(1.05);
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+        .shake-error {
+            animation: shake 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 selection:bg-amber-500/30 selection:text-amber-200">
+
+    <div class="max-w-md w-full space-y-6">
+        
+        <!-- Main Lock Screen Card -->
+        <div id="lock-card" class="parchment-card border-2 rounded-3xl p-6 sm:p-8 space-y-6 relative overflow-hidden backdrop-blur-xl">
+            
+            <!-- Atmospheric Top Decorative Glow -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-500/80 to-transparent"></div>
+
+            <!-- Header with Stylized Lock Crest -->
+            <div class="text-center space-y-2">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 via-amber-600/10 to-ledger-950 border-2 border-amber-400/50 shadow-[0_0_30px_rgba(245,158,11,0.25)] mb-1">
+                    <span class="text-3xl">🔒</span>
+                </div>
+                <div class="flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-widest text-amber-400 font-bold">
+                    <span>⚔️</span>
+                    <span>Arcane Ledger</span>
+                    <span>⚔️</span>
+                </div>
+                <h1 class="font-serif font-extrabold text-2xl sm:text-3xl text-slate-100 tracking-wide">
+                    DM Master Console
+                </h1>
+                <p class="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto font-sans">
+                    This command console is protected to prevent player spoilers. Enter the DM Passcode to proceed.
+                </p>
+            </div>
+
+            <!-- PIN Display Boxes -->
+            <div class="space-y-4">
+                <div id="pin-display-row" class="flex justify-center items-center gap-3 py-2 cursor-pointer" onclick="focusPinInput()">
+                    <div id="dot-0" class="pin-box w-12 h-14 rounded-xl bg-ledger-950 border-2 border-ledger-700 flex items-center justify-center text-xl font-bold font-mono text-amber-300"></div>
+                    <div id="dot-1" class="pin-box w-12 h-14 rounded-xl bg-ledger-950 border-2 border-ledger-700 flex items-center justify-center text-xl font-bold font-mono text-amber-300"></div>
+                    <div id="dot-2" class="pin-box w-12 h-14 rounded-xl bg-ledger-950 border-2 border-ledger-700 flex items-center justify-center text-xl font-bold font-mono text-amber-300"></div>
+                    <div id="dot-3" class="pin-box w-12 h-14 rounded-xl bg-ledger-950 border-2 border-ledger-700 flex items-center justify-center text-xl font-bold font-mono text-amber-300"></div>
+                </div>
+
+                <!-- Hidden Input for Native / Physical Keyboard -->
+                <input id="hidden-pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="current-password" autofocus class="opacity-0 absolute -z-10 w-0 h-0 pointer-events-none">
+
+                <!-- Error Message Banner -->
+                <div id="error-banner" class="hidden text-center py-2 px-3 rounded-xl bg-rose-950/80 border border-rose-600/80 text-rose-300 text-xs font-semibold">
+                    <span id="error-text">Incorrect DM Passcode</span>
+                </div>
+
+                <!-- Touch / Virtual Keypad -->
+                <div class="grid grid-cols-3 gap-2 pt-2">
+                    <button onclick="pressDigit('1')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">1</button>
+                    <button onclick="pressDigit('2')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">2</button>
+                    <button onclick="pressDigit('3')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">3</button>
+                    <button onclick="pressDigit('4')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">4</button>
+                    <button onclick="pressDigit('5')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">5</button>
+                    <button onclick="pressDigit('6')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">6</button>
+                    <button onclick="pressDigit('7')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">7</button>
+                    <button onclick="pressDigit('8')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">8</button>
+                    <button onclick="pressDigit('9')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">9</button>
+                    <button onclick="pressBackspace()" class="h-12 rounded-xl bg-ledger-900/60 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-ledger-800 font-mono text-sm font-semibold transition" title="Delete">⌫ Clear</button>
+                    <button onclick="pressDigit('0')" class="h-12 rounded-xl bg-ledger-900/90 hover:bg-amber-500/20 active:bg-amber-500/30 border border-ledger-700 text-slate-100 hover:text-amber-300 font-mono text-lg font-bold transition shadow-sm">0</button>
+                    <button onclick="submitPin()" class="h-12 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-ledger-950 font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-1">
+                        <span>⚔️</span> <span>Unlock</span>
+                    </button>
+                </div>
+
+                <!-- Remember Device Checkbox -->
+                <div class="flex items-center justify-center gap-2 pt-1 text-xs text-slate-400">
+                    <input id="remember-me" type="checkbox" checked class="rounded bg-ledger-950 border-ledger-700 text-amber-500 focus:ring-0 cursor-pointer">
+                    <label for="remember-me" class="cursor-pointer select-none">Remember this device (48 Hours)</label>
+                </div>
+            </div>
+
+            <!-- Player Escape Link Section -->
+            <div class="pt-4 border-t border-ledger-800 space-y-2.5 text-center">
+                <span class="text-[11px] font-mono text-slate-500 uppercase tracking-wider block">Are you a player at the table?</span>
+                <a href="/player" class="w-full py-2.5 px-4 rounded-xl bg-sky-950/70 hover:bg-sky-900 border border-sky-600/70 text-sky-200 hover:text-white font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md">
+                    <span>👥</span>
+                    <span>Open Live Player Display (/player)</span>
+                    <span class="text-sky-400 font-mono">→</span>
+                </a>
+                <a href="/map" class="inline-block text-[11px] text-slate-400 hover:text-amber-300 underline font-mono transition">
+                    View Tabletop Battlemap (/map)
+                </a>
+            </div>
+
+        </div>
+
+        <p class="text-center text-[10px] font-mono text-slate-600">
+            Arcane Ledger 5.5e (2024 Revision) • Local Tabletop Engine
+        </p>
+
+    </div>
+
+    <script>
+        let enteredPin = '';
+        const hiddenInput = document.getElementById('hidden-pin-input');
+        const lockCard = document.getElementById('lock-card');
+        const errorBanner = document.getElementById('error-banner');
+        const errorText = document.getElementById('error-text');
+
+        function updatePinDisplay() {
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                if (!dot) continue;
+                if (i < enteredPin.length) {
+                    dot.textContent = '✦';
+                    dot.classList.add('filled');
+                } else {
+                    dot.textContent = '';
+                    dot.classList.remove('filled');
+                }
+                if (i === enteredPin.length) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            }
+        }
+
+        function focusPinInput() {
+            if (hiddenInput) {
+                hiddenInput.focus();
+            }
+        }
+
+        function pressDigit(digit) {
+            if (enteredPin.length < 8) {
+                enteredPin += digit;
+                updatePinDisplay();
+                hideError();
+                if (enteredPin.length === 4) {
+                    // Auto-submit on 4th digit
+                    submitPin();
+                }
+            }
+        }
+
+        function pressBackspace() {
+            if (enteredPin.length > 0) {
+                enteredPin = enteredPin.slice(0, -1);
+                updatePinDisplay();
+                hideError();
+            }
+        }
+
+        function showError(msg) {
+            if (errorBanner) {
+                errorText.textContent = msg || 'Incorrect DM Passcode';
+                errorBanner.classList.remove('hidden');
+            }
+            if (lockCard) {
+                lockCard.classList.remove('shake-error');
+                void lockCard.offsetWidth; // trigger reflow
+                lockCard.classList.add('shake-error');
+            }
+            enteredPin = '';
+            updatePinDisplay();
+            focusPinInput();
+        }
+
+        function hideError() {
+            if (errorBanner) errorBanner.classList.add('hidden');
+        }
+
+        async function submitPin() {
+            if (!enteredPin) {
+                showError("Please enter the passcode");
+                return;
+            }
+
+            const remember = document.getElementById('remember-me')?.checked ?? true;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: enteredPin, remember: remember })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.token) {
+                        localStorage.setItem('arcane_dm_token', data.token);
+                    }
+                    // Successful login: reload root to enter DM command center
+                    window.location.href = '/';
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    showError(errData.detail || "Incorrect DM Passcode");
+                }
+            } catch (err) {
+                showError("Connection error reaching server");
+            }
+        }
+
+        // Handle physical keyboard input
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                pressDigit(e.key);
+            } else if (e.key === 'Backspace') {
+                pressBackspace();
+            } else if (e.key === 'Enter') {
+                submitPin();
+            }
+        });
+
+        window.onload = function() {
+            updatePinDisplay();
+            focusPinInput();
+        };
+    </script>
+</body>
+</html>
