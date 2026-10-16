@@ -440,8 +440,18 @@ def execute_patch_and_restart() -> Dict[str, Any]:
     staging_dir.mkdir(parents=True, exist_ok=True)
 
     logging.info(f"Extracting update archive {zip_path} into {staging_dir}...")
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(staging_dir)
+    if sys.platform == "darwin":
+        # On macOS, NEVER use python's zipfile module to extract app bundles!
+        # Python's zipfile writes symlinks in Python.framework as plain text files, corrupting dyld libraries.
+        # Native /usr/bin/ditto -x -k or /usr/bin/unzip preserves 100% of symlinks, resource forks, and Unix permissions.
+        try:
+            subprocess.run(["/usr/bin/ditto", "-x", "-k", str(zip_path), str(staging_dir)], check=True, capture_output=True)
+        except Exception as e:
+            logging.warning(f"ditto failed ({e}), falling back to unzip...")
+            subprocess.run(["/usr/bin/unzip", "-q", "-o", str(zip_path), "-d", str(staging_dir)], check=True, capture_output=True)
+    else:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(staging_dir)
 
     is_frozen = getattr(sys, "frozen", False)
     current_pid = os.getpid()
@@ -552,7 +562,10 @@ rm -rf "$TARGET_APP/ArcaneLedger.app" 2>/dev/null
 # 4. Remove quarantine and ensure execute permissions
 echo "Setting permissions and clearing quarantine..."
 xattr -cr "$TARGET_APP" 2>/dev/null
-chmod -R +x "$TARGET_APP/Contents/MacOS" 2>/dev/null
+xattr -dr com.apple.quarantine "$TARGET_APP" 2>/dev/null
+chmod -R 755 "$TARGET_APP/Contents/MacOS" 2>/dev/null
+find "$TARGET_APP" -name "*.dylib" -exec chmod 755 {{}} + 2>/dev/null
+find "$TARGET_APP" -name "*.so" -exec chmod 755 {{}} + 2>/dev/null
 
 # 5. Cleanup staging directory and zip
 echo "Cleaning up download and staging artifacts..."
