@@ -23,7 +23,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.0.3"
+CURRENT_VERSION = "1.0.4"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
