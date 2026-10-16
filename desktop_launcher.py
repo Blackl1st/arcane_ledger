@@ -401,10 +401,58 @@ def launch_desktop_window():
     except KeyboardInterrupt:
         pass
 
+def free_port_if_stale(port=PORT):
+    """If port is held by an older or unresponsive Arcane Ledger instance, terminate it."""
+    if not is_server_running(port=port):
+        return
+
+    # Check if the running server matches our current version
+    is_current = False
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/updates/settings")
+        with urllib.request.urlopen(req, timeout=1.0) as resp:
+            data = json.loads(resp.read().decode())
+            if data.get("current_version") == updater.CURRENT_VERSION:
+                is_current = True
+    except Exception:
+        # If /api/updates/settings does not exist or fails, it is an older version
+        is_current = False
+
+    if not is_current:
+        logging.warning(f"Port {port} is occupied by an older Arcane Ledger version. Terminating zombie process...")
+        if sys.platform != "win32":
+            try:
+                res = subprocess.run(["lsof", "-ti", f":{port}"], capture_output=True, text=True)
+                for pid in res.stdout.strip().split():
+                    if pid and int(pid) != os.getpid():
+                        logging.info(f"Killing old process PID {pid}")
+                        try:
+                            os.kill(int(pid), 9)
+                        except Exception:
+                            pass
+                time.sleep(0.5)
+            except Exception as e:
+                logging.error(f"Error terminating old process on port {port}: {e}")
+        else:
+            try:
+                res = subprocess.run(f'netstat -ano | findstr :{port}', shell=True, capture_output=True, text=True)
+                for line in res.stdout.strip().splitlines():
+                    if "LISTENING" in line:
+                        parts = line.strip().split()
+                        pid = parts[-1]
+                        if pid and int(pid) != os.getpid():
+                            subprocess.run(f"taskkill /F /PID {pid}", shell=True, capture_output=True)
+                time.sleep(0.5)
+            except Exception as e:
+                logging.error(f"Error terminating old process on port {port}: {e}")
+
 def main():
     global server_instance
     server_process = None
     started_by_us = False
+
+    # 0. Clean up any stale zombie server from an older version on port 8000
+    free_port_if_stale()
 
     # 1. Start server if not running
     if not is_server_running():
@@ -471,6 +519,9 @@ def main():
                     server_process.kill()
                 except Exception:
                     pass
+
+        time.sleep(0.2)
+        os._exit(0)
 
 if __name__ == "__main__":
     try:
