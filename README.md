@@ -5,14 +5,14 @@
 
 An ultra-fast, local-first Dungeon Master companion, tactical battlemap display, and smart-room immersion engine built from the ground up for the **2024 Dungeons & Dragons (5.5e)** rules revision.
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-0078D6?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Blackl1st/arcane_ledger/releases)
+[![Standalone](https://img.shields.io/badge/Zero_Install-Standalone_Desktop_App-brightgreen?style=for-the-badge)](https://github.com/Blackl1st/arcane_ledger/releases)
 [![Ruleset](https://img.shields.io/badge/D%26D-5.5e%20%2F%202024%20SRD-D4AF37?style=for-the-badge&logo=dungeonsanddragons&logoColor=white)](https://dndbeyond.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS%203-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![Amaran Lighting](https://img.shields.io/badge/Amaran-Studio%20Lighting-FF5722?style=for-the-badge&logo=home-assistant&logoColor=white)](https://aputure.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-[Features](#-key-features) • [Three-Screen Architecture](#-three-screen-tabletop-architecture) • [Quick Start](#-quick-start) • [Keybindings](#-keyboard-shortcuts) • [Display Setup](#-in-table-display-setup-guide) • [Tools](#-developer--data-tools)
+[Features](#-key-features) • [Getting Started](#-getting-started) • [4K & Multi-Display Engine](#-multi-display--4k--hidpi-scaling-engine) • [Keybindings](#-keyboard-shortcuts) • [Tabletop TV Setup](#-in-table-display-setup-guide) • [Tools](#-developer--data-tools)
 
 </div>
 
@@ -249,25 +249,37 @@ Arcane Ledger provides four specialized interfaces out of the box:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-### Prerequisites
-* **Python 3.10+** installed on your system ([python.org](https://www.python.org/downloads/))
-* Any modern web browser (Chrome, Firefox, Safari, Edge)
+### ⚡ Option 1: Standalone Desktop App (Recommended — Zero Python Required)
 
-### 1. Clone the Repository
+Arcane Ledger is distributed as a **pre-compiled, standalone desktop application** for macOS and Windows. Non-technical DMs and players can run the entire suite **without installing Python, Git, pip, or running terminal commands**.
+
+1. **Download the App**:
+   * Navigate to the [**GitHub Releases**](https://github.com/Blackl1st/arcane_ledger/releases) page.
+   * **Windows**: Download `ArcaneLedger-Windows-x64.zip`.
+   * **macOS (Apple Silicon & Intel)**: Download `ArcaneLedger-macOS.zip`.
+
+2. **Launch Arcane Ledger**:
+   * **Windows**: Unzip the folder and double-click `ArcaneLedger.exe`.
+   * **macOS**: Unzip the archive and drag `ArcaneLedger.app` into your `Applications` folder. Double-click to open.
+     *(On first run on macOS: Right-click `ArcaneLedger.app` → select **Open** to approve the initial launch).*
+
+3. **How It Works**:
+   * The app boots its embedded high-performance engine silently in the background with near-zero memory footprint.
+   * A dedicated, chromeless application window immediately opens to the **DM Command Center**.
+   * **Persistent Storage**: All custom battlemaps, campaigns, audio tracks, and party data automatically persist in your user documents folder (`~/Documents/ArcaneLedger` on macOS, or `./data` on Windows), ensuring your world data is never overwritten when updating the app.
+
+---
+
+### 💻 Option 2: Live Development & Source Mode
+
+For developers or DMs who want to modify HTML/JS/CSS templates, add custom rules, or run directly against live source code with instant live-reloading (no compiling required):
+
+#### 1. Clone & Install Dependencies
 ```bash
-git clone https://github.com/YOUR_USERNAME/arcane_ledger.git
+git clone https://github.com/Blackl1st/arcane_ledger.git
 cd arcane_ledger
-```
-
-### 2. Setup Virtual Environment & Install Dependencies
-
-**On macOS / Linux:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
 ```
 
 **On Windows:**
@@ -277,42 +289,47 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Launch the Application
-
-**Dedicated Native Desktop Window (Recommended):**
-* **Windows (Silent / No Terminal)**: Double-click **`Arcane Ledger.vbs`** for an instant chromeless desktop window with live code reloading.
-* **Windows (With Console Logs)**: Double-click **`Arcane Ledger.bat`**.
-* **macOS / Linux**: Double-click **`start.command`** in Finder or run `./run.sh` in Terminal.
-
-**Direct Command Line:**
+**On macOS / Linux:**
 ```bash
-python desktop_launcher.py   # Launches in native desktop app window
-# OR
-python app.py                # Launches standard server on port 8000
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-To stop the background server anytime on Windows, double-click **`Stop Arcane Ledger.bat`**.
+#### 2. Launch in Dev Mode
+* **Windows (Silent Background Mode — Zero Terminal Popups)**: Double-click **`Arcane Ledger.vbs`**. Starts the local backend silently and opens the app window with live file reloading.
+* **Windows (With Console Logs)**: Double-click **`Arcane Ledger.bat`**.
+* **macOS / Linux**: Run `python3 desktop_launcher.py` in Terminal.
+* **To stop the background server anytime on Windows**: Double-click **`Stop Arcane Ledger.bat`**.
 
 ---
 
-### 📦 Standalone Releases (Zero Python Installation Required)
+### 🌐 The Four Interfaces & Tabletop Displays
+* **DM Command Center**: [http://127.0.0.1:8000](http://127.0.0.1:8000) *(PIN-protected for external network devices; automatically bypassed on host machine)*
+* **Player Mobile Companion**: [http://127.0.0.1:8000/companion](http://127.0.0.1:8000/companion) *(mobile touch character sheet, live HP, spell slots, d20 roller)*
+* **Player Spectator Screen**: [http://127.0.0.1:8000/player](http://127.0.0.1:8000/player) *(wall TV / projector HUD with turn order, handouts & weather)*
+* **Tabletop Battlemap**: [http://localhost:8000/map](http://localhost:8000/map) *(in-table horizontal TV calibrated for physical 1-inch miniatures)*
 
-For players or DMs who want to run Arcane Ledger without installing Python or Git:
-* Ready-to-use standalone bundles are built automatically via **GitHub Actions** on every release.
-* Go to the **[Releases](https://github.com/Blackl1st/arcane_ledger/releases)** tab in GitHub:
-  * **Windows**: Download `ArcaneLedger-Windows-x64.zip`, extract, and double-click `ArcaneLedger.exe`.
-  * **macOS**: Download `ArcaneLedger-macOS.zip`, extract, and open `ArcaneLedger.app` (Right-click → Open on first launch).
-* All campaign data, battlemaps, and settings persist in the local `data/` folder next to the application.
+> **Tip (Connecting Players over Wi-Fi)**: Click the **Connect Players** (`📶`) pill in the DM topbar to display a scannable QR code and local network link (`http://192.168.x.x:8000/companion`). Players scanning with their phone camera can claim their character and roll dice directly from their pocket!
 
 ---
 
-### 4. Access the Interfaces
-* **DM Dashboard**: [http://127.0.0.1:8000](http://127.0.0.1:8000) *(bypasses PIN automatically on the host computer)*
-* **Player Mobile Companion**: [http://127.0.0.1:8000/companion](http://127.0.0.1:8000/companion) *(mobile sheet, HP, spell slots, d20 roller)*
-* **Player Spectator Screen**: [http://127.0.0.1:8000/player](http://127.0.0.1:8000/player) *(wall TV / projector HUD)*
-* **Tabletop Battlemap**: [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) *(in-table horizontal TV)*
+## 🖥️ Multi-Display & 4K / HiDPI Scaling Engine
 
-> **Tip (Tabletop Wi-Fi & QR Code)**: Click the **Connect Players** button in the DM topbar to display a scannable QR code and direct local network link for either the **Player Mobile Companion** (`/companion`) or the **Spectator Screen** (`/player`). Tabletop players connecting from phones, tablets, or laptops over Wi-Fi are automatically routed to safe player displays and locked out of the DM console unless authorized with your DM passcode.
+Arcane Ledger includes an **Independent Per-Window UI Scale & HiDPI Engine** engineered specifically for multi-monitor tabletop setups (e.g. 4K DM laptop + in-table battlemap TV + player wall TV):
+
+* **Crystal-Clear 4K Readability**: High-resolution 4K monitors (3840×2160) can make standard text appear small. Arcane Ledger includes instant 1-click display presets via the **`[ 🔍 100% ▾ ]`** topbar pill:
+  * `100%` (Standard 1080p)
+  * `115%` (Comfortable)
+  * `125%` (1440p / Scaled 4K)
+  * `140%` (**4K Recommended** — ideal for reading spells, monsters, and notes comfortably without squinting)
+  * `150%` (High-DPI 4K / TV)
+  * `175%` (Large Display)
+  * `200%` (Maximum 2×)
+* **Isolated Per-Window Zoom**: In Chromium-based browsers, standard zoom shortcuts force all open tabs on the same host to share the same zoom factor. Arcane Ledger's in-app scaling engine isolates each window: zooming in on your DM laptop will **never** alter or distort the Tabletop Battlemap (`/map`) or Player Screen (`/player`).
+* **Native Hotkeys with Floating HUD**: Press <kbd>Cmd</kbd> / <kbd>Ctrl</kbd> + <kbd>+</kbd> to scale up, <kbd>Cmd</kbd> / <kbd>Ctrl</kbd> + <kbd>-</kbd> to scale down, or <kbd>Cmd</kbd> / <kbd>Ctrl</kbd> + <kbd>0</kbd> to reset. A floating HUD badge (`🔍 UI Scale: 140%`) appears dynamically.
+* **Tabletop Battlemap Protection**: The battlemap display (`/map`) automatically locks keyboard zoom to 1.0, preserving calibrated 1-inch physical squares for physical miniatures and routing over an isolated loopback origin (`http://localhost:8000/map`).
+* **Player Screen Independent Scaling**: The spectator display (`/player`) features its own independent zoom stepper in the header (`[ − ] 100% [ + ]`), allowing you to size spectator cards for a distant TV without touching the DM screen.
 
 ---
 
@@ -399,12 +416,19 @@ If you are using a horizontal TV set into a gaming table for physical miniatures
 arcane_ledger/
 ├── app.py                      # FastAPI core backend & REST API endpoints
 ├── requirements.txt            # Python dependencies
+├── desktop_launcher.py         # Standalone desktop app window launcher & manager
+├── Arcane Ledger.vbs           # Windows silent launcher (starts app with zero terminal popup)
+├── Arcane Ledger.bat           # Windows console launcher with debug logging
+├── Stop Arcane Ledger.bat      # One-click background server stop utility
 ├── run.bat                     # Quick-start batch file for Windows
 ├── run.sh                      # Quick-start shell script for macOS / Linux
 ├── start.command               # Double-clickable launcher for macOS Finder
 ├── dnd_npc_generator.html      # Standalone single-file offline NPC generator
 ├── map_generator.py            # Procedural vector SVG battlemap generation engine (6 environments)
 ├── README.md                   # Project documentation
+│
+├── .github/workflows/          # Cloud CI/CD
+│   └── build-desktop.yml       # Automated multi-OS PyInstaller builds (Windows & macOS)
 │
 ├── data/                       # Local JSON database (human-readable, atomic saves)
 │   ├── security.json           # DM security configuration (PIN, localhost bypass, session expiry)
@@ -431,14 +455,18 @@ arcane_ledger/
 │   └── backups/                # Timestamped snapshot archives
 │
 ├── templates/                  # Jinja2 HTML5 frontends
-│   ├── index.html              # Main DM Command Center dashboard
+│   ├── index.html              # Main DM Command Center dashboard (with 4K scale selector)
 │   ├── companion.html          # Interactive Player Mobile Companion (HP, slots, dice, masteries)
 │   ├── dm_lock.html            # Dark-fantasy PIN keypad & lock screen for unauthorized LAN devices
 │   ├── player.html             # Dedicated spectator wall TV / projector HUD
 │   └── map.html                # Dedicated in-table horizontal battlemap screen
 │
-├── static/                     # Web assets
+├── static/                     # Web assets & native app icons
+│   ├── icon.icns               # Apple macOS native squircle application icon
+│   ├── icon.ico                # Windows multi-resolution application icon
+│   ├── icon.png                # Master high-resolution transparent application icon
 │   ├── js/
+│   │   ├── ui_scale.js         # Independent per-window UI scale & 4K display engine
 │   │   ├── dashboard.js        # DM dashboard controller & state manager
 │   │   ├── battlemap_controller.js # Dual-canvas Fog of War & VTT engine
 │   │   ├── lighting_engine.js  # Amaran studio & reactive lighting controller
