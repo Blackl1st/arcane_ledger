@@ -167,7 +167,7 @@ async def dm_security_middleware(request: Request, call_next):
         "/api/auth/qr-code"
     }
     
-    if path in PUBLIC_PATHS or path.startswith("/api/companion"):
+    if path in PUBLIC_PATHS or path.startswith("/api/companion") or path.startswith("/api/streamdeck"):
         return await call_next(request)
         
     # If DM is authenticated (or localhost auto-bypass active), allow access
@@ -1153,6 +1153,254 @@ async def use_companion_item(payload: Dict[str, Any]):
     })
 
     return {"status": "success", "message": msg, "healed": heal_amount, "character": pc}
+
+# =============================================================================
+# STREAM DECK & HARDWARE MACRO REST API
+# =============================================================================
+
+@app.api_route("/api/streamdeck/combat/next-turn", methods=["GET", "POST"])
+async def streamdeck_next_turn():
+    result = await next_turn()
+    combatants = result.get("combatants", [])
+    idx = result.get("currentTurnIndex", 0)
+    active_name = combatants[idx]["name"] if combatants and idx < len(combatants) else "None"
+    return {
+        "status": "success",
+        "action": "next_turn",
+        "round": result.get("round", 1),
+        "turnIndex": idx,
+        "activeCombatant": active_name
+    }
+
+@app.api_route("/api/streamdeck/combat/prev-turn", methods=["GET", "POST"])
+async def streamdeck_prev_turn():
+    result = await prev_turn()
+    combatants = result.get("combatants", [])
+    idx = result.get("currentTurnIndex", 0)
+    active_name = combatants[idx]["name"] if combatants and idx < len(combatants) else "None"
+    return {
+        "status": "success",
+        "action": "prev_turn",
+        "round": result.get("round", 1),
+        "turnIndex": idx,
+        "activeCombatant": active_name
+    }
+
+@app.api_route("/api/streamdeck/combat/toggle", methods=["GET", "POST"])
+async def streamdeck_combat_toggle():
+    combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
+    combat["inCombat"] = not combat.get("inCombat", False)
+    write_json("combat.json", combat)
+    return {
+        "status": "success",
+        "inCombat": combat["inCombat"],
+        "round": combat.get("round", 1)
+    }
+
+@app.api_route("/api/streamdeck/combat/start", methods=["GET", "POST"])
+async def streamdeck_combat_start():
+    return await start_combat()
+
+@app.api_route("/api/streamdeck/combat/stop", methods=["GET", "POST"])
+async def streamdeck_combat_stop():
+    return await end_combat()
+
+@app.api_route("/api/streamdeck/combat/reset", methods=["GET", "POST"])
+async def streamdeck_combat_reset():
+    return await reset_combat()
+
+@app.api_route("/api/streamdeck/roll/d20", methods=["GET", "POST"])
+async def streamdeck_roll_d20():
+    roll = random.randint(1, 20)
+    is_crit = (roll == 20)
+    is_fumble = (roll == 1)
+
+    # Lighting trigger if Amaran connected
+    if is_crit:
+        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "golden_fanfare"}))
+    elif is_fumble:
+        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "crimson_dread"}))
+
+    roll_entry = {
+        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "timestamp": time.time(),
+        "timeStr": datetime.now().strftime("%H:%M:%S"),
+        "characterId": "streamdeck",
+        "characterName": "Dungeon Master",
+        "player": "Stream Deck",
+        "rollType": "Quick d20 Roll",
+        "formula": "1d20",
+        "dice": [roll],
+        "modifier": 0,
+        "total": roll,
+        "isCrit": is_crit,
+        "isFumble": is_fumble
+    }
+    RECENT_TABLE_ROLLS.append(roll_entry)
+    if len(RECENT_TABLE_ROLLS) > 50:
+        del RECENT_TABLE_ROLLS[0]
+
+    return {
+        "status": "success",
+        "roll": roll,
+        "isCrit": is_crit,
+        "isFumble": is_fumble,
+        "entry": roll_entry
+    }
+
+@app.api_route("/api/streamdeck/roll/{sides}", methods=["GET", "POST"])
+async def streamdeck_roll_sides(sides: int):
+    if sides not in (4, 6, 8, 10, 12, 20, 100):
+        sides = 20
+    roll = random.randint(1, sides)
+    roll_entry = {
+        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "timestamp": time.time(),
+        "timeStr": datetime.now().strftime("%H:%M:%S"),
+        "characterId": "streamdeck",
+        "characterName": "Dungeon Master",
+        "player": "Stream Deck",
+        "rollType": f"d{sides} Roll",
+        "formula": f"1d{sides}",
+        "dice": [roll],
+        "modifier": 0,
+        "total": roll,
+        "isCrit": False,
+        "isFumble": False
+    }
+    RECENT_TABLE_ROLLS.append(roll_entry)
+    if len(RECENT_TABLE_ROLLS) > 50:
+        del RECENT_TABLE_ROLLS[0]
+    return {"status": "success", "sides": sides, "roll": roll}
+
+@app.api_route("/api/streamdeck/party/short-rest", methods=["GET", "POST"])
+async def streamdeck_short_rest():
+    return await trigger_party_rest({"type": "short"})
+
+@app.api_route("/api/streamdeck/party/long-rest", methods=["GET", "POST"])
+async def streamdeck_long_rest():
+    return await trigger_party_rest({"type": "long"})
+
+@app.api_route("/api/streamdeck/lighting/preset/{preset_name}", methods=["GET", "POST"])
+async def streamdeck_lighting_preset(preset_name: str):
+    preset_configs = {
+        "fireplace": {"brightness": 65, "cct": 2500, "rgb": [255, 140, 40], "mode": "cct", "effect": "fire"},
+        "tavern": {"brightness": 65, "cct": 2500, "rgb": [255, 160, 60], "mode": "cct", "effect": "fire"},
+        "dungeon": {"brightness": 45, "cct": 6500, "rgb": [90, 40, 180], "mode": "rgb", "effect": "pulsing"},
+        "crypt": {"brightness": 40, "cct": 7000, "rgb": [60, 30, 150], "mode": "rgb", "effect": "pulsing"},
+        "boss": {"brightness": 85, "cct": 3000, "rgb": [255, 20, 20], "mode": "rgb", "effect": "pulsing"},
+        "thunderstorm": {"brightness": 80, "cct": 8000, "rgb": [120, 160, 255], "mode": "rgb", "effect": "lightning"},
+        "forest": {"brightness": 60, "cct": 4500, "rgb": [40, 180, 80], "mode": "rgb", "effect": "solid"},
+        "investigation": {"brightness": 90, "cct": 5000, "rgb": [255, 255, 255], "mode": "cct", "effect": "solid"},
+        "off": {"brightness": 0, "enabled": False}
+    }
+    cfg = preset_configs.get(preset_name.lower(), preset_configs["tavern"])
+    current = read_json("lighting.json", {})
+    current.update(cfg)
+    write_json("lighting.json", current)
+
+    # Dispatch to Amaran desktop bridge
+    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "set_scene", {"preset": preset_name}))
+    return {"status": "success", "preset": preset_name, "config": cfg}
+
+@app.api_route("/api/streamdeck/lighting/event/{event_name}", methods=["GET", "POST"])
+async def streamdeck_lighting_event(event_name: str):
+    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": event_name}))
+    return {"status": "success", "event": event_name}
+
+@app.api_route("/api/streamdeck/audio/sfx/{sound_name}", methods=["GET", "POST"])
+async def streamdeck_audio_sfx(sound_name: str):
+    RECENT_TABLE_ROLLS.append({
+        "id": f"sfx-{uuid.uuid4().hex[:8]}",
+        "timestamp": time.time(),
+        "timeStr": datetime.now().strftime("%H:%M:%S"),
+        "characterId": "streamdeck",
+        "characterName": "Dungeon Master",
+        "player": "Stream Deck",
+        "rollType": "Sound Effect",
+        "formula": sound_name,
+        "dice": [],
+        "modifier": 0,
+        "total": 0,
+        "sfx": sound_name,
+        "isCrit": False,
+        "isFumble": False
+    })
+    return {"status": "success", "sfx": sound_name}
+
+@app.api_route("/api/streamdeck/map/reveal-all", methods=["GET", "POST"])
+async def streamdeck_map_reveal_all():
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    state["fogMask"] = "REVEALED_ALL"
+    target_map_id = state.get("activeMapId")
+    if "mapFogMasks" not in state or not isinstance(state.get("mapFogMasks"), dict):
+        state["mapFogMasks"] = {}
+    if target_map_id:
+        state["mapFogMasks"][target_map_id] = "REVEALED_ALL"
+    write_json("battlemap.json", state)
+    return {"status": "success", "action": "reveal_all_fog"}
+
+@app.api_route("/api/streamdeck/map/reset-fog", methods=["GET", "POST"])
+async def streamdeck_map_reset_fog():
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    state["fogMask"] = None
+    target_map_id = state.get("activeMapId")
+    if "mapFogMasks" not in state or not isinstance(state.get("mapFogMasks"), dict):
+        state["mapFogMasks"] = {}
+    if target_map_id:
+        state["mapFogMasks"][target_map_id] = None
+    write_json("battlemap.json", state)
+    return {"status": "success", "action": "reset_fog"}
+
+@app.api_route("/api/streamdeck/map/ping", methods=["GET", "POST"])
+async def streamdeck_map_ping():
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    pings = state.get("pings", [])
+    now = time.time()
+    new_ping = {
+        "id": str(uuid.uuid4()),
+        "x": 50.0,
+        "y": 50.0,
+        "color": "#f59e0b",
+        "timestamp": now
+    }
+    pings = [p for p in pings if now - p.get("timestamp", 0) < 10.0]
+    pings.append(new_ping)
+    state["pings"] = pings
+    state["updatedAt"] = now
+    write_json("battlemap.json", state)
+    return {"status": "success", "action": "ping", "ping": new_ping}
+
+@app.get("/api/streamdeck/status")
+async def streamdeck_status():
+    lan_ip = get_local_lan_ip()
+    base_lan = f"http://{lan_ip}:8000/api/streamdeck"
+    base_local = "http://127.0.0.1:8000/api/streamdeck"
+    endpoints = [
+        {"name": "Next Turn", "method": "GET / POST", "url": f"{base_local}/combat/next-turn", "desc": "Advance initiative turn and round"},
+        {"name": "Previous Turn", "method": "GET / POST", "url": f"{base_local}/combat/prev-turn", "desc": "Step back initiative turn"},
+        {"name": "Toggle Combat", "method": "GET / POST", "url": f"{base_local}/combat/toggle", "desc": "Start or pause active combat"},
+        {"name": "Roll d20", "method": "GET / POST", "url": f"{base_local}/roll/d20", "desc": "Roll d20 with Nat 20/Nat 1 light fanfare"},
+        {"name": "Short Rest", "method": "GET / POST", "url": f"{base_local}/party/short-rest", "desc": "Trigger party Short Rest"},
+        {"name": "Long Rest", "method": "GET / POST", "url": f"{base_local}/party/long-rest", "desc": "Trigger party Long Rest (full HP, spell slots, resources)"},
+        {"name": "Fireplace Light", "method": "GET / POST", "url": f"{base_local}/lighting/preset/fireplace", "desc": "Warm hearth 2500K fire flicker"},
+        {"name": "Boss Fight Light", "method": "GET / POST", "url": f"{base_local}/lighting/preset/boss", "desc": "Pulsing red combat lighting"},
+        {"name": "Dungeon Crypt Light", "method": "GET / POST", "url": f"{base_local}/lighting/preset/dungeon", "desc": "Eerie blue-purple dungeon aura"},
+        {"name": "Thunderstorm Light", "method": "GET / POST", "url": f"{base_local}/lighting/preset/thunderstorm", "desc": "Lightning strobe and storm wash"},
+        {"name": "Sound FX: Fireball", "method": "GET / POST", "url": f"{base_local}/audio/sfx/fireball", "desc": "Trigger Fireball detonation"},
+        {"name": "Sound FX: Sword Clash", "method": "GET / POST", "url": f"{base_local}/audio/sfx/sword_clash", "desc": "Trigger melee sword clash"},
+        {"name": "Sound FX: Dragon Roar", "method": "GET / POST", "url": f"{base_local}/audio/sfx/dragon_roar", "desc": "Trigger monstrous roar"},
+        {"name": "Reveal Map Fog", "method": "GET / POST", "url": f"{base_local}/map/reveal-all", "desc": "Fully reveal active battlemap fog"},
+        {"name": "Reset Map Fog", "method": "GET / POST", "url": f"{base_local}/map/reset-fog", "desc": "Conceal battlemap fog"},
+        {"name": "Map Laser Ping", "method": "GET / POST", "url": f"{base_local}/map/ping", "desc": "Fire central laser ping coordinate"}
+    ]
+    return {
+        "status": "success",
+        "lanIp": lan_ip,
+        "baseLocal": base_local,
+        "baseLan": base_lan,
+        "endpoints": endpoints
+    }
 
 def get_default_overworld_state(locations: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     if locations is None:
@@ -4365,6 +4613,231 @@ async def sync_session_log_to_timeline():
     tl_data["events"] = events
     write_json("timeline.json", tl_data)
     return {"status": "success", "added": added, "timeline": tl_data}
+
+@app.get("/api/timeline/recap")
+async def generate_session_recap():
+    manifest = get_campaigns_manifest()
+    active_id = manifest.get("activeCampaignId", "default")
+    active_camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == active_id), None)
+    camp_name = active_camp.get("name", "Active Campaign") if active_camp else "Active Campaign"
+
+    tw = read_json("time_weather.json", {"day": 1, "hour": 9, "minute": 0, "season": "Autumn", "weather": "Clear"})
+    day_num = int(tw.get("day", 1))
+    season = tw.get("season", "Autumn")
+    weather_raw = tw.get("weather", "Clear")
+    if isinstance(weather_raw, dict):
+        precip = weather_raw.get("precipitation") or "Clear Skies"
+        temp = weather_raw.get("temperature") or "Mild"
+        weather_desc = f"{precip}, {temp}"
+    else:
+        weather_desc = str(weather_raw)
+    hour = int(tw.get("hour", 9))
+    minute = int(tw.get("minute", 0))
+    time_str = f"Day {day_num}, {hour:02d}:{minute:02d} ({season} • {weather_desc})"
+
+    party = read_json("party.json", [])
+    combat = read_json("combat.json", {"inCombat": False, "round": 1, "combatants": []})
+    quests_data = read_json("quests.json", {"quests": [], "rumors": []})
+    quests = quests_data.get("quests", []) if isinstance(quests_data, dict) else quests_data
+    factions = read_json("factions.json", [])
+    secrets = read_json("secrets.json", [])
+    notes = read_json("session_notes.json", [])
+
+    completed_quests = [q for q in quests if q.get("status") == "Completed"]
+    active_quests = [q for q in quests if q.get("status") == "Active"]
+
+    party_lines = []
+    for pc in party:
+        hp_status = f"{pc.get('currentHp')}/{pc.get('maxHp')} HP"
+        if pc.get('currentHp', 0) == 0:
+            hp_status += " (DOWN / UNCONSCIOUS)"
+        party_lines.append(f"- **{pc.get('name')}** ({pc.get('classRole', 'Hero')}, Lv {pc.get('level', 1)}): {hp_status}")
+
+    md_lines = [
+        f"# 🛡️ Campaign Chronicle: Session Recap — Day {day_num}",
+        f"**Campaign**: {camp_name} • **Date**: {time_str}\n",
+        "## 👥 Adventuring Party Vitals",
+        "\n".join(party_lines) if party_lines else "- No party members registered.",
+        "\n## ⚔️ Combat & Tactical Engagements"
+    ]
+
+    cbs = combat.get("combatants", [])
+    if combat.get("inCombat") or cbs:
+        monsters = [c.get("name") for c in cbs if c.get("type") == "monster"]
+        md_lines.append(f"- **Combat State**: {'Active Combat' if combat.get('inCombat') else 'Encounter Resolved'} (Round {combat.get('round', 1)})")
+        if monsters:
+            md_lines.append(f"- **Adversaries Engaged**: {', '.join(monsters)}")
+    else:
+        md_lines.append("- No active tactical engagements recorded.")
+
+    md_lines.append("\n## 📜 Quests & Milestones")
+    if completed_quests:
+        md_lines.append("### Completed:")
+        for q in completed_quests:
+            md_lines.append(f"- **{q.get('title')}** ({q.get('location') or 'World'}): {q.get('summary') or 'Quest resolved.'}")
+    if active_quests:
+        md_lines.append("### Ongoing Quests:")
+        for q in active_quests:
+            objs = [o.get("description", "") for o in q.get("objectives", []) if o.get("completed")]
+            obj_str = f" ({len(objs)}/{len(q.get('objectives', []))} objectives complete)" if q.get("objectives") else ""
+            md_lines.append(f"- **{q.get('title')}**{obj_str}: {q.get('summary') or 'In progress.'}")
+    if not completed_quests and not active_quests:
+        md_lines.append("- No quest progression logged.")
+
+    md_lines.append("\n## ⏳ Factions & Schemes")
+    faction_lines = []
+    for f in factions:
+        clocks = f.get("clocks", [])
+        if clocks:
+            clock_strs = []
+            for c in clocks:
+                c_title = c.get("title") or c.get("name") or "Scheme"
+                c_curr = c.get("currentTicks") if c.get("currentTicks") is not None else c.get("progress", 0)
+                c_tot = c.get("totalTicks") if c.get("totalTicks") is not None else c.get("segments", c.get("max", 4))
+                clock_strs.append(f"{c_title}: {c_curr}/{c_tot} ticks")
+            faction_lines.append(f"- **{f.get('name')}**: {', '.join(clock_strs)}")
+        elif f.get("clockSegments"):
+            faction_lines.append(f"- **{f.get('name')}**: Clock {f.get('clockProgress', 0)}/{f.get('clockSegments', 4)} ticks")
+    if faction_lines:
+        md_lines.extend(faction_lines)
+    else:
+        md_lines.append("- Faction clocks steady.")
+
+    md_lines.append("\n## 🔍 Discovered Secrets & Lore")
+    discovered_secrets = [s for s in secrets if s.get("status") in ("Discovered", "Revealed", "discovered")]
+    if discovered_secrets:
+        for s in discovered_secrets[:5]:
+            md_lines.append(f"- **{s.get('title', 'Secret')}**: {s.get('description', '')}")
+    else:
+        md_lines.append("- No new clues discovered this session.")
+
+    md_lines.append("\n## 📝 Session Notes & Highlights")
+    if notes:
+        for n in notes[-6:]:
+            md_lines.append(f"- [{n.get('tag', 'Note').upper()}] {n.get('text', '')}")
+    else:
+        md_lines.append("- No additional notes recorded.")
+
+    full_markdown = "\n".join(md_lines)
+
+    return {
+        "status": "success",
+        "day": day_num,
+        "dateStr": time_str,
+        "title": f"Session Recap — Day {day_num}",
+        "campaign": camp_name,
+        "markdown": full_markdown,
+        "recap_markdown": full_markdown
+    }
+
+@app.post("/api/timeline/recap/save")
+async def save_session_recap_to_timeline(payload: Dict[str, Any]):
+    recap_data = await generate_session_recap()
+    md_content = payload.get("markdown") or recap_data.get("markdown")
+    day_num = recap_data.get("day", 1)
+    
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    events = tl_data.get("events", [])
+    ev_id = f"tl-recap-{uuid.uuid4().hex[:6]}"
+    ev_data = {
+        "id": ev_id,
+        "era": "current",
+        "dateLabel": f"Day {day_num} (348 P.R.)",
+        "sortOrder": 348000 + int(day_num),
+        "title": f"Session Chronicle Recap — Day {day_num}",
+        "category": "Session Chronicle",
+        "location": payload.get("location", "Shattered Coast"),
+        "factions": [],
+        "description": md_content,
+        "isSessionLog": True,
+        "sourceId": ev_id
+    }
+    events.append(ev_data)
+    events.sort(key=lambda x: x.get("sortOrder", 0))
+    tl_data["events"] = events
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "event": ev_data, "timeline": tl_data}
+
+@app.post("/api/timeline/log-combat-victory")
+async def log_combat_victory_to_timeline(payload: Dict[str, Any]):
+    title = payload.get("title", "Victory in Combat")
+    monster_name = payload.get("monsterName", "Adversaries")
+    rounds = payload.get("rounds", 1)
+    xp = payload.get("xp", 0)
+    notes = payload.get("notes", "")
+
+    tw = read_json("time_weather.json", {"day": 1})
+    day_num = int(tw.get("day", 1))
+
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    events = tl_data.get("events", [])
+    ev_id = f"tl-combat-{uuid.uuid4().hex[:6]}"
+    ev_data = {
+        "id": ev_id,
+        "era": "current",
+        "dateLabel": f"Day {day_num} (348 P.R.)",
+        "sortOrder": 348000 + int(day_num),
+        "title": f"⚔️ Tactical Victory: {title}",
+        "category": "Combat Victory",
+        "location": payload.get("location", "Dungeon / Field"),
+        "factions": [],
+        "description": f"The party vanquished {monster_name} in {rounds} combat round(s). Awarded {xp} XP. {notes}".strip(),
+        "isSessionLog": True,
+        "sourceId": ev_id
+    }
+    events.append(ev_data)
+    events.sort(key=lambda x: x.get("sortOrder", 0))
+    tl_data["events"] = events
+    write_json("timeline.json", tl_data)
+    return {"status": "success", "event": ev_data, "timeline": tl_data}
+
+@app.get("/api/timeline/export-markdown")
+async def export_timeline_markdown(format: str = "download"):
+    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    eras = tl_data.get("eras", [])
+    events = tl_data.get("events", [])
+    manifest = get_campaigns_manifest()
+    active_id = manifest.get("activeCampaignId", "default")
+    active_camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == active_id), None)
+    camp_name = active_camp.get("name", "Active Campaign") if active_camp else "Active Campaign"
+
+    lines = [
+        f"# ⏳ Historical Timeline & Campaign Chronicle — {camp_name}",
+        f"*Compiled automatically on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+    ]
+
+    for era in eras:
+        era_id = era.get("id")
+        lines.append(f"## {era.get('icon', '⏳')} {era.get('name', 'Era')}")
+        if era.get("description"):
+            lines.append(f"*{era.get('description')}*\n")
+
+        era_events = [e for e in events if e.get("era") == era_id]
+        if not era_events:
+            lines.append("*(No recorded historical milestones in this era)*\n")
+            continue
+
+        for ev in era_events:
+            loc_str = f" • Location: {ev.get('location')}" if ev.get('location') else ""
+            cat_str = f"[{ev.get('category', 'Milestone')}]"
+            lines.append(f"### {ev.get('title', 'Event')} — `{ev.get('dateLabel', 'Undated')}` {cat_str}{loc_str}")
+            lines.append(f"{ev.get('description', '')}\n")
+
+    full_md = "\n".join(lines)
+    filename = f"Timeline_Chronicle_{active_id}_{datetime.now().strftime('%Y%m%d')}.md"
+
+    if format == "json":
+        return {
+            "status": "success",
+            "markdown": full_md,
+            "filename": filename
+        }
+
+    return Response(
+        content=full_md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 # -------------------------------------------------------------
 # WILDERNESS TRAVEL, HAZARDS & FORAGING CALCULATOR

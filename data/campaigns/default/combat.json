@@ -1,7 +1,7 @@
 {
-  "inCombat": false,
-  "round": 2,
-  "currentTurnIndex": 2,
+  "inCombat": true,
+  "round": 1,
+  "currentTurnIndex": 4,
   "combatants": [
     {
       "id": "combat-pc-3",

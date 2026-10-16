@@ -13814,6 +13814,291 @@ async function syncTimelineFromQuests() {
 }
 
 // -----------------------------------------------------------------------------
+// CAMPAIGN CHRONICLE & AUTO-SESSION RECAP GENERATOR
+// -----------------------------------------------------------------------------
+let currentRecapData = null;
+
+async function openSessionRecapModal() {
+    openModal('session-recap-modal');
+    await refreshSessionRecap();
+}
+
+async function refreshSessionRecap() {
+    const textEl = document.getElementById('recap-markdown-text');
+    const countEl = document.getElementById('recap-char-count');
+    const titleEl = document.getElementById('recap-title-input');
+    
+    if (textEl) {
+        textEl.value = "Generating campaign session recap from current party vitals, quest states, and faction clocks...";
+    }
+    
+    try {
+        const res = await fetch('/api/timeline/recap');
+        if (res.ok) {
+            const data = await res.json();
+            currentRecapData = data;
+            if (textEl) {
+                textEl.value = data.recap_markdown || "";
+                if (countEl) countEl.innerText = `${(data.recap_markdown || "").length} characters`;
+            }
+            if (titleEl && (!titleEl.value || titleEl.value === 'Session Recap')) {
+                titleEl.value = data.title || 'Session Recap';
+            }
+        } else {
+            if (textEl) textEl.value = "Failed to generate recap. Server returned error.";
+            showToast("Failed to generate session recap", "error");
+        }
+    } catch (e) {
+        if (textEl) textEl.value = `Error generating session recap: ${e.message}`;
+        showToast("Error generating recap", "error");
+    }
+}
+
+async function copySessionRecapMarkdown() {
+    const textEl = document.getElementById('recap-markdown-text');
+    const btnText = document.getElementById('btn-copy-recap-text');
+    if (!textEl || !textEl.value) return;
+
+    try {
+        await navigator.clipboard.writeText(textEl.value);
+        if (btnText) btnText.innerText = "✓ Copied!";
+        showToast("Session recap Markdown copied to clipboard!", "success");
+        setTimeout(() => {
+            if (btnText) btnText.innerText = "Copy Markdown";
+        }, 2000);
+    } catch (e) {
+        textEl.select();
+        document.execCommand('copy');
+        showToast("Copied to clipboard!", "success");
+    }
+}
+
+async function saveSessionRecapToTimeline() {
+    const textEl = document.getElementById('recap-markdown-text');
+    const titleEl = document.getElementById('recap-title-input');
+    const title = (titleEl?.value || 'Session Recap').trim();
+    const markdown = (textEl?.value || '').trim();
+
+    if (!markdown) {
+        showToast("Recap is empty. Nothing to save.", "warning");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/timeline/recap/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                recap_markdown: markdown,
+                era: 'current'
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.timeline) appState.timeline = data.timeline;
+            renderTimeline();
+            showToast("Recap saved to Timeline Chronicle!", "success");
+            closeModal('session-recap-modal');
+        } else {
+            showToast("Failed to save recap to timeline", "error");
+        }
+    } catch (e) {
+        showToast(`Error saving recap: ${e.message}`, "error");
+    }
+}
+
+async function exportTimelineMarkdown() {
+    try {
+        const res = await fetch('/api/timeline/export-markdown?format=json');
+        if (res.ok) {
+            const data = await res.json();
+            const blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.filename || 'campaign_chronicle.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Campaign Chronicle (.md) downloaded!", "success");
+        } else {
+            window.location.href = '/api/timeline/export-markdown';
+        }
+    } catch (e) {
+        window.location.href = '/api/timeline/export-markdown';
+    }
+}
+
+// -----------------------------------------------------------------------------
+// ELGATO STREAM DECK & HARDWARE MACRO REST API CONTROLLER
+// -----------------------------------------------------------------------------
+let streamDeckStatusData = null;
+let activeStreamDeckCategory = 'all';
+
+const STREAM_DECK_PRESETS = [
+    { category: 'combat', icon: '⚔️', title: 'Next Combat Turn', path: '/api/streamdeck/combat/next-turn', desc: 'Advance active turn; decrements conditions and increments rounds.' },
+    { category: 'combat', icon: '⏮️', title: 'Previous Combat Turn', path: '/api/streamdeck/combat/prev-turn', desc: 'Step back to previous turn in initiative order.' },
+    { category: 'combat', icon: '⏯️', title: 'Toggle Combat Encounter', path: '/api/streamdeck/combat/toggle', desc: 'Start or pause encounter tracker.' },
+    { category: 'combat', icon: '🛑', title: 'End Combat Encounter', path: '/api/streamdeck/combat/stop', desc: 'Stop encounter and clear active combatant indicator.' },
+    { category: 'combat', icon: '🔄', title: 'Reset Encounter', path: '/api/streamdeck/combat/reset', desc: 'Reset combat tracker to Round 1.' },
+    
+    { category: 'dice', icon: '🎲', title: 'Roll 1d20 (Nat 20/1 Smart FX)', path: '/api/streamdeck/roll/d20', desc: 'Rolls d20, logs to table, and triggers Amaran gold/red smart light flash.' },
+    { category: 'dice', icon: '🔺', title: 'Roll 1d4', path: '/api/streamdeck/roll/d4', desc: 'Standard d4 roll broadcast to table.' },
+    { category: 'dice', icon: '🎲', title: 'Roll 1d6', path: '/api/streamdeck/roll/d6', desc: 'Standard d6 roll broadcast to table.' },
+    { category: 'dice', icon: '💎', title: 'Roll 1d8', path: '/api/streamdeck/roll/d8', desc: 'Standard d8 roll broadcast to table.' },
+    { category: 'dice', icon: '🔟', title: 'Roll 1d10', path: '/api/streamdeck/roll/d10', desc: 'Standard d10 roll broadcast to table.' },
+    { category: 'dice', icon: '🔷', title: 'Roll 1d12', path: '/api/streamdeck/roll/d12', desc: 'Standard d12 roll broadcast to table.' },
+    { category: 'dice', icon: '💯', title: 'Roll 1d100 (Percentile)', path: '/api/streamdeck/roll/d100', desc: 'Percentile 1-100 table roll.' },
+
+    { category: 'party', icon: '☕', title: 'Execute Short Rest', path: '/api/streamdeck/party/short-rest', desc: 'Restores warlock/short-rest spell slots and broadcasts rest chime.' },
+    { category: 'party', icon: '🏕️', title: 'Execute Long Rest', path: '/api/streamdeck/party/long-rest', desc: 'Restores party to full HP, all spell slots, and clears temporary statuses.' },
+
+    { category: 'lighting', icon: '🔥', title: 'Lighting: Fireplace', path: '/api/streamdeck/lighting/preset/fireplace', desc: 'Warm flickering amber campfire/hearth ambiance.' },
+    { category: 'lighting', icon: '🍺', title: 'Lighting: Tavern', path: '/api/streamdeck/lighting/preset/tavern', desc: 'Cozy golden tavern lantern lighting.' },
+    { category: 'lighting', icon: '🕯️', title: 'Lighting: Dungeon', path: '/api/streamdeck/lighting/preset/dungeon', desc: 'Dim, menacing dungeon torchlight.' },
+    { category: 'lighting', icon: '💀', title: 'Lighting: Crypt', path: '/api/streamdeck/lighting/preset/crypt', desc: 'Pale eerie blue necropolis glow.' },
+    { category: 'lighting', icon: '👹', title: 'Lighting: Boss Battle', path: '/api/streamdeck/lighting/preset/boss', desc: 'Intense crimson boss combat lighting.' },
+    { category: 'lighting', icon: '⚡', title: 'Lighting: Thunderstorm', path: '/api/streamdeck/lighting/preset/thunderstorm', desc: 'Deep tempest blue with lightning flashes.' },
+    { category: 'lighting', icon: '🌲', title: 'Lighting: Forest', path: '/api/streamdeck/lighting/preset/forest', desc: 'Lush emerald woodland canopy lighting.' },
+    { category: 'lighting', icon: '💡', title: 'Lighting: Turn Off', path: '/api/streamdeck/lighting/preset/off', desc: 'Powers off Amaran studio fixtures.' },
+    { category: 'lighting', icon: '✨', title: 'Lighting FX: Nat 20 Critical', path: '/api/streamdeck/lighting/event/nat20', desc: 'Instant golden flash fanfare.' },
+    { category: 'lighting', icon: '💥', title: 'Lighting FX: Nat 1 Critical Fail', path: '/api/streamdeck/lighting/event/nat1', desc: 'Instant pulsing crimson hazard flash.' },
+
+    { category: 'audio', icon: '🔥', title: 'SFX: Fireball Blast', path: '/api/streamdeck/audio/sfx/fireball', desc: 'Roaring explosive arcane blast.' },
+    { category: 'audio', icon: '⚔️', title: 'SFX: Sword Clash', path: '/api/streamdeck/audio/sfx/sword_clash', desc: 'Steel-on-steel martial strike.' },
+    { category: 'audio', icon: '🐉', title: 'SFX: Dragon Roar', path: '/api/streamdeck/audio/sfx/dragon_roar', desc: 'Terrifying apex predator apex bellow.' },
+    { category: 'audio', icon: '🎺', title: 'SFX: Victory Fanfare', path: '/api/streamdeck/audio/sfx/victory', desc: 'Triumphant encounter resolution horn.' },
+    { category: 'audio', icon: '🔔', title: 'SFX: Defeat Toll', path: '/api/streamdeck/audio/sfx/defeat', desc: 'Somber toll of mortality.' },
+    { category: 'audio', icon: '⚙️', title: 'SFX: Dungeon Trap Trigger', path: '/api/streamdeck/audio/sfx/trap', desc: 'Clicking pressure plate and spring mechanism.' },
+
+    { category: 'map', icon: '👁️', title: 'Battlemap: Reveal Entire Fog', path: '/api/streamdeck/map/reveal-all', desc: 'Instantly clears all fog of war for the tabletop screen.' },
+    { category: 'map', icon: '🌫️', title: 'Battlemap: Reset / Cover Fog', path: '/api/streamdeck/map/reset-fog', desc: 'Covers entire active battlemap with dense fog of war.' },
+    { category: 'map', icon: '📍', title: 'Battlemap: Party Ping', path: '/api/streamdeck/map/ping', desc: 'Pulses animated radar ring on tabletop battlemap.' }
+];
+
+async function initStreamDeckUI() {
+    try {
+        const res = await fetch('/api/streamdeck/status');
+        if (res.ok) {
+            streamDeckStatusData = await res.json();
+            const baseUrl = streamDeckStatusData.lan_base_url || streamDeckStatusData.local_base_url || `${window.location.origin}/api/streamdeck`;
+            const baseInput = document.getElementById('streamdeck-base-url-input');
+            if (baseInput) baseInput.value = baseUrl;
+            const sampleUrlEl = document.getElementById('sd-guide-sample-url');
+            if (sampleUrlEl) sampleUrlEl.innerText = `${baseUrl}/combat/next-turn`;
+        }
+    } catch (e) {
+        console.warn("Could not fetch Stream Deck status:", e);
+    }
+}
+
+async function openStreamDeckModal() {
+    await initStreamDeckUI();
+    renderStreamDeckEndpoints();
+    openModal('streamdeck-endpoints-modal');
+}
+
+function filterStreamDeckCategory(category) {
+    activeStreamDeckCategory = category;
+    
+    // Update tab button styles
+    const buttons = document.querySelectorAll('#sd-category-filters .sd-filter-btn');
+    buttons.forEach(btn => {
+        if (btn.dataset.category === category) {
+            btn.className = "sd-filter-btn px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold transition";
+        } else {
+            btn.className = "sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white transition";
+        }
+    });
+
+    renderStreamDeckEndpoints();
+}
+
+function filterStreamDeckList() {
+    renderStreamDeckEndpoints();
+}
+
+function renderStreamDeckEndpoints() {
+    const listEl = document.getElementById('sd-endpoints-list');
+    if (!listEl) return;
+
+    const query = (document.getElementById('sd-search-input')?.value || '').toLowerCase().trim();
+    const origin = window.location.origin;
+
+    const filtered = STREAM_DECK_PRESETS.filter(item => {
+        const matchesCategory = activeStreamDeckCategory === 'all' || item.category === activeStreamDeckCategory;
+        const matchesQuery = !query || item.title.toLowerCase().includes(query) || item.path.toLowerCase().includes(query) || item.desc.toLowerCase().includes(query);
+        return matchesCategory && matchesQuery;
+    });
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `
+            <div class="p-6 text-center text-slate-500 font-mono text-xs">
+                No Stream Deck macros match your search or filter.
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+        const fullUrl = `${origin}${item.path}`;
+        return `
+            <div class="p-3 rounded-2xl bg-ledger-950/90 border border-ledger-800 hover:border-ledger-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-start gap-3 min-w-0">
+                    <span class="w-8 h-8 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-center text-base shrink-0 mt-0.5">${item.icon}</span>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-slate-200 text-xs">${item.title}</span>
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">GET | POST</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${item.desc}</p>
+                        <div class="mt-1 font-mono text-[10px] text-amber-300/90 truncate max-w-md select-all">${fullUrl}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <button onclick="copyStreamDeckMacroUrl('${fullUrl}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 text-xs font-semibold border border-ledger-700 transition flex items-center gap-1">
+                        <span>📋</span> <span>Copy URL</span>
+                    </button>
+                    <button onclick="testStreamDeckEndpoint('${item.path}')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1 shadow">
+                        <span>🧪</span> <span>Test</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function copyStreamDeckMacroUrl(url) {
+    navigator.clipboard.writeText(url);
+    showToast("Macro URL copied to clipboard!", "success");
+}
+
+async function testStreamDeckEndpoint(path) {
+    try {
+        const fullUrl = path.startsWith('http') ? path : `${window.location.origin}${path}`;
+        const res = await fetch(fullUrl, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast(`Stream Deck OK: ${data.message || data.status || path}`, "success");
+            if (path.includes('/combat/')) {
+                await fetchFullState();
+                renderCombatTracker();
+            } else if (path.includes('/party/')) {
+                await fetchFullState();
+                renderPartyHUD();
+            }
+        } else {
+            showToast(`Stream Deck Error: HTTP ${res.status}`, "error");
+        }
+    } catch (e) {
+        showToast(`Stream Deck Request Failed: ${e.message}`, "error");
+    }
+}
+
+// -----------------------------------------------------------------------------
 // 5. WILDERNESS TRAVEL, HAZARDS & FORAGING CALCULATOR
 // -----------------------------------------------------------------------------
 const TERRAIN_HAZARDS = {
@@ -15132,6 +15417,18 @@ window.toggleSecurityLocalhostBypass = toggleSecurityLocalhostBypass;
 window.saveNewDmPin = saveNewDmPin;
 window.testDmLockScreen = testDmLockScreen;
 window.loadSecuritySettingsUI = loadSecuritySettingsUI;
+window.openSessionRecapModal = openSessionRecapModal;
+window.refreshSessionRecap = refreshSessionRecap;
+window.copySessionRecapMarkdown = copySessionRecapMarkdown;
+window.saveSessionRecapToTimeline = saveSessionRecapToTimeline;
+window.exportTimelineMarkdown = exportTimelineMarkdown;
+window.openStreamDeckModal = openStreamDeckModal;
+window.initStreamDeckUI = initStreamDeckUI;
+window.filterStreamDeckCategory = filterStreamDeckCategory;
+window.filterStreamDeckList = filterStreamDeckList;
+window.renderStreamDeckEndpoints = renderStreamDeckEndpoints;
+window.copyStreamDeckMacroUrl = copyStreamDeckMacroUrl;
+window.testStreamDeckEndpoint = testStreamDeckEndpoint;
 
 window.onload = async function() {
     initSidebarState();
@@ -15165,6 +15462,7 @@ window.onload = async function() {
     renderCampaignSettingsCard();
     renderModuleToggles();
     loadSecuritySettingsUI();
+    initStreamDeckUI();
     if (window.LightingEngine) window.LightingEngine.init();
 };
 

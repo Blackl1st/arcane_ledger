@@ -2387,6 +2387,12 @@
                             <button onclick="syncTimelineFromQuests()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-sky-500/40 text-sky-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Automatically import completed quests into the Current Campaign Arc timeline">
                                 <span>🔄</span> <span>Sync Quests</span>
                             </button>
+                            <button onclick="openSessionRecapModal()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition shadow" title="Generate an automated session recap in Markdown for Discord or Obsidian">
+                                <span>⚡</span> <span>Session Recap</span>
+                            </button>
+                            <button onclick="exportTimelineMarkdown()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-slate-600 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Export entire historical campaign chronicle as Markdown (.md)">
+                                <span>📥</span> <span>Export .md</span>
+                            </button>
                             <button onclick="openManageErasModal()" class="px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Add, edit, or delete historical eras for this campaign">
                                 <span>⏳</span> <span>Manage Eras</span>
                             </button>
@@ -3840,6 +3846,71 @@
                             </div>
                             <span class="text-base">🗑️</span>
                         </button>
+                </div>
+
+                <!-- CARD 6: HARDWARE MACROS & ELGATO STREAM DECK INTEGRATION -->
+                <div id="settings-streamdeck-card" class="bg-ledger-950/80 border border-ledger-700 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-ledger-800">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-xl text-indigo-300">🎛️</span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-display font-bold text-base text-indigo-300">Elgato Stream Deck & Hardware Macro REST API</h3>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Zero-Auth Active</span>
+                                </div>
+                                <p class="text-xs text-slate-400">Trigger combat turns, rolls, rests, Amaran smart lighting, and audio SFX with physical hardware keys.</p>
+                            </div>
+                        </div>
+                        <button onclick="openStreamDeckModal()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow transition flex items-center gap-1.5 shrink-0">
+                            <span>📖</span> <span>Macro Cheat Sheet & Setup</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <!-- Quick Info & Base URL -->
+                        <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-4 space-y-3">
+                            <label class="font-bold text-slate-200 block flex items-center gap-2">
+                                <span>🌐</span> <span>Stream Deck Base URL</span>
+                            </label>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                Stream Deck endpoints accept both <span class="font-mono text-amber-300">GET</span> and <span class="font-mono text-amber-300">POST</span>. You can use native Elgato <span class="font-semibold text-slate-200">"System > Website"</span> actions (set to run in background) without needing extra plugins!
+                            </p>
+                            <div class="space-y-1.5">
+                                <label class="block text-[10px] font-mono uppercase text-slate-500 font-bold">Local / LAN Endpoint Prefix</label>
+                                <div class="flex items-center gap-2">
+                                    <input id="streamdeck-base-url-input" type="text" readonly value="http://127.0.0.1:8000/api/streamdeck" class="flex-1 bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs select-all">
+                                    <button onclick="navigator.clipboard.writeText(document.getElementById('streamdeck-base-url-input').value); showToast('Stream Deck base URL copied!');" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-bold text-xs border border-ledger-700">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- One-Click Live Hardware Test Triggers -->
+                        <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-4 space-y-3">
+                            <label class="font-bold text-slate-200 block flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><span>🧪</span> <span>Quick Test Actions</span></span>
+                                <span class="text-[10px] font-mono text-slate-400">Click to test response</span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/combat/next-turn')" class="p-2 rounded-lg bg-ledger-950 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>⚔️</span> <span class="font-semibold">Next Combat Turn</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/roll/d20')" class="p-2 rounded-lg bg-ledger-950 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>🎲</span> <span class="font-semibold">Roll d20</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/party/short-rest')" class="p-2 rounded-lg bg-ledger-950 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>☕</span> <span class="font-semibold">Short Rest</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/party/long-rest')" class="p-2 rounded-lg bg-ledger-950 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>🏕️</span> <span class="font-semibold">Long Rest</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/lighting/event/nat20')" class="p-2 rounded-lg bg-ledger-950 hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>✨</span> <span class="font-semibold">Nat 20 Flash</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/audio/sfx/fireball')" class="p-2 rounded-lg bg-ledger-950 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>🔥</span> <span class="font-semibold">Fireball SFX</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -6696,6 +6767,112 @@
 
             <div class="flex justify-end pt-2 border-t border-ledger-800">
                 <button onclick="closeModal('connect-players-modal')" class="px-5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-semibold">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         SESSION RECAP & CHRONICLE GENERATOR MODAL
+         =================================================================== -->
+    <div id="session-recap-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-3xl w-full p-6 shadow-2xl space-y-4 text-xs max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl text-amber-300">⚡</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-amber-300">Auto-Generated Campaign Session Recap</h3>
+                        <p class="text-[11px] text-slate-400">Summarizes current party vitals, active combats, faction clock states, and quest milestones.</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('session-recap-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Milestone Title:</span>
+                    <input id="recap-title-input" type="text" class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs w-64 focus:outline-none focus:border-amber-500" value="Session Recap">
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="refreshSessionRecap()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-200 text-xs font-semibold flex items-center gap-1 transition" title="Regenerate recap from latest campaign state">
+                        <span>🔄</span> <span>Regenerate</span>
+                    </button>
+                    <button onclick="copySessionRecapMarkdown()" id="btn-copy-recap" class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow flex items-center gap-1.5 transition">
+                        <span>📋</span> <span id="btn-copy-recap-text">Copy Markdown</span>
+                    </button>
+                    <button onclick="saveSessionRecapToTimeline()" id="btn-save-recap" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow flex items-center gap-1.5 transition">
+                        <span>💾</span> <span>Save to Timeline</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Markdown Textarea / Preview Container -->
+            <div class="flex-1 min-h-[340px] flex flex-col space-y-1.5">
+                <div class="flex items-center justify-between text-[10px] font-mono uppercase text-slate-400">
+                    <span>Markdown Output (Compatible with Discord, Obsidian & Notion)</span>
+                    <span id="recap-char-count">0 characters</span>
+                </div>
+                <textarea id="recap-markdown-text" class="flex-1 w-full bg-ledger-950 border border-ledger-700 rounded-2xl p-4 text-slate-200 font-mono text-xs leading-relaxed focus:outline-none focus:border-amber-500 select-all resize-none shadow-inner" placeholder="Generating campaign session recap..."></textarea>
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-ledger-800">
+                <span class="text-[11px] text-slate-500 font-mono">Tip: Paste directly into Discord or your Obsidian campaign vault.</span>
+                <button onclick="closeModal('session-recap-modal')" class="px-5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-semibold">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         STREAM DECK & HARDWARE MACRO ENDPOINTS CHEAT SHEET MODAL
+         =================================================================== -->
+    <div id="streamdeck-endpoints-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-indigo-500/60 rounded-3xl max-w-4xl w-full p-6 shadow-2xl space-y-4 text-xs max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-xl text-indigo-300">🎛️</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-indigo-300">Elgato Stream Deck REST API & Macro Guide</h3>
+                        <p class="text-[11px] text-slate-400">Zero-authentication endpoints for physical macro pads, Loupedeck, or browser shortcuts.</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('streamdeck-endpoints-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+
+            <!-- Quick Setup Instructions Box -->
+            <div class="p-3.5 rounded-2xl bg-ledger-950 border border-ledger-800 space-y-2">
+                <div class="flex items-center gap-2 text-indigo-300 font-bold text-xs">
+                    <span>💡</span> <span>How to Configure Elgato Stream Deck in 30 Seconds:</span>
+                </div>
+                <ol class="list-decimal list-inside text-slate-300 space-y-1 pl-1 leading-relaxed text-[11px]">
+                    <li>In the Elgato Stream Deck app, drag a <span class="font-semibold text-white">"System > Website"</span> action onto any key.</li>
+                    <li>Paste any URL below into the <span class="font-mono text-amber-300">URL</span> field (e.g. <span class="font-mono text-sky-300" id="sd-guide-sample-url">http://127.0.0.1:8000/api/streamdeck/combat/next-turn</span>).</li>
+                    <li>Check the box <span class="font-semibold text-white">"GET request in background"</span> so no browser tab opens!</li>
+                    <li>(Optional) For two-way status and feedback, plugins like "API Ninja" or "HTTP Request" are also fully supported with GET or POST.</li>
+                </ol>
+            </div>
+
+            <!-- Endpoints Category Filter Bar -->
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 flex-wrap" id="sd-category-filters">
+                    <button onclick="filterStreamDeckCategory('all')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold" data-category="all">All</button>
+                    <button onclick="filterStreamDeckCategory('combat')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white" data-category="combat">⚔️ Combat</button>
+                    <button onclick="filterStreamDeckCategory('dice')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white" data-category="dice">🎲 Dice</button>
+                    <button onclick="filterStreamDeckCategory('party')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white" data-category="party">🏕️ Party Rests</button>
+                    <button onclick="filterStreamDeckCategory('lighting')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white" data-category="lighting">💡 Lighting</button>
+                    <button onclick="filterStreamDeckCategory('audio')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white" data-category="audio">🔊 Audio SFX</button>
+                    <button onclick="filterStreamDeckCategory('map')" class="sd-filter-btn px-2.5 py-1 rounded-lg bg-ledger-800 text-slate-300 hover:text-white" data-category="map">🗺️ Battlemap</button>
+                </div>
+                <input id="sd-search-input" oninput="filterStreamDeckList()" type="text" placeholder="Search macros..." class="bg-ledger-950 border border-ledger-700 rounded-lg px-2.5 py-1 text-white text-xs w-44 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <!-- Endpoints Scrollable Table -->
+            <div class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[46vh]" id="sd-endpoints-list">
+                <!-- Dynamically rendered via renderStreamDeckEndpoints() -->
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-ledger-800">
+                <span class="text-[11px] text-slate-500 font-mono">All endpoints accept both GET and POST without session cookies.</span>
+                <button onclick="closeModal('streamdeck-endpoints-modal')" class="px-5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-semibold">Done</button>
             </div>
         </div>
     </div>

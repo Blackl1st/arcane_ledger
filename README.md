@@ -223,6 +223,30 @@ Arcane Ledger provides four specialized interfaces out of the box:
 - **Connect Tabletop Players Modal & QR Code**: Built-in LAN IP detection (`http://192.168.x.x:8000/player`) with a 1-click copyable link and dynamically generated SVG QR code for instant phone camera scanning at the physical table.
 - **Configurable in System Settings**: Enable or disable PIN protection, customize your 4-digit PIN, or toggle Localhost Auto-Bypass anytime from the Settings tab.
 
+### 🎛️ Elgato Stream Deck & Hardware Macro REST API
+- **Zero-Latency Physical Control**: Control your tabletop session with physical hardware macro keys (Elgato Stream Deck, Loupedeck, macro keypads, or foot pedals) without switching windows.
+- **Native Stream Deck Key Support**: All endpoints accept both **HTTP GET** and **POST**. Use Elgato's built-in *"System > Website"* action (set to *"GET in background"*) with zero external plugins needed!
+- **Dedicated REST API Matrix**:
+  - **Combat Management**: Next turn (`/api/streamdeck/combat/next-turn`), previous turn, toggle combat, start, stop, and reset.
+  - **Polyhedral Dice Roller**: Roll d20 (`/api/streamdeck/roll/d20`), d4, d6, d8, d10, d12, or d100 with live broadcast to table HUDs and Amaran smart-lighting fanfare.
+  - **Party Rests**: One-click Short Rest (`/api/streamdeck/party/short-rest`) and Long Rest (`/api/streamdeck/party/long-rest`) with automatic HP and spell slot restoration.
+  - **Dynamic Smart Lighting**: Instant Amaran studio presets (Fireplace, Tavern, Dungeon, Crypt, Boss Battle, Thunderstorm, Forest, Off) and reactive Nat 20 / Nat 1 light pulses.
+  - **Audio Soundboard SFX**: Fireball blast, sword clash, dragon roar, victory fanfare, defeat toll, and dungeon traps.
+  - **Battlemap & Fog Control**: Reveal all fog, cover with fog, or ping tabletop miniatures.
+- **Built-In Macro Cheat Sheet**: Access copyable URLs and one-click test buttons directly from the DM System Settings panel or interactive modal.
+
+### ⏳ Campaign Historical Timeline, Eras Chronology & Auto-Session Recaps
+- **Chronological World Feed**: Organize world history, cataclysms, divine pacts, and player achievements across customizable historical eras (e.g. *Mythic Age*, *The Cataclysm*, *Century of Iron*, *Current Campaign Arc*).
+- **Automated Session Recap Generator (`/api/timeline/recap`)**: One-click Discord, Obsidian, and Notion-compatible Markdown summary compiled automatically from the live game state:
+  - 👥 **Party Vitals**: Hero levels, current/max HP, and unconscious statuses.
+  - ⚔️ **Tactical Engagements**: Active combat rounds and list of monsters engaged.
+  - 📜 **Quests & Milestones**: Completed quests and ongoing objectives with completion percentages.
+  - ⏳ **Faction Schemes**: Clock ticks and active conspiracy steps.
+  - 🔍 **Discovered Clues & Secrets**: Investigation clues and rumors unveiled during the session.
+  - 📝 **Session Notes**: Tagged scratchpad notes captured during play.
+- **1-Click Save to Timeline**: Persist generated recaps as permanent milestones in your campaign's historical chronology.
+- **Campaign Chronicle Markdown Exporter**: Download the complete campaign lore, historical eras, and quest logs as a clean, structured `.md` file for your campaign notes.
+
 ---
 
 ## 🚀 Quick Start
