@@ -15514,6 +15514,11 @@ async function initUpdater() {
             if (versionBadge && data.current_version) {
                 versionBadge.textContent = `v${data.current_version}`;
             }
+            const channelSelect = document.getElementById('updater-channel-select');
+            if (channelSelect && data.channel) {
+                channelSelect.value = data.channel;
+            }
+            updateChannelBadge();
 
             // If auto-check enabled, trigger background check after 1.5s delay
             if (data.auto_check !== false) {
@@ -15737,16 +15742,32 @@ async function applyUpdateAndRestart() {
 
 async function saveUpdaterSettings() {
     const toggle = document.getElementById('updater-auto-check-toggle');
+    const channelSelect = document.getElementById('updater-channel-select');
     const autoCheck = toggle ? toggle.checked : true;
+    const channel = channelSelect ? channelSelect.value : 'stable';
     try {
         await fetch('/api/updates/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ auto_check: autoCheck })
+            body: JSON.stringify({ auto_check: autoCheck, channel: channel })
         });
+        updateChannelBadge();
         showToast('Updater preferences saved.', 'info');
     } catch (e) {
         console.error('Error saving updater preferences:', e);
+    }
+}
+
+function updateChannelBadge() {
+    const channelSelect = document.getElementById('updater-channel-select');
+    const badge = document.getElementById('updater-channel-badge');
+    if (!channelSelect || !badge) return;
+    if (channelSelect.value === 'beta') {
+        badge.textContent = 'Beta Channel Active';
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+    } else {
+        badge.textContent = 'Stable Channel Active';
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
     }
 }
 
@@ -15796,6 +15817,7 @@ window.startAutoUpdateDownload = startAutoUpdateDownload;
 window.applyUpdateAndRestart = applyUpdateAndRestart;
 window.saveUpdaterSettings = saveUpdaterSettings;
 window.saveUpdaterToken = saveUpdaterToken;
+window.updateChannelBadge = updateChannelBadge;
 window.dismissUpdateBanner = dismissUpdateBanner;
 window.scrollToUpdateSection = scrollToUpdateSection;
 

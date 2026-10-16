@@ -23,7 +23,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.0.4"
+CURRENT_VERSION = "1.0.5"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -72,6 +72,7 @@ def get_updater_settings() -> Dict[str, Any]:
     """Load updater preferences from disk."""
     default_settings = {
         "auto_check": True,
+        "channel": "stable",
         "github_token": "",
         "last_check_time": None,
         "last_version_seen": None
@@ -178,9 +179,9 @@ def select_asset_for_platform(assets: List[Dict[str, Any]]) -> Optional[Dict[str
     return None
 
 
-def fetch_latest_release(token: Optional[str] = None) -> Dict[str, Any]:
-    """Query GitHub Releases API to retrieve the latest version information."""
-    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases/latest"
+def fetch_latest_release(token: Optional[str] = None, channel: str = "stable") -> Dict[str, Any]:
+    """Query GitHub Releases API to retrieve the latest version information according to channel (stable vs beta)."""
+    list_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
     headers = {
         "User-Agent": "ArcaneLedger-Updater",
         "Accept": "application/vnd.github.v3+json"
@@ -188,28 +189,31 @@ def fetch_latest_release(token: Optional[str] = None) -> Dict[str, Any]:
     if token and token.strip():
         headers["Authorization"] = f"Bearer {token.strip()}"
 
-    req = urllib.request.Request(url, headers=headers)
+    req = urllib.request.Request(list_url, headers=headers)
     opener = urllib.request.build_opener(GithubRedirectHandler())
 
     try:
         with opener.open(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data
+            releases = json.loads(resp.read().decode("utf-8"))
+            if not isinstance(releases, list) or not releases:
+                raise HTTPException(status_code=404, detail="No releases found in repository.")
+
+            valid = [r for r in releases if not r.get("draft", False)]
+            if not valid:
+                raise HTTPException(status_code=404, detail="No published releases found.")
+
+            if channel == "beta":
+                # In beta channel, accept the newest release whether prerelease or stable
+                return valid[0]
+            else:
+                # In stable channel, choose the newest release that is NOT a prerelease and has no beta/nightly tag
+                for r in valid:
+                    tag = r.get("tag_name", "").lower()
+                    if not r.get("prerelease", False) and not any(x in tag for x in ["-beta", "-nightly", "-rc", "-alpha"]):
+                        return r
+                return valid[0]
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            # Try fetching the general releases list if /latest is not marked
-            list_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
-            list_req = urllib.request.Request(list_url, headers=headers)
-            try:
-                with opener.open(list_req, timeout=10) as resp:
-                    releases = json.loads(resp.read().decode("utf-8"))
-                    if releases and isinstance(releases, list):
-                        # Filter out drafts
-                        valid = [r for r in releases if not r.get("draft", False)]
-                        if valid:
-                            return valid[0]
-            except Exception:
-                pass
             raise HTTPException(
                 status_code=404,
                 detail="GitHub repository release not found (HTTP 404). If the repository is private, please configure a GitHub Personal Access Token in Settings -> Updates."
@@ -224,6 +228,8 @@ def fetch_latest_release(token: Optional[str] = None) -> Dict[str, Any]:
                 status_code=e.code,
                 detail=f"GitHub API returned error {e.code}: {e.reason}"
             )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -235,8 +241,9 @@ def check_for_updates_internal(force: bool = False, token: Optional[str] = None)
     """Check whether a newer version of Arcane Ledger is published on GitHub."""
     settings = get_updater_settings()
     auth_token = token if token is not None else settings.get("github_token", "")
+    channel = settings.get("channel", "stable")
 
-    release = fetch_latest_release(auth_token)
+    release = fetch_latest_release(auth_token, channel=channel)
     tag_name = release.get("tag_name", "").strip()
     latest_version = tag_name.lstrip("vV")
 
@@ -501,6 +508,7 @@ exit
 
 class UpdateSettingsRequest(BaseModel):
     auto_check: Optional[bool] = None
+    channel: Optional[str] = None
     github_token: Optional[str] = None
 
 
@@ -588,6 +596,7 @@ async def get_settings():
         masked = raw_token[:4] + ("*" * max(4, len(raw_token) - 8)) + raw_token[-4:]
     return {
         "auto_check": settings.get("auto_check", True),
+        "channel": settings.get("channel", "stable"),
         "has_token": bool(raw_token),
         "masked_token": masked,
         "last_check_time": settings.get("last_check_time"),
@@ -604,6 +613,8 @@ async def update_settings(payload: UpdateSettingsRequest):
     settings = get_updater_settings()
     if payload.auto_check is not None:
         settings["auto_check"] = payload.auto_check
+    if payload.channel is not None and payload.channel in ("stable", "beta"):
+        settings["channel"] = payload.channel
     if payload.github_token is not None:
         # If user submits empty string, clear it; otherwise update
         settings["github_token"] = payload.github_token.strip()

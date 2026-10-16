@@ -188,6 +188,6 @@ jobs:
             ArcaneLedger-Windows-x64.zip
             ArcaneLedger-macOS.zip
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-nightly') || contains(github.ref_name, '-rc') }}
           generate_release_notes: true
 
