@@ -41,7 +41,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller pillow
+          pip install pyinstaller pillow pywebview pythonnet
 
       - name: Package with PyInstaller
         run: |
@@ -51,12 +51,16 @@ jobs:
             --add-data "static;static" `
             --add-data "data;data" `
             --add-data "tools;tools" `
+            --collect-all "webview" `
             --hidden-import "app" `
             --hidden-import "map_generator" `
             --hidden-import "fastapi" `
             --hidden-import "uvicorn" `
             --hidden-import "pydantic" `
             --hidden-import "qrcode" `
+            --hidden-import "webview" `
+            --hidden-import "webview.platforms.winforms" `
+            --hidden-import "clr" `
             --hidden-import "uvicorn.logging" `
             --hidden-import "uvicorn.loops" `
             --hidden-import "uvicorn.loops.auto" `
@@ -99,22 +103,30 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller pillow
+          pip install pyinstaller pillow pywebview pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-Quartz pyobjc-framework-WebKit
 
       - name: Package with PyInstaller
         run: |
           pyinstaller --noconfirm --onedir --windowed \
             --name "ArcaneLedger" \
+            --osx-bundle-identifier "com.arcaneledger.app" \
             --add-data "templates:templates" \
             --add-data "static:static" \
             --add-data "data:data" \
             --add-data "tools:tools" \
+            --collect-all "webview" \
             --hidden-import "app" \
             --hidden-import "map_generator" \
             --hidden-import "fastapi" \
             --hidden-import "uvicorn" \
             --hidden-import "pydantic" \
             --hidden-import "qrcode" \
+            --hidden-import "objc" \
+            --hidden-import "Foundation" \
+            --hidden-import "AppKit" \
+            --hidden-import "WebKit" \
+            --hidden-import "webview" \
+            --hidden-import "webview.platforms.cocoa" \
             --hidden-import "uvicorn.logging" \
             --hidden-import "uvicorn.loops" \
             --hidden-import "uvicorn.loops.auto" \
@@ -127,6 +139,10 @@ jobs:
             --hidden-import "uvicorn.lifespans.auto" \
             --icon "static/icon.icns" \
             desktop_launcher.py
+
+      - name: Configure macOS App Info.plist
+        run: |
+          python3 -c "import plistlib; p='dist/ArcaneLedger.app/Contents/Info.plist'; pl=plistlib.load(open(p,'rb')); pl['CFBundleDisplayName']='Arcane Ledger'; pl['CFBundleName']='Arcane Ledger'; pl['NSHighResolutionCapable']=True; plistlib.dump(pl,open(p,'wb'))"
 
       - name: Create macOS Distribution Zip
         run: |

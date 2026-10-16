@@ -8168,6 +8168,11 @@ function openPlayerScreenWindow() {
     const url = (window.ArcaneScale && typeof window.ArcaneScale.getIsolatedUrl === 'function') 
         ? window.ArcaneScale.getIsolatedUrl('/player') 
         : '/player';
+    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.open_browser_window === 'function') {
+        const fullUrl = window.location.origin + url;
+        window.pywebview.api.open_browser_window(fullUrl);
+        return;
+    }
     window.open(url, 'ArcaneLedgerPlayer', 'width=1280,height=800,menubar=no,toolbar=no,location=no,status=no');
 }
 
@@ -8175,8 +8180,14 @@ function openTabletopMapWindow() {
     const url = (window.ArcaneScale && typeof window.ArcaneScale.getIsolatedUrl === 'function') 
         ? window.ArcaneScale.getIsolatedUrl('/map') 
         : '/map';
+    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.open_browser_window === 'function') {
+        const fullUrl = window.location.origin + url;
+        window.pywebview.api.open_browser_window(fullUrl);
+        return;
+    }
     window.open(url, 'ArcaneLedgerTabletopMap', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
 }
+
 
 function openMapGeneratorModal() {
     if (window.BattlemapController && typeof window.BattlemapController.openMapGeneratorModal === 'function') {

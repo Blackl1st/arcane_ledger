@@ -230,6 +230,93 @@ def keep_process_alive_while_browser_running(profile_dir: Path):
     except KeyboardInterrupt:
         logging.info("Shutdown requested via KeyboardInterrupt.")
 
+class DesktopBridge:
+    """JS-to-Python bridge exposed to pywebview to handle external windows."""
+    def open_browser_window(self, url: str):
+        try:
+            import webbrowser
+            logging.info(f"DesktopBridge opening external display in default browser: {url}")
+            webbrowser.open(url)
+        except Exception as e:
+            logging.error(f"DesktopBridge error opening browser: {e}")
+
+def launch_native_window() -> bool:
+    """Launch a true native OS window (Cocoa on macOS, WebView2 on Windows) using pywebview."""
+    try:
+        import webview
+        logging.info("pywebview found. Launching true native desktop application window...")
+
+        icon_path = None
+        if sys.platform == "darwin":
+            icon_icns = RESOURCE_DIR / "static" / "icon.icns"
+            icon_png = RESOURCE_DIR / "static" / "icon.png"
+            if icon_icns.exists():
+                icon_path = str(icon_icns)
+            elif icon_png.exists():
+                icon_path = str(icon_png)
+        elif sys.platform == "win32":
+            icon_ico = RESOURCE_DIR / "static" / "icon.ico"
+            if icon_ico.exists():
+                icon_path = str(icon_ico)
+
+        bridge = DesktopBridge()
+
+        # Allow external links / popup displays (/map, /player) to open in browser for secondary displays
+        webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True
+        webview.settings['ALLOW_DOWNLOADS'] = True
+
+        window = webview.create_window(
+            title="Arcane Ledger",
+            url=URL,
+            width=1600,
+            height=1000,
+            resizable=True,
+            min_size=(1024, 700),
+            text_select=True,
+            js_api=bridge
+        )
+
+        def on_window_loaded():
+            js_bridge = """
+            (function() {
+                if (window.__arcaneDesktopInjected) return;
+                window.__arcaneDesktopInjected = true;
+                const origOpen = window.open;
+                window.open = function(url, target, features) {
+                    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.open_browser_window === 'function') {
+                        let fullUrl = url;
+                        if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+                            fullUrl = window.location.origin + (url.startsWith('/') ? '' : '/') + url;
+                        }
+                        window.pywebview.api.open_browser_window(fullUrl);
+                        return null;
+                    }
+                    return origOpen ? origOpen.apply(this, arguments) : null;
+                };
+            })();
+            """
+            try:
+                window.evaluate_js(js_bridge)
+            except Exception:
+                pass
+
+        window.events.loaded += on_window_loaded
+
+        logging.info("Starting native window event loop (NSApplication / Cocoa)...")
+        if icon_path:
+            webview.start(icon=icon_path, debug=False)
+        else:
+            webview.start(debug=False)
+
+        logging.info("Native window closed by user.")
+        return True
+    except ImportError as e:
+        logging.warning(f"pywebview is not installed ({e}); falling back to browser app mode.")
+        return False
+    except Exception as e:
+        logging.error(f"Error launching native pywebview window: {e}\n{traceback.format_exc()}")
+        return False
+
 def launch_desktop_window():
     """Launch the browser in standalone app mode."""
     profile_dir = BASE_DIR / "data" / ".app_profile"
@@ -352,7 +439,18 @@ def main():
     # 2. Open desktop window
     logging.info(f"Opening Arcane Ledger DM Command Center ({URL})...")
     try:
-        launch_desktop_window()
+        # Priority 1: Launch true native OS application window (Cocoa on macOS, WebView2 on Windows)
+        # This renders "Arcane Ledger" in the macOS Menu Bar and uses the Arcane Ledger Dock icon.
+        launched_native = False
+        try:
+            launched_native = launch_native_window()
+        except Exception as e:
+            logging.error(f"Native window launch encountered exception: {e}\n{traceback.format_exc()}")
+
+        # Priority 2: Fallback to Chromium standalone app mode if pywebview is unavailable
+        if not launched_native:
+            logging.info("Falling back to browser app mode...")
+            launch_desktop_window()
     except Exception as e:
         logging.error(f"Exception during desktop window loop: {e}\n{traceback.format_exc()}")
     finally:
