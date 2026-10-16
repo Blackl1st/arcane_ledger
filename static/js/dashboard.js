@@ -5074,7 +5074,7 @@ function switchWorldSubtab(subtab) {
     else if (subtab === 'factions') { renderFactions(); renderFactionRelations(); }
     else if (subtab === 'quests') renderQuests();
     else if (subtab === 'pantheon') renderPantheon();
-    else if (subtab === 'timeline') renderTimeline();
+    else if (subtab === 'timeline') { fetchTimeline(); renderTimeline(); }
     else if (subtab === 'travel') renderTravel();
     else if (subtab === 'secrets') renderSecrets();
     else if (subtab === 'handouts') renderHandouts();
@@ -11095,6 +11095,7 @@ async function switchCampaign(campaignId) {
             appState.factionRelations = { relations: [], turnHistory: [] };
             appState.pantheon = [];
             appState.timeline = { eras: [], events: [] };
+            appState.timelineFilterEra = 'all';
             appState.partyStash = { currency: { pp: 0, gp: 0, sp: 0, cp: 0 }, coins: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
             appState.travel = { pace: 'Normal', terrain: 'Forest', road: 'trail', targetMiles: 48, marchHours: 8, navBonus: 0, forageBonus: 0, history: [] };
 
@@ -11641,11 +11642,183 @@ function renderOverworld() {
     renderOverworldPins();
     renderOverworldPinList();
     renderOverworldPinPopover();
+    initOverworldPanZoom();
+    updateOverworldTransform();
+}
+
+// -------------------------------------------------------------
+// OVERWORLD ZOOM & PAN CONTROLLER
+// -------------------------------------------------------------
+let owZoom = 1.0;
+let owPanX = 0;
+let owPanY = 0;
+let owIsDragging = false;
+let owDragStartX = 0;
+let owDragStartY = 0;
+let owDragStartPanX = 0;
+let owDragStartPanY = 0;
+window._owHasDragged = false;
+let owPanZoomInitialized = false;
+
+function updateOverworldTransform() {
+    const canvas = document.getElementById('overworld-map-canvas');
+    const badge = document.getElementById('ow-zoom-level-badge');
+    if (canvas) {
+        canvas.style.transform = `translate(${owPanX}px, ${owPanY}px) scale(${owZoom})`;
+        canvas.style.transformOrigin = '0 0';
+    }
+    if (badge) {
+        badge.textContent = `${Math.round(owZoom * 100)}%`;
+    }
+}
+
+function setOverworldZoom(newZoom, centerX = null, centerY = null) {
+    const minZoom = 0.5;
+    const maxZoom = 4.0;
+    const clampedZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+    if (Math.abs(clampedZoom - owZoom) < 0.001) return;
+
+    const vp = document.getElementById('overworld-map-viewport');
+    if (vp) {
+        const vpRect = vp.getBoundingClientRect();
+        const mx = (centerX !== null) ? (centerX - vpRect.left) : (vpRect.width / 2);
+        const my = (centerY !== null) ? (centerY - vpRect.top) : (vpRect.height / 2);
+        const cx = (mx - owPanX) / owZoom;
+        const cy = (my - owPanY) / owZoom;
+        owPanX = mx - cx * clampedZoom;
+        owPanY = my - cy * clampedZoom;
+    }
+
+    owZoom = clampedZoom;
+    updateOverworldTransform();
+}
+
+function overworldZoomIn() {
+    setOverworldZoom(owZoom * 1.25);
+}
+
+function overworldZoomOut() {
+    setOverworldZoom(owZoom / 1.25);
+}
+
+function overworldResetZoom() {
+    owZoom = 1.0;
+    owPanX = 0;
+    owPanY = 0;
+    updateOverworldTransform();
+}
+
+function initOverworldPanZoom() {
+    if (owPanZoomInitialized) return;
+    const vp = document.getElementById('overworld-map-viewport');
+    if (!vp) return;
+    owPanZoomInitialized = true;
+
+    // Wheel zoom
+    vp.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.15 : 0.87;
+        setOverworldZoom(owZoom * factor, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // Drag to pan
+    vp.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button') || e.target.closest('#ow-ruler-banner') || e.target.closest('#ow-fog-banner') || e.target.closest('.ow-pin-marker') || e.target.closest('#ow-party-marker')) {
+            return;
+        }
+        const isPanAction = (e.button === 1 || e.button === 2 || e.spaceKey || appState.overworldMode === 'pan' || appState.overworldMode === 'inspect');
+        if (isPanAction) {
+            owIsDragging = true;
+            window._owHasDragged = false;
+            owDragStartX = e.clientX;
+            owDragStartY = e.clientY;
+            owDragStartPanX = owPanX;
+            owDragStartPanY = owPanY;
+            vp.style.cursor = 'grabbing';
+            if (e.button === 2) e.preventDefault();
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!owIsDragging) return;
+        const dx = e.clientX - owDragStartX;
+        const dy = e.clientY - owDragStartY;
+        if (Math.hypot(dx, dy) > 4) {
+            window._owHasDragged = true;
+        }
+        owPanX = owDragStartPanX + dx;
+        owPanY = owDragStartPanY + dy;
+        updateOverworldTransform();
+    });
+
+    window.addEventListener('mouseup', (e) => {
+        if (owIsDragging) {
+            owIsDragging = false;
+            const curMode = appState.overworldMode || 'inspect';
+            if (curMode === 'pan') vp.style.cursor = 'grab';
+            else if (curMode === 'add_pin') vp.style.cursor = 'cell';
+            else if (curMode === 'move_party') vp.style.cursor = 'crosshair';
+            else if (curMode === 'measure') vp.style.cursor = 'pointer';
+            else vp.style.cursor = 'default';
+        }
+    });
+
+    vp.addEventListener('contextmenu', (e) => {
+        if (window._owHasDragged) {
+            e.preventDefault();
+        }
+    });
+
+    // Touch events for tablets / mobile
+    let touchStartDist = 0;
+    let touchStartZoom = 1.0;
+    vp.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            owIsDragging = true;
+            window._owHasDragged = false;
+            owDragStartX = e.touches[0].clientX;
+            owDragStartY = e.touches[0].clientY;
+            owDragStartPanX = owPanX;
+            owDragStartPanY = owPanY;
+        } else if (e.touches.length === 2) {
+            owIsDragging = false;
+            touchStartDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            touchStartZoom = owZoom;
+        }
+    }, { passive: true });
+
+    vp.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && owIsDragging) {
+            const dx = e.touches[0].clientX - owDragStartX;
+            const dy = e.touches[0].clientY - owDragStartY;
+            if (Math.hypot(dx, dy) > 4) window._owHasDragged = true;
+            owPanX = owDragStartPanX + dx;
+            owPanY = owDragStartPanY + dy;
+            updateOverworldTransform();
+        } else if (e.touches.length === 2 && touchStartDist > 0) {
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const scaleFactor = currentDist / touchStartDist;
+            setOverworldZoom(touchStartZoom * scaleFactor, midX, midY);
+        }
+    }, { passive: true });
+
+    vp.addEventListener('touchend', () => {
+        owIsDragging = false;
+        touchStartDist = 0;
+    }, { passive: true });
 }
 
 function setOverworldMode(mode) {
     appState.overworldMode = mode;
-    ['inspect', 'add_pin', 'move_party', 'measure', 'fog'].forEach(m => {
+    ['inspect', 'pan', 'add_pin', 'move_party', 'measure', 'fog'].forEach(m => {
         const btn = document.getElementById(`ow-mode-${m.replace('_', '-')}`);
         if (btn) {
             if (m === mode) {
@@ -11676,7 +11849,8 @@ function setOverworldMode(mode) {
 
     const vp = document.getElementById('overworld-map-viewport');
     if (vp) {
-        if (mode === 'add_pin') vp.style.cursor = 'cell';
+        if (mode === 'pan') vp.style.cursor = 'grab';
+        else if (mode === 'add_pin') vp.style.cursor = 'cell';
         else if (mode === 'move_party') vp.style.cursor = 'crosshair';
         else if (mode === 'measure') vp.style.cursor = 'pointer';
         else if (mode === 'fog') vp.style.cursor = 'radial-gradient';
@@ -11685,14 +11859,22 @@ function setOverworldMode(mode) {
 }
 
 function handleOverworldCanvasClick(e) {
-    if (e.target.closest('.ow-pin-marker') || e.target.closest('#ow-party-marker') || e.target.closest('#ow-ruler-banner') || e.target.closest('#ow-fog-banner')) return;
+    if (window._owHasDragged) {
+        window._owHasDragged = false;
+        return;
+    }
+    if (appState.overworldMode === 'pan') return;
+    if (e.target.closest('.ow-pin-marker') || e.target.closest('#ow-party-marker') || e.target.closest('#ow-ruler-banner') || e.target.closest('#ow-fog-banner') || e.target.closest('button')) return;
+    
+    const canvas = document.getElementById('overworld-map-canvas');
     const vp = document.getElementById('overworld-map-viewport');
-    if (!vp) return;
-    const rect = vp.getBoundingClientRect();
+    const targetEl = canvas || vp;
+    if (!targetEl) return;
+    const rect = targetEl.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    const pctX = Math.max(2, Math.min(98, (clickX / rect.width) * 100));
-    const pctY = Math.max(2, Math.min(98, (clickY / rect.height) * 100));
+    const pctX = Math.max(1, Math.min(99, (clickX / rect.width) * 100));
+    const pctY = Math.max(1, Math.min(99, (clickY / rect.height) * 100));
 
     if (appState.overworldMode === 'add_pin') {
         openAddOverworldPinModal(null, pctX, pctY);
@@ -11723,6 +11905,7 @@ async function switchOverworldMapTier(mapId) {
             if (data.overworld) appState.overworld = data.overworld;
             appState.selectedOverworldPinId = null;
             clearOverworldMeasurement();
+            overworldResetZoom();
             renderOverworld();
             const activeM = appState.overworld.maps?.find(m => m.id === mapId);
             showToast(`Switched map tier to ${activeM?.title || 'Map'}`, "info");
@@ -11757,6 +11940,8 @@ function openAddOverworldMapModal() {
     document.getElementById('ow-submap-scale-miles').value = '6';
     document.getElementById('ow-submap-scale-desc').value = '1 Hex = 6 Miles';
     document.getElementById('ow-submap-url').value = '/static/images/overworld_default.svg';
+    const previewWrap = document.getElementById('ow-submap-preview-wrap');
+    if (previewWrap) previewWrap.classList.add('hidden');
     
     const delBtn = document.getElementById('ow-submap-delete-btn');
     if (delBtn) delBtn.classList.add('hidden');
@@ -11786,6 +11971,17 @@ function openEditOverworldMapModal(mapId = null) {
     document.getElementById('ow-submap-scale-miles').value = targetMap.scaleMilesPerHex || 6;
     document.getElementById('ow-submap-scale-desc').value = targetMap.scale || `1 Hex = ${targetMap.scaleMilesPerHex || 6} Miles`;
     document.getElementById('ow-submap-url').value = targetMap.mapUrl || '/static/images/overworld_default.svg';
+
+    const previewWrap = document.getElementById('ow-submap-preview-wrap');
+    const previewImg = document.getElementById('ow-submap-preview-img');
+    const previewName = document.getElementById('ow-submap-preview-name');
+    if (previewWrap && previewImg && targetMap.mapUrl) {
+        previewImg.src = targetMap.mapUrl;
+        if (previewName) previewName.textContent = targetMap.title || 'Current Map';
+        previewWrap.classList.remove('hidden');
+    } else if (previewWrap) {
+        previewWrap.classList.add('hidden');
+    }
 
     const delBtn = document.getElementById('ow-submap-delete-btn');
     if (delBtn) {
@@ -11958,21 +12154,66 @@ async function deleteOverworldTier(tierName) {
 
 async function uploadOverworldSubmapFile(input) {
     if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
     const formData = new FormData();
-    formData.append('file', input.files[0]);
+    formData.append('file', file);
     try {
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         if (res.ok) {
             const data = await res.json();
             if (data.url) {
-                document.getElementById('ow-submap-url').value = data.url;
+                const urlInput = document.getElementById('ow-submap-url');
+                if (urlInput) urlInput.value = data.url;
+                const previewWrap = document.getElementById('ow-submap-preview-wrap');
+                const previewImg = document.getElementById('ow-submap-preview-img');
+                const previewName = document.getElementById('ow-submap-preview-name');
+                if (previewWrap && previewImg) {
+                    previewImg.src = data.url;
+                    if (previewName) previewName.textContent = file.name;
+                    previewWrap.classList.remove('hidden');
+                }
                 showToast("Uploaded map art.", "success");
             }
+        } else {
+            showToast("Failed to upload image file.", "error");
         }
     } catch (e) {
         showToast("Error uploading file.", "error");
     }
 }
+
+async function uploadActiveOverworldMapFile(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+                const finalUrl = data.url;
+                const activeMap = (appState.overworld?.maps && appState.overworld.maps.find(m => m.id === appState.overworld.activeMapId)) || appState.overworld || {};
+                activeMap.mapUrl = finalUrl;
+                const mapImg = document.getElementById('overworld-map-img');
+                if (mapImg) mapImg.src = finalUrl;
+                await fetch('/api/overworld', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mapUrl: finalUrl })
+                });
+                showToast(`Updated regional map art with ${file.name}`, "success");
+            }
+        } else {
+            showToast("Failed to upload image file.", "error");
+        }
+    } catch (e) {
+        showToast("Error uploading file.", "error");
+    } finally {
+        input.value = '';
+    }
+}
+
 
 // -------------------------------------------------------------
 // SVG HEX GRID LAYER
@@ -13543,6 +13784,19 @@ function getTimelineEvents() {
     if (Array.isArray(appState.timeline)) return appState.timeline;
     if (appState.timeline && Array.isArray(appState.timeline.events)) return appState.timeline.events;
     return [];
+}
+
+async function fetchTimeline() {
+    try {
+        const res = await fetch('/api/timeline');
+        if (res.ok) {
+            const data = await res.json();
+            appState.timeline = data;
+            renderTimeline();
+        }
+    } catch (e) {
+        console.error("Error fetching timeline:", e);
+    }
 }
 
 function getEraBadgeClass(color) {
@@ -15590,6 +15844,86 @@ async function initUpdater() {
     }
 }
 
+function formatNoteInlineLinks(text) {
+    if (!text) return '';
+    let escaped = escapeHTML(text);
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-100 font-semibold">$1</strong>');
+    escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:text-sky-300 underline font-medium">$1</a>');
+    escaped = escaped.replace(/(^|[\s(])(https?:\/\/[^\s)<>]+)/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:text-sky-300 underline font-medium">link</a>');
+    return escaped;
+}
+
+function formatReleaseNotes(raw) {
+    if (!raw || typeof raw !== 'string' || !raw.trim()) {
+        return '<p class="text-slate-400 italic">No detailed release notes provided for this build.</p>';
+    }
+
+    const isOnlyCompare = /^(\*?\*?Full Changelog\*?\*?:\s*)?https?:\/\/github\.com\S+$/i.test(raw.trim());
+    if (isOnlyCompare) {
+        const urlMatch = raw.match(/https?:\/\/github\.com\S+/);
+        const url = urlMatch ? urlMatch[0] : '#';
+        return `
+            <div class="space-y-2 text-slate-300">
+                <p class="font-medium text-amber-300">What's New in this Release:</p>
+                <ul class="list-disc pl-4 space-y-1 text-slate-300 text-xs">
+                    <li>Core performance enhancements and campaign stability upgrades.</li>
+                    <li>Bug fixes and workflow polish across world tools, timeline, and regional maps.</li>
+                </ul>
+                <div class="pt-1 text-[11px]">
+                    <a href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:text-sky-300 underline font-semibold inline-flex items-center gap-1">
+                        <span>🔗</span> View commit changes on GitHub
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    const lines = raw.split('\n');
+    let html = '<div class="space-y-1 text-slate-300">';
+    for (let line of lines) {
+        let trimmed = line.trim();
+        if (!trimmed) {
+            html += '<div class="h-1"></div>';
+            continue;
+        }
+        if (trimmed.startsWith('### ')) {
+            html += `<h5 class="font-bold text-amber-300 text-xs mt-2 mb-1">${escapeHTML(trimmed.replace(/^###\s+/, ''))}</h5>`;
+        } else if (trimmed.startsWith('## ')) {
+            html += `<h4 class="font-bold text-amber-400 text-sm mt-3 mb-1">${escapeHTML(trimmed.replace(/^##\s+/, ''))}</h4>`;
+        } else if (trimmed.startsWith('# ')) {
+            html += `<h3 class="font-bold text-amber-400 text-base mt-3 mb-1">${escapeHTML(trimmed.replace(/^#\s+/, ''))}</h3>`;
+        } else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+            const bulletText = trimmed.replace(/^(\*|-)\s+/, '');
+            const formatted = formatNoteInlineLinks(bulletText);
+            html += `<div class="flex items-start gap-1.5 pl-2"><span class="text-amber-400 mt-0.5">•</span><span class="flex-1">${formatted}</span></div>`;
+        } else if (/^(\*?\*?Full Changelog\*?\*?:)/i.test(trimmed)) {
+            const urlMatch = trimmed.match(/https?:\/\/github\.com\S+/);
+            if (urlMatch) {
+                html += `<div class="pt-2 text-[11px]"><a href="${escapeHTML(urlMatch[0])}" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:text-sky-300 underline font-semibold">🔗 View Full Commit Comparison on GitHub</a></div>`;
+            }
+        } else {
+            html += `<p class="leading-relaxed">${formatNoteInlineLinks(trimmed)}</p>`;
+        }
+    }
+    html += '</div>';
+    return html;
+}
+
+function cleanBannerSummary(raw) {
+    if (!raw || typeof raw !== 'string') return 'New features, performance enhancements, and bug fixes ready to install.';
+    const isOnlyCompare = /^(\*?\*?Full Changelog\*?\*?:\s*)?https?:\/\/github\.com\S+$/i.test(raw.trim());
+    if (isOnlyCompare) {
+        return 'Includes regional map zoom & pan, local map file browsing, campaign-isolated timeline, and stability improvements.';
+    }
+    const cleanLines = raw.split('\n')
+        .map(l => l.replace(/^[#*\-\s]+/, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').trim())
+        .filter(l => l.length > 5 && !l.toLowerCase().includes('full changelog') && !l.startsWith('http'));
+    if (cleanLines.length > 0) {
+        return cleanLines.slice(0, 3).join(' • ');
+    }
+    return raw.slice(0, 250);
+}
+
 async function checkForUpdates(manual = false) {
     const spinner = document.getElementById('updater-check-spinner');
     const checkBtn = document.getElementById('updater-check-btn');
@@ -15642,7 +15976,7 @@ async function checkForUpdates(manual = false) {
                     notesDate.textContent = new Date(data.release.published_at).toLocaleDateString();
                 }
                 if (notesContent) {
-                    notesContent.textContent = data.release.body || 'No release notes provided.';
+                    notesContent.innerHTML = formatReleaseNotes(data.release.body);
                 }
             }
 
@@ -15652,7 +15986,7 @@ async function checkForUpdates(manual = false) {
                 const bannerVersion = document.getElementById('banner-update-version');
                 const bannerNotes = document.getElementById('banner-release-notes');
                 if (bannerVersion) bannerVersion.textContent = data.latest_version;
-                if (bannerNotes) bannerNotes.textContent = data.release.body ? data.release.body.slice(0, 300) : 'New performance enhancements and features ready to install.';
+                if (bannerNotes) bannerNotes.textContent = cleanBannerSummary(data.release.body);
                 banner.classList.remove('hidden');
                 banner.classList.add('flex');
             }
@@ -15878,6 +16212,13 @@ window.saveUpdaterToken = saveUpdaterToken;
 window.updateChannelBadge = updateChannelBadge;
 window.dismissUpdateBanner = dismissUpdateBanner;
 window.scrollToUpdateSection = scrollToUpdateSection;
+window.overworldZoomIn = overworldZoomIn;
+window.overworldZoomOut = overworldZoomOut;
+window.overworldResetZoom = overworldResetZoom;
+window.uploadActiveOverworldMapFile = uploadActiveOverworldMapFile;
+window.uploadOverworldSubmapFile = uploadOverworldSubmapFile;
+window.fetchTimeline = fetchTimeline;
+
 
 
 

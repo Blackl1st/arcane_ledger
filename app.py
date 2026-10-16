@@ -54,8 +54,9 @@ CAMPAIGNS_DIR = DATA_DIR / "campaigns"
 CAMPAIGNS_MANIFEST_FILE = DATA_DIR / "campaigns.json"
 BATTLEMAPS_CATALOG_FILE = DATA_DIR / "battlemaps_catalog.json"
 SECURITY_FILE = DATA_DIR / "security.json"
+UPLOADS_DIR = DATA_DIR / "uploads"
 
-for d in [DATA_DIR, BACKUPS_DIR, CAMPAIGNS_DIR]:
+for d in [DATA_DIR, BACKUPS_DIR, CAMPAIGNS_DIR, UPLOADS_DIR]:
     try:
         d.mkdir(parents=True, exist_ok=True)
     except Exception as _e:
@@ -275,8 +276,8 @@ app.add_middleware(
 async def dm_security_middleware(request: Request, call_next):
     path = request.url.path
     
-    # Static files and favicon are always open
-    if path.startswith("/static") or path == "/favicon.ico":
+    # Static files, uploads, and favicon are always open
+    if path.startswith("/static") or path.startswith("/uploads") or path == "/favicon.ico":
         return await call_next(request)
         
     # Public endpoints needed by players, tabletop TV displays, and authentication
@@ -325,6 +326,7 @@ async def dm_security_middleware(request: Request, call_next):
     return await call_next(request)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 app.include_router(updater.router)
 
 # Campaign Scoped vs Global Compendium routing
@@ -493,6 +495,26 @@ def ensure_campaigns_system():
                 shutil.copy2(bundled_default / filename, dst)
             except Exception:
                 pass
+
+    # Ensure all campaign profiles have an isolated timeline.json
+    try:
+        for c_dir in CAMPAIGNS_DIR.iterdir():
+            if c_dir.is_dir():
+                tl_file = c_dir / "timeline.json"
+                if not tl_file.exists():
+                    initial_tl = {
+                        "eras": [
+                            {"id": "mythic", "name": "The Ancient Mythic Age", "icon": "⚡", "badgeColor": "purple", "description": "The dawn of gods, primal dragons, and the shaping of the world."},
+                            {"id": "cataclysm", "name": "The Ruin & Cataclysm", "icon": "🔥", "badgeColor": "rose", "description": "Planar cataclysm, shattered continents, and sunken kingdoms."},
+                            {"id": "iron", "name": "The Century of Iron", "icon": "⚔️", "badgeColor": "amber", "description": "Rise of mortal empires, grand citadels, and mercantile guilds."},
+                            {"id": "current", "name": "Current Campaign Arc", "icon": "🗡️", "badgeColor": "sky", "description": "Active campaign timeline and live party milestones."}
+                        ],
+                        "events": []
+                    }
+                    with open(tl_file, "w", encoding="utf-8") as f:
+                        json.dump(initial_tl, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error ensuring timeline isolation: {e}")
 
     # Ensure manifest exists
     if not CAMPAIGNS_MANIFEST_FILE.exists():
@@ -2038,13 +2060,20 @@ def get_default_timeline_events() -> List[Dict[str, Any]]:
         }
     ]
 
-def get_default_timeline() -> Dict[str, Any]:
+def get_default_timeline(blank: bool = False) -> Dict[str, Any]:
     return {
         "eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS],
-        "events": get_default_timeline_events()
+        "events": [] if blank else get_default_timeline_events()
     }
 
-def normalize_timeline(data: Any) -> Dict[str, Any]:
+def get_campaign_timeline_default() -> Dict[str, Any]:
+    try:
+        active_id = get_active_campaign_id()
+    except Exception:
+        active_id = "default"
+    return get_default_timeline(blank=(active_id != "default"))
+
+def normalize_timeline(data: Any, blank_default: bool = True) -> Dict[str, Any]:
     if isinstance(data, list):
         return {
             "eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS],
@@ -2056,7 +2085,7 @@ def normalize_timeline(data: Any) -> Dict[str, Any]:
         if "events" not in data or not isinstance(data.get("events"), list):
             data["events"] = []
         return data
-    return get_default_timeline()
+    return get_campaign_timeline_default() if blank_default else get_default_timeline(blank=False)
 
 def get_default_travel_state() -> Dict[str, Any]:
     return {
@@ -2231,7 +2260,7 @@ async def get_full_state():
     overworld = read_json("overworld.json", get_default_overworld_state(locations))
     faction_relations = read_json("faction_relations.json", get_default_faction_relations())
     pantheon = read_json("pantheon.json", get_default_pantheon())
-    timeline = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    timeline = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     party_stash = read_json("party_stash.json", get_default_party_stash())
     travel = read_json("travel.json", get_default_travel_state())
 
@@ -3345,9 +3374,10 @@ async def delete_faction_clock(faction_id: str, clock_id: str):
 def auto_sync_quest_to_timeline(q_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if q_dict.get("status") != "Completed":
         return None
-    timeline = read_json("timeline.json", get_default_timeline())
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
+    events = tl_data.setdefault("events", [])
     q_id = q_dict.get("id", "")
-    if q_id and any(ev.get("sourceId") == q_id for ev in timeline):
+    if q_id and any(ev.get("sourceId") == q_id for ev in events if isinstance(ev, dict)):
         return None
     tw = read_json("time_weather.json", {"day": 1, "hour": 9, "minute": 0})
     day_num = int(tw.get("day", 1))
@@ -3364,8 +3394,10 @@ def auto_sync_quest_to_timeline(q_dict: Dict[str, Any]) -> Optional[Dict[str, An
         "isSessionLog": True,
         "sourceId": q_id
     }
-    timeline.append(new_ev)
-    write_json("timeline.json", timeline)
+    events.append(new_ev)
+    events.sort(key=lambda x: x.get("sortOrder", 0) if isinstance(x, dict) else 0)
+    tl_data["events"] = events
+    write_json("timeline.json", tl_data)
     return new_ev
 
 # -------------------------------------------------------------
@@ -4546,8 +4578,8 @@ async def run_faction_turn_simulator(payload: Optional[Dict[str, Any]] = None):
 
         # If a clock completed, also record in campaign timeline!
         if completed_clock_outcome:
-            timeline = read_json("timeline.json", get_default_timeline())
-            timeline.append({
+            tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
+            tl_data.setdefault("events", []).append({
                 "id": f"tl-fac-{uuid.uuid4().hex[:6]}",
                 "era": "current",
                 "dateLabel": f"Day {day_num} (348 P.R.)",
@@ -4560,7 +4592,8 @@ async def run_faction_turn_simulator(payload: Optional[Dict[str, Any]] = None):
                 "isSessionLog": True,
                 "sourceId": fac.get("id", "")
             })
-            write_json("timeline.json", timeline)
+            tl_data["events"].sort(key=lambda x: x.get("sortOrder", 0) if isinstance(x, dict) else 0)
+            write_json("timeline.json", tl_data)
 
     quests_data["rumors"] = rumors
     write_json("quests.json", quests_data)
@@ -4577,7 +4610,7 @@ async def run_faction_turn_simulator(payload: Optional[Dict[str, Any]] = None):
         "factions": factions,
         "rumors": rumors,
         "factionRelations": rel_state,
-        "timeline": read_json("timeline.json", get_default_timeline())
+        "timeline": normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     }
 
 # -------------------------------------------------------------
@@ -4676,11 +4709,11 @@ async def update_pc_piety(pc_id: str, payload: Dict[str, Any]):
 # -------------------------------------------------------------
 @app.get("/api/timeline")
 async def get_timeline():
-    return normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    return normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
 
 @app.post("/api/timeline")
 async def save_timeline_event(payload: Dict[str, Any]):
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     events = tl_data.get("events", [])
     ev_id = payload.get("id") or f"tl-{uuid.uuid4().hex[:8]}"
     ev_data = {
@@ -4708,14 +4741,14 @@ async def save_timeline_event(payload: Dict[str, Any]):
 
 @app.delete("/api/timeline/{event_id}")
 async def delete_timeline_event(event_id: str):
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     tl_data["events"] = [e for e in tl_data.get("events", []) if e.get("id") != event_id]
     write_json("timeline.json", tl_data)
     return {"status": "success", "timeline": tl_data}
 
 @app.post("/api/timeline/eras")
 async def save_timeline_era(payload: Dict[str, Any]):
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     eras = tl_data.get("eras", [])
     era_id = payload.get("id")
     if not era_id:
@@ -4740,7 +4773,7 @@ async def save_timeline_era(payload: Dict[str, Any]):
 
 @app.delete("/api/timeline/eras/{era_id}")
 async def delete_timeline_era(era_id: str):
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     eras = [er for er in tl_data.get("eras", []) if er.get("id") != era_id]
     if not eras:
         raise HTTPException(status_code=400, detail="Cannot delete all eras. At least one era must remain.")
@@ -4754,7 +4787,7 @@ async def delete_timeline_era(era_id: str):
 
 @app.post("/api/timeline/sync")
 async def sync_session_log_to_timeline():
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     events = tl_data.get("events", [])
     existing_sources = {e.get("sourceId") for e in events if e.get("sourceId")}
     quests_data = read_json("quests.json", {"quests": [], "rumors": []})
@@ -4930,7 +4963,7 @@ async def save_session_recap_to_timeline(payload: Dict[str, Any]):
     md_content = payload.get("markdown") or recap_data.get("markdown")
     day_num = recap_data.get("day", 1)
     
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     events = tl_data.get("events", [])
     ev_id = f"tl-recap-{uuid.uuid4().hex[:6]}"
     ev_data = {
@@ -4963,7 +4996,7 @@ async def log_combat_victory_to_timeline(payload: Dict[str, Any]):
     tw = read_json("time_weather.json", {"day": 1})
     day_num = int(tw.get("day", 1))
 
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     events = tl_data.get("events", [])
     ev_id = f"tl-combat-{uuid.uuid4().hex[:6]}"
     ev_data = {
@@ -4987,7 +5020,7 @@ async def log_combat_victory_to_timeline(payload: Dict[str, Any]):
 
 @app.get("/api/timeline/export-markdown")
 async def export_timeline_markdown(format: str = "download"):
-    tl_data = normalize_timeline(read_json("timeline.json", get_default_timeline()))
+    tl_data = normalize_timeline(read_json("timeline.json", get_campaign_timeline_default()))
     eras = tl_data.get("eras", [])
     events = tl_data.get("events", [])
     manifest = get_campaigns_manifest()
@@ -5856,16 +5889,46 @@ async def upload_audio_file(file: UploadFile = File(...)):
     write_json("audio_library.json", library)
     return {"status": "success", "url": url, "track": track, "library": library}
 
+@app.post("/api/upload")
+@app.post("/api/overworld/upload-map")
+async def upload_generic_file(file: UploadFile = File(...)):
+    filename = file.filename or "uploaded_map.png"
+    clean_name = "".join(c for c in filename if c.isalnum() or c in (".", "-", "_")).strip()
+    if not clean_name:
+        clean_name = f"upload_{uuid.uuid4().hex[:6]}.png"
+    
+    unique_name = f"{uuid.uuid4().hex[:6]}_{clean_name}"
+    dest = UPLOADS_DIR / unique_name
+    try:
+        with open(dest, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        url = f"/uploads/{unique_name}"
+    except Exception as e:
+        print(f"Error saving to UPLOADS_DIR: {e}")
+        dest = IMAGES_DIR / unique_name
+        with open(dest, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        url = f"/static/images/{unique_name}"
+        
+    return {"status": "success", "url": url, "filename": unique_name}
+
 @app.post("/api/images/upload")
 async def upload_image_file(file: UploadFile = File(...)):
-    filename = file.filename
+    filename = file.filename or "image.png"
     clean_name = "".join(c for c in filename if c.isalnum() or c in (".", "-", "_")).strip()
     if not clean_name:
         clean_name = f"art_{uuid.uuid4().hex[:6]}.png"
     dest = IMAGES_DIR / clean_name
-    with open(dest, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return {"status": "success", "url": f"/static/images/{clean_name}"}
+    try:
+        with open(dest, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        url = f"/static/images/{clean_name}"
+    except Exception:
+        dest = UPLOADS_DIR / clean_name
+        with open(dest, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        url = f"/uploads/{clean_name}"
+    return {"status": "success", "url": url}
 
 # -----------------------------------------------------------------------------
 # SPELLS (2024 COMPENDIUM)
