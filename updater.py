@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.0.8"
+CURRENT_VERSION = "1.0.9"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -444,10 +444,14 @@ def execute_patch_and_restart() -> Dict[str, Any]:
             raise FileNotFoundError("Could not find .app bundle in update archive.")
 
         if is_frozen:
-            # sys.executable is inside Contents/MacOS/ArcaneLedger
             target_app = Path(sys.executable).resolve().parent.parent.parent
-            if not target_app.name.endswith(".app"):
-                target_app = Path("/Applications/ArcaneLedger.app")
+            if not target_app.name.endswith(".app") or "AppTranslocation" in str(target_app) or "/private/var" in str(target_app):
+                if Path("/Applications/ArcaneLedger.app").exists():
+                    target_app = Path("/Applications/ArcaneLedger.app")
+                elif (Path.home() / "Applications" / "ArcaneLedger.app").exists():
+                    target_app = Path.home() / "Applications" / "ArcaneLedger.app"
+                else:
+                    target_app = Path("/Applications/ArcaneLedger.app")
         else:
             target_app = Path("/Applications/ArcaneLedger.app")
 
@@ -456,25 +460,82 @@ def execute_patch_and_restart() -> Dict[str, Any]:
 OLD_PID="{current_pid}"
 STAGED_APP="{staged_app.resolve()}"
 TARGET_APP="{target_app.resolve()}"
+LOG_FILE="{UPDATES_DIR.resolve()}/patch.log"
 
-# Wait for Arcane Ledger old process to terminate
-while kill -0 "$OLD_PID" 2>/dev/null; do
+exec > "$LOG_FILE" 2>&1
+echo "=== Starting Arcane Ledger In-Place Update ==="
+echo "OLD_PID: $OLD_PID"
+echo "STAGED_APP: $STAGED_APP"
+echo "TARGET_APP: $TARGET_APP"
+
+# 1. Wait for OLD_PID to exit
+echo "Waiting for process $OLD_PID to exit..."
+for i in {{1..20}}; do
+    if ! kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "Process $OLD_PID exited."
+        break
+    fi
     sleep 0.3
 done
-sleep 0.5
 
-# Safely replace application bundle
-rm -rf "$TARGET_APP"
-cp -R "$STAGED_APP" "$TARGET_APP"
-xattr -cr "$TARGET_APP"
-chmod -R +x "$TARGET_APP/Contents/MacOS"
+# Terminate any remaining ArcaneLedger or WebKit processes to release file locks
+echo "Terminating any lingering processes on port 8000..."
+pkill -9 -f "ArcaneLedger.app" 2>/dev/null
+lsof -ti :8000 | xargs kill -9 2>/dev/null
+sleep 1.0
 
-# Cleanup staging directory and zip
-rm -rf "{staging_dir.resolve()}"
-rm -f "{zip_path.resolve()}"
+# 2. Crucial: Clean up any nested app that was accidentally copied inside TARGET_APP
+if [ -d "$TARGET_APP/ArcaneLedger.app" ]; then
+    echo "Found nested ArcaneLedger.app inside TARGET_APP; cleaning up to fix doubled size..."
+    rm -rf "$TARGET_APP/ArcaneLedger.app" 2>/dev/null
+fi
 
-# Relaunch Arcane Ledger
+# 3. Safe Atomic Swap on macOS
+TARGET_PARENT="$(dirname "$TARGET_APP")"
+BACKUP_APP="$TARGET_PARENT/.ArcaneLedger_backup_$$"
+STAGED_TEMP="$TARGET_PARENT/.ArcaneLedger_new_$$"
+
+echo "Performing application replacement..."
+rm -rf "$BACKUP_APP" "$STAGED_TEMP" 2>/dev/null
+
+if ditto "$STAGED_APP" "$STAGED_TEMP" 2>/dev/null; then
+    echo "Staged copy created at $STAGED_TEMP"
+    if mv "$TARGET_APP" "$BACKUP_APP" 2>/dev/null; then
+        echo "Moved current app to $BACKUP_APP"
+        if mv "$STAGED_TEMP" "$TARGET_APP" 2>/dev/null; then
+            echo "Successfully moved new app to $TARGET_APP"
+            rm -rf "$BACKUP_APP" 2>/dev/null &
+        else
+            echo "Failed to move new app to target; restoring backup..."
+            mv "$BACKUP_APP" "$TARGET_APP" 2>/dev/null
+        fi
+    else
+        echo "Could not rename $TARGET_APP; applying ditto in-place..."
+        rm -rf "$STAGED_TEMP" 2>/dev/null
+        ditto "$STAGED_APP" "$TARGET_APP"
+    fi
+else
+    echo "Could not create temp staging in $TARGET_PARENT; applying direct ditto..."
+    ditto "$STAGED_APP" "$TARGET_APP"
+fi
+
+# Ensure any nested app inside TARGET_APP is removed
+rm -rf "$TARGET_APP/ArcaneLedger.app" 2>/dev/null
+
+# 4. Remove quarantine and ensure execute permissions
+echo "Setting permissions and clearing quarantine..."
+xattr -cr "$TARGET_APP" 2>/dev/null
+chmod -R +x "$TARGET_APP/Contents/MacOS" 2>/dev/null
+
+# 5. Cleanup staging directory and zip
+echo "Cleaning up download and staging artifacts..."
+rm -rf "{staging_dir.resolve()}" 2>/dev/null
+rm -f "{zip_path.resolve()}" 2>/dev/null
+
+# 6. Relaunch Arcane Ledger
+echo "Relaunching Arcane Ledger at $TARGET_APP..."
 open -n "$TARGET_APP"
+echo "=== Update Complete ==="
 """
         with open(script_path, "w", newline="\n") as f:
             f.write(script_content)
