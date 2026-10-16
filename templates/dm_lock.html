@@ -141,14 +141,20 @@
             <!-- Player Escape Link Section -->
             <div class="pt-4 border-t border-ledger-800 space-y-2.5 text-center">
                 <span class="text-[11px] font-mono text-slate-500 uppercase tracking-wider block">Are you a player at the table?</span>
-                <a href="/player" class="w-full py-2.5 px-4 rounded-xl bg-sky-950/70 hover:bg-sky-900 border border-sky-600/70 text-sky-200 hover:text-white font-semibold text-xs flex items-center justify-center gap-2 transition shadow-md">
-                    <span>👥</span>
-                    <span>Open Live Player Display (/player)</span>
-                    <span class="text-sky-400 font-mono">→</span>
+                <a href="/companion" class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-display font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-lg">
+                    <span>📱</span>
+                    <span>Open Interactive Player Companion (/companion)</span>
+                    <span class="font-mono">→</span>
                 </a>
-                <a href="/map" class="inline-block text-[11px] text-slate-400 hover:text-amber-300 underline font-mono transition">
-                    View Tabletop Battlemap (/map)
-                </a>
+                <div class="flex items-center justify-center gap-3 pt-1">
+                    <a href="/player" class="text-[11px] text-sky-400 hover:text-sky-300 underline font-mono transition">
+                        Spectator Screen (/player)
+                    </a>
+                    <span class="text-slate-600">•</span>
+                    <a href="/map" class="text-[11px] text-slate-400 hover:text-amber-300 underline font-mono transition">
+                        Tabletop Battlemap (/map)
+                    </a>
+                </div>
             </div>
 
         </div>

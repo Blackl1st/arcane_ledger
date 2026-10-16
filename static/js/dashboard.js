@@ -14917,24 +14917,51 @@ async function loadSecuritySettingsUI() {
     }
 }
 
-async function openConnectPlayersModal() {
-    openModal('connect-players-modal');
+let currentConnectView = 'companion';
+
+async function setConnectModalView(view) {
+    currentConnectView = view;
+    const btnCompanion = document.getElementById('btn-connect-view-companion');
+    const btnPlayer = document.getElementById('btn-connect-view-player');
+    const label = document.getElementById('connect-url-label');
+    const hint = document.getElementById('connect-qr-hint');
     const urlInput = document.getElementById('connect-player-url');
     const qrContainer = document.getElementById('connect-qr-container');
-    const copyBtnText = document.getElementById('copy-btn-text');
-    if (copyBtnText) copyBtnText.textContent = "Copy";
+
+    if (view === 'companion') {
+        if (btnCompanion) {
+            btnCompanion.className = 'py-2 px-3 rounded-xl text-xs font-bold font-mono bg-emerald-600 text-white shadow transition flex items-center justify-center gap-1.5';
+        }
+        if (btnPlayer) {
+            btnPlayer.className = 'py-2 px-3 rounded-xl text-xs font-bold font-mono text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+        }
+        if (label) label.textContent = 'Player Mobile Companion URL (Local Wi-Fi)';
+        if (hint) hint.textContent = 'Point phone/tablet camera at QR code to open companion';
+    } else {
+        if (btnPlayer) {
+            btnPlayer.className = 'py-2 px-3 rounded-xl text-xs font-bold font-mono bg-emerald-600 text-white shadow transition flex items-center justify-center gap-1.5';
+        }
+        if (btnCompanion) {
+            btnCompanion.className = 'py-2 px-3 rounded-xl text-xs font-bold font-mono text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+        }
+        if (label) label.textContent = 'Spectator Screen URL (Local Wi-Fi)';
+        if (hint) hint.textContent = 'Point display or player device camera at QR code';
+    }
 
     if (!cachedSecurityStatus) {
         await loadSecuritySettingsUI();
     }
 
-    const playerUrl = cachedSecurityStatus?.playerUrl || `${window.location.origin}/player`;
-    if (urlInput) urlInput.value = playerUrl;
+    const targetUrl = (view === 'companion')
+        ? (cachedSecurityStatus?.companionUrl || `${window.location.origin}/companion`)
+        : (cachedSecurityStatus?.playerUrl || `${window.location.origin}/player`);
+
+    if (urlInput) urlInput.value = targetUrl;
 
     if (qrContainer) {
         qrContainer.innerHTML = '<span class="text-slate-400 font-mono text-xs animate-pulse">Loading QR Code...</span>';
         try {
-            const res = await fetch('/api/auth/qr-code');
+            const res = await fetch(`/api/auth/qr-code?view=${view}`);
             if (res.ok) {
                 const data = await res.json();
                 if (data.svg) {
@@ -14947,15 +14974,22 @@ async function openConnectPlayersModal() {
                         svgEl.style.height = 'auto';
                     }
                 } else {
-                    qrContainer.innerHTML = `<a href="${playerUrl}" target="_blank" class="text-center font-mono text-xs text-indigo-600 underline font-bold break-all p-2">${playerUrl}</a>`;
+                    qrContainer.innerHTML = `<a href="${targetUrl}" target="_blank" class="text-center font-mono text-xs text-indigo-600 underline font-bold break-all p-2">${targetUrl}</a>`;
                 }
             } else {
-                qrContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 break-all">${playerUrl}</span>`;
+                qrContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 break-all">${targetUrl}</span>`;
             }
         } catch (e) {
-            qrContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 break-all">${playerUrl}</span>`;
+            qrContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 break-all">${targetUrl}</span>`;
         }
     }
+}
+
+async function openConnectPlayersModal() {
+    openModal('connect-players-modal');
+    const copyBtnText = document.getElementById('copy-btn-text');
+    if (copyBtnText) copyBtnText.textContent = "Copy";
+    await setConnectModalView('companion');
 }
 
 function copyPlayerUrl() {
@@ -15066,6 +15100,31 @@ async function testDmLockScreen() {
     }
 }
 
+let lastSeenRollId = null;
+async function pollCompanionRolls() {
+    try {
+        const res = await fetch('/api/companion/rolls');
+        if (res.ok) {
+            const data = await res.json();
+            const rolls = data.rolls || [];
+            if (rolls.length > 0) {
+                const latest = rolls[rolls.length - 1];
+                if (lastSeenRollId && latest.id !== lastSeenRollId) {
+                    const critSuffix = latest.isCrit ? " ★ CRITICAL HIT!" : (latest.isFumble ? " 💀 FUMBLE!" : "");
+                    showToast(`🎲 ${latest.characterName || 'Hero'} (${latest.player || 'Player'}): ${latest.rollType || 'Roll'} → ${latest.total}${critSuffix}`, latest.isCrit ? "success" : (latest.isFumble ? "error" : "info"));
+                    await fetchFullState();
+                    renderPartyHUD();
+                    renderCombatTracker();
+                }
+                lastSeenRollId = latest.id;
+            }
+        }
+    } catch (e) {
+        // Silently ignore
+    }
+}
+
+window.setConnectModalView = setConnectModalView;
 window.openConnectPlayersModal = openConnectPlayersModal;
 window.copyPlayerUrl = copyPlayerUrl;
 window.toggleSecurityPinEnabled = toggleSecurityPinEnabled;
@@ -15079,6 +15138,7 @@ window.onload = async function() {
     loadArcaneSettings();
     updateSidebarKeybindTooltips();
     await fetchFullState();
+    setInterval(pollCompanionRolls, 2500);
     populateTopFilterDropdowns();
     renderPartyHUD();
     renderCombatTracker();

@@ -158,6 +158,7 @@ async def dm_security_middleware(request: Request, call_next):
     PUBLIC_PATHS = {
         "/player",
         "/map",
+        "/companion",
         "/api/player-state",
         "/api/battlemap",
         "/api/auth/login",
@@ -166,7 +167,7 @@ async def dm_security_middleware(request: Request, call_next):
         "/api/auth/qr-code"
     }
     
-    if path in PUBLIC_PATHS:
+    if path in PUBLIC_PATHS or path.startswith("/api/companion"):
         return await call_next(request)
         
     # If DM is authenticated (or localhost auto-bypass active), allow access
@@ -912,24 +913,26 @@ async def auth_status(request: Request):
         "isLocalhost": is_local,
         "lanIp": lan_ip,
         "playerUrl": f"http://{lan_ip}:8000/player",
+        "companionUrl": f"http://{lan_ip}:8000/companion",
         "mapUrl": f"http://{lan_ip}:8000/map"
     }
 
 @app.get("/api/auth/qr-code")
-async def get_player_qr_code():
+async def get_player_qr_code(view: str = "companion"):
     lan_ip = get_local_lan_ip()
-    player_url = f"http://{lan_ip}:8000/player"
+    target_path = "player" if view == "player" else "companion"
+    target_url = f"http://{lan_ip}:8000/{target_path}"
     try:
         import qrcode
         import qrcode.image.svg
         factory = qrcode.image.svg.SvgPathImage
-        img = qrcode.make(player_url, image_factory=factory)
+        img = qrcode.make(target_url, image_factory=factory)
         buf = io.BytesIO()
         img.save(buf)
         svg_content = buf.getvalue().decode("utf-8")
-        return {"status": "success", "url": player_url, "svg": svg_content}
+        return {"status": "success", "url": target_url, "view": target_path, "svg": svg_content}
     except Exception as e:
-        return {"status": "error", "url": player_url, "error": str(e), "svg": None}
+        return {"status": "error", "url": target_url, "view": target_path, "error": str(e), "svg": None}
 
 @app.post("/api/auth/update-settings")
 async def update_security_settings(payload: UpdateSecurityRequest, request: Request):
@@ -972,6 +975,184 @@ async def battlemap_view():
     if map_file.exists():
         return FileResponse(str(map_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return {"message": "Battlemap screen template not found"}
+
+# In-memory registry of recent table rolls (broadcast from DM and player companions)
+RECENT_TABLE_ROLLS: List[Dict[str, Any]] = []
+
+@app.get("/companion")
+async def companion_view():
+    comp_file = TEMPLATES_DIR / "companion.html"
+    if comp_file.exists():
+        return FileResponse(str(comp_file), headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    return {"message": "Player companion template not found"}
+
+@app.get("/api/companion/state")
+async def get_companion_state():
+    party = read_json("party.json", [])
+    combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
+    broadcast = read_json("broadcast.json", {"active": False, "title": "", "content": "", "type": "text"})
+    handouts = read_json("handouts.json", [])
+    manifest = get_campaigns_manifest()
+    active_id = manifest.get("activeCampaignId", "default")
+    active_camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == active_id), None)
+    camp_name = active_camp.get("name", "Active Campaign") if active_camp else "Active Campaign"
+
+    return {
+        "status": "success",
+        "campaignName": camp_name,
+        "party": party,
+        "combat": combat,
+        "broadcast": broadcast,
+        "handouts": [h for h in handouts if h.get("isUnlocked", True) or h.get("unlocked", True)],
+        "recentRolls": RECENT_TABLE_ROLLS[-15:]
+    }
+
+@app.post("/api/companion/update-hp")
+async def update_companion_hp(payload: Dict[str, Any]):
+    pc_id = payload.get("id")
+    party = read_json("party.json", [])
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if "currentHp" in payload and payload["currentHp"] is not None:
+        pc["currentHp"] = max(0, min(int(payload["currentHp"]), int(pc.get("maxHp", 999))))
+    if "tempHp" in payload and payload["tempHp"] is not None:
+        pc["tempHp"] = max(0, int(payload["tempHp"]))
+    if "deathSaves" in payload and payload["deathSaves"] is not None:
+        pc["deathSaves"] = payload["deathSaves"]
+    if "heroicInspiration" in payload and payload["heroicInspiration"] is not None:
+        pc["heroicInspiration"] = bool(payload["heroicInspiration"])
+
+    write_json("party.json", party)
+
+    # Automatically synchronize matching combatant in combat.json
+    combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
+    combat_updated = False
+    for cb in combat.get("combatants", []):
+        if cb.get("sourceId") == pc_id or cb.get("id") == f"combat-{pc_id}":
+            if "currentHp" in payload and payload["currentHp"] is not None:
+                cb["currentHp"] = pc["currentHp"]
+            if "tempHp" in payload and payload["tempHp"] is not None:
+                cb["tempHp"] = pc["tempHp"]
+            combat_updated = True
+    if combat_updated:
+        write_json("combat.json", combat)
+
+    return {"status": "success", "character": pc}
+
+@app.post("/api/companion/update-slots")
+async def update_companion_slots(payload: Dict[str, Any]):
+    pc_id = payload.get("id")
+    party = read_json("party.json", [])
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if "spellSlots" in payload:
+        pc["spellSlots"] = payload["spellSlots"]
+    if "resources" in payload:
+        pc["resources"] = payload["resources"]
+
+    write_json("party.json", party)
+    return {"status": "success", "spellSlots": pc.get("spellSlots"), "resources": pc.get("resources")}
+
+@app.post("/api/companion/roll")
+async def record_companion_roll(payload: Dict[str, Any]):
+    roll_entry = {
+        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "timestamp": time.time(),
+        "timeStr": datetime.now().strftime("%H:%M:%S"),
+        "characterId": payload.get("characterId", ""),
+        "characterName": payload.get("characterName", "Adventurer"),
+        "player": payload.get("player", ""),
+        "rollType": payload.get("rollType", "d20 Check"),
+        "formula": payload.get("formula", "1d20"),
+        "dice": payload.get("dice", []),
+        "modifier": payload.get("modifier", 0),
+        "total": payload.get("total", 0),
+        "isCrit": payload.get("isCrit", False),
+        "isFumble": payload.get("isFumble", False)
+    }
+    RECENT_TABLE_ROLLS.append(roll_entry)
+    if len(RECENT_TABLE_ROLLS) > 50:
+        del RECENT_TABLE_ROLLS[0]
+    return {"status": "success", "roll": roll_entry}
+
+@app.get("/api/companion/rolls")
+async def get_companion_rolls():
+    return {"status": "success", "rolls": RECENT_TABLE_ROLLS[-20:]}
+
+@app.post("/api/companion/use-item")
+async def use_companion_item(payload: Dict[str, Any]):
+    pc_id = payload.get("characterId")
+    item_id = payload.get("itemId")
+    party = read_json("party.json", [])
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    inventory = pc.get("inventory", [])
+    item = next((it for it in inventory if it.get("id") == item_id or it.get("name") == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    msg = f"{pc.get('name')} used {item.get('name')}."
+    heal_amount = 0
+
+    item_name_lower = item.get("name", "").lower()
+    if "potion of healing" in item_name_lower:
+        d1 = random.randint(1, 4)
+        d2 = random.randint(1, 4)
+        heal_amount = d1 + d2 + 2
+        prev_hp = pc.get("currentHp", 0)
+        pc["currentHp"] = min(pc.get("maxHp", 999), prev_hp + heal_amount)
+        msg = f"{pc.get('name')} drank a Potion of Healing and regained {heal_amount} HP! (2d4+2 = {d1}+{d2}+2)"
+    elif "greater healing" in item_name_lower:
+        d_rolls = [random.randint(1, 4) for _ in range(4)]
+        heal_amount = sum(d_rolls) + 4
+        prev_hp = pc.get("currentHp", 0)
+        pc["currentHp"] = min(pc.get("maxHp", 999), prev_hp + heal_amount)
+        msg = f"{pc.get('name')} drank a Potion of Greater Healing and regained {heal_amount} HP!"
+
+    qty = item.get("qty", item.get("quantity", 1))
+    if qty > 1:
+        item["qty"] = qty - 1
+        if "quantity" in item:
+            item["quantity"] = qty - 1
+    else:
+        try:
+            inventory.remove(item)
+        except Exception:
+            pass
+
+    write_json("party.json", party)
+
+    if heal_amount > 0:
+        combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
+        for cb in combat.get("combatants", []):
+            if cb.get("sourceId") == pc_id:
+                cb["currentHp"] = pc["currentHp"]
+        write_json("combat.json", combat)
+
+    RECENT_TABLE_ROLLS.append({
+        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "timestamp": time.time(),
+        "timeStr": datetime.now().strftime("%H:%M:%S"),
+        "characterId": pc_id,
+        "characterName": pc.get("name"),
+        "player": pc.get("player"),
+        "rollType": "Item Used",
+        "formula": item.get("name"),
+        "dice": [],
+        "modifier": 0,
+        "total": heal_amount,
+        "message": msg,
+        "isCrit": False,
+        "isFumble": False
+    })
+
+    return {"status": "success", "message": msg, "healed": heal_amount, "character": pc}
 
 def get_default_overworld_state(locations: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     if locations is None:

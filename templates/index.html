@@ -6648,9 +6648,19 @@
                 <button onclick="closeModal('connect-players-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
             </div>
 
+            <!-- View Mode Switcher: Mobile Companion vs Spectator Display -->
+            <div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-ledger-950 border border-ledger-750">
+                <button onclick="setConnectModalView('companion')" id="btn-connect-view-companion" class="py-2 px-3 rounded-xl text-xs font-bold font-mono bg-emerald-600 text-white shadow transition flex items-center justify-center gap-1.5">
+                    <span>📱</span> <span>Player Companion</span>
+                </button>
+                <button onclick="setConnectModalView('player')" id="btn-connect-view-player" class="py-2 px-3 rounded-xl text-xs font-bold font-mono text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+                    <span>🖥️</span> <span>Spectator HUD</span>
+                </button>
+            </div>
+
             <!-- Direct URL Box with Copy Button -->
             <div class="space-y-1.5">
-                <label class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Player Screen URL (Local Wi-Fi)</label>
+                <label id="connect-url-label" class="block text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Player Mobile Companion URL (Local Wi-Fi)</label>
                 <div class="flex items-center gap-2">
                     <input id="connect-player-url" type="text" readonly class="flex-1 bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-2 text-white font-mono text-xs select-all focus:outline-none focus:border-emerald-500">
                     <button onclick="copyPlayerUrl()" id="btn-copy-player-url" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition whitespace-nowrap flex items-center gap-1.5">
@@ -6664,7 +6674,7 @@
                 <div id="connect-qr-container" class="w-48 h-48 flex items-center justify-center">
                     <span class="text-slate-500 font-mono text-xs animate-pulse">Generating QR Code...</span>
                 </div>
-                <span class="text-[11px] text-slate-600 font-semibold mt-2 text-center">Point phone/tablet camera at QR code to join</span>
+                <span id="connect-qr-hint" class="text-[11px] text-slate-600 font-semibold mt-2 text-center">Point phone/tablet camera at QR code to open companion</span>
             </div>
 
             <!-- Security Badge Info -->

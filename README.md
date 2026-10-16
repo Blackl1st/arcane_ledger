@@ -25,29 +25,29 @@ An ultra-fast, local-first Dungeon Master companion, tactical battlemap display,
 It is architected specifically around a **multi-display tabletop environment**: control everything on your laptop while projecting an immersive player HUD on a wall monitor and streaming a physical-scale digital battlemap directly onto a TV recessed into your gaming table.
 
 ```
-                    ┌───────────────────────────────────────────────┐
-                    │               ARCANE LEDGER                   │
-                    │         FastAPI Backend (Port 8000)           │
-                    └───────┬───────────────┬───────────────┬───────┘
-                            │               │               │
-                            ▼               ▼               ▼
-                   ┌────────────────┐┌──────────────┐┌──────────────┐
-                   │   DM Console   ││ Player Screen││ Tabletop Map │
-                   │       /        ││   /player    ││     /map     │
-                   ├────────────────┤├──────────────┤├──────────────┤
-                   │ • God-Mode Fog ││ • Turn Order ││ • 1" Grid    │
-                   │ • 330+ Bestiary││ • Party HUD  ││ • Real Minis │
-                   │ • 340+ Spells  ││ • Handouts   ││ • Fog Mask   │
-                   │ • Audio Mixer  ││ • Calendar   ││ • Laser Ping │
-                   │ • Amaran Light ││ • Weather    ││ • 360° Rotate│
-                   └────────────────┘└──────────────┘└──────────────┘
+                    ┌───────────────────────────────────────────────────────────────┐
+                    │                       ARCANE LEDGER                           │
+                    │                 FastAPI Backend (Port 8000)                   │
+                    └───────┬───────────────┬───────────────┬───────────────┬───────┘
+                            │               │               │               │
+                            ▼               ▼               ▼               ▼
+                   ┌────────────────┐┌──────────────┐┌──────────────┐┌──────────────┐
+                   │   DM Console   ││Player Screen ││Player Mobile ││ Tabletop Map │
+                   │       /        ││   /player    ││  /companion  ││     /map     │
+                   ├────────────────┤├──────────────┤├──────────────┤├──────────────┤
+                   │ • God-Mode Fog ││ • Turn Order ││ • Live HP/Tmp││ • 1" Grid    │
+                   │ • 330+ Bestiary││ • Party HUD  ││ • Spell Slots││ • Real Minis │
+                   │ • 340+ Spells  ││ • Handouts   ││ • D20 Roller ││ • Fog Mask   │
+                   │ • Audio Mixer  ││ • Calendar   ││ • Masteries  ││ • Laser Ping │
+                   │ • Amaran Light ││ • Weather    ││ • Potions/Bag││ • 360° Rotate│
+                   └────────────────┘└──────────────┘└──────────────┘└──────────────┘
 ```
 
 ---
 
-## 🖥️ Three-Screen Tabletop Architecture
+## 🖥️ Four-Interface Tabletop Architecture
 
-Arcane Ledger provides three specialized interfaces out of the box:
+Arcane Ledger provides four specialized interfaces out of the box:
 
 ### 1. DM Master Command Center (`/`)
 * **Full God-Mode Control**: Real-time initiative ordering, monster statblocks, live hit points, spell slots, resource counters, and fog-of-war brush.
@@ -55,13 +55,21 @@ Arcane Ledger provides three specialized interfaces out of the box:
 * **Smart Atmosphere**: Integrated multi-track ambient audio mixer and direct WebSocket hardware control of Aputure/Amaran studio lighting.
 * **PIN Protection & Localhost Auto-Bypass**: Full security lockout for external LAN devices while granting zero-friction instant access to the DM on the host computer.
 
-### 2. Player Display Screen (`/player`)
+### 2. Interactive Player Mobile Companion (`/companion`)
+* **Handheld Phone & Tablet Web App**: Mobile-first touch interface for players at the table to control their character from their pocket.
+* **Hero Claiming**: Players pick and claim their hero from the party list; selection is saved locally across reloads.
+* **Two-Way Vitals Sync**: Tap to adjust HP, add Temp HP, mark Death Saves, or toggle Heroic Inspiration—syncing immediately with the DM's combat tracker.
+* **Spell Slots & Class Powers Matrix**: Tap-to-expend bubbles for 1st–9th level slots and class resource pools (Rage, Superiority Dice, Channel Divinity).
+* **Polyhedral Dice Roller**: Full dice set (d20, d4, d6, d8, d10, d12, d100) with Advantage / Disadvantage toggles, custom modifiers, and live roll broadcast to the DM console.
+* **2024 Weapon Masteries & Potions**: Quick reference for weapon masteries (Push, Nick, Vex, Cleave) and 1-tap potion drinking with automatic HP recovery.
+
+### 3. Spectator Player Display Screen (`/player`)
 * **Projector / Wall TV HUD**: Displays the current initiative order, round tracker, active turn banner, party health state, and in-game calendar/weather.
 * **Authentic In-World Handout Display**: Dedicated tactical prop renderer displaying parchment letters, torn journal fragments, wanted posters, encrypted elder ciphers, and ancient arcane scrolls with 3D wax seals and realistic paper textures.
 * **Live DM Broadcasts**: Push character art, monster reveals, items, shop catalogs, handouts, and lore secrets to the player screen with a single click.
 * **Anti-Spoiler Design**: Hides monster stats, AC, exact hit points, and secret DM notes automatically.
 
-### 3. Dedicated Tabletop Battlemap (`/map`)
+### 4. Dedicated Tabletop Battlemap (`/map`)
 * **Horizontal In-Table Display**: Designed specifically for flat TVs embedded in gaming tables to host physical miniatures.
 * **1-Inch Miniature Calibration**: Calibrate grid squares precisely to 1-inch physical miniatures regardless of TV screen size (40", 50", 55"+).
 * **Dual-Canvas Fog of War**: DM reveals or conceals terrain using brushes or bounding boxes; players see an opaque parchment/shadow shroud.
@@ -267,10 +275,11 @@ The server will start at:
 
 ### 4. Access the Interfaces
 * **DM Dashboard**: [http://127.0.0.1:8000](http://127.0.0.1:8000) *(bypasses PIN automatically on the host computer)*
-* **Player Screen**: [http://127.0.0.1:8000/player](http://127.0.0.1:8000/player)
-* **Tabletop Battlemap**: [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map)
+* **Player Mobile Companion**: [http://127.0.0.1:8000/companion](http://127.0.0.1:8000/companion) *(mobile sheet, HP, spell slots, d20 roller)*
+* **Player Spectator Screen**: [http://127.0.0.1:8000/player](http://127.0.0.1:8000/player) *(wall TV / projector HUD)*
+* **Tabletop Battlemap**: [http://127.0.0.1:8000/map](http://127.0.0.1:8000/map) *(in-table horizontal TV)*
 
-> **Tip (Tabletop Wi-Fi & QR Code)**: Click the **Connect Players** button in the DM topbar to display a scannable QR code and direct local network link (e.g. `http://192.168.x.x:8000/player`). Tabletop players connecting from phones, tablets, or laptops over Wi-Fi are automatically routed to safe player displays and locked out of the DM console unless authorized with your DM passcode.
+> **Tip (Tabletop Wi-Fi & QR Code)**: Click the **Connect Players** button in the DM topbar to display a scannable QR code and direct local network link for either the **Player Mobile Companion** (`/companion`) or the **Spectator Screen** (`/player`). Tabletop players connecting from phones, tablets, or laptops over Wi-Fi are automatically routed to safe player displays and locked out of the DM console unless authorized with your DM passcode.
 
 ---
 
@@ -390,8 +399,9 @@ arcane_ledger/
 │
 ├── templates/                  # Jinja2 HTML5 frontends
 │   ├── index.html              # Main DM Command Center dashboard
+│   ├── companion.html          # Interactive Player Mobile Companion (HP, slots, dice, masteries)
 │   ├── dm_lock.html            # Dark-fantasy PIN keypad & lock screen for unauthorized LAN devices
-│   ├── player.html             # Dedicated player broadcast display screen
+│   ├── player.html             # Dedicated spectator wall TV / projector HUD
 │   └── map.html                # Dedicated in-table horizontal battlemap screen
 │
 ├── static/                     # Web assets
