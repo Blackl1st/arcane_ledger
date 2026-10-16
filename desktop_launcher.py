@@ -150,13 +150,49 @@ def show_alert_dialog(title: str, message: str):
 
 def launch_desktop_window():
     """Launch the browser in standalone app mode."""
-    browser_exe = find_app_browser()
     profile_dir = BASE_DIR / "data" / ".app_profile"
     try:
         profile_dir.mkdir(parents=True, exist_ok=True)
     except Exception:
         pass
-    
+
+    # macOS specific: use macOS LaunchServices 'open' command to launch app mode
+    # This prevents macOS from triggering scary 'App Management / delete other apps' permission prompts
+    if sys.platform == "darwin":
+        mac_browser_apps = ["Google Chrome", "Microsoft Edge", "Brave Browser"]
+        chosen_browser = None
+        for app_name in mac_browser_apps:
+            if os.path.exists(f"/Applications/{app_name}.app"):
+                chosen_browser = app_name
+                break
+
+        if chosen_browser:
+            logging.info(f"Launching app window via macOS LaunchServices with {chosen_browser}...")
+            cmd = [
+                "open", "-n", "-a", chosen_browser,
+                "--args",
+                f"--app={URL}",
+                f"--user-data-dir={profile_dir}",
+                "--window-size=1600,1000"
+            ]
+            try:
+                proc = subprocess.Popen(cmd)
+                proc.wait()
+                return
+            except Exception as e:
+                logging.error(f"Error launching via open -a {chosen_browser}: {e}")
+
+        # Fallback to default browser if Chrome/Edge/Brave aren't installed
+        logging.info("Opening default browser via macOS 'open' command...")
+        subprocess.Popen(["open", URL])
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            return
+
+    # Windows and Linux:
+    browser_exe = find_app_browser()
     if browser_exe:
         logging.info(f"Launching app window with browser: {browser_exe}")
         cmd = [
@@ -174,16 +210,6 @@ def launch_desktop_window():
             return
         except Exception as e:
             logging.error(f"Error launching app-mode browser: {e}")
-
-    # macOS specific: launch via 'open' command if Chrome/Edge not installed
-    if sys.platform == "darwin":
-        logging.info("Opening default browser via macOS 'open' command...")
-        subprocess.Popen(["open", URL])
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            return
 
     # Fallback: Open in default system browser
     import webbrowser
