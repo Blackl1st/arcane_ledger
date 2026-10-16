@@ -41,7 +41,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pillow
 
       - name: Package with PyInstaller
         run: |
@@ -99,7 +99,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pillow
 
       - name: Package with PyInstaller
         run: |
@@ -125,7 +125,7 @@ jobs:
             --hidden-import "uvicorn.protocols.websockets.auto" \
             --hidden-import "uvicorn.lifespans" \
             --hidden-import "uvicorn.lifespans.auto" \
-            --icon "static/icon.png" \
+            --icon "static/icon.icns" \
             desktop_launcher.py
 
       - name: Create macOS Distribution Zip
