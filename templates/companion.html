@@ -661,93 +661,108 @@
             renderInventory(pc);
         }
 
-        // Spell Slots
+        // Spell Slots & Class Powers
         function renderSpellSlots(pc) {
             const container = document.getElementById('spell-slots-grid');
             if (!container) return;
 
-            // Default spell slots schema if missing
-            const slots = pc.spellSlots || {
-                "1": { max: 4, used: 0 },
-                "2": { max: 3, used: 0 },
-                "3": { max: 2, used: 0 }
-            };
+            const slots = pc.spellSlots || {};
+            const slotEntries = Object.entries(slots).filter(([lvl, data]) => {
+                const total = data ? (data.total !== undefined ? data.total : (data.max || 0)) : 0;
+                return total > 0;
+            });
 
             container.innerHTML = '';
-            for (const [lvl, data] of Object.entries(slots)) {
-                const max = data.max || 0;
-                const used = data.used || 0;
-                if (max === 0) continue;
+            if (slotEntries.length === 0) {
+                container.innerHTML = '<div class="text-slate-500 text-xs font-mono py-4 text-center border border-dashed border-ledger-800 rounded-2xl">No active spell slots for this character.</div>';
+            } else {
+                for (const [lvlKey, data] of slotEntries) {
+                    const total = data.total !== undefined ? data.total : (data.max || 0);
+                    const used = data.used || 0;
+                    const cleanLevel = lvlKey.replace('level_', '').replace('pact_level_', 'Pact Lvl ');
+                    const displayTitle = lvlKey.startsWith('pact_') ? cleanLevel : `Level ${cleanLevel} Slots`;
 
-                const card = document.createElement('div');
-                card.className = 'p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm';
+                    const card = document.createElement('div');
+                    card.className = 'p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm';
 
-                let bubblesHtml = '';
-                for (let i = 0; i < max; i++) {
-                    const isExpended = i < used;
-                    bubblesHtml += `
-                        <button onclick="toggleSlotExpend('${lvl}', ${i})" class="w-8 h-8 rounded-xl border ${isExpended ? 'bg-ledger-950 border-ledger-800 text-slate-600' : 'bg-purple-600 border-purple-400 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'} flex items-center justify-center text-xs font-mono font-bold tap-active">
-                            ${isExpended ? '✕' : '✦'}
-                        </button>
-                    `;
-                }
+                    let bubblesHtml = '';
+                    for (let i = 0; i < total; i++) {
+                        const isExpended = i < used;
+                        bubblesHtml += `
+                            <button onclick="toggleSlotExpend('${lvlKey}', ${i})" class="w-8 h-8 rounded-xl border ${isExpended ? 'bg-ledger-950 border-ledger-800 text-slate-600' : 'bg-purple-600 border-purple-400 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'} flex items-center justify-center text-xs font-mono font-bold tap-active transition">
+                                ${isExpended ? '✕' : '✦'}
+                            </button>
+                        `;
+                    }
 
-                card.innerHTML = `
-                    <div>
-                        <span class="text-xs font-display font-bold text-purple-300">Level ${lvl} Slots</span>
-                        <span class="text-[10px] font-mono text-slate-400 block">${max - used} / ${max} Available</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        ${bubblesHtml}
-                    </div>
-                `;
-                container.appendChild(card);
-            }
-
-            // Render class resources
-            const resContainer = document.getElementById('class-resources-list');
-            if (resContainer) {
-                const res = pc.resources || {
-                    "Superiority / Power": { max: 4, used: 0 },
-                    "Second Wind": { max: 2, used: 0 }
-                };
-                resContainer.innerHTML = '';
-                for (const [rName, rData] of Object.entries(res)) {
-                    const max = rData.max || 0;
-                    const used = rData.used || 0;
-                    resContainer.innerHTML += `
-                        <div class="flex items-center justify-between p-2 rounded-xl bg-ledger-950 border border-ledger-800 text-xs font-mono">
-                            <span class="text-amber-200 font-semibold">${rName}</span>
-                            <div class="flex items-center gap-2">
-                                <button onclick="adjustResource('${rName}', 1)" class="w-6 h-6 rounded-lg bg-ledger-800 text-rose-300 font-bold">-</button>
-                                <span class="text-white font-bold">${max - used}/${max}</span>
-                                <button onclick="adjustResource('${rName}', -1)" class="w-6 h-6 rounded-lg bg-ledger-800 text-emerald-300 font-bold">+</button>
-                            </div>
+                    card.innerHTML = `
+                        <div>
+                            <span class="text-xs font-display font-bold text-purple-300">${displayTitle}</span>
+                            <span class="text-[10px] font-mono text-slate-400 block">${Math.max(0, total - used)} / ${total} Available</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                            ${bubblesHtml}
                         </div>
                     `;
+                    container.appendChild(card);
+                }
+            }
+
+            // Render class resources / powers
+            const resContainer = document.getElementById('class-resources-list');
+            if (resContainer) {
+                resContainer.innerHTML = '';
+                let rawRes = pc.resources || [];
+                let resList = [];
+                if (Array.isArray(rawRes)) {
+                    resList = rawRes.map((r, idx) => ({
+                        name: r.name || `Power ${idx+1}`,
+                        total: r.total !== undefined ? r.total : (r.max || 1),
+                        used: r.used || 0
+                    }));
+                } else if (typeof rawRes === 'object') {
+                    resList = Object.entries(rawRes).map(([rName, rData], idx) => ({
+                        name: rName,
+                        total: rData.total !== undefined ? rData.total : (rData.max || 1),
+                        used: rData.used || 0
+                    }));
+                }
+
+                if (resList.length === 0) {
+                    resContainer.innerHTML = '<div class="text-slate-500 text-xs font-mono py-2 text-center">No active class powers or features.</div>';
+                } else {
+                    resList.forEach((r) => {
+                        const remaining = Math.max(0, r.total - r.used);
+                        resContainer.innerHTML += `
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 text-xs font-mono">
+                                <span class="text-amber-200 font-semibold">${escapeHTML(r.name)}</span>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="adjustResource('${escapeHTML(r.name)}', 1)" class="w-7 h-7 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-rose-300 font-bold active:scale-95 transition flex items-center justify-center text-sm" title="Expend 1">-</button>
+                                    <span class="text-white font-bold text-xs min-w-[42px] text-center">${remaining}/${r.total}</span>
+                                    <button onclick="adjustResource('${escapeHTML(r.name)}', -1)" class="w-7 h-7 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-emerald-300 font-bold active:scale-95 transition flex items-center justify-center text-sm" title="Restore 1">+</button>
+                                </div>
+                            </div>
+                        `;
+                    });
                 }
             }
         }
 
         // Toggle Slot Expend
-        async function toggleSlotExpend(lvl, slotIdx) {
+        async function toggleSlotExpend(lvlKey, slotIdx) {
             if (!activeCharacter) return;
-            const slots = activeCharacter.spellSlots || {
-                "1": { max: 4, used: 0 },
-                "2": { max: 3, used: 0 },
-                "3": { max: 2, used: 0 }
-            };
-            const currentUsed = slots[lvl]?.used || 0;
-            // If tapping an active bubble, expend it; if tapping expended, restore
+            const slots = activeCharacter.spellSlots || {};
+            if (!slots[lvlKey]) return;
+
+            const currentUsed = slots[lvlKey].used || 0;
             if (slotIdx >= currentUsed) {
-                slots[lvl].used = slotIdx + 1;
+                slots[lvlKey].used = slotIdx + 1;
             } else {
-                slots[lvl].used = slotIdx;
+                slots[lvlKey].used = slotIdx;
             }
             activeCharacter.spellSlots = slots;
             renderSpellSlots(activeCharacter);
 
-            // Sync with backend
             await fetch('/api/companion/update-slots', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -755,18 +770,54 @@
             });
         }
 
-        async function restoreAllSlots() {
+        // Adjust Class Power / Resource
+        async function adjustResource(rName, delta) {
             if (!activeCharacter) return;
-            const slots = activeCharacter.spellSlots || {};
-            for (const lvl in slots) {
-                slots[lvl].used = 0;
+            let rawRes = activeCharacter.resources || [];
+            if (Array.isArray(rawRes)) {
+                const target = rawRes.find(r => r.name === rName);
+                if (target) {
+                    const total = target.total !== undefined ? target.total : (target.max || 1);
+                    target.used = Math.max(0, Math.min(total, (target.used || 0) + delta));
+                }
+            } else if (typeof rawRes === 'object') {
+                if (rawRes[rName]) {
+                    const total = rawRes[rName].total !== undefined ? rawRes[rName].total : (rawRes[rName].max || 1);
+                    rawRes[rName].used = Math.max(0, Math.min(total, (rawRes[rName].used || 0) + delta));
+                }
             }
-            activeCharacter.spellSlots = slots;
+            activeCharacter.resources = rawRes;
             renderSpellSlots(activeCharacter);
+
             await fetch('/api/companion/update-slots', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots })
+                body: JSON.stringify({ id: activeCharacter.id, resources: rawRes })
+            });
+        }
+
+        async function restoreAllSlots() {
+            if (!activeCharacter) return;
+            const slots = activeCharacter.spellSlots || {};
+            for (const k in slots) {
+                if (slots[k]) slots[k].used = 0;
+            }
+            let rawRes = activeCharacter.resources || [];
+            if (Array.isArray(rawRes)) {
+                rawRes.forEach(r => r.used = 0);
+            } else if (typeof rawRes === 'object') {
+                for (const k in rawRes) {
+                    if (rawRes[k]) rawRes[k].used = 0;
+                }
+            }
+            activeCharacter.spellSlots = slots;
+            activeCharacter.resources = rawRes;
+            renderSpellSlots(activeCharacter);
+
+            await fetch('/api/companion/update-slots', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots, resources: rawRes })
             });
         }
 
@@ -792,46 +843,74 @@
                 const name = it.name || 'Item';
                 const notes = it.notes || '';
                 const qty = it.qty || it.quantity || 1;
+                const damageDice = getWeaponDamageDice(name, notes);
+                const isWeapon = cat.includes('weapon') || notes.toLowerCase().includes('mastery') || (cat.includes('item') && damageDice && !cat.includes('potion') && !cat.includes('gear'));
 
-                if (cat.includes('weapon') || notes.toLowerCase().includes('mastery')) {
+                if (isWeapon) {
                     weaponsList.innerHTML += `
-                        <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm">
-                            <div>
+                        <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm gap-2">
+                            <div class="flex-1 min-w-0 pr-1">
                                 <div class="flex items-center gap-2">
-                                    <h4 class="font-display font-bold text-xs text-amber-200">${name}</h4>
-                                    ${it.attuned ? '<span class="text-[9px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.2 rounded font-mono">Attuned</span>' : ''}
+                                    <h4 class="font-display font-bold text-xs text-amber-200 truncate">${escapeHTML(name)}</h4>
+                                    ${it.attuned ? '<span class="text-[9px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.2 rounded font-mono shrink-0">Attuned</span>' : ''}
                                 </div>
-                                <p class="text-[11px] text-slate-400 font-mono mt-0.5">${notes}</p>
+                                <p class="text-[11px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(notes || damageDice)}</p>
                             </div>
-                            <button onclick="rollWeaponAttack('${name}')" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-mono text-xs font-bold tap-active">
-                                Roll ⚔️
-                            </button>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button onclick="rollWeaponAttack('${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll 1d20 Attack">
+                                    <span>⚔️</span><span>Atk</span>
+                                </button>
+                                <button onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')" class="px-2.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll Damage (${damageDice})">
+                                    <span>💥</span><span>${damageDice}</span>
+                                </button>
+                            </div>
                         </div>
                     `;
                 } else if (cat.includes('potion') || name.toLowerCase().includes('potion')) {
+                    const potionDiceMatch = notes.match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
+                    const potionDice = potionDiceMatch ? potionDiceMatch[1].replace(/\s+/g, '') : null;
                     consumablesList.innerHTML += `
-                        <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm">
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-xl">🧪</span>
-                                <div>
-                                    <h4 class="font-bold text-xs text-slate-200">${name} <span class="text-amber-400 font-mono text-[11px]">x${qty}</span></h4>
-                                    <p class="text-[10px] text-slate-400 font-mono">${notes}</p>
+                        <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm gap-2">
+                            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                <span class="text-xl shrink-0">🧪</span>
+                                <div class="min-w-0 truncate">
+                                    <h4 class="font-bold text-xs text-slate-200 truncate">${escapeHTML(name)} <span class="text-amber-400 font-mono text-[11px]">x${qty}</span></h4>
+                                    <p class="text-[10px] text-slate-400 font-mono truncate">${escapeHTML(notes)}</p>
                                 </div>
                             </div>
-                            <button onclick="useItem('${it.id || name}')" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold shadow tap-active">
-                                Drink ✨
-                            </button>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${potionDice ? `
+                                    <button onclick="executeDiceFormulaRoll('${potionDice}', '${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-mono text-xs font-bold tap-active" title="Roll ${potionDice}">
+                                        🎲 ${potionDice}
+                                    </button>
+                                ` : ''}
+                                <button onclick="useItem('${it.id || name}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold shadow tap-active">
+                                    Drink ✨
+                                </button>
+                            </div>
                         </div>
                     `;
                 } else {
+                    const gearDiceMatch = notes.match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
+                    const gearDice = gearDiceMatch ? gearDiceMatch[1].replace(/\s+/g, '') : null;
                     gearList.innerHTML += `
-                        <div class="p-2.5 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-between text-xs font-mono">
-                            <div class="flex items-center gap-2">
-                                <span class="text-slate-400">📦</span>
-                                <span class="text-slate-200 font-semibold">${name}</span>
-                                ${qty > 1 ? `<span class="text-slate-500">x${qty}</span>` : ''}
+                        <div class="p-2.5 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-between text-xs font-mono gap-2">
+                            <div class="flex items-center gap-2 flex-1 min-w-0">
+                                <span class="text-slate-400 shrink-0">📦</span>
+                                <div class="min-w-0 truncate">
+                                    <span class="text-slate-200 font-semibold">${escapeHTML(name)}</span>
+                                    ${qty > 1 ? `<span class="text-slate-500 ml-1">x${qty}</span>` : ''}
+                                    ${notes ? `<p class="text-[10px] text-slate-400 truncate">${escapeHTML(notes)}</p>` : ''}
+                                </div>
                             </div>
-                            <span class="text-[10px] text-slate-400">${it.rarity || 'Common'}</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${gearDice ? `
+                                    <button onclick="executeDiceFormulaRoll('${gearDice}', '${escapeHTML(name)}')" class="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold tap-active">
+                                        🎲 ${gearDice}
+                                    </button>
+                                ` : ''}
+                                <span class="text-[10px] text-slate-500">${it.rarity || 'Common'}</span>
+                            </div>
                         </div>
                     `;
                 }
@@ -1014,6 +1093,7 @@
                     characterId: activeCharacter?.id || '',
                     characterName: activeCharacter?.name || 'Player',
                     player: activeCharacter?.player || '',
+                    avatarUrl: activeCharacter?.avatarUrl || '',
                     rollType: rollLabel,
                     formula: `1d20${mod >= 0 ? '+' : ''}${mod}`,
                     dice: [chosenDie],
@@ -1041,6 +1121,7 @@
                     characterId: activeCharacter?.id || '',
                     characterName: activeCharacter?.name || 'Player',
                     player: activeCharacter?.player || '',
+                    avatarUrl: activeCharacter?.avatarUrl || '',
                     rollType: `d${sides} Roll`,
                     formula: `1d${sides}`,
                     dice: [roll],
@@ -1053,9 +1134,120 @@
             fetchCompanionState();
         }
 
+        const STANDARD_WEAPON_DAMAGE = {
+            'greatsword': '2d6',
+            'maul': '2d6',
+            'greataxe': '1d12',
+            'longsword': '1d8',
+            'battleaxe': '1d8',
+            'warhammer': '1d8',
+            'rapier': '1d8',
+            'flail': '1d8',
+            'morningstar': '1d8',
+            'war pick': '1d8',
+            'shortsword': '1d6',
+            'scimitar': '1d6',
+            'handaxe': '1d6',
+            'javelin': '1d6',
+            'spear': '1d6',
+            'mace': '1d6',
+            'quarterstaff': '1d6',
+            'light hammer': '1d6',
+            'trident': '1d6',
+            'dagger': '1d4',
+            'dart': '1d4',
+            'sickle': '1d4',
+            'sling': '1d4',
+            'club': '1d4',
+            'heavy crossbow': '1d10',
+            'halberd': '1d10',
+            'glaive': '1d10',
+            'pike': '1d10',
+            'longbow': '1d8',
+            'light crossbow': '1d8',
+            'shortbow': '1d6',
+            'hand crossbow': '1d6',
+            'blowgun': '1',
+            'lance': '1d12'
+        };
+
+        function getWeaponDamageDice(name, notes) {
+            if (notes) {
+                const match = notes.match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
+                if (match) return match[1].replace(/\s+/g, '');
+            }
+            const clean = (name || '').toLowerCase();
+            for (const [wName, dice] of Object.entries(STANDARD_WEAPON_DAMAGE)) {
+                if (clean.includes(wName)) return dice;
+            }
+            return '1d8';
+        }
+
+        async function executeDiceFormulaRoll(formulaStr, rollLabel) {
+            switchTab('roller');
+            const match = formulaStr.trim().match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?$/i);
+            let count = 1;
+            let sides = 6;
+            let mod = 0;
+            if (match) {
+                count = parseInt(match[1]) || 1;
+                sides = parseInt(match[2]) || 6;
+                if (match[3] && match[4]) {
+                    mod = parseInt(match[4]) * (match[3] === '-' ? -1 : 1);
+                }
+            }
+
+            const dice = [];
+            let diceSum = 0;
+            for (let i = 0; i < count; i++) {
+                const val = Math.floor(Math.random() * sides) + 1;
+                dice.push(val);
+                diceSum += val;
+            }
+
+            const total = Math.max(1, diceSum + mod);
+            const breakdown = `${count}d${sides}[${dice.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''}`;
+
+            const resEl = document.getElementById('dice-big-result');
+            if (resEl) {
+                resEl.textContent = total;
+                resEl.className = 'font-display font-black text-6xl text-amber-300 my-2 tracking-tight transition-transform duration-200';
+                resEl.style.transform = 'scale(1.15)';
+                setTimeout(() => resEl.style.transform = 'scale(1.0)', 150);
+            }
+            const breakdownEl = document.getElementById('dice-breakdown-text');
+            if (breakdownEl) {
+                breakdownEl.textContent = `${rollLabel}: ${breakdown} = ${total}`;
+            }
+
+            await fetch('/api/companion/roll', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    characterId: activeCharacter?.id || '',
+                    characterName: activeCharacter?.name || 'Player',
+                    player: activeCharacter?.player || '',
+                    avatarUrl: activeCharacter?.avatarUrl || '',
+                    rollType: rollLabel,
+                    formula: formulaStr,
+                    dice: dice,
+                    modifier: mod,
+                    total: total,
+                    isCrit: false,
+                    isFumble: false
+                })
+            });
+
+            fetchCompanionState();
+        }
+
         function rollWeaponAttack(weaponName) {
             switchTab('roller');
             executeD20Roll(`${weaponName} Attack`);
+        }
+
+        function rollWeaponDamage(weaponName, damageDice) {
+            executeDiceFormulaRoll(damageDice || '1d8', `${weaponName} Damage`);
         }
 
         // Render Roll Log

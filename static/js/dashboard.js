@@ -2316,6 +2316,27 @@ function rollDie(sides) {
         mod,
         modStr
     });
+
+    // Record DM roll to Table History
+    fetch('/api/rolls/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            isDM: true,
+            characterName: 'Dungeon Master',
+            label: `d${sides} Roll`,
+            diceType: `d${sides}`,
+            formula: formulaStr,
+            rawRoll: chosen,
+            modifier: mod,
+            total: total,
+            isCrit: sides === 20 && chosen === 20,
+            isFumble: sides === 20 && chosen === 1,
+            details: tag ? tag.trim() : ''
+        })
+    }).then(res => {
+        if (res.ok) fetchTableRollHistory();
+    }).catch(() => {});
 }
 
 function setAdvantage(type) {
@@ -2341,6 +2362,176 @@ function renderDiceHistory() {
             <span class="text-[10px] text-slate-500 font-mono">${h.time}</span>
         </div>
     `).join('');
+}
+
+// -----------------------------------------------------------------------------
+// TABLE ROLL HISTORY (DM & PLAYERS)
+// -----------------------------------------------------------------------------
+let isRollHistoryDrawerOpen = false;
+let tableRollHistory = [];
+let tableRollHistoryFilter = 'all';
+
+async function fetchTableRollHistory() {
+    try {
+        const res = await fetch('/api/rolls/history');
+        if (res.ok) {
+            const data = await res.json();
+            tableRollHistory = data.rolls || [];
+            updateTableRollBadge();
+            if (isRollHistoryDrawerOpen) {
+                renderTableRollHistory();
+            }
+        }
+    } catch (e) {
+        console.warn("Error fetching table roll history:", e);
+    }
+}
+
+function updateTableRollBadge() {
+    const badge = document.getElementById('roll-history-badge');
+    if (!badge) return;
+    const count = tableRollHistory.length;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function toggleRollHistoryDrawer() {
+    const drawer = document.getElementById('roll-history-drawer');
+    const overlay = document.getElementById('roll-history-drawer-overlay');
+    if (!drawer || !overlay) return;
+
+    isRollHistoryDrawerOpen = !isRollHistoryDrawerOpen;
+    if (isRollHistoryDrawerOpen) {
+        overlay.classList.remove('hidden');
+        drawer.classList.remove('translate-x-full');
+        fetchTableRollHistory();
+    } else {
+        overlay.classList.add('hidden');
+        drawer.classList.add('translate-x-full');
+    }
+}
+
+function setRollHistoryFilter(filter) {
+    tableRollHistoryFilter = filter;
+    ['all', 'player', 'dm'].forEach(f => {
+        const btn = document.getElementById(`roll-filter-${f}`);
+        if (btn) {
+            if (f === filter) {
+                btn.className = "roll-filter-btn px-2.5 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold transition";
+            } else {
+                btn.className = "roll-filter-btn px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-amber-300 border border-ledger-800 transition";
+            }
+        }
+    });
+    renderTableRollHistory();
+}
+
+function renderTableRollHistory() {
+    const feed = document.getElementById('table-roll-history-feed');
+    const countEl = document.getElementById('roll-history-count');
+    if (!feed) return;
+
+    let filtered = tableRollHistory;
+    if (tableRollHistoryFilter === 'player') {
+        filtered = tableRollHistory.filter(r => !r.isDM);
+    } else if (tableRollHistoryFilter === 'dm') {
+        filtered = tableRollHistory.filter(r => !!r.isDM);
+    }
+
+    if (countEl) {
+        countEl.textContent = `${filtered.length} of ${tableRollHistory.length} roll${tableRollHistory.length === 1 ? '' : 's'}`;
+    }
+
+    if (filtered.length === 0) {
+        feed.innerHTML = `
+            <div class="text-center py-16 text-slate-500 text-xs font-mono space-y-2">
+                <span class="text-3xl block">🎲</span>
+                <p>No ${tableRollHistoryFilter === 'all' ? '' : tableRollHistoryFilter + ' '}rolls recorded yet.</p>
+                <p class="text-[10px] text-slate-600">Player rolls from the Companion app and DM rolls will appear here.</p>
+            </div>
+        `;
+        return;
+    }
+
+    feed.innerHTML = filtered.map(r => {
+        const isDM = !!r.isDM;
+        let borderClass = isDM ? "border-purple-500/30 bg-purple-950/15" : "border-ledger-700/80 bg-ledger-900/90 hover:border-amber-500/40";
+        let totalColor = "text-amber-300";
+        let badgeHtml = "";
+
+        if (r.isCrit) {
+            borderClass = "border-emerald-500/60 bg-emerald-950/25";
+            totalColor = "text-emerald-400 font-extrabold";
+            badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 border border-emerald-500 text-emerald-300">⚡ NAT 20</span>`;
+        } else if (r.isFumble) {
+            borderClass = "border-rose-500/60 bg-rose-950/25";
+            totalColor = "text-rose-400 font-extrabold";
+            badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950 border border-rose-600 text-rose-300">💀 NAT 1</span>`;
+        }
+
+        const rollerBadge = isDM
+            ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-purple-950/80 text-purple-300 border border-purple-700/60 flex items-center gap-1"><span>🎭</span><span>DM</span></span>`
+            : `<span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-700/60 flex items-center gap-1"><span>🛡️</span><span>Hero</span></span>`;
+
+        const name = r.characterName || (isDM ? 'Dungeon Master' : 'Player');
+        const formula = r.formula || (r.diceType ? `${r.diceType}${r.modifier ? (r.modifier > 0 ? ` + ${r.modifier}` : ` - ${Math.abs(r.modifier)}`) : ''}` : '');
+        const time = r.timestamp || '';
+
+        let breakdownText = "";
+        if (r.rawRoll !== undefined) {
+            const rawStr = Array.isArray(r.rawRoll) ? `[${r.rawRoll.join(', ')}]` : r.rawRoll;
+            const modStr = r.modifier ? (r.modifier > 0 ? ` + ${r.modifier}` : ` - ${Math.abs(r.modifier)}`) : '';
+            breakdownText = `Dice: ${rawStr}${modStr}`;
+        } else if (r.details) {
+            breakdownText = r.details;
+        }
+
+        return `
+            <div class="rounded-2xl p-3.5 border ${borderClass} transition shadow-md flex flex-col space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                        ${!isDM && r.avatarUrl
+                            ? `<img src="${escapeHTML(r.avatarUrl)}" class="w-7 h-7 rounded-lg object-cover border border-amber-400/40 shrink-0" alt="">`
+                            : `<div class="w-7 h-7 rounded-lg ${isDM ? 'bg-purple-950 text-purple-300 border-purple-700/50' : 'bg-ledger-800 text-amber-300 border-ledger-700'} border flex items-center justify-center text-xs shrink-0">${isDM ? '🎭' : '⚔️'}</div>`
+                        }
+                        <span class="font-bold text-xs ${isDM ? 'text-purple-200' : 'text-slate-200'} truncate">${escapeHTML(name)}</span>
+                        ${rollerBadge}
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono shrink-0">${escapeHTML(time)}</span>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 pt-1 border-t border-ledger-800/80">
+                    <div class="min-w-0">
+                        <div class="text-xs font-semibold text-slate-200 truncate">${escapeHTML(r.label || 'Dice Roll')}</div>
+                        <div class="text-[11px] text-slate-400 font-mono truncate">${escapeHTML(formula)}${breakdownText ? ` • <span class="text-slate-500">${escapeHTML(breakdownText)}</span>` : ''}</div>
+                    </div>
+                    <div class="text-right shrink-0 flex items-center gap-2">
+                        ${badgeHtml}
+                        <span class="font-display font-black text-2xl ${totalColor}">${r.total !== undefined ? r.total : r.rawRoll}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function clearTableRollHistory() {
+    if (!confirm("Are you sure you want to clear the table roll history?")) return;
+    try {
+        const res = await fetch('/api/rolls/clear', { method: 'POST' });
+        if (res.ok) {
+            tableRollHistory = [];
+            updateTableRollBadge();
+            renderTableRollHistory();
+            showToast("Roll history cleared", "info");
+        }
+    } catch (e) {
+        showToast("Error clearing roll history", "error");
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -15336,6 +15527,17 @@ function handleStreamDeckLiveEvent(event) {
         }
 
         showToast(`🎲 Stream Deck Roll: d${sides} → ${total}${isCrit ? ' ★ CRITICAL HIT!' : (isFumble ? ' 💀 FUMBLE!' : '')}`, isCrit ? 'success' : (isFumble ? 'error' : 'info'));
+        fetchTableRollHistory();
+    }
+
+    else if (event.event === "player_roll") {
+        fetchTableRollHistory();
+    }
+
+    else if (event.event === "rolls_cleared") {
+        tableRollHistory = [];
+        updateTableRollBadge();
+        if (isRollHistoryDrawerOpen) renderTableRollHistory();
     }
 
     else if (event.event === "combat_turn") {
@@ -16851,6 +17053,7 @@ async function pollCompanionRolls() {
                     await fetchFullState();
                     renderPartyHUD();
                     renderCombatTracker();
+                    fetchTableRollHistory();
                 }
                 lastSeenRollId = latest.id;
             }
@@ -16881,12 +17084,17 @@ window.filterStreamDeckList = filterStreamDeckList;
 window.renderStreamDeckEndpoints = renderStreamDeckEndpoints;
 window.copyStreamDeckMacroUrl = copyStreamDeckMacroUrl;
 window.testStreamDeckEndpoint = testStreamDeckEndpoint;
+window.toggleRollHistoryDrawer = toggleRollHistoryDrawer;
+window.setRollHistoryFilter = setRollHistoryFilter;
+window.clearTableRollHistory = clearTableRollHistory;
+window.fetchTableRollHistory = fetchTableRollHistory;
 
 window.onload = async function() {
     initSidebarState();
     loadArcaneSettings();
     updateSidebarKeybindTooltips();
     await fetchFullState();
+    fetchTableRollHistory();
     setInterval(pollCompanionRolls, 2500);
     populateTopFilterDropdowns();
     renderPartyHUD();

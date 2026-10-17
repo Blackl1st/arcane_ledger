@@ -21,6 +21,11 @@
       "successes": 0,
       "failures": 0
     },
+    "resources": [
+      { "name": "Second Wind", "total": 3, "used": 0 },
+      { "name": "Action Surge", "total": 1, "used": 0 },
+      { "name": "Superiority Dice (d8)", "total": 4, "used": 0 }
+    ],
     "notes": "Second Wind, Action Surge, 4 Superiority Dice (d8). Weapon: Heavy Warhammer (Push mastery)."
   },
   {
@@ -44,6 +49,11 @@
     "deathSaves": {
       "successes": 0,
       "failures": 0
+    },
+    "spellSlots": {
+      "level_1": { "total": 4, "used": 0 },
+      "level_2": { "total": 3, "used": 0 },
+      "level_3": { "total": 2, "used": 0 }
     },
     "notes": "Sculpt Spells. Familiar: Barn Owl (Pip). Slots: 4/3/2."
   },
@@ -69,6 +79,9 @@
       "successes": 0,
       "failures": 0
     },
+    "resources": [
+      { "name": "Sneak Attack (3d6)", "total": 1, "used": 0 }
+    ],
     "notes": "Cunning Action, Fast Hands (Utilize as Bonus Action), Sneak Attack (3d6), Halfling Nimbleness."
   },
   {
@@ -93,6 +106,14 @@
       "successes": 0,
       "failures": 0
     },
+    "spellSlots": {
+      "level_1": { "total": 4, "used": 0 },
+      "level_2": { "total": 3, "used": 0 },
+      "level_3": { "total": 2, "used": 0 }
+    },
+    "resources": [
+      { "name": "Channel Divinity", "total": 2, "used": 0 }
+    ],
     "notes": "Disciple of Life, Preserve Life, Channel Divinity 2/rest. War Caster feat (Adv on Con saves)."
   }
 ]

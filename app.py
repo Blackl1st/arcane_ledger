@@ -1246,6 +1246,14 @@ async def update_companion_slots(payload: Dict[str, Any]):
         pc["resources"] = payload["resources"]
 
     write_json("party.json", party)
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "party_updated",
+            "character": pc,
+            "party": party
+        })
+    except Exception:
+        pass
     return {"status": "success", "spellSlots": pc.get("spellSlots"), "resources": pc.get("resources")}
 
 @app.post("/api/companion/roll")
@@ -1257,22 +1265,86 @@ async def record_companion_roll(payload: Dict[str, Any]):
         "characterId": payload.get("characterId", ""),
         "characterName": payload.get("characterName", "Adventurer"),
         "player": payload.get("player", ""),
+        "avatarUrl": payload.get("avatarUrl", ""),
         "rollType": payload.get("rollType", "d20 Check"),
         "formula": payload.get("formula", "1d20"),
         "dice": payload.get("dice", []),
         "modifier": payload.get("modifier", 0),
         "total": payload.get("total", 0),
         "isCrit": payload.get("isCrit", False),
-        "isFumble": payload.get("isFumble", False)
+        "isFumble": payload.get("isFumble", False),
+        "isDM": False
     }
     RECENT_TABLE_ROLLS.append(roll_entry)
-    if len(RECENT_TABLE_ROLLS) > 50:
+    if len(RECENT_TABLE_ROLLS) > 100:
         del RECENT_TABLE_ROLLS[0]
+
+    # Broadcast live cinematic player roll to all screens
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "player_roll",
+            "roll": roll_entry,
+            "isPlayer": True
+        })
+    except Exception:
+        pass
+
     return {"status": "success", "roll": roll_entry}
 
 @app.get("/api/companion/rolls")
 async def get_companion_rolls():
-    return {"status": "success", "rolls": RECENT_TABLE_ROLLS[-20:]}
+    return {"status": "success", "rolls": RECENT_TABLE_ROLLS[-25:]}
+
+@app.post("/api/rolls/record")
+async def record_generic_roll(payload: Dict[str, Any]):
+    is_dm = bool(payload.get("isDM", True))
+    roll_entry = {
+        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "timestamp": time.time(),
+        "timeStr": datetime.now().strftime("%H:%M:%S"),
+        "characterId": payload.get("characterId", "dm" if is_dm else ""),
+        "characterName": payload.get("characterName", "Dungeon Master" if is_dm else "Player"),
+        "player": payload.get("player", "DM" if is_dm else ""),
+        "avatarUrl": payload.get("avatarUrl", ""),
+        "rollType": payload.get("rollType", "Roll"),
+        "formula": payload.get("formula", ""),
+        "dice": payload.get("dice", []),
+        "modifier": payload.get("modifier", 0),
+        "total": payload.get("total", 0),
+        "isCrit": payload.get("isCrit", False),
+        "isFumble": payload.get("isFumble", False),
+        "isDM": is_dm
+    }
+    RECENT_TABLE_ROLLS.append(roll_entry)
+    if len(RECENT_TABLE_ROLLS) > 100:
+        del RECENT_TABLE_ROLLS[0]
+
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "dice_roll" if is_dm else "player_roll",
+            "entry": roll_entry,
+            "roll": roll_entry,
+            "isPlayer": not is_dm
+        })
+    except Exception:
+        pass
+
+    return {"status": "success", "roll": roll_entry}
+
+@app.get("/api/rolls/history")
+async def get_rolls_history(player_only: bool = False):
+    if player_only:
+        return {"status": "success", "rolls": [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]}
+    return {"status": "success", "rolls": RECENT_TABLE_ROLLS}
+
+@app.post("/api/rolls/clear")
+async def clear_rolls_history():
+    RECENT_TABLE_ROLLS.clear()
+    try:
+        await streamdeck_manager.broadcast({"event": "rolls_cleared"})
+    except Exception:
+        pass
+    return {"status": "success"}
 
 @app.post("/api/companion/use-item")
 async def use_companion_item(payload: Dict[str, Any]):
@@ -1602,10 +1674,11 @@ async def streamdeck_roll_d20():
         "modifier": 0,
         "total": roll,
         "isCrit": is_crit,
-        "isFumble": is_fumble
+        "isFumble": is_fumble,
+        "isDM": True
     }
     RECENT_TABLE_ROLLS.append(roll_entry)
-    if len(RECENT_TABLE_ROLLS) > 50:
+    if len(RECENT_TABLE_ROLLS) > 100:
         del RECENT_TABLE_ROLLS[0]
 
     await streamdeck_manager.broadcast({
@@ -1648,10 +1721,11 @@ async def streamdeck_roll_sides(sides: int):
         "modifier": 0,
         "total": roll,
         "isCrit": is_crit,
-        "isFumble": is_fumble
+        "isFumble": is_fumble,
+        "isDM": True
     }
     RECENT_TABLE_ROLLS.append(roll_entry)
-    if len(RECENT_TABLE_ROLLS) > 50:
+    if len(RECENT_TABLE_ROLLS) > 100:
         del RECENT_TABLE_ROLLS[0]
 
     await streamdeck_manager.broadcast({
@@ -2920,6 +2994,13 @@ async def get_party():
 async def save_party(party: List[Character]):
     data = [c.dict() for c in party]
     write_json("party.json", data)
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "party_updated",
+            "party": data
+        })
+    except Exception:
+        pass
     return {"status": "success", "count": len(data)}
 
 # -------------------------------------------------------------
@@ -5990,6 +6071,7 @@ async def get_player_state():
             "concentrating": False
         }
 
+    player_rolls = [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]
     return {
         "combat": {
             "inCombat": combat.get("inCombat", False),
@@ -6001,7 +6083,9 @@ async def get_player_state():
         },
         "party": party,
         "timeWeather": time_weather,
-        "broadcast": broadcast
+        "broadcast": broadcast,
+        "recentRolls": player_rolls[-25:],
+        "lastPlayerRoll": player_rolls[-1] if player_rolls else None
     }
 
 @app.get("/api/broadcast")
@@ -6849,6 +6933,10 @@ async def get_battlemap():
             next_sanitized = {"name": "Something in the Shadows...", "type": "hidden"}
         else:
             next_sanitized = {"name": next_combatant.get("name"), "type": next_combatant.get("type", "monster")}
+
+    player_rolls = [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]
+    state["recentRolls"] = player_rolls[-25:]
+    state["lastPlayerRoll"] = player_rolls[-1] if player_rolls else None
 
     state["combat"] = {
         "inCombat": in_combat,

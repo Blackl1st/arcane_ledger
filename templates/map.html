@@ -8,6 +8,33 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icon.png">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ledger: {
+                            950: '#07090e',
+                            900: '#0d1117',
+                            850: '#121720',
+                            800: '#18202c',
+                            700: '#232f42',
+                            600: '#33435c',
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
     <script src="/static/js/ui_scale.js?v=1.0"></script>
     <script>
         if (window.ArcaneScale) {
@@ -360,6 +387,54 @@
             <!-- Bottom Progress Countdown -->
             <div class="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
                 <div id="cinematic-timer-bar" class="h-full bg-amber-400 transition-all duration-[3600ms] ease-linear w-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CINEMATIC PLAYER ROLL OVERLAY (TABLETOP SCREEN) -->
+    <div id="cinematic-roll-overlay" class="fixed inset-0 z-[100000] flex items-center justify-center p-4 transition-all duration-300 opacity-0 pointer-events-none scale-95 hidden">
+        <!-- Backdrop blur vignette (dismiss on click) -->
+        <div class="absolute inset-0 bg-black/75 backdrop-blur-md pointer-events-auto" onclick="dismissCinematicRollOverlay()"></div>
+        
+        <!-- Main Cinematic Card -->
+        <div id="cinematic-roll-card" class="relative z-10 pointer-events-auto rounded-3xl p-6 sm:p-8 border-2 border-amber-400/90 shadow-[0_0_70px_rgba(245,158,11,0.45),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300">
+            <!-- Close button -->
+            <button onclick="dismissCinematicRollOverlay()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition text-sm cursor-pointer" title="Dismiss">✕</button>
+            
+            <!-- Character Avatar & Name -->
+            <div class="flex items-center gap-3.5">
+                <div id="cinematic-roll-avatar-wrap" class="w-14 h-14 rounded-2xl border-2 border-amber-400 overflow-hidden bg-ledger-900 shadow-lg flex items-center justify-center shrink-0">
+                    <img id="cinematic-roll-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+                    <span id="cinematic-roll-avatar-icon" class="text-3xl">⚔️</span>
+                </div>
+                <div class="text-left min-w-0">
+                    <div id="cinematic-roll-character" class="font-display font-extrabold text-xl text-amber-300 leading-tight truncate">Thorne Ironbreaker</div>
+                    <div id="cinematic-roll-label" class="font-mono text-xs text-slate-300 uppercase tracking-wider font-semibold truncate">Longsword Attack</div>
+                </div>
+            </div>
+
+            <!-- Big Dramatic Roll Display -->
+            <div class="relative py-2 w-full flex flex-col items-center justify-center">
+                <div id="cinematic-roll-glow" class="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full pointer-events-none"></div>
+                <div id="cinematic-roll-total" class="relative font-display font-black text-6xl sm:text-7xl text-amber-300 tracking-tight drop-shadow-[0_5px_15px_rgba(0,0,0,0.9)]">
+                    20
+                </div>
+                <!-- Crit / Fumble Banner -->
+                <div id="cinematic-roll-badge" class="mt-2 hidden px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-xl">
+                    ⚡ NATURAL 20 / CRITICAL HIT!
+                </div>
+            </div>
+
+            <!-- Formula & Breakdown Box -->
+            <div id="cinematic-roll-breakdown-box" class="w-full bg-ledger-900/90 border border-ledger-700/80 rounded-2xl px-4 py-3 flex items-center justify-center gap-2.5 text-xs sm:text-sm font-mono text-slate-200 shadow-inner">
+                <span id="cinematic-roll-formula" class="text-amber-400 font-bold">1d20 + 5</span>
+                <span class="text-slate-500">➔</span>
+                <span id="cinematic-roll-breakdown" class="text-slate-300">Roll: 15 + Mod: +5</span>
+            </div>
+
+            <!-- Auto-dismiss Progress Bar -->
+            <div class="w-full h-1.5 bg-black/60 rounded-full overflow-hidden mt-1">
+                <div id="cinematic-roll-timer-bar" class="h-full bg-amber-400 transition-all duration-[4200ms] ease-linear w-full"></div>
             </div>
         </div>
     </div>
@@ -1247,6 +1322,198 @@
             lastAnnouncedTurnKey = turnKey;
         }
 
+        // Cinematic Player Roll Overlay & Web Audio Fanfare
+        let cinematicRollTimeout = null;
+        let lastSeenPlayerRollId = null;
+
+        function playDiceFanfare(isCrit, isFumble) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+
+                if (isCrit) {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.9);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 1.0);
+                    });
+                } else if (isFumble) {
+                    [220, 185, 146.83].forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        gain.gain.setValueAtTime(0.11, now + idx * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.9);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.12);
+                        osc.stop(now + idx * 0.12 + 1.0);
+                    });
+                } else {
+                    [440, 554.37, 659.25].forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+                        gain.gain.setValueAtTime(0.08, now + idx * 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.55);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.05);
+                        osc.stop(now + idx * 0.05 + 0.65);
+                    });
+                }
+            } catch (e) {
+                console.warn("Dice fanfare audio error:", e);
+            }
+        }
+
+        function showCinematicRoll(roll) {
+            if (!roll || roll.isDM) return;
+
+            const overlay = document.getElementById('cinematic-roll-overlay');
+            const card = document.getElementById('cinematic-roll-card');
+            const avatarImg = document.getElementById('cinematic-roll-avatar-img');
+            const avatarIcon = document.getElementById('cinematic-roll-avatar-icon');
+            const charName = document.getElementById('cinematic-roll-character');
+            const labelEl = document.getElementById('cinematic-roll-label');
+            const totalEl = document.getElementById('cinematic-roll-total');
+            const badgeEl = document.getElementById('cinematic-roll-badge');
+            const glowEl = document.getElementById('cinematic-roll-glow');
+            const formulaEl = document.getElementById('cinematic-roll-formula');
+            const breakdownEl = document.getElementById('cinematic-roll-breakdown');
+            const timerBar = document.getElementById('cinematic-roll-timer-bar');
+
+            if (!overlay || !card) return;
+
+            if (cinematicRollTimeout) {
+                clearTimeout(cinematicRollTimeout);
+                cinematicRollTimeout = null;
+            }
+
+            charName.textContent = roll.characterName || 'Hero';
+            labelEl.textContent = roll.label || (roll.rollType ? `${roll.rollType} Roll` : 'Dice Roll');
+            totalEl.textContent = roll.total !== undefined ? roll.total : roll.rawRoll;
+
+            if (roll.avatarUrl) {
+                avatarImg.src = roll.avatarUrl;
+                avatarImg.classList.remove('hidden');
+                avatarIcon.classList.add('hidden');
+            } else {
+                avatarImg.classList.add('hidden');
+                avatarIcon.classList.remove('hidden');
+                avatarIcon.textContent = "⚔️";
+            }
+
+            const formula = roll.formula || (roll.diceType ? `${roll.diceType}${roll.modifier ? (roll.modifier > 0 ? ` + ${roll.modifier}` : ` - ${Math.abs(roll.modifier)}`) : ''}` : '');
+            formulaEl.textContent = formula || 'Roll';
+
+            if (roll.rawRoll !== undefined) {
+                const rawStr = Array.isArray(roll.rawRoll) ? `[${roll.rawRoll.join(', ')}]` : roll.rawRoll;
+                const modStr = roll.modifier ? (roll.modifier > 0 ? ` + ${roll.modifier}` : ` - ${Math.abs(roll.modifier)}`) : '';
+                breakdownEl.textContent = `Dice: ${rawStr}${modStr}`;
+            } else if (roll.details) {
+                breakdownEl.textContent = roll.details;
+            } else {
+                breakdownEl.textContent = `Total: ${roll.total}`;
+            }
+
+            if (roll.isCrit) {
+                card.className = "relative z-10 pointer-events-auto rounded-3xl p-6 sm:p-8 border-2 border-emerald-400 shadow-[0_0_80px_rgba(16,185,129,0.5),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
+                glowEl.className = "absolute inset-0 bg-emerald-500/30 blur-3xl rounded-full pointer-events-none";
+                totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-emerald-400 tracking-tight drop-shadow-[0_5px_20px_rgba(16,185,129,0.7)] animate-bounce";
+                badgeEl.className = "mt-2 px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-xl bg-emerald-950 border border-emerald-500 text-emerald-300 flex items-center gap-1.5";
+                badgeEl.innerHTML = `<span>⚡</span><span>NATURAL 20 / CRITICAL HIT!</span>`;
+                badgeEl.classList.remove('hidden');
+                timerBar.className = "h-full bg-emerald-400 w-full";
+            } else if (roll.isFumble) {
+                card.className = "relative z-10 pointer-events-auto rounded-3xl p-6 sm:p-8 border-2 border-rose-500 shadow-[0_0_80px_rgba(244,63,94,0.5),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
+                glowEl.className = "absolute inset-0 bg-rose-500/30 blur-3xl rounded-full pointer-events-none";
+                totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-rose-500 tracking-tight drop-shadow-[0_5px_20px_rgba(244,63,94,0.7)]";
+                badgeEl.className = "mt-2 px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-xl bg-rose-950 border border-rose-600 text-rose-300 flex items-center gap-1.5";
+                badgeEl.innerHTML = `<span>💀</span><span>NATURAL 1 / CRITICAL FUMBLE!</span>`;
+                badgeEl.classList.remove('hidden');
+                timerBar.className = "h-full bg-rose-500 w-full";
+            } else {
+                card.className = "relative z-10 pointer-events-auto rounded-3xl p-6 sm:p-8 border-2 border-amber-400/90 shadow-[0_0_70px_rgba(245,158,11,0.45),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
+                glowEl.className = "absolute inset-0 bg-amber-500/20 blur-3xl rounded-full pointer-events-none";
+                totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-amber-300 tracking-tight drop-shadow-[0_5px_15px_rgba(0,0,0,0.9)]";
+                badgeEl.classList.add('hidden');
+                timerBar.className = "h-full bg-amber-400 w-full";
+            }
+
+            playDiceFanfare(roll.isCrit, roll.isFumble);
+
+            overlay.classList.remove('hidden', 'opacity-0', 'scale-95', 'pointer-events-none');
+            overlay.classList.add('opacity-100', 'scale-100');
+
+            timerBar.style.transition = 'none';
+            timerBar.style.width = '100%';
+            setTimeout(() => {
+                timerBar.style.transition = 'width 4200ms linear';
+                timerBar.style.width = '0%';
+            }, 50);
+
+            cinematicRollTimeout = setTimeout(() => {
+                dismissCinematicRollOverlay();
+            }, 4400);
+        }
+
+        function dismissCinematicRollOverlay() {
+            const overlay = document.getElementById('cinematic-roll-overlay');
+            if (!overlay) return;
+            overlay.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        let mapWs = null;
+        let mapWsReconnectTimer = null;
+
+        function initMapWebSocket() {
+            if (mapWs) {
+                try { mapWs.close(); } catch (e) {}
+            }
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/streamdeck`;
+
+            try {
+                mapWs = new WebSocket(wsUrl);
+                mapWs.onopen = function() {
+                    clearTimeout(mapWsReconnectTimer);
+                };
+                mapWs.onmessage = function(evt) {
+                    try {
+                        const msg = JSON.parse(evt.data);
+                        if (msg.event === "player_roll" && !msg.isDM) {
+                            showCinematicRoll(msg);
+                        }
+                    } catch (e) {
+                        console.warn("WebSocket parse error:", e);
+                    }
+                };
+                mapWs.onclose = function() {
+                    clearTimeout(mapWsReconnectTimer);
+                    mapWsReconnectTimer = setTimeout(initMapWebSocket, 3500);
+                };
+                mapWs.onerror = function() {
+                    try { mapWs.close(); } catch (e) {}
+                };
+            } catch (e) {
+                mapWsReconnectTimer = setTimeout(initMapWebSocket, 4000);
+            }
+        }
+
         // Live State Polling (Every 600ms)
         async function pollBattlemap() {
             try {
@@ -1257,6 +1524,17 @@
                 // Check for turn announcement
                 if (state.combat) {
                     checkTurnAnnouncement(state.combat);
+                }
+
+                // Check for new cinematic player roll
+                if (state.lastPlayerRoll && !state.lastPlayerRoll.isDM) {
+                    const lastRoll = state.lastPlayerRoll;
+                    if (lastSeenPlayerRollId === null) {
+                        lastSeenPlayerRollId = lastRoll.id;
+                    } else if (lastRoll.id !== lastSeenPlayerRollId) {
+                        lastSeenPlayerRollId = lastRoll.id;
+                        showCinematicRoll(lastRoll);
+                    }
                 }
 
                 const version = state.updatedAt || 0;
@@ -1298,6 +1576,7 @@
         }
 
         window.onload = () => {
+            initMapWebSocket();
             pollBattlemap();
             setInterval(pollBattlemap, 600);
             pingHud();

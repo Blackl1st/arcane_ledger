@@ -955,6 +955,13 @@
                     <span class="hidden lg:inline">Connect Players</span>
                 </button>
 
+                <!-- Table Roll History Drawer Flyaway Button -->
+                <button onclick="toggleRollHistoryDrawer()" id="roll-history-btn" class="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 hover:text-amber-300 border border-ledger-700 hover:border-amber-500/50 text-xs font-semibold transition shadow-sm" title="Table Roll History (DM & Players)">
+                    <span>📜</span>
+                    <span class="hidden sm:inline">Rolls</span>
+                    <span id="roll-history-badge" class="hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500 text-ledger-950">0</span>
+                </button>
+
                 <!-- Quick Dice Roller Drawer Button -->
                 <div class="relative">
                     <button onclick="toggleTopPopover('dice-drawer')" id="dice-btn" class="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-extrabold shadow transition active:scale-95" title="Quick Dice Roller (Keyboard: R)">
@@ -3599,7 +3606,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.9</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.10</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -7486,6 +7493,52 @@
         </div>
 
         <button type="button" onclick="dismissDiceOverlay()" class="text-slate-500 hover:text-slate-300 text-xs ml-1 self-start transition" title="Dismiss">✕</button>
+    </div>
+
+    <!-- TABLE ROLL HISTORY FLYAWAY DRAWER OVERLAY -->
+    <div id="roll-history-drawer-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] hidden transition-opacity duration-300" onclick="toggleRollHistoryDrawer()"></div>
+
+    <!-- TABLE ROLL HISTORY FLYAWAY DRAWER -->
+    <div id="roll-history-drawer" class="fixed inset-y-0 right-0 w-full sm:w-[480px] bg-ledger-950/98 backdrop-blur-xl border-l border-amber-500/30 z-[9999] shadow-2xl transition-transform duration-300 transform translate-x-full flex flex-col">
+        <!-- Header -->
+        <div class="p-4 sm:p-5 border-b border-ledger-800 bg-ledger-900/60 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-xl text-ledger-950 shadow-md border border-amber-300/40">
+                    📜
+                </div>
+                <div>
+                    <h3 class="font-display font-bold text-base text-amber-300 leading-tight">Table Roll History</h3>
+                    <p class="text-[11px] text-slate-400 font-mono">Live log of Player & DM rolls</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button onclick="clearTableRollHistory()" class="px-2.5 py-1.5 rounded-lg bg-ledger-900 hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 border border-ledger-700 hover:border-rose-600/50 text-xs font-mono transition flex items-center gap-1" title="Clear All Table Roll History">
+                    <span>🗑️</span>
+                    <span class="hidden sm:inline">Clear</span>
+                </button>
+                <button onclick="toggleRollHistoryDrawer()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-ledger-800 transition text-base" title="Close Drawer">✕</button>
+            </div>
+        </div>
+
+        <!-- Filter Sub-header -->
+        <div class="px-4 py-2.5 border-b border-ledger-800/80 bg-ledger-950/80 flex items-center justify-between gap-2 text-xs font-mono">
+            <span class="text-slate-400 text-[11px]">Filter:</span>
+            <div class="flex items-center gap-1">
+                <button id="roll-filter-all" onclick="setRollHistoryFilter('all')" class="roll-filter-btn px-2.5 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold transition">All Rolls</button>
+                <button id="roll-filter-player" onclick="setRollHistoryFilter('player')" class="roll-filter-btn px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-amber-300 border border-ledger-800 transition">🛡️ Players</button>
+                <button id="roll-filter-dm" onclick="setRollHistoryFilter('dm')" class="roll-filter-btn px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-amber-300 border border-ledger-800 transition">🎭 DM</button>
+            </div>
+            <span id="roll-history-count" class="text-[11px] text-slate-500 ml-auto font-bold">0 rolls</span>
+        </div>
+
+        <!-- Scrollable Feed -->
+        <div id="table-roll-history-feed" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div class="text-center py-16 text-slate-500 text-xs font-mono space-y-2">
+                <span class="text-3xl block">🎲</span>
+                <p>No rolls recorded at the table yet.</p>
+                <p class="text-[10px] text-slate-600">Player rolls from the Companion app and DM rolls will appear here.</p>
+            </div>
+        </div>
     </div>
 
     <!-- FLOATING STARTUP UPDATE NOTIFICATION BANNER -->

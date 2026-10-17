@@ -257,6 +257,11 @@
                 <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
                 <span>Exploration Mode</span>
             </div>
+            <button id="player-roll-history-btn" onclick="togglePlayerRollHistoryDrawer()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 hover:border-amber-400 text-slate-300 hover:text-amber-300 font-mono text-xs flex items-center gap-1.5 transition cursor-pointer" title="View Player Roll Log">
+                <span>📜</span>
+                <span class="hidden sm:inline">Rolls</span>
+                <span id="player-roll-count-badge" class="hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500 text-ledger-950">0</span>
+            </button>
             <button id="player-audio-toggle-btn" onclick="togglePlayerAudio()" class="px-2.5 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 hover:border-amber-400 text-slate-300 hover:text-amber-300 font-mono text-xs flex items-center gap-1.5 transition cursor-pointer" title="Toggle Turn Fanfare Audio">
                 <span id="player-audio-icon">🔔</span>
                 <span id="player-audio-label" class="hidden sm:inline">Sound</span>
@@ -378,6 +383,81 @@
             <div id="broadcast-handout-inner"></div>
         </div>
     </div>
+    
+    <!-- CINEMATIC PLAYER ROLL OVERLAY (CENTERED SCREEN POPUP) -->
+    <div id="cinematic-roll-overlay" class="fixed inset-0 z-[100000] flex items-center justify-center p-4 transition-all duration-300 opacity-0 pointer-events-none scale-95 hidden">
+        <!-- Backdrop blur vignette (dismiss on click) -->
+        <div class="absolute inset-0 bg-black/75 backdrop-blur-md pointer-events-auto" onclick="dismissCinematicRollOverlay()"></div>
+        
+        <!-- Main Cinematic Card -->
+        <div id="cinematic-roll-card" class="relative z-10 pointer-events-auto parchment-border rounded-3xl p-6 sm:p-8 border-2 border-amber-400/90 shadow-[0_0_60px_rgba(245,158,11,0.4),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300">
+            <!-- Close button -->
+            <button onclick="dismissCinematicRollOverlay()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition text-sm cursor-pointer" title="Dismiss">✕</button>
+            
+            <!-- Character Avatar & Name -->
+            <div class="flex items-center gap-3.5">
+                <div id="cinematic-roll-avatar-wrap" class="w-14 h-14 rounded-2xl border-2 border-amber-400 overflow-hidden bg-ledger-900 shadow-lg flex items-center justify-center shrink-0">
+                    <img id="cinematic-roll-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar">
+                    <span id="cinematic-roll-avatar-icon" class="text-3xl">⚔️</span>
+                </div>
+                <div class="text-left min-w-0">
+                    <div id="cinematic-roll-character" class="font-display font-extrabold text-xl text-amber-300 leading-tight truncate">Thorne Ironbreaker</div>
+                    <div id="cinematic-roll-label" class="font-mono text-xs text-slate-300 uppercase tracking-wider font-semibold truncate">Longsword Attack</div>
+                </div>
+            </div>
+
+            <!-- Big Dramatic Roll Display -->
+            <div class="relative py-2 w-full flex flex-col items-center justify-center">
+                <div id="cinematic-roll-glow" class="absolute inset-0 bg-amber-500/20 blur-3xl rounded-full pointer-events-none"></div>
+                <div id="cinematic-roll-total" class="relative font-display font-black text-6xl sm:text-7xl text-amber-300 tracking-tight drop-shadow-[0_5px_15px_rgba(0,0,0,0.9)]">
+                    20
+                </div>
+                <!-- Crit / Fumble Banner -->
+                <div id="cinematic-roll-badge" class="mt-2 hidden px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-xl">
+                    ⚡ NATURAL 20 / CRITICAL HIT!
+                </div>
+            </div>
+
+            <!-- Formula & Breakdown Box -->
+            <div id="cinematic-roll-breakdown-box" class="w-full bg-ledger-900/90 border border-ledger-700/80 rounded-2xl px-4 py-3 flex items-center justify-center gap-2.5 text-xs sm:text-sm font-mono text-slate-200 shadow-inner">
+                <span id="cinematic-roll-formula" class="text-amber-400 font-bold">1d20 + 5</span>
+                <span class="text-slate-500">➔</span>
+                <span id="cinematic-roll-breakdown" class="text-slate-300">Roll: 15 + Mod: +5</span>
+            </div>
+
+            <!-- Auto-dismiss Progress Bar -->
+            <div class="w-full h-1.5 bg-black/60 rounded-full overflow-hidden mt-1">
+                <div id="cinematic-roll-timer-bar" class="h-full bg-amber-400 transition-all duration-[4200ms] ease-linear w-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLAYER ROLL HISTORY DRAWER OVERLAY -->
+    <div id="player-roll-drawer-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99998] hidden transition-opacity duration-300" onclick="togglePlayerRollHistoryDrawer()"></div>
+
+    <!-- PLAYER ROLL HISTORY DRAWER -->
+    <div id="player-roll-history-drawer" class="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-ledger-950/98 backdrop-blur-xl border-l border-amber-500/30 z-[99999] shadow-2xl transition-transform duration-300 transform translate-x-full flex flex-col">
+        <!-- Drawer Header -->
+        <div class="p-5 border-b border-ledger-800 flex items-center justify-between bg-ledger-900/50">
+            <div class="flex items-center gap-2.5">
+                <span class="text-xl">📜</span>
+                <div>
+                    <h3 class="font-display font-bold text-base text-amber-400 leading-tight">Party Roll Log</h3>
+                    <p class="text-[11px] text-slate-400 font-mono">Recent rolls from adventuring party</p>
+                </div>
+            </div>
+            <button onclick="togglePlayerRollHistoryDrawer()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-ledger-800 transition" title="Close Drawer">✕</button>
+        </div>
+
+        <!-- Scrollable Feed -->
+        <div id="player-roll-history-feed" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div class="text-center py-12 text-slate-500 text-xs font-mono space-y-2">
+                <span class="text-3xl block">🎲</span>
+                <p>No player rolls recorded yet.</p>
+                <p class="text-[10px] text-slate-600">Rolls made from the Companion app will appear here.</p>
+            </div>
+        </div>
+    </div>
 
     <!-- JAVASCRIPT CONTROLLER -->
     <script>
@@ -406,12 +486,45 @@
             }
         }
 
+        let lastSeenPlayerRollId = null;
+        let playerRollsHistory = [];
+
         async function pollPlayerState() {
             try {
                 const res = await fetch('/api/player-state');
                 if (res.ok) {
                     playerState = await res.json();
                     renderPlayerView();
+
+                    // Sync player rolls history (strictly non-DM)
+                    if (playerState.recentRolls && Array.isArray(playerState.recentRolls)) {
+                        const incoming = playerState.recentRolls.filter(r => !r.isDM);
+                        const existingIds = new Set(playerRollsHistory.map(r => r.id));
+                        let addedAny = false;
+                        for (let r of incoming) {
+                            if (!existingIds.has(r.id)) {
+                                playerRollsHistory.push(r);
+                                existingIds.add(r.id);
+                                addedAny = true;
+                            }
+                        }
+                        if (addedAny) {
+                            playerRollsHistory.sort((a, b) => (b.id || '').localeCompare(a.id || ''));
+                            if (playerRollsHistory.length > 50) playerRollsHistory = playerRollsHistory.slice(0, 50);
+                            renderPlayerRollHistory();
+                        }
+                    }
+
+                    // Check for new cinematic player roll
+                    if (playerState.lastPlayerRoll && !playerState.lastPlayerRoll.isDM) {
+                        const lastRoll = playerState.lastPlayerRoll;
+                        if (lastSeenPlayerRollId === null) {
+                            lastSeenPlayerRollId = lastRoll.id;
+                        } else if (lastRoll.id !== lastSeenPlayerRollId) {
+                            lastSeenPlayerRollId = lastRoll.id;
+                            showCinematicRoll(lastRoll);
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn("Polling player state...", e);
@@ -1297,8 +1410,308 @@
             }, 400);
         }
 
+        // Cinematic Player Roll Display & Audio Fanfare
+        let cinematicRollTimeout = null;
+        let isPlayerRollDrawerOpen = false;
+
+        function playDiceFanfare(isCrit, isFumble) {
+            if (isPlayerAudioMuted) return;
+            try {
+                if (!playerAudioCtx) playerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (playerAudioCtx.state === 'suspended') playerAudioCtx.resume();
+                const now = playerAudioCtx.currentTime;
+
+                if (isCrit) {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                        const osc = playerAudioCtx.createOscillator();
+                        const gain = playerAudioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.9);
+                        osc.connect(gain);
+                        gain.connect(playerAudioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 1.0);
+                    });
+                } else if (isFumble) {
+                    [220, 185, 146.83].forEach((freq, idx) => {
+                        const osc = playerAudioCtx.createOscillator();
+                        const gain = playerAudioCtx.createGain();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        gain.gain.setValueAtTime(0.11, now + idx * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.9);
+                        osc.connect(gain);
+                        gain.connect(playerAudioCtx.destination);
+                        osc.start(now + idx * 0.12);
+                        osc.stop(now + idx * 0.12 + 1.0);
+                    });
+                } else {
+                    [440, 554.37, 659.25].forEach((freq, idx) => {
+                        const osc = playerAudioCtx.createOscillator();
+                        const gain = playerAudioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+                        gain.gain.setValueAtTime(0.08, now + idx * 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.55);
+                        osc.connect(gain);
+                        gain.connect(playerAudioCtx.destination);
+                        osc.start(now + idx * 0.05);
+                        osc.stop(now + idx * 0.05 + 0.65);
+                    });
+                }
+            } catch (e) {
+                console.warn("Dice fanfare audio error:", e);
+            }
+        }
+
+        function showCinematicRoll(roll) {
+            if (!roll || roll.isDM) return;
+
+            const overlay = document.getElementById('cinematic-roll-overlay');
+            const card = document.getElementById('cinematic-roll-card');
+            const avatarImg = document.getElementById('cinematic-roll-avatar-img');
+            const avatarIcon = document.getElementById('cinematic-roll-avatar-icon');
+            const charName = document.getElementById('cinematic-roll-character');
+            const labelEl = document.getElementById('cinematic-roll-label');
+            const totalEl = document.getElementById('cinematic-roll-total');
+            const badgeEl = document.getElementById('cinematic-roll-badge');
+            const glowEl = document.getElementById('cinematic-roll-glow');
+            const formulaEl = document.getElementById('cinematic-roll-formula');
+            const breakdownEl = document.getElementById('cinematic-roll-breakdown');
+            const timerBar = document.getElementById('cinematic-roll-timer-bar');
+
+            if (!overlay || !card) return;
+
+            if (cinematicRollTimeout) {
+                clearTimeout(cinematicRollTimeout);
+                cinematicRollTimeout = null;
+            }
+
+            charName.textContent = roll.characterName || 'Hero';
+            labelEl.textContent = roll.label || (roll.rollType ? `${roll.rollType} Roll` : 'Dice Roll');
+            totalEl.textContent = roll.total !== undefined ? roll.total : roll.rawRoll;
+
+            if (roll.avatarUrl) {
+                avatarImg.src = roll.avatarUrl;
+                avatarImg.classList.remove('hidden');
+                avatarIcon.classList.add('hidden');
+            } else {
+                avatarImg.classList.add('hidden');
+                avatarIcon.classList.remove('hidden');
+                avatarIcon.textContent = "⚔️";
+            }
+
+            const formula = roll.formula || (roll.diceType ? `${roll.diceType}${roll.modifier ? (roll.modifier > 0 ? ` + ${roll.modifier}` : ` - ${Math.abs(roll.modifier)}`) : ''}` : '');
+            formulaEl.textContent = formula || 'Roll';
+
+            if (roll.rawRoll !== undefined) {
+                const rawStr = Array.isArray(roll.rawRoll) ? `[${roll.rawRoll.join(', ')}]` : roll.rawRoll;
+                const modStr = roll.modifier ? (roll.modifier > 0 ? ` + ${roll.modifier}` : ` - ${Math.abs(roll.modifier)}`) : '';
+                breakdownEl.textContent = `Dice: ${rawStr}${modStr}`;
+            } else if (roll.details) {
+                breakdownEl.textContent = roll.details;
+            } else {
+                breakdownEl.textContent = `Total: ${roll.total}`;
+            }
+
+            if (roll.isCrit) {
+                card.className = "relative z-10 pointer-events-auto parchment-border rounded-3xl p-6 sm:p-8 border-2 border-emerald-400 shadow-[0_0_80px_rgba(16,185,129,0.5),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
+                glowEl.className = "absolute inset-0 bg-emerald-500/30 blur-3xl rounded-full pointer-events-none";
+                totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-emerald-400 tracking-tight drop-shadow-[0_5px_20px_rgba(16,185,129,0.7)] animate-bounce";
+                badgeEl.className = "mt-2 px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-xl bg-emerald-950 border border-emerald-500 text-emerald-300 flex items-center gap-1.5";
+                badgeEl.innerHTML = `<span>⚡</span><span>NATURAL 20 / CRITICAL HIT!</span>`;
+                badgeEl.classList.remove('hidden');
+                timerBar.className = "h-full bg-emerald-400 w-full";
+            } else if (roll.isFumble) {
+                card.className = "relative z-10 pointer-events-auto parchment-border rounded-3xl p-6 sm:p-8 border-2 border-rose-500 shadow-[0_0_80px_rgba(244,63,94,0.5),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
+                glowEl.className = "absolute inset-0 bg-rose-500/30 blur-3xl rounded-full pointer-events-none";
+                totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-rose-500 tracking-tight drop-shadow-[0_5px_20px_rgba(244,63,94,0.7)]";
+                badgeEl.className = "mt-2 px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest shadow-xl bg-rose-950 border border-rose-600 text-rose-300 flex items-center gap-1.5";
+                badgeEl.innerHTML = `<span>💀</span><span>NATURAL 1 / CRITICAL FUMBLE!</span>`;
+                badgeEl.classList.remove('hidden');
+                timerBar.className = "h-full bg-rose-500 w-full";
+            } else {
+                card.className = "relative z-10 pointer-events-auto parchment-border rounded-3xl p-6 sm:p-8 border-2 border-amber-400/90 shadow-[0_0_60px_rgba(245,158,11,0.4),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
+                glowEl.className = "absolute inset-0 bg-amber-500/20 blur-3xl rounded-full pointer-events-none";
+                totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-amber-300 tracking-tight drop-shadow-[0_5px_15px_rgba(0,0,0,0.9)]";
+                badgeEl.classList.add('hidden');
+                timerBar.className = "h-full bg-amber-400 w-full";
+            }
+
+            playDiceFanfare(roll.isCrit, roll.isFumble);
+
+            overlay.classList.remove('hidden', 'opacity-0', 'scale-95', 'pointer-events-none');
+            overlay.classList.add('opacity-100', 'scale-100');
+
+            timerBar.style.transition = 'none';
+            timerBar.style.width = '100%';
+            setTimeout(() => {
+                timerBar.style.transition = 'width 4200ms linear';
+                timerBar.style.width = '0%';
+            }, 50);
+
+            cinematicRollTimeout = setTimeout(() => {
+                dismissCinematicRollOverlay();
+            }, 4400);
+        }
+
+        function dismissCinematicRollOverlay() {
+            const overlay = document.getElementById('cinematic-roll-overlay');
+            if (!overlay) return;
+            overlay.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        function togglePlayerRollHistoryDrawer() {
+            const drawer = document.getElementById('player-roll-history-drawer');
+            const overlay = document.getElementById('player-roll-drawer-overlay');
+            if (!drawer || !overlay) return;
+
+            isPlayerRollDrawerOpen = !isPlayerRollDrawerOpen;
+            if (isPlayerRollDrawerOpen) {
+                overlay.classList.remove('hidden');
+                drawer.classList.remove('translate-x-full');
+                renderPlayerRollHistory();
+            } else {
+                overlay.classList.add('hidden');
+                drawer.classList.add('translate-x-full');
+            }
+        }
+
+        function updatePlayerRollBadge(count) {
+            const badge = document.getElementById('player-roll-count-badge');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+
+        function renderPlayerRollHistory() {
+            const feed = document.getElementById('player-roll-history-feed');
+            if (!feed) return;
+
+            const rolls = playerRollsHistory.filter(r => !r.isDM);
+            updatePlayerRollBadge(rolls.length);
+
+            if (rolls.length === 0) {
+                feed.innerHTML = `
+                    <div class="text-center py-12 text-slate-500 text-xs font-mono space-y-2">
+                        <span class="text-3xl block">🎲</span>
+                        <p>No player rolls recorded yet.</p>
+                        <p class="text-[10px] text-slate-600">Rolls made from the Companion app will appear here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            feed.innerHTML = rolls.map(r => {
+                let borderClass = "border-ledger-700/80 hover:border-amber-500/50";
+                let totalColor = "text-amber-300";
+                let badgeHtml = "";
+
+                if (r.isCrit) {
+                    borderClass = "border-emerald-500/60 bg-emerald-950/20";
+                    totalColor = "text-emerald-400 font-extrabold";
+                    badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 border border-emerald-500 text-emerald-300">⚡ NAT 20</span>`;
+                } else if (r.isFumble) {
+                    borderClass = "border-rose-500/60 bg-rose-950/20";
+                    totalColor = "text-rose-400 font-extrabold";
+                    badgeHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950 border border-rose-600 text-rose-300">💀 NAT 1</span>`;
+                }
+
+                const formula = r.formula || (r.diceType ? `${r.diceType}${r.modifier ? (r.modifier > 0 ? ` + ${r.modifier}` : ` - ${Math.abs(r.modifier)}`) : ''}` : '');
+                const time = r.timestamp || '';
+
+                return `
+                    <div class="bg-ledger-900/90 rounded-2xl p-3.5 border ${borderClass} transition shadow-md flex flex-col space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                ${r.avatarUrl 
+                                    ? `<img src="${escapeHTML(r.avatarUrl)}" class="w-7 h-7 rounded-lg object-cover border border-amber-400/40 shrink-0" alt="">`
+                                    : `<div class="w-7 h-7 rounded-lg bg-ledger-800 border border-ledger-700 flex items-center justify-center text-xs shrink-0">⚔️</div>`
+                                }
+                                <span class="font-bold text-xs text-slate-200 truncate">${escapeHTML(r.characterName || 'Player')}</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 font-mono shrink-0">${escapeHTML(time)}</span>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-2 pt-1 border-t border-ledger-800/80">
+                            <div class="min-w-0">
+                                <div class="text-xs font-semibold text-slate-300 truncate">${escapeHTML(r.label || 'Dice Roll')}</div>
+                                <div class="text-[11px] text-slate-400 font-mono">${escapeHTML(formula)}</div>
+                            </div>
+                            <div class="text-right shrink-0 flex items-center gap-2">
+                                ${badgeHtml}
+                                <span class="font-display font-black text-2xl ${totalColor}">${r.total !== undefined ? r.total : r.rawRoll}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Real-Time WebSocket Listener
+        let playerWs = null;
+        let playerWsReconnectTimer = null;
+
+        function initPlayerWebSocket() {
+            if (playerWs) {
+                try { playerWs.close(); } catch (e) {}
+            }
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/streamdeck`;
+
+            try {
+                playerWs = new WebSocket(wsUrl);
+                playerWs.onopen = function() {
+                    clearTimeout(playerWsReconnectTimer);
+                };
+                playerWs.onmessage = function(evt) {
+                    try {
+                        const msg = JSON.parse(evt.data);
+                        if (msg.event === "player_roll") {
+                            if (!msg.isDM) {
+                                const exists = playerRollsHistory.some(r => r.id === msg.id);
+                                if (!exists) {
+                                    playerRollsHistory.unshift(msg);
+                                    if (playerRollsHistory.length > 50) playerRollsHistory.pop();
+                                }
+                                showCinematicRoll(msg);
+                                renderPlayerRollHistory();
+                            }
+                        } else if (msg.event === "rolls_cleared") {
+                            playerRollsHistory = [];
+                            renderPlayerRollHistory();
+                        } else if (msg.event === "party_updated") {
+                            pollPlayerState();
+                        }
+                    } catch (e) {
+                        console.warn("WebSocket parse error:", e);
+                    }
+                };
+                playerWs.onclose = function() {
+                    clearTimeout(playerWsReconnectTimer);
+                    playerWsReconnectTimer = setTimeout(initPlayerWebSocket, 3500);
+                };
+                playerWs.onerror = function() {
+                    try { playerWs.close(); } catch (e) {}
+                };
+            } catch (e) {
+                playerWsReconnectTimer = setTimeout(initPlayerWebSocket, 4000);
+            }
+        }
+
         window.onload = function() {
             updatePlayerAudioBtnUI();
+            initPlayerWebSocket();
             pollPlayerState();
             setInterval(pollPlayerState, 1500);
             // Unlock Web Audio on first user interaction
