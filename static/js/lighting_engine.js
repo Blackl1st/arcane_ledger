@@ -292,6 +292,7 @@ class TabletopLightingEngine {
             return n.includes("ace") || id.includes("400U") || n.includes("atmosphere");
         });
 
+        let addedNew = false;
         if (aceFixtures.length > 0) {
             if (!Array.isArray(this.state.atmosphere.fixtures) || this.state.atmosphere.fixtures.length === 0) {
                 this.state.atmosphere.fixtures = aceFixtures.map((f, i) => ({
@@ -299,6 +300,7 @@ class TabletopLightingEngine {
                     name: f.name || `amaran Ace 25c #${i + 1}`,
                     enabled: true
                 }));
+                addedNew = true;
             } else {
                 aceFixtures.forEach(af => {
                     const exists = this.state.atmosphere.fixtures.find(f => f.node_id === af.node_id);
@@ -308,10 +310,14 @@ class TabletopLightingEngine {
                             name: af.name || `amaran Ace 25c #${this.state.atmosphere.fixtures.length + 1}`,
                             enabled: true
                         });
+                        addedNew = true;
                     }
                 });
             }
             this._updateAtmosphereNodeIds();
+            if (addedNew) {
+                this.syncToServer();
+            }
         }
     }
 
@@ -407,15 +413,20 @@ class TabletopLightingEngine {
             } else {
                 const intensity = Math.round(this.state.atmosphere.brightness * 10);
                 this.sendRequest("set_intensity", { intensity: intensity }, nodeId);
-                if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
-                    const mapped = this._mapEffectName(this.state.atmosphere.effect);
-                    this.sendRequest("set_system_effect", { effect_type: mapped }, nodeId);
-                } else if (this.state.atmosphere.mode === "rgb") {
-                    const hex = this._rgbToHex(this.state.atmosphere.rgb);
-                    this.sendRequest("set_color", { color: hex }, nodeId);
-                } else {
-                    this.sendRequest("set_cct", { cct: this.state.atmosphere.cct }, nodeId);
-                }
+                setTimeout(() => {
+                    if (this.state.atmosphere.mode === "rgb" || (this.state.atmosphere.rgb && this.state.atmosphere.effect !== "solid")) {
+                        const hex = this._rgbToHex(this.state.atmosphere.rgb);
+                        this.sendRequest("set_color", { color: hex }, nodeId);
+                    } else {
+                        this.sendRequest("set_cct", { cct: this.state.atmosphere.cct }, nodeId);
+                    }
+                    if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
+                        setTimeout(() => {
+                            const mapped = this._mapEffectName(this.state.atmosphere.effect);
+                            this.sendRequest("set_system_effect", { effect_type: mapped }, nodeId);
+                        }, 50);
+                    }
+                }, 50);
             }
 
             this.updateAtmosphereUI();
@@ -423,12 +434,17 @@ class TabletopLightingEngine {
         }
     }
 
-    sendAtmosphereRequest(type, args = null) {
+    async sendAtmosphereRequest(type, args = null) {
         const ids = this.getAtmosphereNodeIds();
+        if (!ids || ids.length === 0) return;
+
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            ids.forEach(nid => {
-                this.sendRequest(type, args, nid);
-            });
+            for (let i = 0; i < ids.length; i++) {
+                if (i > 0) {
+                    await new Promise(r => setTimeout(r, 45));
+                }
+                this.sendRequest(type, args, ids[i]);
+            }
         } else {
             const payload = {
                 version: 1,
@@ -437,11 +453,13 @@ class TabletopLightingEngine {
                 node_ids: ids
             };
             if (args) payload.args = args;
-            fetch('/api/lighting/command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).catch(() => {});
+            try {
+                await fetch('/api/lighting/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) {}
         }
     }
 
@@ -490,22 +508,27 @@ class TabletopLightingEngine {
         this.sendRequest("set_intensity", { intensity: intensity }, nid);
     }
 
-    sendAtmosphereState() {
+    async sendAtmosphereState() {
         const intensity = this.state.atmosphere.enabled ? Math.round(this.state.atmosphere.brightness * 10) : 0;
 
-        // Intensity
-        this.sendAtmosphereRequest("set_intensity", { intensity: intensity });
+        // Phase 1: Set intensity across all atmosphere fixtures
+        await this.sendAtmosphereRequest("set_intensity", { intensity: intensity });
 
-        // Color / CCT / Effect
-        if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
-            const mapped = this._mapEffectName(this.state.atmosphere.effect);
-            this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped });
-        } else if (this.state.atmosphere.mode === "rgb") {
+        // Phase 2: Set color or CCT base tone across all atmosphere fixtures first
+        await new Promise(r => setTimeout(r, 55));
+        if (this.state.atmosphere.mode === "rgb" || (this.state.atmosphere.rgb && this.state.atmosphere.effect !== "solid")) {
             const hex = this._rgbToHex(this.state.atmosphere.rgb);
-            this.sendAtmosphereRequest("set_color", { color: hex });
+            await this.sendAtmosphereRequest("set_color", { color: hex });
         } else {
-            const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct));
-            this.sendAtmosphereRequest("set_cct", { cct: cct });
+            const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
+            await this.sendAtmosphereRequest("set_cct", { cct: cct });
+        }
+
+        // Phase 3: Dynamic hardware effect (if not solid), after color baseline is set
+        if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
+            await new Promise(r => setTimeout(r, 55));
+            const mapped = this._mapEffectName(this.state.atmosphere.effect);
+            await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped });
         }
     }
 
@@ -650,23 +673,56 @@ class TabletopLightingEngine {
         this.syncToServer();
     }
 
-    applyPreset(presetId) {
-        const p = this.presets[presetId];
-        if (!p) return;
+    async applyAtmosphereConfig(cfg, presetId = null) {
+        if (!cfg) return;
+        if (presetId) this.state.atmosphere.activePreset = presetId;
 
-        this.state.atmosphere.activePreset = presetId;
-        this.state.atmosphere.mode = p.mode;
-        this.state.atmosphere.brightness = p.brightness;
-        this.state.atmosphere.cct = p.cct;
-        this.state.atmosphere.rgb = p.rgb;
-        this.state.atmosphere.effect = p.effect;
+        if (cfg.brightness !== undefined) {
+            const b = Math.max(0, Math.min(100, parseInt(cfg.brightness) || 0));
+            this.state.atmosphere.brightness = b;
+            this.state.atmosphere.enabled = b > 0;
+        }
+        if (cfg.mode) this.state.atmosphere.mode = cfg.mode;
+        if (cfg.cct !== undefined) this.state.atmosphere.cct = Math.max(2300, Math.min(10000, parseInt(cfg.cct) || 3200));
 
-        // Update ONLY the Ace 25c so the reading light remains steady for players
-        this.sendAtmosphereState();
+        if (cfg.color) {
+            const clean = String(cfg.color).replace('#', '');
+            if (clean.length === 6) {
+                this.state.atmosphere.rgb = [
+                    parseInt(clean.substring(0, 2), 16) || 0,
+                    parseInt(clean.substring(2, 4), 16) || 0,
+                    parseInt(clean.substring(4, 6), 16) || 0
+                ];
+            }
+        } else if (Array.isArray(cfg.rgb) && cfg.rgb.length >= 3) {
+            this.state.atmosphere.rgb = [cfg.rgb[0], cfg.rgb[1], cfg.rgb[2]];
+        }
+
+        if (cfg.effect) this.state.atmosphere.effect = cfg.effect;
+
+        // Apply immediately to visuals
         this.updateSimulatorVisuals();
         this.updateAtmosphereUI();
         this.updateStatusBadge();
+
+        // Send hardware state reliably across all fixtures
+        await this.sendAtmosphereState();
+
+        // Sync to server once
         this.syncToServer();
+    }
+
+    async applyPreset(presetId) {
+        const p = this.presets[presetId];
+        if (!p) return;
+
+        await this.applyAtmosphereConfig({
+            brightness: p.brightness,
+            mode: p.mode,
+            cct: p.cct,
+            rgb: p.rgb,
+            effect: p.effect
+        }, presetId);
     }
 
     // Compatibility wrappers for existing code

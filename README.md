@@ -263,7 +263,7 @@ Arcane Ledger is distributed as a **pre-compiled, standalone desktop application
 2. **Launch Arcane Ledger**:
    * **Windows**: Unzip the folder and double-click `ArcaneLedger.exe`.
    * **macOS**: Unzip the archive and drag `ArcaneLedger.app` into your `Applications` folder. Double-click to open.
-     *(On first run on macOS: Right-click `ArcaneLedger.app` → select **Open** to approve the initial launch).*
+     *(On first run on macOS: Right-click `ArcaneLedger.app` → select **Open** to approve the initial launch, or if Gatekeeper blocks the app run `xattr -cr /Applications/ArcaneLedger.app` in Terminal).*
 
 3. **How It Works**:
    * The app boots its embedded high-performance engine silently in the background with near-zero memory footprint.

@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.2"
+CURRENT_VERSION = "1.1.3"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -449,6 +449,11 @@ def execute_patch_and_restart() -> Dict[str, Any]:
         except Exception as e:
             logging.warning(f"ditto failed ({e}), falling back to unzip...")
             subprocess.run(["/usr/bin/unzip", "-q", "-o", str(zip_path), "-d", str(staging_dir)], check=True, capture_output=True)
+
+        try:
+            subprocess.run(["/usr/bin/xattr", "-cr", str(staging_dir)], check=False, capture_output=True)
+        except Exception:
+            pass
     else:
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(staging_dir)
@@ -561,8 +566,8 @@ rm -rf "$TARGET_APP/ArcaneLedger.app" 2>/dev/null
 
 # 4. Remove quarantine and ensure execute permissions
 echo "Setting permissions and clearing quarantine..."
-xattr -cr "$TARGET_APP" 2>/dev/null
-xattr -dr com.apple.quarantine "$TARGET_APP" 2>/dev/null
+/usr/bin/xattr -cr "$TARGET_APP" 2>/dev/null || xattr -cr "$TARGET_APP" 2>/dev/null
+/usr/bin/xattr -dr com.apple.quarantine "$TARGET_APP" 2>/dev/null || xattr -dr com.apple.quarantine "$TARGET_APP" 2>/dev/null
 chmod -R 755 "$TARGET_APP/Contents/MacOS" 2>/dev/null
 find "$TARGET_APP" -name "*.dylib" -exec chmod 755 {{}} + 2>/dev/null
 find "$TARGET_APP" -name "*.so" -exec chmod 755 {{}} + 2>/dev/null

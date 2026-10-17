@@ -8772,16 +8772,10 @@ function triggerQuickPreset(presetId) {
             if (preset.lighting.overhead && preset.lighting.overhead.brightness !== undefined) {
                 window.LightingEngine.setOverheadBrightness(preset.lighting.overhead.brightness);
             }
-            // Channel 2: Atmosphere Ace 25c
+            // Channel 2: Atmosphere Ace 25c Group
             if (preset.lighting.atmosphere) {
-                const atm = preset.lighting.atmosphere;
-                if (atm.brightness !== undefined) window.LightingEngine.setAtmosphereBrightness(atm.brightness);
-                if (atm.cct !== undefined) window.LightingEngine.state.atmosphere.cct = atm.cct;
-                if (atm.color) window.LightingEngine.setAtmosphereHex(atm.color);
-                if (atm.effect) window.LightingEngine.setAtmosphereEffect(atm.effect);
+                window.LightingEngine.applyAtmosphereConfig(preset.lighting.atmosphere, presetId);
             }
-            window.LightingEngine.state.atmosphere.activePreset = presetId;
-            window.LightingEngine.updateUI();
         } else {
             // Fallback for presets without lighting object
             window.LightingEngine.applyPreset(presetId);

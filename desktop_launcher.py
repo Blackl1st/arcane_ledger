@@ -474,6 +474,15 @@ def main():
     # 0. Clean up any stale zombie server from an older version on port 8000
     free_port_if_stale()
 
+    # Clear macOS Gatekeeper quarantine bit if running from .app bundle
+    if sys.platform == "darwin":
+        try:
+            app_bundle = Path(sys.executable).resolve().parent.parent.parent
+            if app_bundle.name.endswith(".app"):
+                subprocess.run(["/usr/bin/xattr", "-cr", str(app_bundle)], check=False, capture_output=True)
+        except Exception:
+            pass
+
     # 1. Start server if not running
     if not is_server_running():
         started_by_us = True

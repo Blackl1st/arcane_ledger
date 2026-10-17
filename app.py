@@ -6163,13 +6163,16 @@ def _send_amaran_raw(msg_type: str, args: Optional[Dict[str, Any]] = None, node_
         targets.append(None)
 
     last_result = {}
-    for nid in targets:
-        try:
-            s = socket.create_connection(('127.0.0.1', 12345), timeout=2.0)
-            key = base64.b64encode(os.urandom(16)).decode('ascii')
-            req = f'GET / HTTP/1.1\r\nHost: 127.0.0.1:12345\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n'
-            s.sendall(req.encode('ascii'))
-            s.recv(2048)
+    try:
+        s = socket.create_connection(('127.0.0.1', 12345), timeout=2.5)
+        key = base64.b64encode(os.urandom(16)).decode('ascii')
+        req = f'GET / HTTP/1.1\r\nHost: 127.0.0.1:12345\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n'
+        s.sendall(req.encode('ascii'))
+        s.recv(2048)
+
+        for i, nid in enumerate(targets):
+            if i > 0:
+                time.sleep(0.045)
 
             payload = {'version': 1, 'client_id': 'dnd_dashboard', 'type': msg_type}
             if nid:
@@ -6190,13 +6193,11 @@ def _send_amaran_raw(msg_type: str, args: Optional[Dict[str, Any]] = None, node_
                 frame.extend(struct.pack('>Q', len(data)))
 
             frame.extend(mask)
-            frame.extend(bytearray(b ^ mask[i % 4] for i, b in enumerate(data)))
+            frame.extend(bytearray(b ^ mask[j % 4] for j, b in enumerate(data)))
             s.sendall(frame)
 
             hdr = s.recv(2)
             if not hdr:
-                s.close()
-                last_result = {'error': 'No response header from amaran Desktop'}
                 continue
             length = hdr[1] & 0x7F
             if length == 126:
@@ -6210,10 +6211,13 @@ def _send_amaran_raw(msg_type: str, args: Optional[Dict[str, Any]] = None, node_
                 if not chunk:
                     break
                 buf += chunk
-            s.close()
-            last_result = json.loads(buf.decode('utf-8'))
-        except Exception as e:
-            last_result = {'error': str(e)}
+            try:
+                last_result = json.loads(buf.decode('utf-8'))
+            except Exception:
+                pass
+        s.close()
+    except Exception as e:
+        last_result = {'error': str(e)}
 
     return last_result
 
