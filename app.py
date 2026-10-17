@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from map_generator import ProceduralMapGenerator, get_random_title
 import updater
+import ddb_importer
 
 # Resource & Data Directory Resolution (Handles Live Dev & PyInstaller Frozen App)
 if getattr(sys, "frozen", False):
@@ -639,6 +640,9 @@ class Character(BaseModel):
     deityId: Optional[str] = ""
     deityName: Optional[str] = ""
     pietyScore: Optional[int] = 1
+    avatarUrl: Optional[str] = ""
+    ddbId: Optional[str] = ""
+    ddbUrl: Optional[str] = ""
 
 class Condition(BaseModel):
     name: str
@@ -2917,6 +2921,155 @@ async def save_party(party: List[Character]):
     data = [c.dict() for c in party]
     write_json("party.json", data)
     return {"status": "success", "count": len(data)}
+
+# -------------------------------------------------------------
+# D&D BEYOND CHARACTER IMPORTER & SYNC
+# -------------------------------------------------------------
+class DdbImportRequest(BaseModel):
+    query: Optional[str] = None
+    characterData: Optional[Dict[str, Any]] = None
+    addToParty: bool = True
+
+@app.post("/api/ddb/fetch-preview")
+async def ddb_fetch_preview(payload: Dict[str, Any]):
+    query = (payload.get("query") or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Please provide a D&D Beyond character URL or ID.")
+    
+    char_id = ddb_importer.extract_character_id(query)
+    if not char_id:
+        raise HTTPException(status_code=400, detail=f"Could not extract a valid D&D Beyond character ID from '{query}'.")
+    
+    raw_data, err = ddb_importer.fetch_dndbeyond_character(char_id)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    
+    parsed = ddb_importer.parse_dndbeyond_character(raw_data)
+    return {"status": "success", "character": parsed}
+
+@app.post("/api/ddb/import")
+async def ddb_import_character(req: DdbImportRequest):
+    parsed = None
+    if req.query:
+        char_id = ddb_importer.extract_character_id(req.query)
+        if not char_id:
+            raise HTTPException(status_code=400, detail=f"Could not extract character ID from '{req.query}'.")
+        raw_data, err = ddb_importer.fetch_dndbeyond_character(char_id)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        parsed = ddb_importer.parse_dndbeyond_character(raw_data)
+    elif req.characterData:
+        try:
+            parsed = ddb_importer.parse_dndbeyond_character(req.characterData)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse character JSON: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="Neither query URL nor character data was provided.")
+
+    if not parsed:
+        raise HTTPException(status_code=400, detail="Failed to parse character.")
+
+    if req.addToParty:
+        party = read_json("party.json", [])
+        existing_idx = None
+        for i, p in enumerate(party):
+            if p.get("ddbId") and p.get("ddbId") == parsed.get("ddbId"):
+                existing_idx = i
+                break
+            elif p.get("name", "").lower() == parsed.get("name", "").lower():
+                existing_idx = i
+                break
+
+        if existing_idx is not None:
+            orig_id = party[existing_idx].get("id")
+            orig_notes = party[existing_idx].get("notes", "")
+            orig_deity_id = party[existing_idx].get("deityId")
+            orig_deity_name = party[existing_idx].get("deityName")
+            orig_piety = party[existing_idx].get("pietyScore", 1)
+
+            parsed["id"] = orig_id
+            if orig_deity_id:
+                parsed["deityId"] = orig_deity_id
+                parsed["deityName"] = orig_deity_name
+                parsed["pietyScore"] = orig_piety
+            if orig_notes and orig_notes not in parsed.get("notes", ""):
+                parsed["notes"] = f"{parsed.get('notes', '')}\n\nLocal DM Notes:\n{orig_notes}".strip()
+
+            party[existing_idx] = parsed
+            action_desc = f"Updated existing party member '{parsed['name']}'"
+        else:
+            party.append(parsed)
+            action_desc = f"Added '{parsed['name']}' to party"
+
+        write_json("party.json", party)
+        
+        try:
+            await streamdeck_manager.broadcast({
+                "event": "party_updated",
+                "character": parsed,
+                "party": party
+            })
+        except Exception:
+            pass
+
+        return {
+            "status": "success",
+            "message": f"Successfully {action_desc}!",
+            "character": parsed,
+            "party": party
+        }
+
+    return {"status": "success", "character": parsed}
+
+@app.post("/api/ddb/upload-json")
+async def ddb_upload_json(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        raw_json = json.loads(content.decode("utf-8"))
+        parsed = ddb_importer.parse_dndbeyond_character(raw_json)
+        return {"status": "success", "character": parsed}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid D&D Beyond JSON file: {e}")
+
+@app.post("/api/ddb/sync/{pc_id}")
+async def ddb_sync_pc(pc_id: str):
+    party = read_json("party.json", [])
+    target_pc = None
+    target_idx = None
+    for i, p in enumerate(party):
+        if p.get("id") == pc_id:
+            target_pc = p
+            target_idx = i
+            break
+    
+    if target_pc is None:
+        raise HTTPException(status_code=404, detail="Character not found in party.")
+    
+    if not target_pc.get("ddbId"):
+        raise HTTPException(status_code=400, detail="This character was not imported from D&D Beyond or is missing a DDB ID.")
+    
+    fresh, err = ddb_importer.sync_dndbeyond_character(target_pc)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    
+    party[target_idx] = fresh
+    write_json("party.json", party)
+    
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "party_updated",
+            "character": fresh,
+            "party": party
+        })
+    except Exception:
+        pass
+        
+    return {
+        "status": "success",
+        "message": f"Synchronized '{fresh['name']}' with D&D Beyond!",
+        "character": fresh,
+        "party": party
+    }
 
 @app.post("/api/party/quick-hp")
 async def update_party_quick_hp(payload: Dict[str, Any]):

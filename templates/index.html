@@ -1038,6 +1038,9 @@
                         <button onclick="openEditPCModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-bold flex items-center gap-1.5 shadow transition">
                             <span>+ Add Character</span>
                         </button>
+                        <button onclick="openDdbImportModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-700 to-red-800 hover:from-red-600 hover:to-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow border border-red-500/50 transition active:scale-95" title="Import character from D&D Beyond URL or JSON">
+                            <span>🐲 Import D&D Beyond</span>
+                        </button>
                     </div>
                 </div>
 
@@ -3596,7 +3599,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.8</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.9</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -4267,9 +4270,15 @@
                         <input id="edit-pc-pinv" type="number" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-slate-400 mb-1">Spell Save DC (Optional)</label>
-                    <input id="edit-pc-spelldc" type="number" placeholder="e.g. 15" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-400 mb-1">Spell Save DC (Optional)</label>
+                        <input id="edit-pc-spelldc" type="number" placeholder="e.g. 15" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">Avatar Image URL (Optional)</label>
+                        <input id="edit-pc-avatar" type="url" placeholder="https://... / D&D Beyond portrait" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-1.5 text-white">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">Quick Features & Notes</label>
@@ -4281,6 +4290,96 @@
                 <div class="flex gap-2">
                     <button onclick="closeModal('edit-pc-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300 text-xs">Cancel</button>
                     <button onclick="savePCFromModal()" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- D&D BEYOND CHARACTER IMPORTER MODAL -->
+    <div id="ddb-import-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-ledger-700 rounded-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-ledger-700 flex items-center justify-between bg-gradient-to-r from-red-950/40 via-ledger-900 to-ledger-900">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-lg shadow-inner">
+                        🐲
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-slate-100 flex items-center gap-2">
+                            <span>Import from D&D Beyond</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/30">DDB Cloud & JSON</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Import character stats, HP, AC, inventory, spell slots, and resources</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('ddb-import-modal')" class="text-slate-400 hover:text-white text-lg p-1 transition">✕</button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto space-y-4 text-xs">
+                <!-- Import Method Tabs -->
+                <div class="flex items-center gap-2 border-b border-ledger-800 pb-3">
+                    <button id="ddb-tab-btn-url" onclick="switchDdbImportTab('url')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-red-600/30 text-red-300 border border-red-500/40">
+                        <span>🔗 Character URL / ID</span>
+                    </button>
+                    <button id="ddb-tab-btn-file" onclick="switchDdbImportTab('file')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-ledger-800 text-slate-400 border border-ledger-700 hover:text-slate-200">
+                        <span>📁 Upload JSON Export</span>
+                    </button>
+                </div>
+
+                <!-- Tab 1: URL / ID Input -->
+                <div id="ddb-tab-url" class="space-y-3">
+                    <div>
+                        <label class="block text-slate-300 font-semibold mb-1">D&D Beyond Character URL or Character ID</label>
+                        <div class="flex gap-2">
+                            <input id="ddb-input-url" type="text" placeholder="e.g. https://www.dndbeyond.com/characters/48690485 or 48690485" class="flex-1 bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-red-500 outline-none" onkeydown="if(event.key==='Enter') fetchDdbPreview()">
+                            <button id="ddb-btn-fetch" onclick="fetchDdbPreview()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-xs flex items-center gap-1.5 shadow transition active:scale-95 whitespace-nowrap">
+                                <span id="ddb-fetch-spinner" class="hidden animate-spin">🔄</span>
+                                <span>Fetch Character</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Helpful Note -->
+                    <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-[11px] flex items-start gap-2.5">
+                        <span class="text-base leading-none">💡</span>
+                        <div>
+                            <span class="font-bold text-amber-300">Important:</span> Ensure the character's privacy is set to <span class="font-bold underline text-white">Public</span> on D&D Beyond (in the character builder <em>Preferences / Home</em> tab). If the sheet is Private, D&D Beyond rejects external fetch requests with 403 Forbidden.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: File Upload Input -->
+                <div id="ddb-tab-file" class="space-y-3 hidden">
+                    <div id="ddb-drop-zone" class="border-2 border-dashed border-ledger-700 hover:border-red-500/60 rounded-xl p-6 text-center cursor-pointer transition bg-ledger-950/60" onclick="document.getElementById('ddb-file-input').click()">
+                        <div class="text-3xl mb-2">📜</div>
+                        <p class="font-semibold text-slate-200 mb-1">Click to select or drop a D&D Beyond JSON file here</p>
+                        <p class="text-[11px] text-slate-400">Supports direct API exports or browser extension dumps (.json)</p>
+                        <input id="ddb-file-input" type="file" accept=".json" class="hidden" onchange="handleDdbFileUpload(event)">
+                    </div>
+                </div>
+
+                <!-- Preview Card (Populated dynamically) -->
+                <div id="ddb-preview-container" class="hidden pt-3 border-t border-ledger-800 space-y-3">
+                    <div class="flex items-center justify-between text-xs font-semibold text-slate-400">
+                        <span>Character Preview</span>
+                        <span class="text-emerald-400 flex items-center gap-1">✓ Ready to Import</span>
+                    </div>
+                    
+                    <div id="ddb-preview-card" class="bg-ledger-950 border border-ledger-700 rounded-xl p-4 space-y-3">
+                        <!-- Populated via renderDdbPreview() -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-3 bg-ledger-950 border-t border-ledger-700 flex justify-between items-center">
+                <span id="ddb-status-text" class="text-[11px] text-slate-400"></span>
+                <div class="flex gap-2">
+                    <button onclick="closeModal('ddb-import-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 text-xs transition">Cancel</button>
+                    <button id="ddb-btn-confirm-import" onclick="confirmDdbImport()" disabled class="px-5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs transition flex items-center gap-1.5 shadow">
+                        <span>🐲 Add to Party</span>
+                    </button>
                 </div>
             </div>
         </div>

@@ -665,18 +665,29 @@ function renderPartyHUD() {
         return `
             <div class="trait-card rounded-xl p-3.5 flex flex-col justify-between relative overflow-hidden transition ${isUnconscious ? 'border-rose-600/70 shadow-lg shadow-rose-950/40' : (isBloodied ? 'border-amber-500/50' : '')}">
                 
-                <!-- Card Header: Name, Player & Heroic Inspiration -->
+                <!-- Card Header: Avatar, Name, Player & Heroic Inspiration -->
                 <div class="flex items-start justify-between gap-2">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <h3 class="font-bold text-sm text-slate-100 truncate">${escapeHTML(pc.name)}</h3>
-                            ${pc.player ? `<span class="text-[10px] text-slate-400 font-mono truncate">(${escapeHTML(pc.player)})</span>` : ''}
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        ${pc.avatarUrl ? `
+                            <img src="${escapeHTML(pc.avatarUrl)}" alt="${escapeHTML(pc.name)}" class="w-10 h-10 rounded-lg object-cover border border-ledger-700 shadow-sm shrink-0 bg-ledger-950" onerror="this.style.display='none'">
+                        ` : ''}
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <h3 class="font-bold text-sm text-slate-100 truncate">${escapeHTML(pc.name)}</h3>
+                                ${pc.player ? `<span class="text-[10px] text-slate-400 font-mono truncate">(${escapeHTML(pc.player)})</span>` : ''}
+                                ${pc.ddbId ? `
+                                    <span class="inline-flex items-center gap-1">
+                                        <a href="${escapeHTML(pc.ddbUrl || `https://www.dndbeyond.com/characters/${pc.ddbId}`)}" target="_blank" rel="noopener noreferrer" title="View on D&D Beyond" class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600/20 text-red-300 border border-red-500/30 hover:bg-red-600/40 transition">🐲 DDB</a>
+                                        <button onclick="syncDdbCharacter('${escapeHTML(pc.id)}')" title="Sync stats & inventory from D&D Beyond" class="p-0.5 text-slate-400 hover:text-red-400 transition hover:rotate-180 transform duration-300">🔄</button>
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <p class="text-[11px] text-sky-400/90 font-medium truncate">${escapeHTML(pc.classRole)} • Lvl ${pc.level}</p>
                         </div>
-                        <p class="text-[11px] text-sky-400/90 font-medium truncate">${escapeHTML(pc.classRole)} • Lvl ${pc.level}</p>
                     </div>
 
                     <!-- 2024 Heroic Inspiration Toggle -->
-                    <button onclick="toggleHeroicInspiration('${pc.id}')" title="2024 Heroic Inspiration: Reroll any die roll or grant to ally" class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 border transition ${pc.heroicInspiration ? 'bg-amber-500 text-ledger-950 border-amber-300 shadow-md shadow-amber-500/30' : 'bg-ledger-900/80 text-slate-400 border-ledger-700 hover:text-amber-400'}">
+                    <button onclick="toggleHeroicInspiration('${pc.id}')" title="2024 Heroic Inspiration: Reroll any die roll or grant to ally" class="px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 border transition shrink-0 ${pc.heroicInspiration ? 'bg-amber-500 text-ledger-950 border-amber-300 shadow-md shadow-amber-500/30' : 'bg-ledger-900/80 text-slate-400 border-ledger-700 hover:text-amber-400'}">
                         <svg class="w-3.5 h-3.5 ${pc.heroicInspiration ? 'text-ledger-950' : 'text-amber-400'}" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                         </svg>
@@ -964,6 +975,8 @@ function openEditPCModal(pcId) {
     document.getElementById('edit-pc-pi').value = pc.passiveInsight;
     document.getElementById('edit-pc-pinv').value = pc.passiveInvestigation;
     document.getElementById('edit-pc-spelldc').value = pc.spellDc || "";
+    const avatarInput = document.getElementById('edit-pc-avatar');
+    if (avatarInput) avatarInput.value = pc.avatarUrl || "";
     document.getElementById('edit-pc-notes').value = pc.notes || "";
 
     openModal('edit-pc-modal');
@@ -995,6 +1008,8 @@ function savePCFromModal() {
     
     const dcVal = document.getElementById('edit-pc-spelldc').value.trim();
     pc.spellDc = dcVal ? parseInt(dcVal) : null;
+    const avatarInput = document.getElementById('edit-pc-avatar');
+    if (avatarInput) pc.avatarUrl = avatarInput.value.trim();
     pc.notes = document.getElementById('edit-pc-notes').value.trim();
 
     closeModal('edit-pc-modal');
@@ -1013,6 +1028,341 @@ function deleteCurrentPC() {
     renderShopInventory();
     apiSaveParty();
     showToast("Removed character from party", "info");
+}
+
+// -----------------------------------------------------------------------------
+// D&D BEYOND CHARACTER IMPORTER & SYNC CONTROLLER
+// -----------------------------------------------------------------------------
+let currentDdbPreviewData = null;
+let _ddbDropZoneInitialized = false;
+
+function initDdbDropZone() {
+    if (_ddbDropZoneInitialized) return;
+    const dropZone = document.getElementById('ddb-drop-zone');
+    if (!dropZone) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('border-red-500', 'bg-red-950/40');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('border-red-500', 'bg-red-950/40');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt && dt.files;
+        if (files && files.length > 0) {
+            handleDdbFileUpload({ target: { files: files } });
+        }
+    }, false);
+
+    _ddbDropZoneInitialized = true;
+}
+
+function openDdbImportModal() {
+    currentDdbPreviewData = null;
+    const urlInput = document.getElementById('ddb-input-url');
+    if (urlInput) urlInput.value = '';
+    const fileInput = document.getElementById('ddb-file-input');
+    if (fileInput) fileInput.value = '';
+    const previewContainer = document.getElementById('ddb-preview-container');
+    if (previewContainer) previewContainer.classList.add('hidden');
+    const statusText = document.getElementById('ddb-status-text');
+    if (statusText) statusText.textContent = '';
+    const confirmBtn = document.getElementById('ddb-btn-confirm-import');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<span>🐲 Add to Party</span>`;
+    }
+    switchDdbImportTab('url');
+    initDdbDropZone();
+    openModal('ddb-import-modal');
+    setTimeout(() => {
+        if (urlInput) urlInput.focus();
+    }, 100);
+}
+
+function switchDdbImportTab(tab) {
+    const btnUrl = document.getElementById('ddb-tab-btn-url');
+    const btnFile = document.getElementById('ddb-tab-btn-file');
+    const tabUrl = document.getElementById('ddb-tab-url');
+    const tabFile = document.getElementById('ddb-tab-file');
+
+    if (tab === 'url') {
+        if (btnUrl) btnUrl.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-red-600/30 text-red-300 border border-red-500/40";
+        if (btnFile) btnFile.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-ledger-800 text-slate-400 border border-ledger-700 hover:text-slate-200";
+        if (tabUrl) tabUrl.classList.remove('hidden');
+        if (tabFile) tabFile.classList.add('hidden');
+    } else {
+        if (btnFile) btnFile.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-red-600/30 text-red-300 border border-red-500/40";
+        if (btnUrl) btnUrl.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-ledger-800 text-slate-400 border border-ledger-700 hover:text-slate-200";
+        if (tabFile) tabFile.classList.remove('hidden');
+        if (tabUrl) tabUrl.classList.add('hidden');
+    }
+}
+
+async function fetchDdbPreview() {
+    const input = document.getElementById('ddb-input-url');
+    const query = input ? input.value.trim() : '';
+    if (!query) {
+        showToast("Please enter a D&D Beyond URL or numeric Character ID", "error");
+        return;
+    }
+
+    const spinner = document.getElementById('ddb-fetch-spinner');
+    const btn = document.getElementById('ddb-btn-fetch');
+    const statusText = document.getElementById('ddb-status-text');
+    if (spinner) spinner.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+    if (statusText) statusText.textContent = "Connecting to D&D Beyond...";
+
+    try {
+        const resp = await fetch('/api/ddb/fetch-preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query })
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.status !== 'success') {
+            const err = data.detail || data.message || "Failed to fetch character from D&D Beyond.";
+            showToast(err, "error");
+            if (statusText) statusText.textContent = `❌ ${err}`;
+            return;
+        }
+
+        currentDdbPreviewData = data.character;
+        renderDdbPreview(data.character);
+        if (statusText) statusText.textContent = `✓ Retrieved "${data.character.name}" from D&D Beyond`;
+        showToast(`Loaded ${data.character.name}!`, "success");
+    } catch (e) {
+        showToast(`Network error: ${e.message}`, "error");
+        if (statusText) statusText.textContent = `❌ ${e.message}`;
+    } finally {
+        if (spinner) spinner.classList.add('hidden');
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function handleDdbFileUpload(event) {
+    const file = event && event.target && event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const statusText = document.getElementById('ddb-status-text');
+    if (statusText) statusText.textContent = `Uploading & parsing ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch('/api/ddb/upload-json', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.status !== 'success') {
+            const err = data.detail || data.message || "Failed to parse D&D Beyond JSON file.";
+            showToast(err, "error");
+            if (statusText) statusText.textContent = `❌ ${err}`;
+            return;
+        }
+
+        currentDdbPreviewData = data.character;
+        renderDdbPreview(data.character);
+        if (statusText) statusText.textContent = `✓ Parsed "${data.character.name}" from ${file.name}`;
+        showToast(`Loaded ${data.character.name} from file!`, "success");
+    } catch (e) {
+        showToast(`Upload error: ${e.message}`, "error");
+        if (statusText) statusText.textContent = `❌ ${e.message}`;
+    } finally {
+        if (event.target && event.target.value !== undefined) {
+            try { event.target.value = ''; } catch (_) {}
+        }
+    }
+}
+
+function renderDdbPreview(char) {
+    if (!char) return;
+    const container = document.getElementById('ddb-preview-container');
+    const card = document.getElementById('ddb-preview-card');
+    const confirmBtn = document.getElementById('ddb-btn-confirm-import');
+
+    const existingMatch = (appState.party || []).find(p => 
+        (p.ddbId && char.ddbId && String(p.ddbId) === String(char.ddbId)) ||
+        (p.name && char.name && p.name.trim().toLowerCase() === char.name.trim().toLowerCase())
+    );
+
+    const inventoryCount = Array.isArray(char.inventory) ? char.inventory.length : 0;
+    const resourcesCount = Array.isArray(char.resources) ? char.resources.length : 0;
+    const spellSlotsCount = char.spellSlots ? Object.keys(char.spellSlots).length : 0;
+
+    const initVal = Number(char.initiativeMod) || 0;
+    const initStr = initVal >= 0 ? `+${initVal}` : `${initVal}`;
+
+    card.innerHTML = `
+        <div class="flex items-start gap-3">
+            ${char.avatarUrl ? `
+                <img src="${escapeHTML(char.avatarUrl)}" alt="${escapeHTML(char.name)}" class="w-14 h-14 rounded-xl object-cover border border-ledger-700 shadow-md shrink-0 bg-ledger-900" onerror="this.style.display='none'">
+            ` : `
+                <div class="w-14 h-14 rounded-xl bg-red-950/60 border border-red-500/30 flex items-center justify-center text-2xl shrink-0">
+                    🐲
+                </div>
+            `}
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h4 class="font-bold text-base text-white truncate">${escapeHTML(char.name)}</h4>
+                    ${char.player ? `<span class="text-xs text-slate-400 font-mono">(${escapeHTML(char.player)})</span>` : ''}
+                    ${char.ddbId ? `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-red-600/20 text-red-300 border border-red-500/30">ID: ${escapeHTML(char.ddbId)}</span>` : ''}
+                </div>
+                <p class="text-xs text-sky-400 font-medium">${escapeHTML(char.species || '')} • ${escapeHTML(char.classRole || '')} (Lvl ${char.level || 1})</p>
+            </div>
+        </div>
+
+        <!-- Vital Statistics Grid -->
+        <div class="grid grid-cols-6 gap-2 bg-ledger-900/80 p-2.5 rounded-lg border border-ledger-800 text-center">
+            <div>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 block">HP</span>
+                <span class="font-mono font-bold text-xs text-emerald-400">${char.currentHp} / ${char.maxHp}</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 block">AC</span>
+                <span class="font-mono font-bold text-xs text-amber-300">${char.ac}</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 block">Speed</span>
+                <span class="font-mono font-bold text-xs text-slate-200">${char.speed} ft</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 block">Init</span>
+                <span class="font-mono font-bold text-xs text-slate-200">${initStr}</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 block">Perc. (PP)</span>
+                <span class="font-mono font-bold text-xs text-slate-200">${char.passivePerception}</span>
+            </div>
+            <div>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 block">Spell DC</span>
+                <span class="font-mono font-bold text-xs text-sky-300">${char.spellDc || '—'}</span>
+            </div>
+        </div>
+
+        <!-- Sheet Badges -->
+        <div class="flex flex-wrap items-center gap-2 text-[11px] pt-1">
+            <span class="px-2 py-0.5 rounded-md bg-ledger-900 border border-ledger-700 text-slate-300 flex items-center gap-1">
+                <span>🎒</span> <span>${inventoryCount} Items</span>
+            </span>
+            ${spellSlotsCount > 0 ? `
+                <span class="px-2 py-0.5 rounded-md bg-ledger-900 border border-sky-500/30 text-sky-300 flex items-center gap-1">
+                    <span>✨</span> <span>${spellSlotsCount} Spell Levels</span>
+                </span>
+            ` : ''}
+            ${resourcesCount > 0 ? `
+                <span class="px-2 py-0.5 rounded-md bg-ledger-900 border border-amber-500/30 text-amber-300 flex items-center gap-1">
+                    <span>⚡</span> <span>${resourcesCount} Class Resources</span>
+                </span>
+            ` : ''}
+        </div>
+
+        ${existingMatch ? `
+            <div class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-center gap-2">
+                <span>⚠️</span>
+                <span><strong>Party Match:</strong> "${escapeHTML(existingMatch.name)}" is already in your party. Importing will update their stats, HP, and inventory while preserving local DM notes and deity piety.</span>
+            </div>
+        ` : ''}
+    `;
+
+    if (container) container.classList.remove('hidden');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = existingMatch ? `<span>🔄 Update "${escapeHTML(char.name)}"</span>` : `<span>🐲 Add to Party</span>`;
+    }
+}
+
+async function confirmDdbImport() {
+    if (!currentDdbPreviewData) return;
+
+    const btn = document.getElementById('ddb-btn-confirm-import');
+    if (btn) btn.disabled = true;
+
+    try {
+        const resp = await fetch('/api/ddb/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                characterData: currentDdbPreviewData,
+                addToParty: true
+            })
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.status !== 'success') {
+            const err = data.detail || data.message || "Failed to import character.";
+            showToast(err, "error");
+            if (btn) btn.disabled = false;
+            return;
+        }
+
+        if (data.party) {
+            appState.party = data.party;
+        } else if (data.character) {
+            const idx = (appState.party || []).findIndex(p => p.id === data.character.id || (p.ddbId && p.ddbId === data.character.ddbId));
+            if (idx >= 0) {
+                appState.party[idx] = data.character;
+            } else {
+                appState.party.push(data.character);
+            }
+        }
+        
+        saveToLocalStorage();
+        renderPartyHUD();
+        renderShopInventory();
+        closeModal('ddb-import-modal');
+        showToast(data.message || `Imported ${currentDdbPreviewData.name}!`, "success");
+    } catch (e) {
+        showToast(`Import error: ${e.message}`, "error");
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function syncDdbCharacter(pcId) {
+    const pc = (appState.party || []).find(p => p.id === pcId);
+    if (!pc) return;
+
+    showToast(`Syncing ${pc.name} with D&D Beyond...`, "info");
+    try {
+        const resp = await fetch(`/api/ddb/sync/${encodeURIComponent(pcId)}`, {
+            method: 'POST'
+        });
+        const data = await resp.json();
+        if (!resp.ok || data.status !== 'success') {
+            const err = data.detail || data.message || "Failed to sync character.";
+            showToast(err, "error");
+            return;
+        }
+
+        if (data.party) {
+            appState.party = data.party;
+        } else if (data.character) {
+            const idx = (appState.party || []).findIndex(p => p.id === pcId);
+            if (idx >= 0) {
+                appState.party[idx] = data.character;
+            }
+        }
+
+        saveToLocalStorage();
+        renderPartyHUD();
+        renderShopInventory();
+        showToast(data.message || `Synchronized ${pc.name}!`, "success");
+    } catch (e) {
+        showToast(`Sync failed: ${e.message}`, "error");
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -15102,6 +15452,21 @@ function handleStreamDeckLiveEvent(event) {
         });
     }
 
+    else if (event.event === "party_updated") {
+        if (event.party) {
+            appState.party = event.party;
+        } else if (event.character) {
+            const idx = (appState.party || []).findIndex(p => p.id === event.character.id || (p.ddbId && p.ddbId === event.character.ddbId));
+            if (idx >= 0) {
+                appState.party[idx] = event.character;
+            } else {
+                appState.party.push(event.character);
+            }
+        }
+        renderPartyHUD();
+        renderShopInventory();
+    }
+
     else if (event.event === "battlemap_action") {
         if (window.BattlemapController) {
             if (event.action === "reveal_all") {
@@ -16995,6 +17360,13 @@ window.overworldResetZoom = overworldResetZoom;
 window.uploadActiveOverworldMapFile = uploadActiveOverworldMapFile;
 window.uploadOverworldSubmapFile = uploadOverworldSubmapFile;
 window.fetchTimeline = fetchTimeline;
+window.openDdbImportModal = openDdbImportModal;
+window.switchDdbImportTab = switchDdbImportTab;
+window.fetchDdbPreview = fetchDdbPreview;
+window.handleDdbFileUpload = handleDdbFileUpload;
+window.confirmDdbImport = confirmDdbImport;
+window.syncDdbCharacter = syncDdbCharacter;
+
 
 
 
