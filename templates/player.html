@@ -509,7 +509,7 @@
                             }
                         }
                         if (addedAny) {
-                            playerRollsHistory.sort((a, b) => (b.id || '').localeCompare(a.id || ''));
+                            playerRollsHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                             if (playerRollsHistory.length > 50) playerRollsHistory = playerRollsHistory.slice(0, 50);
                             renderPlayerRollHistory();
                         }
@@ -1615,7 +1615,7 @@
             const feed = document.getElementById('player-roll-history-feed');
             if (!feed) return;
 
-            const rolls = playerRollsHistory.filter(r => !r.isDM);
+            const rolls = playerRollsHistory.filter(r => !r.isDM).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             updatePlayerRollBadge(rolls.length);
 
             if (rolls.length === 0) {
@@ -1645,7 +1645,7 @@
                 }
 
                 const formula = r.formula || (r.diceType ? `${r.diceType}${r.modifier ? (r.modifier > 0 ? ` + ${r.modifier}` : ` - ${Math.abs(r.modifier)}`) : ''}` : '');
-                const time = r.timestamp || '';
+                const time = r.timeStr || (r.timestamp ? new Date(typeof r.timestamp === 'number' && r.timestamp < 1e12 ? r.timestamp * 1000 : r.timestamp).toLocaleTimeString() : '');
 
                 return `
                     <div class="bg-ledger-900/90 rounded-2xl p-3.5 border ${borderClass} transition shadow-md flex flex-col space-y-2">

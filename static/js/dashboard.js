@@ -2417,7 +2417,7 @@ async function fetchTableRollHistory() {
         const res = await fetch('/api/rolls/history');
         if (res.ok) {
             const data = await res.json();
-            tableRollHistory = data.rolls || [];
+            tableRollHistory = (data.rolls || []).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             updateTableRollBadge();
             if (isRollHistoryDrawerOpen) {
                 renderTableRollHistory();
@@ -2482,6 +2482,7 @@ function renderTableRollHistory() {
     } else if (tableRollHistoryFilter === 'dm') {
         filtered = tableRollHistory.filter(r => !!r.isDM);
     }
+    filtered = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
     if (countEl) {
         countEl.textContent = `${filtered.length} of ${tableRollHistory.length} roll${tableRollHistory.length === 1 ? '' : 's'}`;

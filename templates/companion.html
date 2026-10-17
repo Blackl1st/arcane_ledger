@@ -509,6 +509,16 @@
 
     <!-- JAVASCRIPT CONTROLLER -->
     <script>
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         // Global State
         let currentParty = [];
         let activeCombat = null;
@@ -810,13 +820,21 @@
                 slots[lvlKey].used = slotIdx;
             }
             activeCharacter.spellSlots = slots;
-            renderSpellSlots(activeCharacter);
+            try {
+                renderSpellSlots(activeCharacter);
+            } catch (e) {
+                console.error("Error updating spell slots UI:", e);
+            }
 
-            await fetch('/api/companion/update-slots', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots })
-            });
+            try {
+                await fetch('/api/companion/update-slots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots })
+                });
+            } catch (err) {
+                console.error("Error persisting spell slots:", err);
+            }
         }
 
         // Adjust Class Power / Resource
@@ -836,13 +854,21 @@
                 }
             }
             activeCharacter.resources = rawRes;
-            renderSpellSlots(activeCharacter);
+            try {
+                renderSpellSlots(activeCharacter);
+            } catch (e) {
+                console.error("Error updating resource UI:", e);
+            }
 
-            await fetch('/api/companion/update-slots', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: activeCharacter.id, resources: rawRes })
-            });
+            try {
+                await fetch('/api/companion/update-slots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, resources: rawRes })
+                });
+            } catch (err) {
+                console.error("Error persisting resources:", err);
+            }
         }
 
         async function restoreAllSlots() {
@@ -861,13 +887,21 @@
             }
             activeCharacter.spellSlots = slots;
             activeCharacter.resources = rawRes;
-            renderSpellSlots(activeCharacter);
+            try {
+                renderSpellSlots(activeCharacter);
+            } catch (e) {
+                console.error("Error updating spell slots UI:", e);
+            }
 
-            await fetch('/api/companion/update-slots', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots, resources: rawRes })
-            });
+            try {
+                await fetch('/api/companion/update-slots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots, resources: rawRes })
+                });
+            } catch (err) {
+                console.error("Error restoring slots:", err);
+            }
         }
 
         // Inventory Render
@@ -898,19 +932,19 @@
                 if (isWeapon) {
                     weaponsList.innerHTML += `
                         <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm gap-2">
-                            <div class="flex-1 min-w-0 pr-1">
+                            <div class="flex-1 min-w-0 pr-1 cursor-pointer" onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')">
                                 <div class="flex items-center gap-2">
-                                    <h4 class="font-display font-bold text-xs text-amber-200 truncate">${escapeHTML(name)}</h4>
+                                    <h4 class="font-display font-bold text-xs text-amber-200 truncate hover:text-amber-100 transition">${escapeHTML(name)}</h4>
                                     ${it.attuned ? '<span class="text-[9px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.2 rounded font-mono shrink-0">Attuned</span>' : ''}
                                 </div>
                                 <p class="text-[11px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(notes || damageDice)}</p>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="rollWeaponAttack('${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll 1d20 Attack">
-                                    <span>⚔️</span><span>d20 Atk</span>
-                                </button>
-                                <button onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')" class="px-2.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll Damage (${damageDice})">
+                                <button onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')" class="px-3 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/60 text-amber-300 font-mono text-xs font-bold tap-active flex items-center gap-1.5 shadow-sm" title="Roll Damage (${damageDice})">
                                     <span>💥</span><span>${damageDice}</span>
+                                </button>
+                                <button onclick="rollWeaponAttack('${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-ledger-700 text-slate-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll 1d20 Attack">
+                                    <span>⚔️</span><span>d20 Atk</span>
                                 </button>
                             </div>
                         </div>
@@ -942,8 +976,9 @@
                 } else {
                     const gearDiceMatch = (notes + ' ' + (it.damageDice || '') + ' ' + (it.damage || '') + ' ' + (it.formula || '') + ' ' + name).match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
                     const gearDice = gearDiceMatch ? gearDiceMatch[1].replace(/\s+/g, '') : null;
+                    const clickAttr = gearDice ? `onclick="executeDiceFormulaRoll('${gearDice}', '${escapeHTML(name)}')"` : '';
                     gearList.innerHTML += `
-                        <div class="p-2.5 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-between text-xs font-mono gap-2">
+                        <div class="p-2.5 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-between text-xs font-mono gap-2 ${gearDice ? 'cursor-pointer hover:border-indigo-500/50' : ''}" ${clickAttr}>
                             <div class="flex items-center gap-2 flex-1 min-w-0">
                                 <span class="text-slate-400 shrink-0">📦</span>
                                 <div class="min-w-0 truncate">
@@ -954,7 +989,7 @@
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 ${gearDice ? `
-                                    <button onclick="executeDiceFormulaRoll('${gearDice}', '${escapeHTML(name)}')" class="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold tap-active flex items-center gap-1" title="Roll ${gearDice}">
+                                    <button type="button" onclick="event.stopPropagation(); executeDiceFormulaRoll('${gearDice}', '${escapeHTML(name)}')" class="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold tap-active flex items-center gap-1" title="Roll ${gearDice}">
                                         <span>🎲</span><span>${gearDice}</span>
                                     </button>
                                 ` : ''}
@@ -967,6 +1002,7 @@
 
             if (weaponsList.innerHTML === '') weaponsList.innerHTML = '<div class="text-slate-500 text-xs font-mono py-2">No weapons equipped.</div>';
             if (consumablesList.innerHTML === '') consumablesList.innerHTML = '<div class="text-slate-500 text-xs font-mono py-2">No potions or consumables.</div>';
+            if (gearList.innerHTML === '') gearList.innerHTML = '<div class="text-slate-500 text-xs font-mono py-2">No adventuring gear in inventory.</div>';
         }
 
         // Use Item (Drink Potion)
@@ -994,19 +1030,26 @@
         // Adjust HP
         async function adjustHp(amount) {
             if (!activeCharacter) return;
-            const curHp = activeCharacter.currentHp !== undefined ? activeCharacter.currentHp : activeCharacter.maxHp;
-            const maxHp = activeCharacter.maxHp || 100;
-            let newHp = curHp + amount;
-            newHp = Math.max(0, Math.min(maxHp, newHp));
+            const curHp = parseInt(activeCharacter.currentHp !== undefined ? activeCharacter.currentHp : activeCharacter.maxHp, 10) || 0;
+            const maxHp = parseInt(activeCharacter.maxHp, 10) || 100;
+            let newHp = Math.max(0, Math.min(maxHp, curHp + amount));
 
             activeCharacter.currentHp = newHp;
-            renderActiveHero(activeCharacter);
+            try {
+                renderActiveHero(activeCharacter);
+            } catch (e) {
+                console.error("Error updating hero UI:", e);
+            }
 
-            await fetch('/api/companion/update-hp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: activeCharacter.id, currentHp: newHp })
-            });
+            try {
+                await fetch('/api/companion/update-hp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, currentHp: newHp })
+                });
+            } catch (err) {
+                console.error("Error persisting HP to server:", err);
+            }
         }
 
         function applyCustomHp(type) {
@@ -1312,23 +1355,26 @@
         function renderRollLog(rolls) {
             const container = document.getElementById('companion-roll-log');
             if (!container) return;
-            if (rolls.length === 0) {
+            if (!rolls || rolls.length === 0) {
                 container.innerHTML = '<div class="text-slate-500 text-center py-3">No recent rolls yet.</div>';
                 return;
             }
 
-            container.innerHTML = rolls.slice(-10).reverse().map(r => {
+            const sorted = [...rolls].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            container.innerHTML = sorted.slice(0, 15).map(r => {
+                const isDM = !!r.isDM;
                 const critBadge = r.isCrit ? '<span class="text-amber-400 font-bold">★ CRIT</span>' : (r.isFumble ? '<span class="text-rose-500 font-bold">💀 FUMBLE</span>' : '');
+                const rollerTag = isDM ? '<span class="text-purple-400 font-bold">DM:</span>' : `<span class="text-slate-200 font-bold">${escapeHTML(r.characterName || 'Hero')}:</span>`;
                 return `
                     <div class="flex items-center justify-between p-2 rounded-xl bg-ledger-950 border border-ledger-800">
                         <div class="truncate max-w-[200px]">
-                            <span class="text-slate-200 font-bold">${r.characterName || 'Hero'}:</span>
-                            <span class="text-slate-400">${r.rollType || 'Roll'}</span>
+                            ${rollerTag}
+                            <span class="text-slate-400">${escapeHTML(r.rollType || r.label || 'Roll')}</span>
                             ${critBadge}
                         </div>
                         <div class="flex items-center gap-1.5 font-bold">
-                            <span class="text-slate-500 text-[10px]">${r.formula || ''}</span>
-                            <span class="text-amber-300 text-sm font-black">${r.total}</span>
+                            <span class="text-slate-500 text-[10px]">${escapeHTML(r.formula || r.details || '')}</span>
+                            <span class="text-amber-300 text-sm font-black">${r.total !== undefined ? r.total : (r.rawRoll || '')}</span>
                         </div>
                     </div>
                 `;
@@ -1420,10 +1466,15 @@
             activeCharacterId = heroId;
             localStorage.setItem('arcane_companion_pc', heroId);
             activeCharacter = currentParty.find(p => p.id === heroId) || null;
-            if (activeCharacter) {
-                renderActiveHero(activeCharacter);
-            }
             closeHeroModal();
+            if (activeCharacter) {
+                try {
+                    renderActiveHero(activeCharacter);
+                } catch (e) {
+                    console.error("Error rendering hero:", e);
+                }
+            }
+            switchTab('vitals');
         }
 
         // Render Handouts

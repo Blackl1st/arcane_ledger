@@ -1045,9 +1045,6 @@
                         <button onclick="openEditPCModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 text-xs font-bold flex items-center gap-1.5 shadow transition">
                             <span>+ Add Character</span>
                         </button>
-                        <button onclick="openDdbImportModal()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-red-700 to-red-800 hover:from-red-600 hover:to-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow border border-red-500/50 transition active:scale-95" title="Import character from D&D Beyond URL or JSON">
-                            <span>🐲 Import D&D Beyond</span>
-                        </button>
                     </div>
                 </div>
 
@@ -3606,7 +3603,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.11</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.12</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -4216,6 +4213,21 @@
                 <button onclick="closeModal('edit-pc-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             <div class="p-6 overflow-y-auto space-y-4 text-xs">
+                <!-- D&D Beyond Quick Importer Banner -->
+                <div class="p-3 rounded-xl bg-gradient-to-r from-red-950/40 via-ledger-900 to-ledger-950 border border-red-500/40 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xl">🐲</span>
+                        <div>
+                            <h4 class="font-display font-bold text-xs text-red-200">Import from D&D Beyond</h4>
+                            <p class="text-[11px] text-slate-400">Sync character sheet, inventory & spell slots via URL or JSON</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeModal('edit-pc-modal'); openDdbImportModal();" class="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-600 text-white font-bold text-xs shadow transition active:scale-95 flex items-center gap-1 shrink-0 border border-red-500/50">
+                        <span>Import Character</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+
                 <input id="edit-pc-id" type="hidden">
                 <div class="grid grid-cols-2 gap-3">
                     <div>

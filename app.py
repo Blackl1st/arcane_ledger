@@ -1195,7 +1195,7 @@ async def get_companion_state():
         "combat": combat,
         "broadcast": broadcast,
         "handouts": [h for h in handouts if h.get("isUnlocked", True) or h.get("unlocked", True)],
-        "recentRolls": RECENT_TABLE_ROLLS[-15:]
+        "recentRolls": sorted(RECENT_TABLE_ROLLS, key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
     }
 
 @app.post("/api/companion/update-hp")
@@ -1229,6 +1229,15 @@ async def update_companion_hp(payload: Dict[str, Any]):
             combat_updated = True
     if combat_updated:
         write_json("combat.json", combat)
+
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "party_updated",
+            "character": pc,
+            "party": party
+        })
+    except Exception:
+        pass
 
     return {"status": "success", "character": pc}
 
@@ -1307,7 +1316,8 @@ async def record_companion_roll(payload: Dict[str, Any]):
 
 @app.get("/api/companion/rolls")
 async def get_companion_rolls():
-    return {"status": "success", "rolls": RECENT_TABLE_ROLLS[-25:]}
+    rolls = list(RECENT_TABLE_ROLLS)
+    return {"status": "success", "rolls": sorted(rolls, key=lambda r: r.get("timestamp", 0), reverse=True)[:25]}
 
 @app.post("/api/rolls/record")
 async def record_generic_roll(payload: Dict[str, Any]):
@@ -1371,8 +1381,10 @@ async def record_generic_roll(payload: Dict[str, Any]):
 @app.get("/api/rolls/history")
 async def get_rolls_history(player_only: bool = False):
     if player_only:
-        return {"status": "success", "rolls": [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]}
-    return {"status": "success", "rolls": RECENT_TABLE_ROLLS}
+        rolls = [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]
+    else:
+        rolls = list(RECENT_TABLE_ROLLS)
+    return {"status": "success", "rolls": sorted(rolls, key=lambda r: r.get("timestamp", 0), reverse=True)}
 
 @app.post("/api/rolls/clear")
 async def clear_rolls_history():
@@ -6121,7 +6133,7 @@ async def get_player_state():
         "party": party,
         "timeWeather": time_weather,
         "broadcast": broadcast,
-        "recentRolls": player_rolls[-25:],
+        "recentRolls": sorted(player_rolls, key=lambda r: r.get("timestamp", 0), reverse=True)[:25],
         "lastPlayerRoll": player_rolls[-1] if player_rolls else None
     }
 
@@ -6972,7 +6984,7 @@ async def get_battlemap():
             next_sanitized = {"name": next_combatant.get("name"), "type": next_combatant.get("type", "monster")}
 
     player_rolls = [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]
-    state["recentRolls"] = player_rolls[-25:]
+    state["recentRolls"] = sorted(player_rolls, key=lambda r: r.get("timestamp", 0), reverse=True)[:25]
     state["lastPlayerRoll"] = player_rolls[-1] if player_rolls else None
 
     state["combat"] = {
