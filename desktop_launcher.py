@@ -32,6 +32,7 @@ import logging
 import traceback
 import subprocess
 import threading
+import json
 import urllib.request
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -202,7 +203,23 @@ def show_alert_dialog(title: str, message: str):
 
 def is_browser_running_for_profile(profile_dir: Path) -> bool:
     """Check if Chromium is actively running with the specified user-data-dir."""
-    # 1. Check Chromium's SingletonLock symlink (target is hostname-pid)
+    # 1. Windows: Check Chromium's lockfile
+    if sys.platform == "win32":
+        lock_file = profile_dir / "lockfile"
+        if lock_file.exists():
+            try:
+                # When Chromium is running, it holds an exclusive sharing lock on 'lockfile'.
+                # Attempting to open it with write access will fail with PermissionError / OSError.
+                with open(lock_file, "r+b"):
+                    pass
+                # File exists but was opened for writing -> browser is NOT holding the lock
+                return False
+            except (PermissionError, OSError):
+                # Permission denied means Chromium is actively holding the exclusive lock
+                return True
+        return False
+
+    # 2. macOS / Linux: Check Chromium's SingletonLock symlink (target is hostname-pid)
     lock_file = profile_dir / "SingletonLock"
     if lock_file.is_symlink():
         try:
@@ -216,7 +233,7 @@ def is_browser_running_for_profile(profile_dir: Path) -> bool:
     elif lock_file.exists():
         return True
 
-    # 2. Check pgrep on POSIX for matching profile path
+    # 3. Check pgrep on POSIX for matching profile path
     if sys.platform != "win32":
         try:
             res = subprocess.run(["pgrep", "-f", str(profile_dir)], capture_output=True, text=True)
@@ -230,10 +247,23 @@ def is_browser_running_for_profile(profile_dir: Path) -> bool:
 def keep_process_alive_while_browser_running(profile_dir: Path):
     """Keep the server process alive as long as the browser window is active."""
     # Give the browser up to 10 seconds to start and create its profile directory lock
+    detected = False
     for _ in range(20):
         time.sleep(0.5)
         if is_browser_running_for_profile(profile_dir):
+            detected = True
             break
+
+    if not detected:
+        logging.warning("Browser process not detected via profile lock within 10s. Falling back to persistent server loop.")
+        try:
+            while True:
+                time.sleep(2.0)
+                if is_browser_running_for_profile(profile_dir):
+                    detected = True
+                    break
+        except KeyboardInterrupt:
+            return
 
     logging.info("Browser process detected. Server keepalive active.")
     consecutive_misses = 0
@@ -263,6 +293,11 @@ class DesktopBridge:
 
 def launch_native_window() -> bool:
     """Launch a true native OS window (Cocoa on macOS, WebView2 on Windows) using pywebview."""
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        # In frozen PyInstaller Windows builds, pythonnet runtime loader resolution fails.
+        # Bypass directly to find_app_browser() which launches Edge in seamless standalone app mode.
+        return False
+
     try:
         import webview
         logging.info("pywebview found. Launching true native desktop application window...")
@@ -346,6 +381,17 @@ def launch_desktop_window():
     except Exception:
         pass
 
+    # Clean up stale unheld lockfile on Windows from prior ungraceful exits
+    if sys.platform == "win32":
+        stale_lock = profile_dir / "lockfile"
+        if stale_lock.exists():
+            try:
+                with open(stale_lock, "r+b"):
+                    pass
+                stale_lock.unlink(missing_ok=True)
+            except (PermissionError, OSError):
+                pass
+
     # macOS: use LaunchServices 'open -W' to prevent TCC 'delete other apps' warnings
     if sys.platform == "darwin":
         mac_browser_apps = ["Google Chrome", "Microsoft Edge", "Brave Browser"]
@@ -364,7 +410,12 @@ def launch_desktop_window():
                 f"--user-data-dir={profile_dir}",
                 "--window-size=1600,1000",
                 "--no-first-run",
-                "--no-default-browser-check"
+                "--no-default-browser-check",
+                "--disable-extensions",
+                "--disable-default-apps",
+                "--disable-component-extensions-with-background-pages",
+                "--disable-features=Translate,OptimizationHints,MediaRouter",
+                "--new-window"
             ]
             try:
                 start_t = time.time()
@@ -402,11 +453,25 @@ def launch_desktop_window():
             "--window-size=1600,1000",
             "--window-position=50,50",
             "--no-first-run",
-            "--no-default-browser-check"
+            "--no-default-browser-check",
+            "--disable-extensions",
+            "--disable-default-apps",
+            "--disable-component-extensions-with-background-pages",
+            "--disable-features=Translate,OptimizationHints,MediaRouter",
+            "--new-window"
         ]
         try:
+            start_t = time.time()
             proc = subprocess.Popen(cmd)
             proc.wait()
+            elapsed = time.time() - start_t
+            logging.info(f"Browser launch process completed (elapsed={elapsed:.2f}s)")
+
+            # If the process exited quickly (< 3.0s), the browser spawned in background or delegated to broker.
+            # In that case, enter keepalive profile monitoring loop so Uvicorn does NOT die.
+            if elapsed < 3.0:
+                logging.info("Browser process exited quickly; engaging profile monitoring loop...")
+                keep_process_alive_while_browser_running(profile_dir)
             return
         except Exception as e:
             logging.error(f"Error launching app-mode browser: {e}")
