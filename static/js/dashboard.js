@@ -15022,6 +15022,26 @@ function handleStreamDeckLiveEvent(event) {
         showToast(`🔊 Stream Deck SFX: ${cleanName}`, "info");
     }
 
+    else if (event.event === "audio_layer_toggle") {
+        const trackId = event.trackId || 'track-forest-rain';
+        if (window.AudioEngine) {
+            const isActive = window.AudioEngine.toggleTrack(trackId);
+            renderAudioMixer();
+            const track = (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : []).find(t => t.id === trackId);
+            const trackName = track ? track.name : trackId;
+            showToast(`🎵 Sound Layer: ${trackName} is now ${isActive ? 'PLAYING' : 'STOPPED'}`, isActive ? "success" : "info");
+
+            // Report state back through WebSocket to update Stream Deck LCD key title
+            if (streamDeckWs && streamDeckWs.readyState === WebSocket.OPEN) {
+                streamDeckWs.send(JSON.stringify({
+                    action: "audio_layer_state",
+                    trackId: trackId,
+                    active: isActive
+                }));
+            }
+        }
+    }
+
     else if (event.event === "lighting_preset") {
         const preset = (event.preset || 'fireplace').toLowerCase();
         const map = {
@@ -15032,18 +15052,26 @@ function handleStreamDeckLiveEvent(event) {
             'crypt': 'preset-stormy-crypt',
             'boss': 'preset-combat-boss',
             'thunderstorm': 'preset-stormy-crypt',
-            'forest': 'preset-arcane-sanctum'
+            'forest': 'preset-arcane-sanctum',
+            'sanctum': 'preset-arcane-sanctum',
+            'creeping-dread': 'preset-creeping-dread',
+            'dread': 'preset-creeping-dread'
         };
-        if (window.LightingEngine) {
-            if (preset === 'off') {
+        if (preset === 'off') {
+            if (window.LightingEngine) {
                 window.LightingEngine.toggleOverhead(false);
                 window.LightingEngine.toggleAtmosphere(false);
-            } else {
-                const key = map[preset] || 'preset-tavern';
+            }
+            showToast(`💡 Stream Deck Lighting: OFF`, "info");
+        } else {
+            const key = map[preset] || (preset.startsWith('preset-') ? preset : 'preset-tavern');
+            if (typeof triggerQuickPreset === 'function') {
+                triggerQuickPreset(key);
+            } else if (window.LightingEngine) {
                 window.LightingEngine.applyPreset(key);
             }
+            showToast(`💡 Stream Deck Scene: ${preset.toUpperCase()}`, "info");
         }
-        showToast(`💡 Stream Deck Lighting: ${preset.toUpperCase()}`, "info");
     }
 
     else if (event.event === "lighting_event") {
@@ -15132,6 +15160,10 @@ async function testStreamDeckEndpoint(path) {
                 } else if (path.includes('/audio/sfx/')) {
                     const sfxName = path.split('/audio/sfx/')[1];
                     handleStreamDeckLiveEvent({ event: 'audio_sfx', sfx: sfxName });
+                } else if (path.includes('/audio/layer/')) {
+                    const parts = path.split('/');
+                    const trackId = parts[parts.indexOf('layer') + 1] || 'track-forest-rain';
+                    handleStreamDeckLiveEvent({ event: 'audio_layer_toggle', trackId: trackId });
                 } else if (path.includes('/lighting/event/')) {
                     const evtName = path.split('/lighting/event/')[1];
                     handleStreamDeckLiveEvent({ event: 'lighting_event', effect: evtName });

@@ -151,6 +151,24 @@ function initContextTitle(context, action, settings) {
     } else if (action === "com.arcaneledger.audio.sfx") {
         const name = (settings.sound || 'Fireball').split('_')[0];
         setKeyTitle(context, name.charAt(0).toUpperCase() + name.slice(1));
+    } else if (action === "com.arcaneledger.audio.layer") {
+        const trackId = settings.trackId || 'track-forest-rain';
+        const nameMap = {
+            'track-forest-rain': 'Rain',
+            'track-fireplace': 'Hearth',
+            'track-campfire': 'Campfire',
+            'track-heavy-rain': 'Downpour',
+            'track-thunderstorm': 'Thunder',
+            'track-wind': 'Wind',
+            'track-stream': 'Stream',
+            'track-tavern-murmur': 'Tavern',
+            'track-cavern-drone': 'Crypt',
+            'track-war-drums': 'Drums',
+            'track-mystic-pad': 'Arcane',
+            'track-heartbeat': 'Heartbeat'
+        };
+        const shortName = nameMap[trackId] || 'Layer';
+        setKeyTitle(context, `${shortName}\n[ OFF ]`);
     } else if (action === "com.arcaneledger.lighting.preset") {
         const p = settings.preset || 'Tavern';
         setKeyTitle(context, p.charAt(0).toUpperCase() + p.slice(1));
@@ -196,6 +214,9 @@ function handleKeyDown(context, action, settings) {
     } else if (action === "com.arcaneledger.audio.sfx") {
         const sfx = settings.sound || "fireball";
         executeArcaneAction(`/api/streamdeck/audio/sfx/${sfx}`);
+    } else if (action === "com.arcaneledger.audio.layer") {
+        const trackId = settings.trackId || "track-forest-rain";
+        executeArcaneAction(`/api/streamdeck/audio/layer/${trackId}/toggle`);
     } else if (action === "com.arcaneledger.lighting.preset") {
         const preset = settings.preset || "tavern";
         executeArcaneAction(`/api/streamdeck/lighting/preset/${preset}`);
@@ -318,6 +339,34 @@ function handleArcaneLiveEvent(msg) {
                 setEncoderFeedback(ctx, "Atmosphere", `${dialStates.atmosphereLight}%`);
             } else if (msg.encoder === "volume" && info.action === "com.arcaneledger.dial.volume") {
                 setEncoderFeedback(ctx, "Master Vol", `${dialStates.volume}%`);
+            }
+        }
+    }
+
+    // 4. Live Audio Layer State Updates on Stream Deck Key
+    if (event === "audio_layer_state") {
+        const nameMap = {
+            'track-forest-rain': 'Rain',
+            'track-fireplace': 'Hearth',
+            'track-campfire': 'Campfire',
+            'track-heavy-rain': 'Downpour',
+            'track-thunderstorm': 'Thunder',
+            'track-wind': 'Wind',
+            'track-stream': 'Stream',
+            'track-tavern-murmur': 'Tavern',
+            'track-cavern-drone': 'Crypt',
+            'track-war-drums': 'Drums',
+            'track-mystic-pad': 'Arcane',
+            'track-heartbeat': 'Heartbeat'
+        };
+        for (const [ctx, info] of activeContexts.entries()) {
+            if (info.action === "com.arcaneledger.audio.layer") {
+                const curTrack = info.settings.trackId || 'track-forest-rain';
+                if (curTrack === msg.trackId) {
+                    const shortName = nameMap[curTrack] || 'Layer';
+                    const stateStr = msg.active ? '[ ON ]' : '[ OFF ]';
+                    setKeyTitle(ctx, `${shortName}\n${stateStr}`);
+                }
             }
         }
     }

@@ -1435,6 +1435,15 @@ async def websocket_streamdeck_endpoint(websocket: WebSocket):
                     await streamdeck_lighting_preset(payload.get("preset", "tavern"))
                 elif msg_action == "lighting_event":
                     await streamdeck_lighting_event(payload.get("event", "nat20"))
+                elif msg_action == "audio_layer_toggle" or msg_action == "toggle_audio_layer":
+                    track_id = payload.get("trackId") or payload.get("track_id", "track-forest-rain")
+                    await streamdeck_audio_layer_toggle(track_id)
+                elif msg_action == "audio_layer_state":
+                    await streamdeck_manager.broadcast({
+                        "event": "audio_layer_state",
+                        "trackId": payload.get("trackId"),
+                        "active": payload.get("active")
+                    })
                 elif msg_action == "short_rest":
                     await streamdeck_short_rest()
                 elif msg_action == "long_rest":
@@ -1741,6 +1750,14 @@ async def streamdeck_audio_sfx(sound_name: str):
     })
     return {"status": "success", "sfx": sound_name}
 
+@app.api_route("/api/streamdeck/audio/layer/{track_id}/toggle", methods=["GET", "POST"])
+async def streamdeck_audio_layer_toggle(track_id: str):
+    await streamdeck_manager.broadcast({
+        "event": "audio_layer_toggle",
+        "trackId": track_id
+    })
+    return {"status": "success", "trackId": track_id}
+
 @app.api_route("/api/streamdeck/map/reveal-all", methods=["GET", "POST"])
 async def streamdeck_map_reveal_all():
     state = read_json("battlemap.json", get_default_battlemap_state())
@@ -1842,6 +1859,7 @@ async def streamdeck_status():
         {"name": "Sound FX: Fireball", "method": "GET / POST", "url": f"{base_local}/audio/sfx/fireball", "desc": "Trigger Fireball detonation"},
         {"name": "Sound FX: Sword Clash", "method": "GET / POST", "url": f"{base_local}/audio/sfx/sword_clash", "desc": "Trigger melee sword clash"},
         {"name": "Sound FX: Dragon Roar", "method": "GET / POST", "url": f"{base_local}/audio/sfx/dragon_roar", "desc": "Trigger monstrous roar"},
+        {"name": "Toggle Sound Layer", "method": "GET / POST", "url": f"{base_local}/audio/layer/track-forest-rain/toggle", "desc": "Toggle looping ambient sound layer (Rain, Campfire, Hearth, Wind)"},
         {"name": "Reveal Map Fog", "method": "GET / POST", "url": f"{base_local}/map/reveal-all", "desc": "Fully reveal active battlemap fog"},
         {"name": "Reset Map Fog", "method": "GET / POST", "url": f"{base_local}/map/reset-fog", "desc": "Conceal battlemap fog"},
         {"name": "Map Laser Ping", "method": "GET / POST", "url": f"{base_local}/map/ping", "desc": "Fire central laser ping coordinate"}

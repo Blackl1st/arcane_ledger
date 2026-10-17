@@ -11,7 +11,9 @@ Generates:
 
 import json
 import os
+import shutil
 import sys
+import uuid
 import zipfile
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -79,6 +81,7 @@ def generate_all_icons():
         ("action_dial_light.png", 144, "☀", (25, 20, 10), (245, 158, 11), (253, 224, 71), True),
         ("action_dial_atmosphere.png", 144, "🔮", (24, 16, 35), (168, 85, 247), (216, 180, 254), True),
         ("action_dial_volume.png", 144, "🎚", (12, 25, 30), (6, 182, 212), (103, 232, 249), True),
+        ("action_sound_layer.png", 144, "🌧", (15, 23, 42), (56, 189, 248), (125, 211, 252), False),
     ]
 
     for filename, size, symbol, bg, border, sym_col, is_circ in icons_def:
@@ -187,6 +190,22 @@ def write_manifest():
                 ]
             },
             {
+                "UUID": "com.arcaneledger.audio.layer",
+                "Name": "Toggle Sound Layer",
+                "Tooltip": "Toggle individual ambient sound layer (Rain, Campfire, Hearth, Wind, etc.) on/off",
+                "Icon": "icons/action_sound_layer",
+                "PropertyInspectorPath": "property_inspector.html",
+                "Controllers": ["Keypad"],
+                "States": [
+                    {
+                        "Image": "icons/action_sound_layer",
+                        "TitleAlignment": "bottom",
+                        "FontSize": 9,
+                        "TitleColor": "#38bdf8"
+                    }
+                ]
+            },
+            {
                 "UUID": "com.arcaneledger.lighting.preset",
                 "Name": "Scene Atmosphere Light",
                 "Tooltip": "Switch Amaran lights to Fireplace, Tavern, Dungeon, Crypt, or Boss",
@@ -256,6 +275,12 @@ def write_manifest():
                 "Tooltip": "Stream Deck + Dial: Rotate to adjust Reading Light; press to toggle on/off",
                 "Icon": "icons/action_dial_light",
                 "Controllers": ["Encoder"],
+                "States": [
+                    {
+                        "Image": "icons/action_dial_light",
+                        "TitleAlignment": "bottom"
+                    }
+                ],
                 "Encoder": {
                     "layout": "$B1",
                     "StackColor": "#f59e0b",
@@ -269,6 +294,12 @@ def write_manifest():
                 "Tooltip": "Stream Deck + Dial: Rotate to adjust mood brightness; press to cycle scene presets",
                 "Icon": "icons/action_dial_atmosphere",
                 "Controllers": ["Encoder"],
+                "States": [
+                    {
+                        "Image": "icons/action_dial_atmosphere",
+                        "TitleAlignment": "bottom"
+                    }
+                ],
                 "Encoder": {
                     "layout": "$B1",
                     "StackColor": "#a855f7",
@@ -282,12 +313,26 @@ def write_manifest():
                 "Tooltip": "Stream Deck + Dial: Rotate to adjust tabletop sound level; press to mute",
                 "Icon": "icons/action_dial_volume",
                 "Controllers": ["Encoder"],
+                "States": [
+                    {
+                        "Image": "icons/action_dial_volume",
+                        "TitleAlignment": "bottom"
+                    }
+                ],
                 "Encoder": {
                     "layout": "$B1",
                     "StackColor": "#06b6d4",
                     "Icon": "icons/action_dial_volume",
                     "background": "icons/dial_bg.png"
                 }
+            }
+        ],
+        "Profiles": [
+            {
+                "Name": "Arcane Ledger DM Console",
+                "DeviceModel": "20GAA9901",
+                "ReadOnly": False,
+                "DontAutoSwitchWhenInstalled": True
             }
         ],
         "Author": "Arcane Ledger",
@@ -488,6 +533,24 @@ function initContextTitle(context, action, settings) {
     } else if (action === "com.arcaneledger.audio.sfx") {
         const name = (settings.sound || 'Fireball').split('_')[0];
         setKeyTitle(context, name.charAt(0).toUpperCase() + name.slice(1));
+    } else if (action === "com.arcaneledger.audio.layer") {
+        const trackId = settings.trackId || 'track-forest-rain';
+        const nameMap = {
+            'track-forest-rain': 'Rain',
+            'track-fireplace': 'Hearth',
+            'track-campfire': 'Campfire',
+            'track-heavy-rain': 'Downpour',
+            'track-thunderstorm': 'Thunder',
+            'track-wind': 'Wind',
+            'track-stream': 'Stream',
+            'track-tavern-murmur': 'Tavern',
+            'track-cavern-drone': 'Crypt',
+            'track-war-drums': 'Drums',
+            'track-mystic-pad': 'Arcane',
+            'track-heartbeat': 'Heartbeat'
+        };
+        const shortName = nameMap[trackId] || 'Layer';
+        setKeyTitle(context, `${shortName}\\n[ OFF ]`);
     } else if (action === "com.arcaneledger.lighting.preset") {
         const p = settings.preset || 'Tavern';
         setKeyTitle(context, p.charAt(0).toUpperCase() + p.slice(1));
@@ -533,6 +596,9 @@ function handleKeyDown(context, action, settings) {
     } else if (action === "com.arcaneledger.audio.sfx") {
         const sfx = settings.sound || "fireball";
         executeArcaneAction(`/api/streamdeck/audio/sfx/${sfx}`);
+    } else if (action === "com.arcaneledger.audio.layer") {
+        const trackId = settings.trackId || "track-forest-rain";
+        executeArcaneAction(`/api/streamdeck/audio/layer/${trackId}/toggle`);
     } else if (action === "com.arcaneledger.lighting.preset") {
         const preset = settings.preset || "tavern";
         executeArcaneAction(`/api/streamdeck/lighting/preset/${preset}`);
@@ -658,6 +724,34 @@ function handleArcaneLiveEvent(msg) {
             }
         }
     }
+
+    // 4. Live Audio Layer State Updates on Stream Deck Key
+    if (event === "audio_layer_state") {
+        const nameMap = {
+            'track-forest-rain': 'Rain',
+            'track-fireplace': 'Hearth',
+            'track-campfire': 'Campfire',
+            'track-heavy-rain': 'Downpour',
+            'track-thunderstorm': 'Thunder',
+            'track-wind': 'Wind',
+            'track-stream': 'Stream',
+            'track-tavern-murmur': 'Tavern',
+            'track-cavern-drone': 'Crypt',
+            'track-war-drums': 'Drums',
+            'track-mystic-pad': 'Arcane',
+            'track-heartbeat': 'Heartbeat'
+        };
+        for (const [ctx, info] of activeContexts.entries()) {
+            if (info.action === "com.arcaneledger.audio.layer") {
+                const curTrack = info.settings.trackId || 'track-forest-rain';
+                if (curTrack === msg.trackId) {
+                    const shortName = nameMap[curTrack] || 'Layer';
+                    const stateStr = msg.active ? '[ ON ]' : '[ OFF ]';
+                    setKeyTitle(ctx, `${shortName}\\n${stateStr}`);
+                }
+            }
+        }
+    }
 }
 """
     with open(PLUGIN_DIR / "plugin.js", "w", encoding="utf-8") as f:
@@ -710,17 +804,37 @@ def write_property_inspector():
         </select>
     </div>
 
+    <!-- Ambient Sound Layer Settings -->
+    <div id="section-layer" class="group" style="display: none;">
+        <label>Ambient Sound Layer</label>
+        <select id="select-layer" onchange="saveActionSettings()">
+            <option value="track-forest-rain" selected>🌧️ Gentle Forest Rain</option>
+            <option value="track-fireplace">🔥 Cozy Fireplace & Hearth</option>
+            <option value="track-campfire">🏕️ Wilderness Campfire</option>
+            <option value="track-heavy-rain">⛈️ Torrential Downpour</option>
+            <option value="track-thunderstorm">⚡ Distant Thunderstorm</option>
+            <option value="track-wind">💨 Howling Mountain Wind</option>
+            <option value="track-stream">🌊 Babbling River Stream</option>
+            <option value="track-tavern-murmur">🍻 Tavern Crowd & Glasses</option>
+            <option value="track-cavern-drone">🗝️ Deep Crypt Cavern Drone</option>
+            <option value="track-war-drums">🥁 War Drums Cadence</option>
+            <option value="track-mystic-pad">🔮 Arcane Sanctuary Pad</option>
+            <option value="track-heartbeat">💓 Heartbeat Suspense</option>
+        </select>
+    </div>
+
     <!-- Lighting Preset Settings -->
     <div id="section-lighting" class="group" style="display: none;">
         <label>Atmosphere Scene Preset</label>
         <select id="select-preset" onchange="saveActionSettings()">
-            <option value="tavern" selected>🍺 Cozy Tavern Hearth (2500K Fire)</option>
+            <option value="tavern" selected>🍺 Cozy Tavern Hearth</option>
             <option value="fireplace">🔥 Wilderness Campfire</option>
-            <option value="dungeon">🕯️ Menacing Dungeon Torch</option>
+            <option value="dungeon">🕯️ Menacing Dungeon / Crypt</option>
             <option value="crypt">💀 Eerie Crypt Glow</option>
-            <option value="boss">🥁 Blood Moon / Boss Combat</option>
+            <option value="boss">🩸 Blood Moon / Boss Combat</option>
             <option value="thunderstorm">⚡ Thunderstorm & Lightning</option>
-            <option value="forest">🌲 Woodland Canopy</option>
+            <option value="forest">🔮 Arcane Tower & Sanctum</option>
+            <option value="creeping-dread">👁️ Creeping Dread & Ambush</option>
             <option value="off">💡 Turn Lights Off</option>
         </select>
     </div>
@@ -802,6 +916,7 @@ def write_property_inspector():
         function renderVisibleSections(action) {
             if (action.includes('.dice.roll')) document.getElementById('section-dice').style.display = 'block';
             if (action.includes('.audio.sfx')) document.getElementById('section-sfx').style.display = 'block';
+            if (action.includes('.audio.layer')) document.getElementById('section-layer').style.display = 'block';
             if (action.includes('.lighting.preset')) document.getElementById('section-lighting').style.display = 'block';
             if (action.includes('.lighting.event')) document.getElementById('section-flash').style.display = 'block';
             if (action.includes('.party.rest')) document.getElementById('section-rest').style.display = 'block';
@@ -811,6 +926,7 @@ def write_property_inspector():
         function populateFields(settings) {
             if (settings.sides) document.getElementById('select-sides').value = settings.sides;
             if (settings.sound) document.getElementById('select-sound').value = settings.sound;
+            if (settings.trackId) document.getElementById('select-layer').value = settings.trackId;
             if (settings.preset) document.getElementById('select-preset').value = settings.preset;
             if (settings.effect) document.getElementById('select-flash').value = settings.effect;
             if (settings.restType) document.getElementById('select-rest').value = settings.restType;
@@ -821,6 +937,7 @@ def write_property_inspector():
             const settings = {
                 sides: parseInt(document.getElementById('select-sides')?.value || 20),
                 sound: document.getElementById('select-sound')?.value || 'fireball',
+                trackId: document.getElementById('select-layer')?.value || 'track-forest-rain',
                 preset: document.getElementById('select-preset')?.value || 'tavern',
                 effect: document.getElementById('select-flash')?.value || 'nat20',
                 restType: document.getElementById('select-rest')?.value || 'short',
@@ -874,34 +991,319 @@ def bundle_plugin_zip():
 
 
 def generate_preconfigured_profile():
-    """Generates an importable 15-key Stream Deck Profile with pre-assigned actions"""
-    profile_data = {
+    """Generates an authentic Elgato ZIP .streamDeckProfile for 15-key Stream Deck Mk.2 (20GAA9901)"""
+    profile_uuid = "C32E0175-07A4-476F-9417-5701FCFF61A5"
+    page_uuid = "AD2D4C12-D011-400A-B8AA-C1657CF305C5"
+
+    # Root profile manifest
+    root_manifest = {
+        "Device": {
+            "Model": "20GAA9901",
+            "UUID": ""
+        },
         "Name": "Arcane Ledger DM Console",
-        "DeviceModel": "Stream Deck (15 Keys)",
-        "Actions": [
-            {"Key": 0, "Action": "com.arcaneledger.combat.prev-turn", "Title": "Prev Turn"},
-            {"Key": 1, "Action": "com.arcaneledger.combat.next-turn", "Title": "Next Turn"},
-            {"Key": 2, "Action": "com.arcaneledger.combat.toggle", "Title": "Combat"},
-            {"Key": 3, "Action": "com.arcaneledger.dice.roll-d20", "Title": "Roll d20"},
-            {"Key": 4, "Action": "com.arcaneledger.lighting.event", "Settings": {"effect": "nat20"}, "Title": "Nat 20"},
-
-            {"Key": 5, "Action": "com.arcaneledger.lighting.preset", "Settings": {"preset": "tavern"}, "Title": "Tavern"},
-            {"Key": 6, "Action": "com.arcaneledger.lighting.preset", "Settings": {"preset": "fireplace"}, "Title": "Campfire"},
-            {"Key": 7, "Action": "com.arcaneledger.lighting.preset", "Settings": {"preset": "dungeon"}, "Title": "Dungeon"},
-            {"Key": 8, "Action": "com.arcaneledger.lighting.preset", "Settings": {"preset": "boss"}, "Title": "Boss Fight"},
-            {"Key": 9, "Action": "com.arcaneledger.lighting.preset", "Settings": {"preset": "thunderstorm"}, "Title": "Storm"},
-
-            {"Key": 10, "Action": "com.arcaneledger.audio.sfx", "Settings": {"sound": "fireball"}, "Title": "Fireball"},
-            {"Key": 11, "Action": "com.arcaneledger.audio.sfx", "Settings": {"sound": "sword_clash"}, "Title": "Sword"},
-            {"Key": 12, "Action": "com.arcaneledger.audio.sfx", "Settings": {"sound": "dragon_roar"}, "Title": "Dragon"},
-            {"Key": 13, "Action": "com.arcaneledger.party.rest", "Settings": {"restType": "short"}, "Title": "Short Rest"},
-            {"Key": 14, "Action": "com.arcaneledger.party.rest", "Settings": {"restType": "long"}, "Title": "Long Rest"}
-        ]
+        "Pages": {
+            "Current": page_uuid,
+            "Default": page_uuid,
+            "Pages": [page_uuid]
+        },
+        "Version": "2.0"
     }
+
+    # 15 Actions mapped to (column, row)
+    actions_grid = {
+        # Row 0: Initiative & D20
+        "0,0": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Previous Combat Turn",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 10, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Prev Turn",
+                "TitleAlignment": "bottom", "TitleColor": "#cbd5e1"
+            }],
+            "UUID": "com.arcaneledger.combat.prev-turn"
+        },
+        "1,0": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Next Combat Turn",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 10, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Next Turn",
+                "TitleAlignment": "bottom", "TitleColor": "#f8fafc"
+            }],
+            "UUID": "com.arcaneledger.combat.next-turn"
+        },
+        "2,0": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Toggle Encounter",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 10, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Combat",
+                "TitleAlignment": "bottom", "TitleColor": "#fda4af"
+            }],
+            "UUID": "com.arcaneledger.combat.toggle"
+        },
+        "3,0": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Roll d20",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 11, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Roll d20",
+                "TitleAlignment": "bottom", "TitleColor": "#fbbf24"
+            }],
+            "UUID": "com.arcaneledger.dice.roll-d20"
+        },
+        "4,0": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Lighting FX Fanfare",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"effect": "nat20"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Nat 20 FX",
+                "TitleAlignment": "bottom", "TitleColor": "#f5d0fe"
+            }],
+            "UUID": "com.arcaneledger.lighting.event"
+        },
+
+        # Row 1: Scene Atmosphere Presets
+        "0,1": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Scene Atmosphere Light",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"preset": "tavern"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Tavern",
+                "TitleAlignment": "bottom", "TitleColor": "#fef08a"
+            }],
+            "UUID": "com.arcaneledger.lighting.preset"
+        },
+        "1,1": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Scene Atmosphere Light",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"preset": "fireplace"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Campfire",
+                "TitleAlignment": "bottom", "TitleColor": "#fef08a"
+            }],
+            "UUID": "com.arcaneledger.lighting.preset"
+        },
+        "2,1": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Scene Atmosphere Light",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"preset": "dungeon"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Dungeon",
+                "TitleAlignment": "bottom", "TitleColor": "#fef08a"
+            }],
+            "UUID": "com.arcaneledger.lighting.preset"
+        },
+        "3,1": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Scene Atmosphere Light",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"preset": "boss"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Boss Fight",
+                "TitleAlignment": "bottom", "TitleColor": "#fef08a"
+            }],
+            "UUID": "com.arcaneledger.lighting.preset"
+        },
+        "4,1": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Scene Atmosphere Light",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"preset": "thunderstorm"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Storm",
+                "TitleAlignment": "bottom", "TitleColor": "#fef08a"
+            }],
+            "UUID": "com.arcaneledger.lighting.preset"
+        },
+
+        # Row 2: Sound Layers, SFX & Rest
+        "0,2": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Toggle Sound Layer",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"trackId": "track-forest-rain"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Rain\\n[ OFF ]",
+                "TitleAlignment": "bottom", "TitleColor": "#38bdf8"
+            }],
+            "UUID": "com.arcaneledger.audio.layer"
+        },
+        "1,2": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Toggle Sound Layer",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"trackId": "track-fireplace"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Hearth\\n[ OFF ]",
+                "TitleAlignment": "bottom", "TitleColor": "#fb923c"
+            }],
+            "UUID": "com.arcaneledger.audio.layer"
+        },
+        "2,2": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Soundboard SFX",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"sound": "fireball"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Fireball",
+                "TitleAlignment": "bottom", "TitleColor": "#fecaca"
+            }],
+            "UUID": "com.arcaneledger.audio.sfx"
+        },
+        "3,2": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Party Rest",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"restType": "short"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Short Rest",
+                "TitleAlignment": "bottom", "TitleColor": "#a7f3d0"
+            }],
+            "UUID": "com.arcaneledger.party.rest"
+        },
+        "4,2": {
+            "ActionID": str(uuid.uuid4()),
+            "LinkedTitle": True,
+            "Name": "Party Rest",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Resources": None,
+            "Settings": {"restType": "long"},
+            "State": 0,
+            "States": [{
+                "FontFamily": "", "FontSize": 9, "FontStyle": "", "FontUnderline": False,
+                "OutlineThickness": 2, "ShowTitle": True, "Title": "Long Rest",
+                "TitleAlignment": "bottom", "TitleColor": "#a7f3d0"
+            }],
+            "UUID": "com.arcaneledger.party.rest"
+        }
+    }
+
+    page_manifest = {
+        "Controllers": [
+            {
+                "Actions": actions_grid,
+                "Type": "Keypad"
+            }
+        ],
+        "Icon": "",
+        "Name": ""
+    }
+
+    # Build the zip archive
     profile_path = STATIC_SD_DIR / "ArcaneLedger_15Key.streamDeckProfile"
-    with open(profile_path, "w", encoding="utf-8") as f:
-        json.dump(profile_data, f, indent=2)
-    print(f"Generated Profile Configuration: {profile_path}")
+    if profile_path.exists():
+        profile_path.unlink()
+
+    def build_profile_zip(dest_file: Path):
+        dest_file.parent.mkdir(parents=True, exist_ok=True)
+        if dest_file.exists():
+            dest_file.unlink()
+        with zipfile.ZipFile(dest_file, "w", zipfile.ZIP_DEFLATED) as zf:
+            # 1. Root manifest
+            zf.writestr(
+                f"{profile_uuid}.sdProfile/manifest.json",
+                json.dumps(root_manifest, indent=2)
+            )
+            # 2. Page manifest
+            zf.writestr(
+                f"{profile_uuid}.sdProfile/Profiles/{page_uuid}/manifest.json",
+                json.dumps(page_manifest, indent=2)
+            )
+
+    build_profile_zip(profile_path)
+    print(f"Generated 15-Key Profile ZIP: {profile_path} ({profile_path.stat().st_size} bytes)")
+
+    # Also place inside plugin's profiles/ folder for auto-import upon plugin installation
+    plugin_profiles_dir = PLUGIN_DIR / "profiles"
+    plugin_profiles_dir.mkdir(parents=True, exist_ok=True)
+    build_profile_zip(plugin_profiles_dir / "Arcane Ledger DM Console.streamDeckProfile")
+    build_profile_zip(plugin_profiles_dir / "ArcaneLedger_15Key.streamDeckProfile")
+
+
+def install_plugin_locally():
+    """If Stream Deck is installed on Windows, copy latest plugin files directly into AppData"""
+    appdata = os.environ.get("APPDATA")
+    if not appdata:
+        return
+    dest = Path(appdata) / "Elgato" / "StreamDeck" / "Plugins" / "com.arcaneledger.streamdeck.sdPlugin"
+    if dest.parent.exists():
+        try:
+            dest.mkdir(parents=True, exist_ok=True)
+            for item in PLUGIN_DIR.rglob("*"):
+                if item.is_file():
+                    rel = item.relative_to(PLUGIN_DIR)
+                    target = dest / rel
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item, target)
+            print(f"Directly updated installed plugin files in: {dest}")
+        except Exception as e:
+            print(f"Note: Local AppData plugin copy skipped: {e}")
 
 
 def main():
@@ -911,8 +1313,9 @@ def main():
     write_plugin_html()
     write_plugin_js()
     write_property_inspector()
-    bundle_plugin_zip()
     generate_preconfigured_profile()
+    bundle_plugin_zip()
+    install_plugin_locally()
     print("Elgato Stream Deck Plugin build complete!")
 
 

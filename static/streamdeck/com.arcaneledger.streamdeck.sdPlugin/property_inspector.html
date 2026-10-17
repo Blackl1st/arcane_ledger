@@ -43,17 +43,37 @@
         </select>
     </div>
 
+    <!-- Ambient Sound Layer Settings -->
+    <div id="section-layer" class="group" style="display: none;">
+        <label>Ambient Sound Layer</label>
+        <select id="select-layer" onchange="saveActionSettings()">
+            <option value="track-forest-rain" selected>🌧️ Gentle Forest Rain</option>
+            <option value="track-fireplace">🔥 Cozy Fireplace & Hearth</option>
+            <option value="track-campfire">🏕️ Wilderness Campfire</option>
+            <option value="track-heavy-rain">⛈️ Torrential Downpour</option>
+            <option value="track-thunderstorm">⚡ Distant Thunderstorm</option>
+            <option value="track-wind">💨 Howling Mountain Wind</option>
+            <option value="track-stream">🌊 Babbling River Stream</option>
+            <option value="track-tavern-murmur">🍻 Tavern Crowd & Glasses</option>
+            <option value="track-cavern-drone">🗝️ Deep Crypt Cavern Drone</option>
+            <option value="track-war-drums">🥁 War Drums Cadence</option>
+            <option value="track-mystic-pad">🔮 Arcane Sanctuary Pad</option>
+            <option value="track-heartbeat">💓 Heartbeat Suspense</option>
+        </select>
+    </div>
+
     <!-- Lighting Preset Settings -->
     <div id="section-lighting" class="group" style="display: none;">
         <label>Atmosphere Scene Preset</label>
         <select id="select-preset" onchange="saveActionSettings()">
-            <option value="tavern" selected>🍺 Cozy Tavern Hearth (2500K Fire)</option>
+            <option value="tavern" selected>🍺 Cozy Tavern Hearth</option>
             <option value="fireplace">🔥 Wilderness Campfire</option>
-            <option value="dungeon">🕯️ Menacing Dungeon Torch</option>
+            <option value="dungeon">🕯️ Menacing Dungeon / Crypt</option>
             <option value="crypt">💀 Eerie Crypt Glow</option>
-            <option value="boss">🥁 Blood Moon / Boss Combat</option>
+            <option value="boss">🩸 Blood Moon / Boss Combat</option>
             <option value="thunderstorm">⚡ Thunderstorm & Lightning</option>
-            <option value="forest">🌲 Woodland Canopy</option>
+            <option value="forest">🔮 Arcane Tower & Sanctum</option>
+            <option value="creeping-dread">👁️ Creeping Dread & Ambush</option>
             <option value="off">💡 Turn Lights Off</option>
         </select>
     </div>
@@ -135,6 +155,7 @@
         function renderVisibleSections(action) {
             if (action.includes('.dice.roll')) document.getElementById('section-dice').style.display = 'block';
             if (action.includes('.audio.sfx')) document.getElementById('section-sfx').style.display = 'block';
+            if (action.includes('.audio.layer')) document.getElementById('section-layer').style.display = 'block';
             if (action.includes('.lighting.preset')) document.getElementById('section-lighting').style.display = 'block';
             if (action.includes('.lighting.event')) document.getElementById('section-flash').style.display = 'block';
             if (action.includes('.party.rest')) document.getElementById('section-rest').style.display = 'block';
@@ -144,6 +165,7 @@
         function populateFields(settings) {
             if (settings.sides) document.getElementById('select-sides').value = settings.sides;
             if (settings.sound) document.getElementById('select-sound').value = settings.sound;
+            if (settings.trackId) document.getElementById('select-layer').value = settings.trackId;
             if (settings.preset) document.getElementById('select-preset').value = settings.preset;
             if (settings.effect) document.getElementById('select-flash').value = settings.effect;
             if (settings.restType) document.getElementById('select-rest').value = settings.restType;
@@ -154,6 +176,7 @@
             const settings = {
                 sides: parseInt(document.getElementById('select-sides')?.value || 20),
                 sound: document.getElementById('select-sound')?.value || 'fireball',
+                trackId: document.getElementById('select-layer')?.value || 'track-forest-rain',
                 preset: document.getElementById('select-preset')?.value || 'tavern',
                 effect: document.getElementById('select-flash')?.value || 'nat20',
                 restType: document.getElementById('select-rest')?.value || 'short',

@@ -105,6 +105,24 @@
       ]
     },
     {
+      "UUID": "com.arcaneledger.audio.layer",
+      "Name": "Toggle Sound Layer",
+      "Tooltip": "Toggle individual ambient sound layer (Rain, Campfire, Hearth, Wind, etc.) on/off",
+      "Icon": "icons/action_sound_layer",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_sound_layer",
+          "TitleAlignment": "bottom",
+          "FontSize": 9,
+          "TitleColor": "#38bdf8"
+        }
+      ]
+    },
+    {
       "UUID": "com.arcaneledger.lighting.preset",
       "Name": "Scene Atmosphere Light",
       "Tooltip": "Switch Amaran lights to Fireplace, Tavern, Dungeon, Crypt, or Boss",
@@ -184,6 +202,12 @@
       "Controllers": [
         "Encoder"
       ],
+      "States": [
+        {
+          "Image": "icons/action_dial_light",
+          "TitleAlignment": "bottom"
+        }
+      ],
       "Encoder": {
         "layout": "$B1",
         "StackColor": "#f59e0b",
@@ -198,6 +222,12 @@
       "Icon": "icons/action_dial_atmosphere",
       "Controllers": [
         "Encoder"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_dial_atmosphere",
+          "TitleAlignment": "bottom"
+        }
       ],
       "Encoder": {
         "layout": "$B1",
@@ -214,12 +244,26 @@
       "Controllers": [
         "Encoder"
       ],
+      "States": [
+        {
+          "Image": "icons/action_dial_volume",
+          "TitleAlignment": "bottom"
+        }
+      ],
       "Encoder": {
         "layout": "$B1",
         "StackColor": "#06b6d4",
         "Icon": "icons/action_dial_volume",
         "background": "icons/dial_bg.png"
       }
+    }
+  ],
+  "Profiles": [
+    {
+      "Name": "Arcane Ledger DM Console",
+      "DeviceModel": "20GAA9901",
+      "ReadOnly": false,
+      "DontAutoSwitchWhenInstalled": true
     }
   ],
   "Author": "Arcane Ledger",
