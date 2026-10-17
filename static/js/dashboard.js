@@ -8774,6 +8774,7 @@ async function triggerQuickPreset(presetId) {
             // Channel 1: Overhead 60d S
             if (preset.lighting.overhead && preset.lighting.overhead.brightness !== undefined) {
                 await window.LightingEngine.setOverheadBrightness(preset.lighting.overhead.brightness);
+                await new Promise(r => setTimeout(r, 250));
             }
             // Channel 2: Atmosphere Ace 25c Group
             if (preset.lighting.atmosphere) {

@@ -598,7 +598,7 @@ class TabletopLightingEngine {
         const intensity = Math.round(b * 10);
         return this._enqueue(async () => {
             this.sendRequest("set_intensity", { intensity: intensity }, this.getOverheadNodeId());
-            await new Promise(r => setTimeout(r, 80));
+            await new Promise(r => setTimeout(r, 250));
         });
     }
 
@@ -756,6 +756,7 @@ class TabletopLightingEngine {
             if (ap && ap.lighting) {
                 if (ap.lighting.overhead && ap.lighting.overhead.brightness !== undefined) {
                     await this.setOverheadBrightness(ap.lighting.overhead.brightness);
+                    await new Promise(r => setTimeout(r, 250));
                 }
                 if (ap.lighting.atmosphere) {
                     await this.applyAtmosphereConfig(ap.lighting.atmosphere, presetId);
@@ -860,8 +861,11 @@ class TabletopLightingEngine {
             }
 
             // 2. Ace 25c Surge to Crimson
-            this.sendAtmosphereRequest("set_intensity", { intensity: pulseIntensity });
-            this.sendAtmosphereRequest("set_color", { color: crimsonHex });
+            this._enqueue(async () => {
+                await this.sendAtmosphereRequest("set_intensity", { intensity: pulseIntensity }, 180);
+                await new Promise(r => setTimeout(r, 200));
+                await this.sendAtmosphereRequest("set_color", { color: crimsonHex }, 180);
+            });
 
             // Visual simulation
             const sim = document.getElementById("lighting-ambiance-box");
@@ -875,7 +879,9 @@ class TabletopLightingEngine {
             // 3. Drop down after 400ms for heartbeat trough
             setTimeout(() => {
                 if (beatCount < totalBeats) {
-                    this.sendAtmosphereRequest("set_intensity", { intensity: 150 });
+                    this._enqueue(async () => {
+                        await this.sendAtmosphereRequest("set_intensity", { intensity: 150 }, 180);
+                    });
                     if (sim) {
                         sim.style.boxShadow = `0 0 10px 2px rgba(${pulseRgb[0]}, ${pulseRgb[1]}, ${pulseRgb[2]}, 0.3)`;
                     }
@@ -964,8 +970,11 @@ class TabletopLightingEngine {
         if (turnType === 'boss') {
             // Boss Turn: Sinister Deep Violet / Crimson Pulse
             const hex = "#7C3AED";
-            this.sendAtmosphereRequest("set_intensity", { intensity: 900 });
-            this.sendAtmosphereRequest("set_color", { color: hex });
+            this._enqueue(async () => {
+                await this.sendAtmosphereRequest("set_intensity", { intensity: 900 }, 180);
+                await new Promise(r => setTimeout(r, 200));
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
+            });
 
             if (window.AudioEngine && window.AudioEngine.playBossThreat) {
                 window.AudioEngine.playBossThreat();
@@ -983,8 +992,11 @@ class TabletopLightingEngine {
         } else if (turnType === 'monster' || turnType === 'npc') {
             // Enemy Turn: Menacing Shadow Red
             const hex = "#DC2626";
-            this.sendAtmosphereRequest("set_intensity", { intensity: 850 });
-            this.sendAtmosphereRequest("set_color", { color: hex });
+            this._enqueue(async () => {
+                await this.sendAtmosphereRequest("set_intensity", { intensity: 850 }, 180);
+                await new Promise(r => setTimeout(r, 200));
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
+            });
 
             if (sim) {
                 sim.style.backgroundColor = "rgb(220, 38, 38)";
@@ -998,8 +1010,11 @@ class TabletopLightingEngine {
         } else {
             // Hero / Player Turn: Courageous Warm Golden Amber
             const hex = "#F59E0B";
-            this.sendAtmosphereRequest("set_intensity", { intensity: 850 });
-            this.sendAtmosphereRequest("set_color", { color: hex });
+            this._enqueue(async () => {
+                await this.sendAtmosphereRequest("set_intensity", { intensity: 850 }, 180);
+                await new Promise(r => setTimeout(r, 200));
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
+            });
 
             if (sim) {
                 sim.style.backgroundColor = "rgb(245, 158, 11)";
@@ -1045,12 +1060,14 @@ class TabletopLightingEngine {
             window.AudioEngine.playStrike();
         }
 
-        // Ace 25c: 100% pure brilliant white
-        this.sendAtmosphereRequest("set_intensity", { intensity: 1000 });
-        this.sendAtmosphereRequest("set_color", { color: "#FFFFFF" });
-
-        // Flash Overhead 60d S to 100% as well for physical table impact
-        this.sendRequest("set_intensity", { intensity: 1000 }, this.getOverheadNodeId());
+        // Ace 25c & Overhead: 100% pure brilliant white
+        this._enqueue(async () => {
+            this.sendRequest("set_intensity", { intensity: 1000 }, this.getOverheadNodeId());
+            await new Promise(r => setTimeout(r, 250));
+            await this.sendAtmosphereRequest("set_intensity", { intensity: 1000 }, 180);
+            await new Promise(r => setTimeout(r, 200));
+            await this.sendAtmosphereRequest("set_color", { color: "#FFFFFF" }, 180);
+        });
 
         const sim = document.getElementById("lighting-ambiance-box");
         if (sim) {
@@ -1066,12 +1083,16 @@ class TabletopLightingEngine {
 
         // Phase 2 (800ms - 2200ms): Blood Red Dissipation Glow
         this._deathBlowTimeout = setTimeout(() => {
-            // Restore overhead 60d S to normal reading brightness
-            this.sendRequest("set_intensity", { intensity: Math.round(prevOverheadB * 10) }, this.getOverheadNodeId());
+            this._enqueue(async () => {
+                // Restore overhead 60d S to normal reading brightness
+                this.sendRequest("set_intensity", { intensity: Math.round(prevOverheadB * 10) }, this.getOverheadNodeId());
+                await new Promise(r => setTimeout(r, 250));
 
-            // Ace 25c: Blood crimson death pulse
-            this.sendAtmosphereRequest("set_intensity", { intensity: 850 });
-            this.sendAtmosphereRequest("set_color", { color: "#E11D48" });
+                // Ace 25c: Blood crimson death pulse
+                await this.sendAtmosphereRequest("set_intensity", { intensity: 850 }, 180);
+                await new Promise(r => setTimeout(r, 200));
+                await this.sendAtmosphereRequest("set_color", { color: "#E11D48" }, 180);
+            });
 
             if (sim) {
                 sim.style.backgroundColor = "rgb(225, 29, 72)";
@@ -1100,8 +1121,8 @@ class TabletopLightingEngine {
         const atmIntensity = Math.round(brightness * 10);
 
         this._enqueue(async () => {
-            await this.sendAtmosphereRequest("set_intensity", { intensity: atmIntensity }, 100);
-            await new Promise(r => setTimeout(r, 100));
+            await this.sendAtmosphereRequest("set_intensity", { intensity: atmIntensity }, 180);
+            await new Promise(r => setTimeout(r, 200));
 
             if (effect && effect !== "solid") {
                 const mapped = this._mapEffectName(effect);
@@ -1112,7 +1133,7 @@ class TabletopLightingEngine {
 
             // 2. If Link Flashes is enabled, also flash the overhead 60d S
             if (this.state.overhead.linkFlashes) {
-                await new Promise(r => setTimeout(r, 80));
+                await new Promise(r => setTimeout(r, 200));
                 this.sendRequest("set_intensity", { intensity: 1000 }, this.getOverheadNodeId());
             }
         });
