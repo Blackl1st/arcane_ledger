@@ -8756,7 +8756,7 @@ function fadeAllAudio() {
     }
 }
 
-function triggerQuickPreset(presetId) {
+async function triggerQuickPreset(presetId) {
     const preset = (appState.audioPresets || []).find(p => p.id === presetId);
     if (!preset) return;
 
@@ -8765,20 +8765,20 @@ function triggerQuickPreset(presetId) {
         window.AudioEngine.applyPreset(preset);
     }
 
-    // 2. Lighting configuration
+    // 2. Lighting configuration (Sequentialized dual-channel dispatch)
     if (window.LightingEngine) {
         if (preset.lighting) {
             // Channel 1: Overhead 60d S
             if (preset.lighting.overhead && preset.lighting.overhead.brightness !== undefined) {
-                window.LightingEngine.setOverheadBrightness(preset.lighting.overhead.brightness);
+                await window.LightingEngine.setOverheadBrightness(preset.lighting.overhead.brightness);
             }
             // Channel 2: Atmosphere Ace 25c Group
             if (preset.lighting.atmosphere) {
-                window.LightingEngine.applyAtmosphereConfig(preset.lighting.atmosphere, presetId);
+                await window.LightingEngine.applyAtmosphereConfig(preset.lighting.atmosphere, presetId);
             }
         } else {
             // Fallback for presets without lighting object
-            window.LightingEngine.applyPreset(presetId);
+            await window.LightingEngine.applyPreset(presetId);
         }
     }
 

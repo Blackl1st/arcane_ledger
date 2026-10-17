@@ -1,5 +1,5 @@
 {
-  "connected": false,
+  "connected": true,
   "apiUrl": "ws://127.0.0.1:12345",
   "brightness": 55,
   "cct": 5000,
@@ -22,26 +22,32 @@
   "atmosphere": {
     "node_id": "400U5-52611A",
     "node_ids": [
-      "400U5-52611A"
+      "400U5-52611A",
+      "400U5-544863"
     ],
     "fixtures": [
       {
         "node_id": "400U5-52611A",
         "name": "amaran Ace 25c #1",
         "enabled": true
+      },
+      {
+        "node_id": "400U5-544863",
+        "name": "amaran Ace 25c #2",
+        "enabled": true
       }
     ],
     "name": "amaran Ace 25c (Group)",
-    "brightness": 70,
-    "cct": 2500,
+    "brightness": 65,
+    "cct": 5000,
     "rgb": [
-      255,
-      160,
-      60
+      140,
+      30,
+      255
     ],
     "mode": "rgb",
-    "effect": "fire",
-    "activePreset": "preset-tavern",
+    "effect": "solid",
+    "activePreset": "preset-arcane-sanctum",
     "enabled": true
   }
 }

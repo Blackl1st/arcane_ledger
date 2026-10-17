@@ -6172,7 +6172,7 @@ def _send_amaran_raw(msg_type: str, args: Optional[Dict[str, Any]] = None, node_
 
         for i, nid in enumerate(targets):
             if i > 0:
-                time.sleep(0.045)
+                time.sleep(0.095)
 
             payload = {'version': 1, 'client_id': 'dnd_dashboard', 'type': msg_type}
             if nid:

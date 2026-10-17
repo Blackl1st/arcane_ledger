@@ -125,6 +125,29 @@ class TabletopLightingEngine {
         this._tempFlashTimeout = null;
         this._hasSentInitialState = false;
         this._lastOverheadNonZero = 45;
+
+        // Serialized BLE Command Queue & Debounce Timers
+        this._commandQueue = Promise.resolve();
+        this._syncTimer = null;
+    }
+
+    _enqueue(fn) {
+        this._commandQueue = this._commandQueue.then(async () => {
+            try {
+                await fn();
+            } catch (e) {
+                console.error("Lighting queue execution error:", e);
+            }
+        });
+        return this._commandQueue;
+    }
+
+    _debouncedSyncToServer() {
+        if (this._syncTimer) clearTimeout(this._syncTimer);
+        this._syncTimer = setTimeout(() => {
+            this._syncTimer = null;
+            this.syncToServer();
+        }, 400);
     }
 
     async init(config = {}) {
@@ -434,14 +457,14 @@ class TabletopLightingEngine {
         }
     }
 
-    async sendAtmosphereRequest(type, args = null) {
+    async sendAtmosphereRequest(type, args = null, delayBetweenNodes = 100) {
         const ids = this.getAtmosphereNodeIds();
         if (!ids || ids.length === 0) return;
 
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             for (let i = 0; i < ids.length; i++) {
                 if (i > 0) {
-                    await new Promise(r => setTimeout(r, 45));
+                    await new Promise(r => setTimeout(r, delayBetweenNodes));
                 }
                 this.sendRequest(type, args, ids[i]);
             }
@@ -505,31 +528,36 @@ class TabletopLightingEngine {
     sendOverheadState() {
         const nid = this.getOverheadNodeId();
         const intensity = this.state.overhead.enabled ? Math.round(this.state.overhead.brightness * 10) : 0;
-        this.sendRequest("set_intensity", { intensity: intensity }, nid);
+        return this._enqueue(async () => {
+            this.sendRequest("set_intensity", { intensity: intensity }, nid);
+            await new Promise(r => setTimeout(r, 80));
+        });
     }
 
     async sendAtmosphereState() {
-        const intensity = this.state.atmosphere.enabled ? Math.round(this.state.atmosphere.brightness * 10) : 0;
+        return this._enqueue(async () => {
+            const intensity = this.state.atmosphere.enabled ? Math.round(this.state.atmosphere.brightness * 10) : 0;
 
-        // Phase 1: Set intensity across all atmosphere fixtures
-        await this.sendAtmosphereRequest("set_intensity", { intensity: intensity });
+            // Phase 1: Set intensity across all atmosphere fixtures
+            await this.sendAtmosphereRequest("set_intensity", { intensity: intensity }, 100);
 
-        // Phase 2: Set color or CCT base tone across all atmosphere fixtures first
-        await new Promise(r => setTimeout(r, 55));
-        if (this.state.atmosphere.mode === "rgb" || (this.state.atmosphere.rgb && this.state.atmosphere.effect !== "solid")) {
-            const hex = this._rgbToHex(this.state.atmosphere.rgb);
-            await this.sendAtmosphereRequest("set_color", { color: hex });
-        } else {
-            const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
-            await this.sendAtmosphereRequest("set_cct", { cct: cct });
-        }
+            // Phase 2: Set color or CCT base tone across all atmosphere fixtures first
+            await new Promise(r => setTimeout(r, 120));
+            if (this.state.atmosphere.mode === "rgb" || (this.state.atmosphere.rgb && this.state.atmosphere.effect !== "solid")) {
+                const hex = this._rgbToHex(this.state.atmosphere.rgb);
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+            } else {
+                const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
+                await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
+            }
 
-        // Phase 3: Dynamic hardware effect (if not solid), after color baseline is set
-        if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
-            await new Promise(r => setTimeout(r, 55));
-            const mapped = this._mapEffectName(this.state.atmosphere.effect);
-            await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped });
-        }
+            // Phase 3: Dynamic hardware effect (if not solid), after color baseline is set
+            if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
+                await new Promise(r => setTimeout(r, 120));
+                const mapped = this._mapEffectName(this.state.atmosphere.effect);
+                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 100);
+            }
+        });
     }
 
     _mapEffectName(eff) {
@@ -567,12 +595,15 @@ class TabletopLightingEngine {
         this.state.overhead.enabled = b > 0;
         if (b > 0) this._lastOverheadNonZero = b;
 
-        const intensity = Math.round(b * 10);
-        this.sendRequest("set_intensity", { intensity: intensity }, this.getOverheadNodeId());
-
         this.updateOverheadUI();
         this.updateStatusBadge();
-        this.syncToServer();
+        this._debouncedSyncToServer();
+
+        const intensity = Math.round(b * 10);
+        return this._enqueue(async () => {
+            this.sendRequest("set_intensity", { intensity: intensity }, this.getOverheadNodeId());
+            await new Promise(r => setTimeout(r, 80));
+        });
     }
 
     setOverheadPreset(level) {
@@ -582,15 +613,15 @@ class TabletopLightingEngine {
         else if (level === 'play') target = 45;
         else if (level === 'bright') target = 85;
 
-        this.setOverheadBrightness(target);
+        return this.setOverheadBrightness(target);
     }
 
     toggleOverheadPower() {
         if (this.state.overhead.brightness > 0) {
             this._lastOverheadNonZero = this.state.overhead.brightness;
-            this.setOverheadBrightness(0);
+            return this.setOverheadBrightness(0);
         } else {
-            this.setOverheadBrightness(this._lastOverheadNonZero || 45);
+            return this.setOverheadBrightness(this._lastOverheadNonZero || 45);
         }
     }
 
@@ -607,12 +638,14 @@ class TabletopLightingEngine {
         this.state.atmosphere.brightness = b;
         this.state.atmosphere.enabled = b > 0;
 
-        const intensity = Math.round(b * 10);
-        this.sendAtmosphereRequest("set_intensity", { intensity: intensity });
-
         this.updateAtmosphereUI();
         this.updateSimulatorVisuals();
-        this.syncToServer();
+        this._debouncedSyncToServer();
+
+        const intensity = Math.round(b * 10);
+        return this._enqueue(async () => {
+            await this.sendAtmosphereRequest("set_intensity", { intensity: intensity }, 100);
+        });
     }
 
     setAtmosphereCCT(val) {
@@ -621,56 +654,74 @@ class TabletopLightingEngine {
         this.state.atmosphere.mode = "cct";
         this.state.atmosphere.effect = "solid";
 
-        this.sendAtmosphereRequest("set_cct", { cct: cct });
-
         this.updateSimulatorVisuals();
         this.updateAtmosphereUI();
-        this.syncToServer();
+        this._debouncedSyncToServer();
+
+        return this._enqueue(async () => {
+            await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
+        });
     }
 
     setAtmosphereColor(rgb) {
-        if (!Array.isArray(rgb)) return;
+        if (!Array.isArray(rgb)) return Promise.resolve();
         this.state.atmosphere.rgb = [rgb[0], rgb[1], rgb[2]];
         this.state.atmosphere.mode = "rgb";
         this.state.atmosphere.effect = "solid";
 
         const hex = this._rgbToHex(this.state.atmosphere.rgb);
-        this.sendAtmosphereRequest("set_color", { color: hex });
-
         this.updateSimulatorVisuals();
         this.updateAtmosphereUI();
-        this.syncToServer();
+        this._debouncedSyncToServer();
+
+        return this._enqueue(async () => {
+            await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+        });
     }
 
     setAtmosphereHex(hex) {
-        if (!hex || typeof hex !== 'string') return;
+        if (!hex || typeof hex !== 'string') return Promise.resolve();
         const clean = hex.replace('#', '');
         if (clean.length === 6) {
             const r = parseInt(clean.substring(0, 2), 16) || 0;
             const g = parseInt(clean.substring(2, 4), 16) || 0;
             const b = parseInt(clean.substring(4, 6), 16) || 0;
-            this.setAtmosphereColor([r, g, b]);
+            return this.setAtmosphereColor([r, g, b]);
         }
+        return Promise.resolve();
     }
 
     setAtmosphereEffect(effectName) {
         this.state.atmosphere.effect = effectName;
 
-        if (effectName === "solid") {
-            if (this.state.atmosphere.mode === "rgb") {
-                const hex = this._rgbToHex(this.state.atmosphere.rgb);
-                this.sendAtmosphereRequest("set_color", { color: hex });
-            } else {
-                this.sendAtmosphereRequest("set_cct", { cct: this.state.atmosphere.cct });
-            }
-        } else {
-            const mapped = this._mapEffectName(effectName);
-            this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped });
-        }
-
         this.updateSimulatorVisuals();
         this.updateAtmosphereUI();
-        this.syncToServer();
+        this._debouncedSyncToServer();
+
+        return this._enqueue(async () => {
+            if (effectName === "solid") {
+                if (this.state.atmosphere.mode === "rgb") {
+                    const hex = this._rgbToHex(this.state.atmosphere.rgb);
+                    await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+                } else {
+                    const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
+                    await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
+                }
+            } else {
+                // Ensure base tone is prepared across all fixtures before triggering hardware effect
+                if (this.state.atmosphere.mode === "rgb" && this.state.atmosphere.rgb) {
+                    const hex = this._rgbToHex(this.state.atmosphere.rgb);
+                    await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+                    await new Promise(r => setTimeout(r, 120));
+                } else {
+                    const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
+                    await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
+                    await new Promise(r => setTimeout(r, 120));
+                }
+                const mapped = this._mapEffectName(effectName);
+                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 100);
+            }
+        });
     }
 
     async applyAtmosphereConfig(cfg, presetId = null) {
@@ -1048,19 +1099,26 @@ class TabletopLightingEngine {
         // 1. Flash Atmosphere Light (Ace 25c Group)
         const hex = this._rgbToHex(rgb);
         const atmIntensity = Math.round(brightness * 10);
-        this.sendAtmosphereRequest("set_intensity", { intensity: atmIntensity });
-        
-        if (effect && effect !== "solid") {
-            const mapped = this._mapEffectName(effect);
-            this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped });
-        } else {
-            this.sendAtmosphereRequest("set_color", { color: hex });
-        }
 
-        // 2. If Link Flashes is enabled, also flash the overhead 60d S
-        if (this.state.overhead.linkFlashes) {
-            this.sendRequest("set_intensity", { intensity: 1000 }, this.getOverheadNodeId());
-        }
+        this._enqueue(async () => {
+            await this.sendAtmosphereRequest("set_intensity", { intensity: atmIntensity }, 100);
+            await new Promise(r => setTimeout(r, 100));
+
+            if (effect && effect !== "solid") {
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+                await new Promise(r => setTimeout(r, 100));
+                const mapped = this._mapEffectName(effect);
+                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 100);
+            } else {
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+            }
+
+            // 2. If Link Flashes is enabled, also flash the overhead 60d S
+            if (this.state.overhead.linkFlashes) {
+                await new Promise(r => setTimeout(r, 80));
+                this.sendRequest("set_intensity", { intensity: 1000 }, this.getOverheadNodeId());
+            }
+        });
 
         // 3. Simulator visual flare
         const sim = document.getElementById("lighting-ambiance-box");
