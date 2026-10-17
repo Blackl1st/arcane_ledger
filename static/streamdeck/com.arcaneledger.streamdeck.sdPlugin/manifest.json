@@ -124,8 +124,8 @@
     },
     {
       "UUID": "com.arcaneledger.lighting.preset",
-      "Name": "Scene Atmosphere Light",
-      "Tooltip": "Switch Amaran lights to Fireplace, Tavern, Dungeon, Crypt, or Boss",
+      "Name": "Atmosphere Preset",
+      "Tooltip": "Switch Amaran lights and audio layers to Tavern, Campfire, Dungeon, Boss, etc.",
       "Icon": "icons/action_light",
       "PropertyInspectorPath": "property_inspector.html",
       "Controllers": [
@@ -260,10 +260,11 @@
   ],
   "Profiles": [
     {
-      "Name": "Arcane Ledger DM Console",
-      "DeviceModel": "20GAA9901",
+      "Name": "profiles/ArcaneLedger_15Key",
+      "DeviceType": 0,
       "ReadOnly": false,
-      "DontAutoSwitchWhenInstalled": true
+      "DontAutoSwitchWhenInstalled": false,
+      "AutoInstall": true
     }
   ],
   "Author": "Arcane Ledger",
@@ -273,7 +274,7 @@
   "Description": "Tabletop controller for D&D 5.5e: Initiative Combat, 3D Dice, Amaran Studio Lighting, Sound Effects, and Battlemaps.",
   "Icon": "icons/plugin_icon",
   "Name": "Arcane Ledger",
-  "Version": "1.1.0",
+  "Version": "1.1.8",
   "SDKVersion": 2,
   "Software": {
     "MinimumVersion": "6.0"

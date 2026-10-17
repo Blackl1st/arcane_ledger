@@ -207,8 +207,8 @@ def write_manifest():
             },
             {
                 "UUID": "com.arcaneledger.lighting.preset",
-                "Name": "Scene Atmosphere Light",
-                "Tooltip": "Switch Amaran lights to Fireplace, Tavern, Dungeon, Crypt, or Boss",
+                "Name": "Atmosphere Preset",
+                "Tooltip": "Switch Amaran lights and audio layers to Tavern, Campfire, Dungeon, Boss, etc.",
                 "Icon": "icons/action_light",
                 "PropertyInspectorPath": "property_inspector.html",
                 "Controllers": ["Keypad"],
@@ -329,10 +329,11 @@ def write_manifest():
         ],
         "Profiles": [
             {
-                "Name": "Arcane Ledger DM Console",
-                "DeviceModel": "20GAA9901",
+                "Name": "profiles/ArcaneLedger_15Key",
+                "DeviceType": 0,
                 "ReadOnly": False,
-                "DontAutoSwitchWhenInstalled": True
+                "DontAutoSwitchWhenInstalled": False,
+                "AutoInstall": True
             }
         ],
         "Author": "Arcane Ledger",
@@ -342,7 +343,7 @@ def write_manifest():
         "Description": "Tabletop controller for D&D 5.5e: Initiative Combat, 3D Dice, Amaran Studio Lighting, Sound Effects, and Battlemaps.",
         "Icon": "icons/plugin_icon",
         "Name": "Arcane Ledger",
-        "Version": "1.1.0",
+        "Version": "1.1.8",
         "SDKVersion": 2,
         "Software": {
             "MinimumVersion": "6.0"
@@ -825,7 +826,7 @@ def write_property_inspector():
 
     <!-- Lighting Preset Settings -->
     <div id="section-lighting" class="group" style="display: none;">
-        <label>Atmosphere Scene Preset</label>
+        <label>Atmosphere Preset</label>
         <select id="select-preset" onchange="saveActionSettings()">
             <option value="tavern" selected>🍺 Cozy Tavern Hearth</option>
             <option value="fireplace">🔥 Wilderness Campfire</option>
@@ -993,9 +994,10 @@ def bundle_plugin_zip():
 def generate_preconfigured_profile():
     """Generates an authentic Elgato ZIP .streamDeckProfile for 15-key Stream Deck Mk.2 (20GAA9901)"""
     profile_uuid = "C32E0175-07A4-476F-9417-5701FCFF61A5"
-    page_uuid = "AD2D4C12-D011-400A-B8AA-C1657CF305C5"
+    default_page_uuid = "2fb37bc0-60ce-4c92-9ecb-48d497313833"
+    content_page_uuid = "3aadf21e-81ec-4939-90ac-d8b20c577330"
 
-    # Root profile manifest
+    # Root profile manifest (Version 3.0 matching Stream Deck standard)
     root_manifest = {
         "Device": {
             "Model": "20GAA9901",
@@ -1003,11 +1005,34 @@ def generate_preconfigured_profile():
         },
         "Name": "Arcane Ledger DM Console",
         "Pages": {
-            "Current": page_uuid,
-            "Default": page_uuid,
-            "Pages": [page_uuid]
+            "Current": content_page_uuid,
+            "Default": default_page_uuid,
+            "Pages": [content_page_uuid]
         },
-        "Version": "2.0"
+        "Version": "3.0"
+    }
+
+    # Empty Default root keypad page
+    default_page_manifest = {
+        "Controllers": [
+            {
+                "Actions": None,
+                "Type": "Keypad"
+            }
+        ],
+        "Icon": "",
+        "Name": ""
+    }
+
+    package_manifest = {
+        "FormatVersion": 1,
+        "AppVersion": "6.5.0",
+        "OSType": "windows",
+        "OSVersion": "10",
+        "DeviceModel": "20GAA9901",
+        "RequiredPlugins": [
+            "com.arcaneledger.streamdeck"
+        ]
     }
 
     # 15 Actions mapped to (column, row)
@@ -1017,7 +1042,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Previous Combat Turn",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {},
             "State": 0,
@@ -1032,7 +1057,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Next Combat Turn",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {},
             "State": 0,
@@ -1047,7 +1072,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Toggle Encounter",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {},
             "State": 0,
@@ -1062,7 +1087,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Roll d20",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {},
             "State": 0,
@@ -1077,7 +1102,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Lighting FX Fanfare",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"effect": "nat20"},
             "State": 0,
@@ -1093,8 +1118,8 @@ def generate_preconfigured_profile():
         "0,1": {
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
-            "Name": "Scene Atmosphere Light",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Name": "Atmosphere Preset",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"preset": "tavern"},
             "State": 0,
@@ -1108,8 +1133,8 @@ def generate_preconfigured_profile():
         "1,1": {
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
-            "Name": "Scene Atmosphere Light",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Name": "Atmosphere Preset",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"preset": "fireplace"},
             "State": 0,
@@ -1123,8 +1148,8 @@ def generate_preconfigured_profile():
         "2,1": {
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
-            "Name": "Scene Atmosphere Light",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Name": "Atmosphere Preset",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"preset": "dungeon"},
             "State": 0,
@@ -1138,8 +1163,8 @@ def generate_preconfigured_profile():
         "3,1": {
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
-            "Name": "Scene Atmosphere Light",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Name": "Atmosphere Preset",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"preset": "boss"},
             "State": 0,
@@ -1153,8 +1178,8 @@ def generate_preconfigured_profile():
         "4,1": {
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
-            "Name": "Scene Atmosphere Light",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Name": "Atmosphere Preset",
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"preset": "thunderstorm"},
             "State": 0,
@@ -1171,7 +1196,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Toggle Sound Layer",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"trackId": "track-forest-rain"},
             "State": 0,
@@ -1186,7 +1211,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Toggle Sound Layer",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"trackId": "track-fireplace"},
             "State": 0,
@@ -1201,7 +1226,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Soundboard SFX",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"sound": "fireball"},
             "State": 0,
@@ -1216,7 +1241,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Party Rest",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"restType": "short"},
             "State": 0,
@@ -1231,7 +1256,7 @@ def generate_preconfigured_profile():
             "ActionID": str(uuid.uuid4()),
             "LinkedTitle": True,
             "Name": "Party Rest",
-            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.0"},
+            "Plugin": {"Name": "Arcane Ledger", "UUID": "com.arcaneledger.streamdeck", "Version": "1.1.8"},
             "Resources": None,
             "Settings": {"restType": "long"},
             "State": 0,
@@ -1244,7 +1269,7 @@ def generate_preconfigured_profile():
         }
     }
 
-    page_manifest = {
+    content_page_manifest = {
         "Controllers": [
             {
                 "Actions": actions_grid,
@@ -1265,16 +1290,24 @@ def generate_preconfigured_profile():
         if dest_file.exists():
             dest_file.unlink()
         with zipfile.ZipFile(dest_file, "w", zipfile.ZIP_DEFLATED) as zf:
-            # 1. Root manifest
-            zf.writestr(
-                f"{profile_uuid}.sdProfile/manifest.json",
-                json.dumps(root_manifest, indent=2)
-            )
-            # 2. Page manifest
-            zf.writestr(
-                f"{profile_uuid}.sdProfile/Profiles/{page_uuid}/manifest.json",
-                json.dumps(page_manifest, indent=2)
-            )
+            # 1. Package manifest
+            zf.writestr("package.json", json.dumps(package_manifest, indent=2))
+            # 2. Resources manifest
+            zf.writestr("Resources/manifest.json", "{}")
+
+            # 3. Write profile trees for both root and Profiles/ directory, in uppercase and lowercase
+            variants = [
+                f"{profile_uuid}.sdProfile",
+                f"Profiles/{profile_uuid}.sdProfile",
+                f"{profile_uuid.lower()}.sdProfile",
+                f"Profiles/{profile_uuid.lower()}.sdProfile"
+            ]
+            for base in variants:
+                zf.writestr(f"{base}/manifest.json", json.dumps(root_manifest, indent=2))
+                zf.writestr(f"{base}/Profiles/{default_page_uuid.upper()}/manifest.json", json.dumps(default_page_manifest, indent=2))
+                zf.writestr(f"{base}/Profiles/{default_page_uuid.lower()}/manifest.json", json.dumps(default_page_manifest, indent=2))
+                zf.writestr(f"{base}/Profiles/{content_page_uuid.upper()}/manifest.json", json.dumps(content_page_manifest, indent=2))
+                zf.writestr(f"{base}/Profiles/{content_page_uuid.lower()}/manifest.json", json.dumps(content_page_manifest, indent=2))
 
     build_profile_zip(profile_path)
     print(f"Generated 15-Key Profile ZIP: {profile_path} ({profile_path.stat().st_size} bytes)")
@@ -1304,6 +1337,46 @@ def install_plugin_locally():
             print(f"Directly updated installed plugin files in: {dest}")
         except Exception as e:
             print(f"Note: Local AppData plugin copy skipped: {e}")
+
+    # Also sync profile directly to ProfilesV3 to make it instantly available
+    profile_uuid = "C32E0175-07A4-476F-9417-5701FCFF61A5"
+    default_page_uuid = "2fb37bc0-60ce-4c92-9ecb-48d497313833"
+    content_page_uuid = "3aadf21e-81ec-4939-90ac-d8b20c577330"
+    profiles_dest = Path(appdata) / "Elgato" / "StreamDeck" / "ProfilesV3" / f"{profile_uuid}.sdProfile"
+    if profiles_dest.parent.exists():
+        try:
+            profiles_dest.mkdir(parents=True, exist_ok=True)
+            root_manifest = {
+                "Device": {
+                    "Model": "20GAA9901",
+                    "UUID": ""
+                },
+                "Name": "Arcane Ledger DM Console",
+                "Pages": {
+                    "Current": content_page_uuid,
+                    "Default": default_page_uuid,
+                    "Pages": [content_page_uuid]
+                },
+                "Version": "3.0"
+            }
+            with open(profiles_dest / "manifest.json", "w", encoding="utf-8") as f:
+                json.dump(root_manifest, f, indent=2)
+
+            default_manifest = {"Controllers": [{"Actions": None, "Type": "Keypad"}], "Icon": "", "Name": ""}
+            p1_dir = profiles_dest / "Profiles" / default_page_uuid.upper()
+            p1_dir.mkdir(parents=True, exist_ok=True)
+            with open(p1_dir / "manifest.json", "w", encoding="utf-8") as f:
+                json.dump(default_manifest, f, indent=2)
+
+            p2_dir = profiles_dest / "Profiles" / content_page_uuid.upper()
+            p2_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(STATIC_SD_DIR / "ArcaneLedger_15Key.streamDeckProfile", "r") as zf:
+                content_manifest_bytes = zf.read(f"{profile_uuid}.sdProfile/Profiles/{content_page_uuid.upper()}/manifest.json")
+            with open(p2_dir / "manifest.json", "wb") as f:
+                f.write(content_manifest_bytes)
+            print(f"Directly synced profile to ProfilesV3: {profiles_dest}")
+        except Exception as e:
+            print(f"Note: Local ProfilesV3 sync skipped: {e}")
 
 
 def main():
