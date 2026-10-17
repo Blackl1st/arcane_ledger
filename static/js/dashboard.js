@@ -745,6 +745,7 @@ function renderPartyHUD() {
                             <button onclick="modifyPCHp('${pc.id}', 5)" class="px-1.5 py-0.5 rounded bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-800 text-emerald-200 text-xs font-mono font-bold transition">+5</button>
                         </div>
                         <div class="flex items-center gap-1">
+                            <button onclick="openPartySpellsModal('${pc.id}')" title="Character Spellbook & Grimoire" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 border border-purple-500/30 text-purple-300 hover:text-purple-200 text-[11px] font-semibold flex items-center gap-0.5 transition"><span>🔮</span><span>Spells</span></button>
                             <button onclick="openPartyInventoryModal('${pc.id}')" title="Character Inventory & Magic Items" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-[11px] font-semibold flex items-center gap-0.5 transition"><span>🎒</span><span>Inv</span></button>
                             <button onclick="promptCustomHP('${pc.id}')" title="Custom Damage, Heal or Temp HP" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 border border-ledger-600 text-slate-300 hover:text-white text-[11px] transition">Adjust</button>
                             <button onclick="openEditPCModal('${pc.id}')" title="Edit Character Sheet" class="p-1 rounded bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 text-slate-400 hover:text-amber-400 transition">
@@ -16138,6 +16139,244 @@ function rollWildernessComplication() {
         `;
     }
     showToast(`Roadside Discovery: ${event.title}`, "info");
+}
+
+// -----------------------------------------------------------------------------
+// 6a. PARTY SPELLS & GRIMOIRE MANAGER
+// -----------------------------------------------------------------------------
+function openPartySpellsModal(targetPcId = null) {
+    const party = appState.party || [];
+    if (!targetPcId && party.length > 0) {
+        const caster = party.find(p => (p.spells && p.spells.length > 0) || p.spellDc || p.spellSlots);
+        targetPcId = caster ? caster.id : party[0].id;
+    }
+    appState.activeSpellsTab = targetPcId;
+    const modal = document.getElementById('party-spells-modal');
+    if (!modal) return;
+    renderPartySpellsModal();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function setPartySpellsTab(pcId) {
+    appState.activeSpellsTab = pcId;
+    renderPartySpellsModal();
+}
+
+function renderPartySpellsModal() {
+    const tabsContainer = document.getElementById('party-spells-modal-tabs');
+    const summaryContainer = document.getElementById('party-spells-stats-summary');
+    const bodyContainer = document.getElementById('party-spells-modal-body');
+    if (!tabsContainer || !bodyContainer) return;
+
+    const party = appState.party || [];
+    if (party.length === 0) {
+        bodyContainer.innerHTML = '<div class="text-slate-400 text-center py-8">No party members found.</div>';
+        return;
+    }
+
+    const activeId = appState.activeSpellsTab || party[0].id;
+    const currentPc = party.find(p => p.id === activeId) || party[0];
+
+    // Render character tabs
+    let tabsHtml = '';
+    party.forEach(pc => {
+        const count = (pc.spells || []).length;
+        const isCurrent = pc.id === currentPc.id;
+        tabsHtml += `
+            <button onclick="setPartySpellsTab('${pc.id}')" class="px-3 py-1.5 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition ${isCurrent ? 'bg-purple-600 text-white shadow font-bold' : 'bg-ledger-900 border border-ledger-700 text-slate-300 hover:text-white'}">
+                <span>🔮</span> <span>${escapeHTML(pc.name)}</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isCurrent ? 'bg-purple-950 text-purple-200' : 'bg-ledger-800 text-slate-400'}">${count}</span>
+            </button>
+        `;
+    });
+    tabsContainer.innerHTML = tabsHtml;
+
+    // Header stats summary
+    const dcStr = currentPc.spellDc ? `DC ${currentPc.spellDc}` : 'DC —';
+    let atkStr = '—';
+    if (currentPc.spellAttackMod !== undefined && currentPc.spellAttackMod !== null) {
+        atkStr = currentPc.spellAttackMod >= 0 ? `+${currentPc.spellAttackMod}` : `${currentPc.spellAttackMod}`;
+    } else if (currentPc.spellDc) {
+        const calc = currentPc.spellDc - 8;
+        atkStr = calc >= 0 ? `+${calc}` : `${calc}`;
+    }
+
+    if (summaryContainer) {
+        summaryContainer.innerHTML = `
+            <span>Spell DC: <strong class="text-purple-300">${dcStr}</strong></span>
+            <span>•</span>
+            <span>Spell Atk: <strong class="text-purple-300">${atkStr}</strong></span>
+        `;
+    }
+
+    // Modal Body: Add Spell Row + Spell List
+    const spells = currentPc.spells || [];
+    const compendiumSpells = appState.spells || [];
+
+    const existingSpellNames = new Set(spells.map(s => (s.name || '').toLowerCase().trim()));
+    const availableToAdd = compendiumSpells.filter(s => !existingSpellNames.has((s.name || '').toLowerCase().trim()));
+    availableToAdd.sort((a, b) => ((a.level || 0) - (b.level || 0)) || (a.name || '').localeCompare(b.name || ''));
+
+    let bodyHtml = `
+        <!-- Top Controls: Add Spell From 2024 Compendium -->
+        <div class="bg-ledger-950/80 border border-ledger-800 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h4 class="font-display font-bold text-sm text-purple-300 flex items-center gap-1.5">
+                    <span>✨</span> <span>Add Spell from 5.5e Compendium</span>
+                </h4>
+                <span class="text-[11px] font-mono text-slate-400">${availableToAdd.length} Spells Available</span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <select id="party-spell-select-add" class="flex-1 bg-ledger-900 border border-ledger-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-400 font-mono">
+                    <option value="">-- Select a spell to add --</option>
+                    ${availableToAdd.map(s => {
+                        const lvlLabel = s.level === 0 ? 'Cantrip' : `Lvl ${s.level}`;
+                        return `<option value="${escapeHTML(s.id)}">[${lvlLabel}] ${escapeHTML(s.name)} (${escapeHTML(s.school || 'Magic')})</option>`;
+                    }).join('')}
+                </select>
+                <button onclick="addSelectedSpellToPC('${currentPc.id}')" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold shadow tap-active shrink-0 flex items-center gap-1.5 transition">
+                    <span>➕</span> <span>Add to Spellbook</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Prepared Spells List -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">Prepared Spells & Cantrips (${spells.length})</span>
+                <span class="text-[10px] font-mono text-slate-500">${escapeHTML(currentPc.name)}</span>
+            </div>
+    `;
+
+    if (spells.length === 0) {
+        bodyHtml += `
+            <div class="p-8 rounded-2xl bg-ledger-950/40 border border-dashed border-ledger-800 text-center space-y-1">
+                <p class="text-slate-400 text-xs font-mono">No spells prepared for ${escapeHTML(currentPc.name)}.</p>
+                <p class="text-slate-500 text-[11px]">Use the dropdown above to add spells from the 2024 compendium.</p>
+            </div>
+        `;
+    } else {
+        bodyHtml += `<div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">`;
+        spells.forEach(s => {
+            const lvl = parseInt(s.level) || 0;
+            const lvlStr = lvl === 0 ? 'Cantrip' : `Lvl ${lvl}`;
+            bodyHtml += `
+                <div class="p-3 rounded-2xl bg-ledger-950/70 border border-ledger-800 flex items-center justify-between gap-2 text-xs">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-purple-950 text-purple-300 border border-purple-800">${lvlStr}</span>
+                            <span class="text-slate-400 text-[10px] font-mono">${escapeHTML(s.school || '')}</span>
+                            ${s.concentration ? '<span class="px-1 py-0.2 rounded text-[9px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">Conc</span>' : ''}
+                            ${s.ritual ? '<span class="px-1 py-0.2 rounded text-[9px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Ritual</span>' : ''}
+                        </div>
+                        <h5 class="font-display font-bold text-slate-200 mt-0.5 truncate">${escapeHTML(s.name)}</h5>
+                        <p class="text-[10px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(s.castTime || 'Action')} • ${escapeHTML(s.range || 'Self')} • ${s.formula ? escapeHTML(s.formula) + (s.damageType ? ' ' + escapeHTML(s.damageType) : '') : escapeHTML(s.duration || 'Instant')}</p>
+                    </div>
+                    <button onclick="deleteSpellFromPC('${currentPc.id}', '${escapeHTML(s.id || s.name)}')" class="w-7 h-7 rounded-lg bg-rose-950/50 hover:bg-rose-900 border border-rose-800 text-rose-300 flex items-center justify-center text-xs shrink-0 transition" title="Remove from Spellbook">
+                        🗑️
+                    </button>
+                </div>
+            `;
+        });
+        bodyHtml += `</div>`;
+    }
+
+    bodyHtml += `</div>`;
+    bodyContainer.innerHTML = bodyHtml;
+}
+
+async function addSelectedSpellToPC(pcId) {
+    const select = document.getElementById('party-spell-select-add');
+    if (!select || !select.value) {
+        showToast("Please select a spell to add", "warning");
+        return;
+    }
+    const spellId = select.value;
+    const compendium = appState.spells || [];
+    const rawSpell = compendium.find(s => s.id === spellId);
+    if (!rawSpell) return;
+
+    const party = appState.party || [];
+    const pc = party.find(p => p.id === pcId);
+    if (!pc) return;
+
+    // Build spell entry
+    let formula = null;
+    let damageType = null;
+    const compDesc = rawSpell.description || '';
+    const mDmg = compDesc.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)\s+([A-Za-z]+)\s+damage/i);
+    if (mDmg) {
+        formula = mDmg[1].replace(/\s+/g, '');
+        damageType = mDmg[2];
+    }
+
+    const cleanSlug = rawSpell.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const newSpell = {
+        id: `spell-${cleanSlug}`,
+        name: rawSpell.name,
+        level: parseInt(rawSpell.level) || 0,
+        school: rawSpell.school || 'Evocation',
+        castTime: rawSpell.castingTime || 'Action',
+        range: rawSpell.range || 'Self',
+        duration: rawSpell.duration || 'Instantaneous',
+        concentration: Boolean(rawSpell.concentration),
+        ritual: Boolean(rawSpell.ritual),
+        components: rawSpell.components || 'V, S',
+        formula: formula,
+        damageType: damageType,
+        description: rawSpell.description || '',
+        higherLevels: rawSpell.higherLevels || '',
+        prepared: true
+    };
+
+    try {
+        const res = await fetch(`/api/party/${pcId}/spells`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ spell: newSpell })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.pc) {
+                const idx = party.findIndex(p => p.id === pcId);
+                if (idx !== -1) party[idx] = data.pc;
+            }
+            showToast(`Added ${newSpell.name} to ${pc.name}'s grimoire!`, "success");
+            renderPartySpellsModal();
+        } else {
+            showToast("Failed to add spell", "error");
+        }
+    } catch (err) {
+        console.error("Error adding spell:", err);
+        showToast("Error adding spell", "error");
+    }
+}
+
+async function deleteSpellFromPC(pcId, spellId) {
+    if (!confirm("Remove this spell from the character's spellbook?")) return;
+    try {
+        const res = await fetch(`/api/party/${pcId}/spells`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deleteSpellId: spellId })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const party = appState.party || [];
+            if (data.pc) {
+                const idx = party.findIndex(p => p.id === pcId);
+                if (idx !== -1) party[idx] = data.pc;
+            }
+            showToast("Spell removed", "info");
+            renderPartySpellsModal();
+        } else {
+            showToast("Failed to remove spell", "error");
+        }
+    } catch (err) {
+        console.error("Error deleting spell:", err);
+        showToast("Error removing spell", "error");
+    }
 }
 
 // -----------------------------------------------------------------------------

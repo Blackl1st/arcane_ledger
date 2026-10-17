@@ -271,29 +271,74 @@
         </section>
 
         <!-- ============================================================== -->
-        <!-- TAB 2: SPELL SLOTS & CLASS RESOURCES                           -->
+        <!-- TAB 2: SPELLS & CANTRIPS GRIMOIRE (1-TAP CASTING)              -->
         <!-- ============================================================== -->
-        <section id="tab-slots" class="tab-pane hidden space-y-4">
+        <section id="tab-spells" class="tab-pane hidden space-y-4">
             
-            <div class="flex items-center justify-between">
+            <!-- Spellbook Header & Long Rest -->
+            <div class="flex items-center justify-between gap-2">
                 <div>
-                    <h3 class="font-display font-bold text-base text-amber-300">Spell Slots & Powers</h3>
-                    <p class="text-[11px] text-slate-400 font-mono">Tap slot bubbles to expend or restore</p>
+                    <h3 class="font-display font-bold text-base text-purple-300 flex items-center gap-1.5">
+                        <span>🔮</span> <span>Grimoire & Spells</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 font-mono">1-tap cast, damage rolls & slot tracking</p>
                 </div>
-                <button onclick="restoreAllSlots()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-ledger-700 text-amber-300 font-mono text-xs font-bold tap-active">
-                    Long Rest (Reset)
+                <button onclick="restoreAllSlots()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-purple-500/40 text-purple-300 font-mono text-xs font-bold tap-active flex items-center gap-1 shadow-sm">
+                    <span>🌙</span> <span>Long Rest</span>
                 </button>
             </div>
 
-            <!-- SPELL SLOTS CONTAINER -->
-            <div id="spell-slots-grid" class="space-y-2.5">
-                <!-- Dynamically populated or default levels 1-5 -->
+            <!-- Spellcasting Stats Pill Bar -->
+            <div class="grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-ledger-900 border border-purple-500/25 text-center font-mono shadow-sm">
+                <div class="bg-ledger-950/70 p-2 rounded-xl border border-ledger-800">
+                    <span class="text-[9px] uppercase tracking-wider text-slate-400 block font-bold">Spell DC</span>
+                    <span id="spellbook-stat-dc" class="text-sm font-bold text-purple-300">DC —</span>
+                </div>
+                <div class="bg-ledger-950/70 p-2 rounded-xl border border-ledger-800">
+                    <span class="text-[9px] uppercase tracking-wider text-slate-400 block font-bold">Spell Attack</span>
+                    <span id="spellbook-stat-atk" class="text-sm font-bold text-purple-300">—</span>
+                </div>
+                <div class="bg-ledger-950/70 p-2 rounded-xl border border-ledger-800">
+                    <span class="text-[9px] uppercase tracking-wider text-slate-400 block font-bold">Slots Ready</span>
+                    <span id="spellbook-stat-slots" class="text-sm font-bold text-amber-300">0 / 0</span>
+                </div>
+            </div>
+
+            <!-- Interactive Spell Slot Trackers -->
+            <div class="p-3.5 rounded-2xl bg-ledger-900 border border-ledger-750 space-y-2.5 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold flex items-center gap-1">
+                        <span>⚡</span> <span>Spell Slot Trackers</span>
+                    </span>
+                    <span class="text-[10px] font-mono text-slate-500">Tap bubble to toggle</span>
+                </div>
+                <div id="spell-slots-grid" class="space-y-2">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Grimoire Search & Filter Pills -->
+            <div class="space-y-2">
+                <div class="relative">
+                    <input id="spellbook-search-input" oninput="handleSpellSearch(this.value)" type="text" placeholder="Search spells, damage type, or school..." class="w-full bg-ledger-900 border border-ledger-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-400 font-mono">
+                    <span class="absolute right-3.5 top-2.5 text-slate-500 text-xs">🔍</span>
+                </div>
+
+                <!-- Filter Pills: All, Cantrip, 1st, 2nd, 3rd, etc. -->
+                <div id="spellbook-filter-pills" class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-mono scrollbar-none">
+                    <!-- Populated dynamically based on character's spells -->
+                </div>
+            </div>
+
+            <!-- Spells & Cantrips Grimoire List -->
+            <div id="spellbook-spells-list" class="space-y-2.5">
+                <!-- Dynamically populated with expandable spell cards -->
             </div>
 
             <!-- CLASS POWERS & SHORT REST RESOURCES -->
             <div class="p-4 rounded-3xl bg-ledger-900 border border-ledger-750 space-y-3">
                 <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">Class Resources</span>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">Class Resources & Powers</span>
                     <button onclick="restoreClassResources()" class="text-[10px] font-mono text-amber-400 underline">Short Rest Reset</button>
                 </div>
                 <div id="class-resources-list" class="space-y-2">
@@ -447,9 +492,9 @@
             <span class="text-[10px] font-mono font-bold">Vitals</span>
         </button>
 
-        <button onclick="switchTab('slots')" id="nav-btn-slots" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
-            <span class="text-lg">⚡</span>
-            <span class="text-[10px] font-mono font-bold">Slots</span>
+        <button onclick="switchTab('spells')" id="nav-btn-spells" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
+            <span class="text-lg">🔮</span>
+            <span class="text-[10px] font-mono font-bold">Spells</span>
         </button>
 
         <button onclick="switchTab('roller')" id="nav-btn-roller" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
@@ -468,6 +513,22 @@
             <span class="text-[10px] font-mono font-bold">Notes</span>
         </button>
     </nav>
+
+    <!-- MODAL: SPELL UPCAST / SLOT SELECTION -->
+    <div id="modal-spell-cast" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-purple-500/60 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🔮</span>
+                    <h3 id="modal-cast-spell-name" class="font-display font-bold text-base text-purple-300">Cast Spell</h3>
+                </div>
+                <button onclick="closeModal('modal-spell-cast')" class="w-7 h-7 rounded-lg bg-ledger-800 text-slate-300 flex items-center justify-center text-xs font-bold">✕</button>
+            </div>
+            <div id="modal-cast-spell-body" class="space-y-3 text-xs">
+                <!-- Slot choice options -->
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL: SELECT HERO -->
     <div id="modal-select-hero" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
@@ -529,15 +590,16 @@
 
         // Tab Switching
         function switchTab(tabId) {
+            if (tabId === 'slots') tabId = 'spells';
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(`tab-${tabId}`);
+            const target = document.getElementById(`tab-${tabId}`) || (tabId === 'spells' ? document.getElementById('tab-slots') : null);
             if (target) target.classList.remove('hidden');
 
             document.querySelectorAll('.nav-tab-btn').forEach(btn => {
                 btn.classList.remove('text-amber-300');
                 btn.classList.add('text-slate-400');
             });
-            const activeBtn = document.getElementById(`nav-btn-${tabId}`);
+            const activeBtn = document.getElementById(`nav-btn-${tabId}`) || (tabId === 'spells' ? document.getElementById('nav-btn-slots') : null);
             if (activeBtn) {
                 activeBtn.classList.remove('text-slate-400');
                 activeBtn.classList.add('text-amber-300');
@@ -664,8 +726,8 @@
                 modInput.value = initMod;
             }
 
-            // Spell Slots Render
-            renderSpellSlots(pc);
+            // Spell Slots & Grimoire Render
+            renderSpellBook(pc);
 
             // Inventory Render
             renderInventory(pc);
@@ -807,6 +869,428 @@
             }
         }
 
+        // Spellbook State & Toast Notifications
+        let currentSpellFilter = 'all'; // 'all', '0', '1', '2', ...
+        let currentSpellSearch = '';
+        let activeExpandedSpellId = null;
+
+        function showCompanionToast(message, type = 'info') {
+            let toast = document.getElementById('companion-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'companion-toast';
+                document.body.appendChild(toast);
+            }
+            
+            if (type === 'success') {
+                toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xs w-[90%] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-mono font-bold text-center pointer-events-none transition-all duration-300 bg-emerald-950/95 border border-emerald-500/80 text-emerald-200';
+            } else if (type === 'error') {
+                toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xs w-[90%] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-mono font-bold text-center pointer-events-none transition-all duration-300 bg-rose-950/95 border border-rose-500/80 text-rose-200';
+            } else {
+                toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xs w-[90%] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-mono font-bold text-center pointer-events-none transition-all duration-300 bg-purple-950/95 border border-purple-500/80 text-purple-200';
+            }
+
+            toast.innerHTML = message;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 0)';
+
+            clearTimeout(window._companionToastTimeout);
+            window._companionToastTimeout = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -10px)';
+            }, 3000);
+        }
+
+        function handleSpellSearch(val) {
+            currentSpellSearch = (val || '').toLowerCase().trim();
+            if (activeCharacter) renderSpellCards(activeCharacter);
+        }
+
+        function setSpellFilter(filter) {
+            currentSpellFilter = filter;
+            if (activeCharacter) {
+                renderSpellFilterPills(activeCharacter);
+                renderSpellCards(activeCharacter);
+            }
+        }
+
+        function toggleSpellExpand(spellId) {
+            activeExpandedSpellId = (activeExpandedSpellId === spellId) ? null : spellId;
+            if (activeCharacter) renderSpellCards(activeCharacter);
+        }
+
+        function renderSpellBook(pc) {
+            if (!pc) return;
+
+            // Update spellcasting stats in header
+            const dcEl = document.getElementById('spellbook-stat-dc');
+            if (dcEl) dcEl.textContent = pc.spellDc ? `DC ${pc.spellDc}` : 'DC —';
+
+            const atkEl = document.getElementById('spellbook-stat-atk');
+            if (atkEl) {
+                if (pc.spellAttackMod !== undefined && pc.spellAttackMod !== null) {
+                    atkEl.textContent = pc.spellAttackMod >= 0 ? `+${pc.spellAttackMod}` : `${pc.spellAttackMod}`;
+                } else if (pc.spellDc) {
+                    const calcAtk = pc.spellDc - 8;
+                    atkEl.textContent = calcAtk >= 0 ? `+${calcAtk}` : `${calcAtk}`;
+                } else {
+                    atkEl.textContent = '—';
+                }
+            }
+
+            // Render spell slot bubbles
+            renderSpellSlots(pc);
+
+            // Compute total available vs maximum slots
+            const slots = normalizeSpellSlots(pc.spellSlots);
+            let totalSlots = 0;
+            let usedSlots = 0;
+            Object.values(slots).forEach(s => {
+                totalSlots += (s.total || 0);
+                usedSlots += (s.used || 0);
+            });
+            const slotsEl = document.getElementById('spellbook-stat-slots');
+            if (slotsEl) {
+                slotsEl.textContent = `${Math.max(0, totalSlots - usedSlots)} / ${totalSlots}`;
+            }
+
+            // Render filter pills & spells list
+            renderSpellFilterPills(pc);
+            renderSpellCards(pc);
+        }
+
+        function renderSpellFilterPills(pc) {
+            const container = document.getElementById('spellbook-filter-pills');
+            if (!container) return;
+
+            const spells = pc.spells || [];
+            const levelsPresent = new Set();
+            spells.forEach(s => levelsPresent.add(parseInt(s.level) || 0));
+
+            const sortedLevels = Array.from(levelsPresent).sort((a, b) => a - b);
+
+            let pillsHtml = `
+                <button onclick="setSpellFilter('all')" class="px-3 py-1 rounded-xl whitespace-nowrap transition tap-active font-bold ${currentSpellFilter === 'all' ? 'bg-purple-600 text-white shadow' : 'bg-ledger-900 border border-ledger-750 text-slate-400 hover:text-slate-200'}">
+                    All (${spells.length})
+                </button>
+            `;
+
+            sortedLevels.forEach(lvl => {
+                const count = spells.filter(s => (parseInt(s.level) || 0) === lvl).length;
+                const label = lvl === 0 ? 'Cantrips' : `Lvl ${lvl}`;
+                const filterKey = String(lvl);
+                const isSelected = currentSpellFilter === filterKey;
+                pillsHtml += `
+                    <button onclick="setSpellFilter('${filterKey}')" class="px-3 py-1 rounded-xl whitespace-nowrap transition tap-active font-bold ${isSelected ? 'bg-purple-600 text-white shadow' : 'bg-ledger-900 border border-ledger-750 text-slate-400 hover:text-slate-200'}">
+                        ${label} (${count})
+                    </button>
+                `;
+            });
+
+            container.innerHTML = pillsHtml;
+        }
+
+        function getSchoolBadgeClasses(school) {
+            const s = (school || '').toLowerCase();
+            if (s.includes('evoc')) return 'border-rose-500/40 text-rose-300 bg-rose-500/10';
+            if (s.includes('abjur')) return 'border-sky-500/40 text-sky-300 bg-sky-500/10';
+            if (s.includes('conjur')) return 'border-amber-500/40 text-amber-300 bg-amber-500/10';
+            if (s.includes('divin')) return 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10';
+            if (s.includes('enchant')) return 'border-pink-500/40 text-pink-300 bg-pink-500/10';
+            if (s.includes('illus')) return 'border-purple-500/40 text-purple-300 bg-purple-500/10';
+            if (s.includes('necro')) return 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10';
+            if (s.includes('transmut')) return 'border-teal-500/40 text-teal-300 bg-teal-500/10';
+            return 'border-slate-500/40 text-slate-300 bg-slate-500/10';
+        }
+
+        function renderSpellCards(pc) {
+            const container = document.getElementById('spellbook-spells-list');
+            if (!container) return;
+
+            const allSpells = pc.spells || [];
+            if (allSpells.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 rounded-2xl bg-ledger-900 border border-dashed border-ledger-750 text-center space-y-2">
+                        <span class="text-2xl">📖</span>
+                        <h4 class="font-display font-bold text-sm text-slate-300">Grimoire Empty</h4>
+                        <p class="text-xs text-slate-400 font-mono">No prepared spells listed. The DM can add spells from the DM Console Party HUD.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let filtered = allSpells.filter(sp => {
+                if (currentSpellFilter !== 'all') {
+                    if ((parseInt(sp.level) || 0) !== parseInt(currentSpellFilter)) return false;
+                }
+                if (currentSpellSearch) {
+                    const q = currentSpellSearch;
+                    const name = (sp.name || '').toLowerCase();
+                    const school = (sp.school || '').toLowerCase();
+                    const desc = (sp.description || '').toLowerCase();
+                    const dmg = (sp.damageType || '').toLowerCase();
+                    if (!name.includes(q) && !school.includes(q) && !desc.includes(q) && !dmg.includes(q)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 rounded-2xl bg-ledger-900 border border-ledger-800 text-center font-mono text-xs text-slate-400">
+                        No spells found matching "${escapeHTML(currentSpellSearch || currentSpellFilter)}".
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(sp => {
+                const lvl = parseInt(sp.level) || 0;
+                const lvlName = lvl === 0 ? 'Cantrip' : `Lvl ${lvl}`;
+                const lvlBadge = lvl === 0 ? 'bg-indigo-950 text-indigo-300 border border-indigo-700' : 'bg-purple-950 text-purple-300 border border-purple-700';
+                const schoolBadge = getSchoolBadgeClasses(sp.school);
+                const isExpanded = activeExpandedSpellId === sp.id;
+
+                let castBtnText = `⚡ Cast ${lvlName}`;
+                if (sp.formula) {
+                    castBtnText = `⚡ Cast ${lvl === 0 ? 'Cantrip' : `(Lvl ${lvl})`} • ${sp.formula}`;
+                } else if (lvl === 0) {
+                    castBtnText = `⚡ Cast Cantrip`;
+                }
+
+                return `
+                    <div class="p-3.5 rounded-2xl bg-ledger-900 border border-ledger-750 space-y-2.5 shadow-sm transition hover:border-purple-500/40">
+                        <!-- Header: Tap to expand details -->
+                        <div onclick="toggleSpellExpand('${escapeHTML(sp.id)}')" class="cursor-pointer">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono ${schoolBadge}">${escapeHTML(sp.school || 'Magic')}</span>
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono ${lvlBadge}">${lvlName}</span>
+                                        ${sp.concentration ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">Conc [C]</span>' : ''}
+                                        ${sp.ritual ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Ritual [R]</span>' : ''}
+                                    </div>
+                                    <h4 class="font-display font-bold text-sm text-slate-100 hover:text-purple-200 transition mt-1 truncate">${escapeHTML(sp.name)}</h4>
+                                </div>
+                                <span class="text-slate-400 text-xs transition-transform inline-block ${isExpanded ? 'rotate-180' : ''}">▼</span>
+                            </div>
+
+                            <!-- Quick metadata -->
+                            <div class="flex items-center gap-2 text-[10px] font-mono text-slate-400 mt-1 flex-wrap">
+                                <span>⏱️ ${escapeHTML(sp.castTime || 'Action')}</span>
+                                <span>•</span>
+                                <span>🎯 ${escapeHTML(sp.range || 'Self')}</span>
+                                <span>•</span>
+                                <span>⌛ ${escapeHTML(sp.duration || 'Instantaneous')}</span>
+                                ${sp.formula ? `<span>•</span> <span class="text-purple-300 font-bold">${sp.damageType ? '💥 ' + escapeHTML(sp.formula) + ' ' + escapeHTML(sp.damageType) : '🎲 ' + escapeHTML(sp.formula)}</span>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Expandable Details -->
+                        ${isExpanded ? `
+                            <div class="pt-2 border-t border-ledger-800 text-[11px] font-sans text-slate-300 leading-relaxed space-y-2">
+                                <p class="whitespace-pre-line">${escapeHTML(sp.description || 'No description listed.')}</p>
+                                ${sp.higherLevels ? `
+                                    <div class="p-2 rounded-xl bg-purple-950/40 border border-purple-800/50 text-[10px] text-purple-200 font-mono">
+                                        <strong>At Higher Levels:</strong> ${escapeHTML(sp.higherLevels)}
+                                    </div>
+                                ` : ''}
+                                <div class="text-[10px] font-mono text-slate-400">
+                                    <strong>Components:</strong> ${escapeHTML(sp.components || 'V, S')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Action Cast Bar -->
+                        <div class="flex items-center gap-1.5 pt-1">
+                            <button onclick="executeSpellCast('${escapeHTML(sp.id)}', false, ${lvl})" class="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-mono text-xs font-bold shadow tap-active flex items-center justify-center gap-1.5 transition">
+                                ${castBtnText}
+                            </button>
+                            ${sp.ritual ? `
+                                <button onclick="executeSpellCast('${escapeHTML(sp.id)}', true, 0)" class="py-2 px-3 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold tap-active flex items-center gap-1 shadow-sm transition" title="Cast as Ritual (10 min, no slot)">
+                                    <span>📜</span> <span>Ritual</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function executeSpellCast(spellId, isRitual = false, slotLevel = 0) {
+            if (!activeCharacter) return;
+            const spells = activeCharacter.spells || [];
+            const spell = spells.find(s => s.id === spellId || s.name === spellId);
+            if (!spell) return;
+
+            const lvl = parseInt(slotLevel !== undefined && slotLevel !== null ? slotLevel : (spell.level || 0));
+
+            // Ritual Cast (does not expend any spell slot)
+            if (isRitual) {
+                showCompanionToast(`Cast ${spell.name} as a Ritual (10 min). No spell slot used.`, 'info');
+                await broadcastSpellCast(spell, 'Ritual (10 min)', null);
+                return;
+            }
+
+            // Cantrip (level 0: no slots used)
+            if (lvl === 0) {
+                if (spell.formula) {
+                    await executeDiceFormulaRoll(spell.formula, `Cantrip: ${spell.name}${spell.damageType ? ' (' + spell.damageType + ')' : ''}`);
+                } else {
+                    showCompanionToast(`Cast Cantrip: ${spell.name}`, 'info');
+                    await broadcastSpellCast(spell, 'Cantrip', null);
+                }
+                return;
+            }
+
+            // Leveled Spell: verify slot availability
+            const slots = normalizeSpellSlots(activeCharacter.spellSlots);
+            activeCharacter.spellSlots = slots;
+
+            const slotKey = `level_${lvl}`;
+            const pactKey = `pact_level_${lvl}`;
+            const targetKey = slots[slotKey] ? slotKey : (slots[pactKey] ? pactKey : null);
+
+            let hasSlot = false;
+            if (targetKey && slots[targetKey]) {
+                const total = slots[targetKey].total || 0;
+                const used = slots[targetKey].used || 0;
+                if (used < total) {
+                    hasSlot = true;
+                }
+            }
+
+            if (!hasSlot) {
+                promptUpcastModal(spell, lvl);
+                return;
+            }
+
+            // Deduct slot
+            slots[targetKey].used = (slots[targetKey].used || 0) + 1;
+            activeCharacter.spellSlots = slots;
+            renderSpellBook(activeCharacter);
+
+            // Persist immediately
+            try {
+                await fetch('/api/companion/update-slots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, spellSlots: slots })
+                });
+            } catch (err) {
+                console.error("Failed to update slots on spell cast:", err);
+            }
+
+            const remaining = Math.max(0, slots[targetKey].total - slots[targetKey].used);
+            showCompanionToast(`Cast ${spell.name}! Expended Lvl ${lvl} slot (${remaining} left).`, 'success');
+
+            if (spell.formula) {
+                await executeDiceFormulaRoll(spell.formula, `Spell (Lvl ${lvl}): ${spell.name}${spell.damageType ? ' (' + spell.damageType + ')' : ''}`);
+            } else {
+                await broadcastSpellCast(spell, `Lvl ${lvl} Slot`, null);
+            }
+        }
+
+        function promptUpcastModal(spell, reqLevel) {
+            const slots = normalizeSpellSlots(activeCharacter.spellSlots);
+            const availableSlots = [];
+            Object.entries(slots).forEach(([k, data]) => {
+                const lvlNum = parseInt(k.replace(/\D/g, '') || 0);
+                const total = data.total || 0;
+                const used = data.used || 0;
+                if (lvlNum >= reqLevel && (total - used) > 0) {
+                    availableSlots.push({ key: k, level: lvlNum, remaining: total - used, total: total });
+                }
+            });
+
+            const modal = document.getElementById('modal-spell-cast');
+            if (!modal) {
+                alert(`No Level ${reqLevel} spell slots remaining!`);
+                return;
+            }
+
+            document.getElementById('modal-cast-spell-name').textContent = `Cast ${spell.name}`;
+            const body = document.getElementById('modal-cast-spell-body');
+
+            let html = `
+                <div class="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 font-mono text-xs">
+                    ⚠️ No Level ${reqLevel} spell slots remaining.
+                </div>
+            `;
+
+            if (availableSlots.length > 0) {
+                html += `
+                    <div class="space-y-2">
+                        <span class="text-slate-400 font-mono text-[11px] block">Cast using a higher level slot (Upcast):</span>
+                        <div class="grid grid-cols-1 gap-1.5">
+                            ${availableSlots.map(s => `
+                                <button onclick="closeModal('modal-spell-cast'); executeSpellCast('${escapeHTML(spell.id)}', false, ${s.level})" class="p-2.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-500/50 text-purple-200 font-mono font-bold flex items-center justify-between tap-active">
+                                    <span>Level ${s.level} Slot</span>
+                                    <span class="text-xs text-purple-400 font-normal">${s.remaining} / ${s.total} available</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="pt-2 border-t border-ledger-750 flex items-center gap-2">
+                    <button onclick="closeModal('modal-spell-cast'); executeCastWithoutSlot('${escapeHTML(spell.id)}')" class="flex-1 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-ledger-700 text-slate-300 font-mono text-xs font-bold tap-active">
+                        Cast Without Slot
+                    </button>
+                    <button onclick="closeModal('modal-spell-cast')" class="px-4 py-2 rounded-xl bg-ledger-900 text-slate-400 font-mono text-xs tap-active">
+                        Cancel
+                    </button>
+                </div>
+            `;
+
+            body.innerHTML = html;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        async function executeCastWithoutSlot(spellId) {
+            if (!activeCharacter) return;
+            const spells = activeCharacter.spells || [];
+            const spell = spells.find(s => s.id === spellId || s.name === spellId);
+            if (!spell) return;
+
+            showCompanionToast(`Cast ${spell.name} (No slot deducted)`, 'info');
+            if (spell.formula) {
+                await executeDiceFormulaRoll(spell.formula, `Spell: ${spell.name}${spell.damageType ? ' (' + spell.damageType + ')' : ''}`);
+            } else {
+                await broadcastSpellCast(spell, 'Cast (No Slot)', null);
+            }
+        }
+
+        async function broadcastSpellCast(spell, slotDesc, formula) {
+            try {
+                await fetch('/api/companion/roll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        characterId: activeCharacter?.id || '',
+                        characterName: activeCharacter?.name || 'Player',
+                        player: activeCharacter?.player || '',
+                        avatarUrl: activeCharacter?.avatarUrl || '',
+                        rollType: `Spell: ${spell.name}`,
+                        label: `Cast: ${spell.name} (${slotDesc})`,
+                        formula: formula || slotDesc,
+                        rawRoll: 0,
+                        chosen: 0,
+                        dice: [],
+                        modifier: 0,
+                        total: 0,
+                        isCrit: false,
+                        isFumble: false
+                    })
+                });
+                fetchCompanionState();
+            } catch (e) {
+                console.error("Error broadcasting spell cast:", e);
+            }
+        }
+
         // Toggle Slot Expend
         async function toggleSlotExpend(lvlKey, slotIdx) {
             if (!activeCharacter) return;
@@ -821,7 +1305,7 @@
             }
             activeCharacter.spellSlots = slots;
             try {
-                renderSpellSlots(activeCharacter);
+                renderSpellBook(activeCharacter);
             } catch (e) {
                 console.error("Error updating spell slots UI:", e);
             }
@@ -855,7 +1339,7 @@
             }
             activeCharacter.resources = rawRes;
             try {
-                renderSpellSlots(activeCharacter);
+                renderSpellBook(activeCharacter);
             } catch (e) {
                 console.error("Error updating resource UI:", e);
             }
@@ -888,7 +1372,8 @@
             activeCharacter.spellSlots = slots;
             activeCharacter.resources = rawRes;
             try {
-                renderSpellSlots(activeCharacter);
+                renderSpellBook(activeCharacter);
+                showCompanionToast("Long Rest: All spell slots and powers restored!", "success");
             } catch (e) {
                 console.error("Error updating spell slots UI:", e);
             }
@@ -1281,30 +1766,53 @@
             return '1d8';
         }
 
-        async function executeDiceFormulaRoll(formulaStr, rollLabel) {
-            switchTab('roller');
-            const match = formulaStr.trim().match(/^(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?$/i);
-            let count = 1;
-            let sides = 6;
-            let mod = 0;
-            if (match) {
-                count = parseInt(match[1]) || 1;
-                sides = parseInt(match[2]) || 6;
-                if (match[3] && match[4]) {
-                    mod = parseInt(match[4]) * (match[3] === '-' ? -1 : 1);
+        function rollDiceExpression(formulaStr) {
+            let total = 0;
+            const dice = [];
+            const breakdownParts = [];
+
+            const clean = (formulaStr || '1d20').replace(/\s+/g, '');
+            const tokens = clean.match(/([+-]?\d*d\d+|[+-]?\d+)/gi) || [];
+
+            for (const token of tokens) {
+                if (/d/i.test(token)) {
+                    const sign = token.startsWith('-') ? -1 : 1;
+                    const unsigned = token.replace(/^[+-]/, '');
+                    const parts = unsigned.split(/d/i);
+                    const count = parseInt(parts[0]) || 1;
+                    const sides = parseInt(parts[1]) || 6;
+                    const rolled = [];
+                    let sum = 0;
+                    for (let i = 0; i < count; i++) {
+                        const val = Math.floor(Math.random() * sides) + 1;
+                        rolled.push(val);
+                        sum += val;
+                    }
+                    total += (sum * sign);
+                    dice.push(...rolled);
+                    breakdownParts.push(`${sign < 0 ? '-' : (breakdownParts.length > 0 ? '+ ' : '')}${count}d${sides}[${rolled.join(',')}]`);
+                } else {
+                    const val = parseInt(token);
+                    if (!isNaN(val)) {
+                        total += val;
+                        breakdownParts.push(`${val >= 0 ? (breakdownParts.length > 0 ? '+ ' : '') : '- '}${Math.abs(val)}`);
+                    }
                 }
             }
 
-            const dice = [];
-            let diceSum = 0;
-            for (let i = 0; i < count; i++) {
-                const val = Math.floor(Math.random() * sides) + 1;
-                dice.push(val);
-                diceSum += val;
-            }
+            return {
+                total: Math.max(0, total),
+                dice: dice,
+                breakdown: breakdownParts.join(' ') || `${total}`
+            };
+        }
 
-            const total = Math.max(1, diceSum + mod);
-            const breakdown = `${count}d${sides}[${dice.join(', ')}]${mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : ''}`;
+        async function executeDiceFormulaRoll(formulaStr, rollLabel) {
+            switchTab('roller');
+            const result = rollDiceExpression(formulaStr);
+            const total = result.total;
+            const breakdown = result.breakdown;
+            const dice = result.dice;
 
             const resEl = document.getElementById('dice-big-result');
             if (resEl) {
@@ -1329,10 +1837,10 @@
                     rollType: rollLabel,
                     label: rollLabel,
                     formula: formulaStr,
-                    rawRoll: diceSum,
-                    chosen: diceSum,
+                    rawRoll: total,
+                    chosen: total,
                     dice: dice,
-                    modifier: mod,
+                    modifier: 0,
                     total: total,
                     isCrit: false,
                     isFumble: false

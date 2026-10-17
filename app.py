@@ -5763,6 +5763,42 @@ async def update_pc_inventory(pc_id: str, payload: Dict[str, Any]):
     write_json("party.json", party)
     return {"status": "success", "pc": pc, "party": party}
 
+@app.post("/api/party/{pc_id}/spells")
+async def update_pc_spells(pc_id: str, payload: Dict[str, Any]):
+    party = read_json("party.json", [])
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    if "spells" in payload and isinstance(payload["spells"], list):
+        pc["spells"] = payload["spells"]
+    elif "spell" in payload and isinstance(payload["spell"], dict):
+        spells = pc.setdefault("spells", [])
+        sp = payload["spell"]
+        sp_id = sp.get("id") or f"spell-{re.sub(r'[^a-z0-9]+', '-', sp.get('name', '').lower()).strip('-')}"
+        sp["id"] = sp_id
+        idx = next((i for i, x in enumerate(spells) if x.get("id") == sp_id or x.get("name", "").lower() == sp.get("name", "").lower()), None)
+        if idx is not None:
+            spells[idx] = sp
+        else:
+            spells.append(sp)
+        spells.sort(key=lambda s: (s.get("level", 0), s.get("name", "").lower()))
+        pc["spells"] = spells
+    elif "deleteSpellId" in payload:
+        del_id = str(payload["deleteSpellId"])
+        pc["spells"] = [s for s in pc.get("spells", []) if str(s.get("id")) != del_id and str(s.get("name")) != del_id]
+
+    write_json("party.json", party)
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "party_updated",
+            "character": pc,
+            "party": party
+        })
+    except Exception:
+        pass
+    return {"status": "success", "pc": pc, "spells": pc.get("spells", [])}
+
 
 # -------------------------------------------------------------
 # SECRETS & CLUES ENGINE (LAZY DM PREP & DISCOVERY)

@@ -88,6 +88,61 @@ WARLOCK_PACT_SLOTS = {
     20: (4, 5),
 }
 
+# Standard 2024 / 5e Spell Formulas & Damage Types Mapping
+KNOWN_SPELL_FORMULAS: Dict[str, Tuple[str, str]] = {
+    "fire bolt": ("1d10", "Fire"),
+    "eldritch blast": ("1d10", "Force"),
+    "ray of frost": ("1d8", "Cold"),
+    "shocking grasp": ("1d8", "Lightning"),
+    "sacred flame": ("1d8", "Radiant"),
+    "toll the dead": ("1d12", "Necrotic"),
+    "vicious mockery": ("1d4", "Psychic"),
+    "mind sliver": ("1d6", "Psychic"),
+    "acid splash": ("1d6", "Acid"),
+    "chill touch": ("1d10", "Necrotic"),
+    "poison spray": ("1d12", "Poison"),
+    "primal savagery": ("1d10", "Acid"),
+    "thorn whip": ("1d6", "Piercing"),
+    "word of radiance": ("1d6", "Radiant"),
+    "cure wounds": ("2d8 + MOD", "Healing"),
+    "healing word": ("2d4 + MOD", "Healing"),
+    "guiding bolt": ("4d6", "Radiant"),
+    "inflict wounds": ("2d10 + MOD", "Necrotic"),
+    "magic missile": ("1d4 + 1", "Force"),
+    "burning hands": ("3d6", "Fire"),
+    "thunderwave": ("2d8", "Thunder"),
+    "chaos bolt": ("2d8 + 1d6", "Chaos"),
+    "chromatic orb": ("3d8", "Elemental"),
+    "dissonant whispers": ("3d6", "Psychic"),
+    "witch bolt": ("2d12", "Lightning"),
+    "scorching ray": ("2d6", "Fire"),
+    "shatter": ("3d8", "Thunder"),
+    "moonbeam": ("2d10", "Radiant"),
+    "spiritual weapon": ("1d8 + MOD", "Force"),
+    "acid arrow": ("4d4", "Acid"),
+    "flaming sphere": ("2d6", "Fire"),
+    "prayer of healing": ("2d8 + MOD", "Healing"),
+    "fireball": ("8d6", "Fire"),
+    "lightning bolt": ("8d6", "Lightning"),
+    "spirit guardians": ("3d8", "Radiant"),
+    "call lightning": ("3d10", "Lightning"),
+    "mass healing word": ("2d4 + MOD", "Healing"),
+    "blight": ("8d8", "Necrotic"),
+    "ice storm": ("2d8 + 4d6", "Cold"),
+    "cone of cold": ("8d8", "Cold"),
+    "flame strike": ("4d6 + 4d6", "Radiant/Fire"),
+    "mass cure wounds": ("3d8 + MOD", "Healing"),
+    "heal": ("70", "Healing"),
+    "harm": ("14d6", "Necrotic"),
+    "chain lightning": ("10d8", "Lightning"),
+    "disintegrate": ("10d6 + 40", "Force"),
+    "finger of death": ("7d8 + 30", "Necrotic"),
+    "fire storm": ("7d10", "Fire"),
+    "sunbeam": ("6d8", "Radiant"),
+    "sunburst": ("12d6", "Radiant"),
+    "meteor swarm": ("20d6 + 20d6", "Fire/Bludgeoning")
+}
+
 
 def extract_character_id(input_str: str) -> Optional[str]:
     """Extract character ID from various D&D Beyond URL formats or raw ID."""
@@ -444,13 +499,22 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
             break
 
     spell_dc = None
+    spell_attack_mod = None
+    spell_mod = None
     if primary_cast_ability:
-        spell_dc = 8 + prof_bonus + modifiers[primary_cast_ability]
+        spell_mod = modifiers[primary_cast_ability]
+        spell_dc = 8 + prof_bonus + spell_mod
+        spell_attack_mod = prof_bonus + spell_mod
         dc_bonus = sum(
             m.get("value", 0) for m in all_mods
             if m.get("type") == "bonus" and m.get("subType") in ["spell-save-dc", "bonus-spell-save-dc"] and m.get("value") is not None
         )
         spell_dc += dc_bonus
+        atk_bonus = sum(
+            m.get("value", 0) for m in all_mods
+            if m.get("type") == "bonus" and m.get("subType") in ["spell-attack-bonus", "spell-attacks", "bonus-spell-attacks"] and m.get("value") is not None
+        )
+        spell_attack_mod += atk_bonus
 
     # 12. Spell Slots Generation (Multiclass Caster Rules)
     effective_caster_level = full_caster_levels + (half_caster_levels // 2) + ((artificer_levels + 1) // 2) + (third_caster_levels // 3)
@@ -487,6 +551,156 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
                 for k in spell_slots:
                     if k.startswith("pact_level_") and used > 0:
                         spell_slots[k]["used"] = min(spell_slots[k]["total"], used)
+
+    # 12b. Spells Extraction & 2024 Compendium Enrichment
+    extracted_spells = []
+    seen_spell_names = set()
+
+    compendium_spells = {}
+    try:
+        from pathlib import Path
+        spells_path = Path(__file__).resolve().parent / "data" / "spells.json"
+        if spells_path.exists():
+            with open(spells_path, "r", encoding="utf-8") as f:
+                for sp in json.load(f):
+                    compendium_spells[sp["name"].lower().strip()] = sp
+    except Exception:
+        pass
+
+    raw_spell_candidates = []
+    for cs in d.get("classSpells") or []:
+        if isinstance(cs, dict):
+            for s in cs.get("spells") or []:
+                raw_spell_candidates.append(s)
+
+    spells_dict = d.get("spells") or {}
+    if isinstance(spells_dict, dict):
+        for source_list in spells_dict.values():
+            if isinstance(source_list, list):
+                raw_spell_candidates.extend(source_list)
+    elif isinstance(spells_dict, list):
+        raw_spell_candidates.extend(spells_dict)
+
+    for cs in d.get("customSpells") or []:
+        raw_spell_candidates.append(cs)
+
+    for s in raw_spell_candidates:
+        if not isinstance(s, dict):
+            continue
+        definition = s.get("definition") or s
+        s_name = definition.get("name")
+        if not s_name:
+            continue
+        norm_name = s_name.lower().strip()
+        if norm_name in seen_spell_names:
+            continue
+        seen_spell_names.add(norm_name)
+
+        lvl = definition.get("level", 0)
+        school = definition.get("school") or "Evocation"
+        conc = bool(definition.get("concentration", False))
+        ritual = bool(definition.get("ritual", False))
+
+        activation = definition.get("activation") or {}
+        act_type = activation.get("activationType")
+        act_time = activation.get("activationTime", 1)
+        type_str = {
+            1: "Action",
+            3: "Bonus Action",
+            4: "Reaction",
+            6: f"{act_time} Minute{'s' if act_time > 1 else ''}",
+            7: f"{act_time} Hour{'s' if act_time > 1 else ''}",
+            8: "Special"
+        }.get(act_type, "Action" if act_time == 1 else f"{act_time} Actions")
+        cast_time = type_str
+
+        range_info = definition.get("range") or {}
+        range_val = range_info.get("rangeValue")
+        range_origin = range_info.get("origin") or ""
+        range_str = f"{range_val} ft" if range_val else (range_origin or "Self")
+
+        dur_info = definition.get("duration") or {}
+        dur_val = dur_info.get("durationInterval")
+        dur_unit = dur_info.get("durationUnit")
+        dur_str = f"{dur_val} {dur_unit}" if dur_val and dur_unit else ("Instantaneous" if not conc else "Concentration")
+
+        comp_desc = definition.get("componentsDescription")
+        if not comp_desc:
+            comp_list = []
+            comps = definition.get("components") or []
+            if 1 in comps: comp_list.append("V")
+            if 2 in comps: comp_list.append("S")
+            if 3 in comps: comp_list.append("M")
+            comp_desc = ", ".join(comp_list) if comp_list else "V, S"
+
+        raw_desc = definition.get("description") or definition.get("snippet") or ""
+        clean_desc = re.sub(r"<[^>]+>", "", raw_desc).strip()
+        higher_levels = ""
+
+        if norm_name in compendium_spells:
+            comp_data = compendium_spells[norm_name]
+            lvl = comp_data.get("level", lvl)
+            school = comp_data.get("school", school)
+            cast_time = comp_data.get("castingTime", cast_time)
+            range_str = comp_data.get("range", range_str)
+            comp_desc = comp_data.get("components", comp_desc)
+            dur_str = comp_data.get("duration", dur_str)
+            conc = comp_data.get("concentration", conc)
+            ritual = comp_data.get("ritual", ritual)
+            clean_desc = comp_data.get("description", clean_desc)
+            higher_levels = comp_data.get("higherLevels", "")
+
+        formula = None
+        damage_type = None
+
+        if norm_name in KNOWN_SPELL_FORMULAS:
+            formula, damage_type = KNOWN_SPELL_FORMULAS[norm_name]
+        else:
+            m_dmg = re.search(r'(\d+d\d+(?:\s*[+-]\s*\d+)?)\s+([A-Za-z]+)\s+damage', clean_desc, re.I)
+            if m_dmg:
+                formula = m_dmg.group(1).replace(" ", "")
+                damage_type = m_dmg.group(2).capitalize()
+            else:
+                m_dice = re.search(r'\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b', clean_desc)
+                if m_dice:
+                    formula = m_dice.group(1).replace(" ", "")
+
+        if formula and "MOD" in formula:
+            eff_mod = spell_mod if spell_mod is not None else 3
+            formula = formula.replace("MOD", str(max(0, eff_mod)))
+
+        if int(lvl) == 0 and formula and re.match(r'^1d(\d+)', formula):
+            dice_count = 1
+            if level >= 17:
+                dice_count = 4
+            elif level >= 11:
+                dice_count = 3
+            elif level >= 5:
+                dice_count = 2
+            formula = re.sub(r'^1d(\d+)', f"{dice_count}d\\1", formula)
+
+        is_prepared = bool(s.get("prepared", True) or s.get("alwaysPrepared", False) or int(lvl) == 0)
+
+        clean_slug = re.sub(r'[^a-z0-9]+', '-', norm_name).strip('-')
+        extracted_spells.append({
+            "id": f"spell-{clean_slug}",
+            "name": s_name,
+            "level": int(lvl),
+            "school": school,
+            "castTime": cast_time,
+            "range": range_str,
+            "duration": dur_str,
+            "concentration": conc,
+            "ritual": ritual,
+            "components": comp_desc,
+            "formula": formula,
+            "damageType": damage_type,
+            "description": clean_desc,
+            "higherLevels": higher_levels,
+            "prepared": is_prepared
+        })
+
+    extracted_spells.sort(key=lambda sp: (sp.get("level", 0), sp.get("name", "").lower()))
 
     # 13. Currencies
     curr = d.get("currencies") or {}
@@ -586,6 +800,8 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         "passiveInsight": passive_ins,
         "passiveInvestigation": passive_inv,
         "spellDc": spell_dc,
+        "spellAttackMod": spell_attack_mod,
+        "spellMod": spell_mod,
         "heroicInspiration": bool(d.get("inspiration", False)),
         "deathSaves": {
             "successes": d.get("deathSaves", {}).get("successCount", 0),
@@ -593,6 +809,7 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         },
         "notes": notes_str,
         "spellSlots": spell_slots if spell_slots else None,
+        "spells": extracted_spells,
         "resources": class_resources if class_resources else None,
         "inventory": inventory_items,
         "currency": currency_dict,
@@ -637,5 +854,14 @@ def sync_dndbeyond_character(existing_char: Dict[str, Any]) -> Tuple[Optional[Di
         fresh["deityName"] = existing_char["deityName"]
     if existing_char.get("pietyScore") is not None:
         fresh["pietyScore"] = existing_char["pietyScore"]
+
+    # Preserve locally added custom spells that were not in DDB
+    existing_spells = existing_char.get("spells") or []
+    if existing_spells:
+        fresh_names = {sp.get("name", "").lower().strip() for sp in fresh.get("spells", [])}
+        for esp in existing_spells:
+            if esp.get("name", "").lower().strip() not in fresh_names:
+                fresh.setdefault("spells", []).append(esp)
+        fresh["spells"].sort(key=lambda sp: (sp.get("level", 0), sp.get("name", "").lower()))
 
     return fresh, None
