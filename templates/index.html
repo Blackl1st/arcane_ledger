@@ -3596,7 +3596,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.5</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.6</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -4089,25 +4089,52 @@
                             <span class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-xl text-indigo-300">🎛️</span>
                             <div>
                                 <div class="flex items-center gap-2">
-                                    <h3 class="font-display font-bold text-base text-indigo-300">Elgato Stream Deck & Hardware Macro REST API</h3>
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Zero-Auth Active</span>
+                                    <h3 class="font-display font-bold text-base text-indigo-300">Elgato Stream Deck & Hardware Controller</h3>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Real-Time WebSocket Bus Active</span>
                                 </div>
-                                <p class="text-xs text-slate-400">Trigger combat turns, rolls, rests, Amaran smart lighting, and audio SFX with physical hardware keys.</p>
+                                <p class="text-xs text-slate-400">Direct hardware control of Initiative, 3D Dice, Amaran Studio Lighting, Sound Effects, and Tabletop Battlemaps.</p>
                             </div>
                         </div>
-                        <button onclick="openStreamDeckModal()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow transition flex items-center gap-1.5 shrink-0">
-                            <span>📖</span> <span>Macro Cheat Sheet & Setup</span>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <a href="/api/streamdeck/download-plugin" download="com.arcaneledger.streamdeck.streamDeckPlugin" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg transition flex items-center gap-1.5 shrink-0 border border-indigo-400/30">
+                                <span>📥</span> <span>Download Plugin (.streamDeckPlugin)</span>
+                            </a>
+                            <button onclick="openStreamDeckModal()" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-semibold text-xs border border-ledger-700 transition flex items-center gap-1.5 shrink-0">
+                                <span>📖</span> <span>Macro Guide</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Native Plugin Banner Card -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900/60 to-purple-950/40 border border-indigo-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="space-y-1.5 max-w-xl">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">OFFICIAL STREAM DECK PLUGIN</span>
+                                <span class="text-xs font-bold text-white">Arcane Ledger Hardware Controller</span>
+                            </div>
+                            <p class="text-[11px] text-slate-300 leading-relaxed">
+                                Experience two-way dynamic LCD feedback: keys show <span class="text-amber-300 font-semibold">Active Turn & Round</span> live, roll results appear on your d20 key, and rotary dials control <span class="text-amber-300 font-semibold">Table Light (60d S)</span>, <span class="text-purple-300 font-semibold">Atmosphere (Ace 25c)</span>, and <span class="text-sky-300 font-semibold">Master Volume</span>!
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                            <a href="/api/streamdeck/download-plugin" download="com.arcaneledger.streamdeck.streamDeckPlugin" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow transition flex items-center gap-1.5">
+                                <span>📦</span> <span>Install Plugin</span>
+                            </a>
+                            <a href="/api/streamdeck/download-profile" download="ArcaneLedger_15Key.streamDeckProfile" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-bold text-xs border border-ledger-700 transition flex items-center gap-1.5">
+                                <span>🎛️</span> <span>Download 15-Key Profile</span>
+                            </a>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                         <!-- Quick Info & Base URL -->
                         <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-4 space-y-3">
-                            <label class="font-bold text-slate-200 block flex items-center gap-2">
-                                <span>🌐</span> <span>Stream Deck Base URL</span>
+                            <label class="font-bold text-slate-200 block flex items-center justify-between">
+                                <span class="flex items-center gap-2"><span>🌐</span> <span>Connection & Macro REST Endpoints</span></span>
+                                <span class="text-[10px] font-mono text-emerald-400">ws://127.0.0.1:8000/ws/streamdeck</span>
                             </label>
                             <p class="text-[11px] text-slate-400 leading-relaxed">
-                                Stream Deck endpoints accept both <span class="font-mono text-amber-300">GET</span> and <span class="font-mono text-amber-300">POST</span>. You can use native Elgato <span class="font-semibold text-slate-200">"System > Website"</span> actions (set to run in background) without needing extra plugins!
+                                Stream Deck endpoints accept both <span class="font-mono text-amber-300">GET</span> and <span class="font-mono text-amber-300">POST</span>. You can use native Elgato <span class="font-semibold text-slate-200">"System > Website"</span> actions (set to run in background) or third-party web requests.
                             </p>
                             <div class="space-y-1.5">
                                 <label class="block text-[10px] font-mono uppercase text-slate-500 font-bold">Local / LAN Endpoint Prefix</label>
@@ -4121,8 +4148,8 @@
                         <!-- One-Click Live Hardware Test Triggers -->
                         <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-4 space-y-3">
                             <label class="font-bold text-slate-200 block flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><span>🧪</span> <span>Quick Test Actions</span></span>
-                                <span class="text-[10px] font-mono text-slate-400">Click to test response</span>
+                                <span class="flex items-center gap-1.5"><span>🧪</span> <span>Quick Test Actions (Audio, Lights & Dice)</span></span>
+                                <span class="text-[10px] font-mono text-slate-400">Click to test live response</span>
                             </label>
                             <div class="grid grid-cols-2 gap-2 text-[11px]">
                                 <button onclick="testStreamDeckEndpoint('/api/streamdeck/combat/next-turn')" class="p-2 rounded-lg bg-ledger-950 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
@@ -4142,6 +4169,12 @@
                                 </button>
                                 <button onclick="testStreamDeckEndpoint('/api/streamdeck/audio/sfx/fireball')" class="p-2 rounded-lg bg-ledger-950 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
                                     <span>🔥</span> <span class="font-semibold">Fireball SFX</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/audio/sfx/dragon_roar')" class="p-2 rounded-lg bg-ledger-950 hover:bg-red-500/20 text-slate-300 hover:text-red-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>🐉</span> <span class="font-semibold">Dragon Roar SFX</span>
+                                </button>
+                                <button onclick="testStreamDeckEndpoint('/api/streamdeck/audio/sfx/trap')" class="p-2 rounded-lg bg-ledger-950 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-ledger-700/80 text-left transition flex items-center gap-2">
+                                    <span>⚙️</span> <span class="font-semibold">Trap Click SFX</span>
                                 </button>
                             </div>
                         </div>
@@ -7254,16 +7287,44 @@
             </div>
 
             <!-- Quick Setup Instructions Box -->
-            <div class="p-3.5 rounded-2xl bg-ledger-950 border border-ledger-800 space-y-2">
-                <div class="flex items-center gap-2 text-indigo-300 font-bold text-xs">
-                    <span>💡</span> <span>How to Configure Elgato Stream Deck in 30 Seconds:</span>
+            <div class="p-3.5 rounded-2xl bg-ledger-950 border border-ledger-800 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-ledger-800">
+                    <div class="flex items-center gap-2 text-indigo-300 font-bold text-xs">
+                        <span>💡</span> <span>Setup Options: Official Plugin vs. Web Requests</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="/api/streamdeck/download-plugin" download="com.arcaneledger.streamdeck.streamDeckPlugin" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] transition flex items-center gap-1 shadow">
+                            <span>📦</span> <span>Download Plugin</span>
+                        </a>
+                        <a href="/api/streamdeck/download-profile" download="ArcaneLedger_15Key.streamDeckProfile" class="px-3 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 font-bold text-[11px] border border-ledger-700 transition flex items-center gap-1">
+                            <span>🎛️</span> <span>Download 15-Key Profile</span>
+                        </a>
+                    </div>
                 </div>
-                <ol class="list-decimal list-inside text-slate-300 space-y-1 pl-1 leading-relaxed text-[11px]">
-                    <li>In the Elgato Stream Deck app, drag a <span class="font-semibold text-white">"System > Website"</span> action onto any key.</li>
-                    <li>Paste any URL below into the <span class="font-mono text-amber-300">URL</span> field (e.g. <span class="font-mono text-sky-300" id="sd-guide-sample-url">http://127.0.0.1:8000/api/streamdeck/combat/next-turn</span>).</li>
-                    <li>Check the box <span class="font-semibold text-white">"GET request in background"</span> so no browser tab opens!</li>
-                    <li>(Optional) For two-way status and feedback, plugins like "API Ninja" or "HTTP Request" are also fully supported with GET or POST.</li>
-                </ol>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] leading-relaxed text-slate-300">
+                    <div class="p-2.5 rounded-xl bg-ledger-900/60 border border-indigo-500/20 space-y-1">
+                        <div class="font-bold text-indigo-300 flex items-center gap-1">
+                            <span>⭐</span> <span>Option A: Native Stream Deck Plugin (Recommended)</span>
+                        </div>
+                        <ol class="list-decimal list-inside space-y-0.5 text-slate-400 pl-0.5">
+                            <li>Click <span class="text-white font-semibold">Download Plugin</span> above and double-click the file to install into Elgato Stream Deck.</li>
+                            <li>Actions appear in the right sidebar under <span class="text-white font-semibold">Arcane Ledger</span>.</li>
+                            <li>Keys dynamically update LCD titles with live <span class="text-amber-300 font-semibold">Active Turn & Round</span> and d20 roll results!</li>
+                        </ol>
+                    </div>
+
+                    <div class="p-2.5 rounded-xl bg-ledger-900/60 border border-ledger-800 space-y-1">
+                        <div class="font-bold text-slate-300 flex items-center gap-1">
+                            <span>🌐</span> <span>Option B: Generic Website / HTTP Actions</span>
+                        </div>
+                        <ol class="list-decimal list-inside space-y-0.5 text-slate-400 pl-0.5">
+                            <li>Drag a <span class="text-white font-semibold">"System > Website"</span> action onto any key.</li>
+                            <li>Copy and paste any macro URL below into the <span class="font-mono text-amber-300">URL</span> field.</li>
+                            <li>Check <span class="text-white font-semibold">"GET request in background"</span> to run silently.</li>
+                        </ol>
+                    </div>
+                </div>
             </div>
 
             <!-- Endpoints Category Filter Bar -->

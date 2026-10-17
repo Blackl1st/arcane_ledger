@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -1342,8 +1342,118 @@ async def use_companion_item(payload: Dict[str, Any]):
     return {"status": "success", "message": msg, "healed": heal_amount, "character": pc}
 
 # =============================================================================
-# STREAM DECK & HARDWARE MACRO REST API
 # =============================================================================
+# STREAM DECK & HARDWARE MACRO REAL-TIME CONTROLLER & WEBSOCKET BUS
+# =============================================================================
+
+class StreamDeckConnectionManager:
+    """Manages active WebSockets for browser DM Dashboards and Elgato Stream Deck plugins."""
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        dead_connections = []
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                dead_connections.append(connection)
+        for dc in dead_connections:
+            self.disconnect(dc)
+
+streamdeck_manager = StreamDeckConnectionManager()
+
+def ensure_streamdeck_plugin_bundle() -> Optional[Path]:
+    plugin_zip = STATIC_DIR / "streamdeck" / "com.arcaneledger.streamdeck.streamDeckPlugin"
+    if not plugin_zip.exists():
+        try:
+            from tools.build_streamdeck_plugin import main as build_plugin
+            build_plugin()
+        except Exception as e:
+            print(f"Could not build stream deck plugin on demand: {e}")
+    return plugin_zip if plugin_zip.exists() else None
+
+def ensure_streamdeck_profile_bundle() -> Optional[Path]:
+    profile_path = STATIC_DIR / "streamdeck" / "ArcaneLedger_15Key.streamDeckProfile"
+    if not profile_path.exists():
+        try:
+            from tools.build_streamdeck_plugin import main as build_plugin
+            build_plugin()
+        except Exception as e:
+            print(f"Could not build stream deck profile on demand: {e}")
+    return profile_path if profile_path.exists() else None
+
+@app.websocket("/ws/streamdeck")
+async def websocket_streamdeck_endpoint(websocket: WebSocket):
+    await streamdeck_manager.connect(websocket)
+    try:
+        # Send initial synchronization state
+        combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
+        combatants = combat.get("combatants", [])
+        idx = combat.get("currentTurnIndex", 0)
+        active_name = combatants[idx]["name"] if combatants and idx < len(combatants) else "None"
+        lighting = read_json("lighting.json", {})
+        last_roll = RECENT_TABLE_ROLLS[-1] if RECENT_TABLE_ROLLS else None
+
+        await websocket.send_json({
+            "event": "sync_state",
+            "combat": combat,
+            "round": combat.get("round", 1),
+            "turnIndex": idx,
+            "activeCombatant": active_name,
+            "inCombat": combat.get("inCombat", False),
+            "lighting": lighting,
+            "lastRoll": last_roll
+        })
+
+        while True:
+            data = await websocket.receive_text()
+            try:
+                payload = json.loads(data)
+                msg_action = payload.get("action") or payload.get("type")
+                if msg_action == "next_turn":
+                    await streamdeck_next_turn()
+                elif msg_action == "prev_turn":
+                    await streamdeck_prev_turn()
+                elif msg_action == "toggle_combat":
+                    await streamdeck_combat_toggle()
+                elif msg_action == "roll_d20":
+                    await streamdeck_roll_d20()
+                elif msg_action == "roll_sides":
+                    await streamdeck_roll_sides(int(payload.get("sides", 20)))
+                elif msg_action == "sfx":
+                    await streamdeck_audio_sfx(payload.get("sfx", "fireball"))
+                elif msg_action == "lighting_preset":
+                    await streamdeck_lighting_preset(payload.get("preset", "tavern"))
+                elif msg_action == "lighting_event":
+                    await streamdeck_lighting_event(payload.get("event", "nat20"))
+                elif msg_action == "short_rest":
+                    await streamdeck_short_rest()
+                elif msg_action == "long_rest":
+                    await streamdeck_long_rest()
+                elif msg_action == "adjust_encoder":
+                    encoder = payload.get("encoder")
+                    delta = payload.get("delta", 0)
+                    await streamdeck_manager.broadcast({
+                        "event": "encoder_adjust",
+                        "encoder": encoder,
+                        "delta": delta,
+                        "ticks": payload.get("ticks", 1)
+                    })
+            except Exception:
+                pass
+    except WebSocketDisconnect:
+        streamdeck_manager.disconnect(websocket)
+    except Exception:
+        streamdeck_manager.disconnect(websocket)
 
 @app.api_route("/api/streamdeck/combat/next-turn", methods=["GET", "POST"])
 async def streamdeck_next_turn():
@@ -1351,13 +1461,23 @@ async def streamdeck_next_turn():
     combatants = result.get("combatants", [])
     idx = result.get("currentTurnIndex", 0)
     active_name = combatants[idx]["name"] if combatants and idx < len(combatants) else "None"
-    return {
+    res = {
         "status": "success",
         "action": "next_turn",
         "round": result.get("round", 1),
         "turnIndex": idx,
-        "activeCombatant": active_name
+        "activeCombatant": active_name,
+        "combat": result
     }
+    await streamdeck_manager.broadcast({
+        "event": "combat_turn",
+        "action": "next_turn",
+        "round": res["round"],
+        "turnIndex": idx,
+        "activeCombatant": active_name,
+        "combat": result
+    })
+    return res
 
 @app.api_route("/api/streamdeck/combat/prev-turn", methods=["GET", "POST"])
 async def streamdeck_prev_turn():
@@ -1365,36 +1485,76 @@ async def streamdeck_prev_turn():
     combatants = result.get("combatants", [])
     idx = result.get("currentTurnIndex", 0)
     active_name = combatants[idx]["name"] if combatants and idx < len(combatants) else "None"
-    return {
+    res = {
         "status": "success",
         "action": "prev_turn",
         "round": result.get("round", 1),
         "turnIndex": idx,
-        "activeCombatant": active_name
+        "activeCombatant": active_name,
+        "combat": result
     }
+    await streamdeck_manager.broadcast({
+        "event": "combat_turn",
+        "action": "prev_turn",
+        "round": res["round"],
+        "turnIndex": idx,
+        "activeCombatant": active_name,
+        "combat": result
+    })
+    return res
 
 @app.api_route("/api/streamdeck/combat/toggle", methods=["GET", "POST"])
 async def streamdeck_combat_toggle():
     combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
     combat["inCombat"] = not combat.get("inCombat", False)
     write_json("combat.json", combat)
-    return {
+    res = {
         "status": "success",
         "inCombat": combat["inCombat"],
-        "round": combat.get("round", 1)
+        "round": combat.get("round", 1),
+        "combat": combat
     }
+    await streamdeck_manager.broadcast({
+        "event": "combat_update",
+        "action": "toggle",
+        "inCombat": combat["inCombat"],
+        "round": combat.get("round", 1),
+        "combat": combat
+    })
+    return res
 
 @app.api_route("/api/streamdeck/combat/start", methods=["GET", "POST"])
 async def streamdeck_combat_start():
-    return await start_combat()
+    result = await start_combat()
+    await streamdeck_manager.broadcast({
+        "event": "combat_update",
+        "action": "start",
+        "inCombat": True,
+        "combat": result
+    })
+    return result
 
 @app.api_route("/api/streamdeck/combat/stop", methods=["GET", "POST"])
 async def streamdeck_combat_stop():
-    return await end_combat()
+    result = await end_combat()
+    await streamdeck_manager.broadcast({
+        "event": "combat_update",
+        "action": "stop",
+        "inCombat": False,
+        "combat": result
+    })
+    return result
 
 @app.api_route("/api/streamdeck/combat/reset", methods=["GET", "POST"])
 async def streamdeck_combat_reset():
-    return await reset_combat()
+    result = await reset_combat()
+    await streamdeck_manager.broadcast({
+        "event": "combat_update",
+        "action": "reset",
+        "inCombat": False,
+        "combat": result
+    })
+    return result
 
 def get_atmosphere_node_ids() -> List[str]:
     try:
@@ -1416,12 +1576,6 @@ async def streamdeck_roll_d20():
     is_crit = (roll == 20)
     is_fumble = (roll == 1)
 
-    # Lighting trigger if Amaran connected
-    if is_crit:
-        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "golden_fanfare"}, node_ids=get_atmosphere_node_ids()))
-    elif is_fumble:
-        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "crimson_dread"}, node_ids=get_atmosphere_node_ids()))
-
     roll_entry = {
         "id": f"roll-{uuid.uuid4().hex[:8]}",
         "timestamp": time.time(),
@@ -1441,6 +1595,18 @@ async def streamdeck_roll_d20():
     if len(RECENT_TABLE_ROLLS) > 50:
         del RECENT_TABLE_ROLLS[0]
 
+    await streamdeck_manager.broadcast({
+        "event": "dice_roll",
+        "sides": 20,
+        "roll": roll,
+        "chosen": roll,
+        "total": roll,
+        "isCrit": is_crit,
+        "isFumble": is_fumble,
+        "characterName": "Dungeon Master",
+        "entry": roll_entry
+    })
+
     return {
         "status": "success",
         "roll": roll,
@@ -1454,6 +1620,8 @@ async def streamdeck_roll_sides(sides: int):
     if sides not in (4, 6, 8, 10, 12, 20, 100):
         sides = 20
     roll = random.randint(1, sides)
+    is_crit = (sides == 20 and roll == 20)
+    is_fumble = (sides == 20 and roll == 1)
     roll_entry = {
         "id": f"roll-{uuid.uuid4().hex[:8]}",
         "timestamp": time.time(),
@@ -1466,21 +1634,49 @@ async def streamdeck_roll_sides(sides: int):
         "dice": [roll],
         "modifier": 0,
         "total": roll,
-        "isCrit": False,
-        "isFumble": False
+        "isCrit": is_crit,
+        "isFumble": is_fumble
     }
     RECENT_TABLE_ROLLS.append(roll_entry)
     if len(RECENT_TABLE_ROLLS) > 50:
         del RECENT_TABLE_ROLLS[0]
-    return {"status": "success", "sides": sides, "roll": roll}
+
+    await streamdeck_manager.broadcast({
+        "event": "dice_roll",
+        "sides": sides,
+        "roll": roll,
+        "chosen": roll,
+        "total": roll,
+        "isCrit": is_crit,
+        "isFumble": is_fumble,
+        "characterName": "Dungeon Master",
+        "entry": roll_entry
+    })
+    return {"status": "success", "sides": sides, "roll": roll, "isCrit": is_crit, "isFumble": is_fumble}
 
 @app.api_route("/api/streamdeck/party/short-rest", methods=["GET", "POST"])
 async def streamdeck_short_rest():
-    return await trigger_party_rest({"type": "short"})
+    res = await trigger_party_rest({"type": "short"})
+    party = read_json("party.json", [])
+    await streamdeck_manager.broadcast({
+        "event": "party_rest",
+        "type": "short",
+        "party": party,
+        "result": res
+    })
+    return res
 
 @app.api_route("/api/streamdeck/party/long-rest", methods=["GET", "POST"])
 async def streamdeck_long_rest():
-    return await trigger_party_rest({"type": "long"})
+    res = await trigger_party_rest({"type": "long"})
+    party = read_json("party.json", [])
+    await streamdeck_manager.broadcast({
+        "event": "party_rest",
+        "type": "long",
+        "party": party,
+        "result": res
+    })
+    return res
 
 @app.api_route("/api/streamdeck/lighting/preset/{preset_name}", methods=["GET", "POST"])
 async def streamdeck_lighting_preset(preset_name: str):
@@ -1500,18 +1696,25 @@ async def streamdeck_lighting_preset(preset_name: str):
     current.update(cfg)
     write_json("lighting.json", current)
 
-    # Dispatch to Amaran desktop bridge
-    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "set_scene", {"preset": preset_name}, node_ids=get_atmosphere_node_ids()))
+    # Broadcast to connected browser clients so window.LightingEngine applies the preset live
+    await streamdeck_manager.broadcast({
+        "event": "lighting_preset",
+        "preset": preset_name.lower(),
+        "config": cfg
+    })
     return {"status": "success", "preset": preset_name, "config": cfg}
 
 @app.api_route("/api/streamdeck/lighting/event/{event_name}", methods=["GET", "POST"])
 async def streamdeck_lighting_event(event_name: str):
-    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": event_name}, node_ids=get_atmosphere_node_ids()))
+    await streamdeck_manager.broadcast({
+        "event": "lighting_event",
+        "effect": event_name.lower()
+    })
     return {"status": "success", "event": event_name}
 
 @app.api_route("/api/streamdeck/audio/sfx/{sound_name}", methods=["GET", "POST"])
 async def streamdeck_audio_sfx(sound_name: str):
-    RECENT_TABLE_ROLLS.append({
+    sfx_entry = {
         "id": f"sfx-{uuid.uuid4().hex[:8]}",
         "timestamp": time.time(),
         "timeStr": datetime.now().strftime("%H:%M:%S"),
@@ -1526,6 +1729,15 @@ async def streamdeck_audio_sfx(sound_name: str):
         "sfx": sound_name,
         "isCrit": False,
         "isFumble": False
+    }
+    RECENT_TABLE_ROLLS.append(sfx_entry)
+    if len(RECENT_TABLE_ROLLS) > 50:
+        del RECENT_TABLE_ROLLS[0]
+
+    await streamdeck_manager.broadcast({
+        "event": "audio_sfx",
+        "sfx": sound_name.lower(),
+        "entry": sfx_entry
     })
     return {"status": "success", "sfx": sound_name}
 
@@ -1539,6 +1751,11 @@ async def streamdeck_map_reveal_all():
     if target_map_id:
         state["mapFogMasks"][target_map_id] = "REVEALED_ALL"
     write_json("battlemap.json", state)
+    await streamdeck_manager.broadcast({
+        "event": "battlemap_action",
+        "action": "reveal_all",
+        "state": state
+    })
     return {"status": "success", "action": "reveal_all_fog"}
 
 @app.api_route("/api/streamdeck/map/reset-fog", methods=["GET", "POST"])
@@ -1551,6 +1768,11 @@ async def streamdeck_map_reset_fog():
     if target_map_id:
         state["mapFogMasks"][target_map_id] = None
     write_json("battlemap.json", state)
+    await streamdeck_manager.broadcast({
+        "event": "battlemap_action",
+        "action": "reset_fog",
+        "state": state
+    })
     return {"status": "success", "action": "reset_fog"}
 
 @app.api_route("/api/streamdeck/map/ping", methods=["GET", "POST"])
@@ -1570,13 +1792,42 @@ async def streamdeck_map_ping():
     state["pings"] = pings
     state["updatedAt"] = now
     write_json("battlemap.json", state)
+    await streamdeck_manager.broadcast({
+        "event": "battlemap_action",
+        "action": "ping",
+        "ping": new_ping
+    })
     return {"status": "success", "action": "ping", "ping": new_ping}
+
+@app.get("/api/streamdeck/download-plugin")
+async def streamdeck_download_plugin():
+    plugin_path = ensure_streamdeck_plugin_bundle()
+    if plugin_path and plugin_path.exists():
+        return FileResponse(
+            path=str(plugin_path),
+            filename="com.arcaneledger.streamdeck.streamDeckPlugin",
+            media_type="application/octet-stream"
+        )
+    raise HTTPException(status_code=404, detail="Stream Deck Plugin bundle not found")
+
+@app.get("/api/streamdeck/download-profile")
+async def streamdeck_download_profile():
+    profile_path = ensure_streamdeck_profile_bundle()
+    if profile_path and profile_path.exists():
+        return FileResponse(
+            path=str(profile_path),
+            filename="ArcaneLedger_15Key.streamDeckProfile",
+            media_type="application/octet-stream"
+        )
+    raise HTTPException(status_code=404, detail="Stream Deck Profile not found")
 
 @app.get("/api/streamdeck/status")
 async def streamdeck_status():
     lan_ip = get_local_lan_ip()
     base_lan = f"http://{lan_ip}:8000/api/streamdeck"
     base_local = "http://127.0.0.1:8000/api/streamdeck"
+    ws_local = "ws://127.0.0.1:8000/ws/streamdeck"
+    ws_lan = f"ws://{lan_ip}:8000/ws/streamdeck"
     endpoints = [
         {"name": "Next Turn", "method": "GET / POST", "url": f"{base_local}/combat/next-turn", "desc": "Advance initiative turn and round"},
         {"name": "Previous Turn", "method": "GET / POST", "url": f"{base_local}/combat/prev-turn", "desc": "Step back initiative turn"},
@@ -1600,6 +1851,11 @@ async def streamdeck_status():
         "lanIp": lan_ip,
         "baseLocal": base_local,
         "baseLan": base_lan,
+        "wsLocal": ws_local,
+        "wsLan": ws_lan,
+        "pluginDownload": f"{base_local}/download-plugin",
+        "profileDownload": f"{base_local}/download-profile",
+        "connectedClients": len(streamdeck_manager.active_connections),
         "endpoints": endpoints
     }
 

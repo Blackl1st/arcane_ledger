@@ -360,6 +360,232 @@ class AudioLayerEngine {
             console.warn("Boss threat sound error:", e);
         }
     }
+
+    playFireball() {
+        try {
+            const ctx = this._getAudioCtx();
+            const now = ctx.currentTime;
+            
+            // 1. Low frequency sub-bass boom
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(28, now + 1.1);
+            gain.gain.setValueAtTime(0.42 * this.masterVolume, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.15);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 1.2);
+
+            // 2. Filtered noise explosion burst
+            const bufferSize = ctx.sampleRate * 0.9;
+            const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            const whiteNoise = ctx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(850, now);
+            filter.frequency.exponentialRampToValueAtTime(75, now + 0.85);
+
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.38 * this.masterVolume, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+            whiteNoise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            whiteNoise.start(now);
+            whiteNoise.stop(now + 0.95);
+        } catch (e) {
+            console.warn("Fireball SFX error:", e);
+        }
+    }
+
+    playDragonRoar() {
+        try {
+            const ctx = this._getAudioCtx();
+            const now = ctx.currentTime;
+            [68, 72].forEach((baseFreq) => {
+                const osc = ctx.createOscillator();
+                const filter = ctx.createBiquadFilter();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(baseFreq, now);
+                osc.frequency.linearRampToValueAtTime(baseFreq * 1.6, now + 0.4);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, now + 1.4);
+
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(260, now);
+                filter.frequency.linearRampToValueAtTime(650, now + 0.5);
+                filter.frequency.exponentialRampToValueAtTime(180, now + 1.4);
+                filter.Q.value = 3.0;
+
+                gain.gain.setValueAtTime(0.01, now);
+                gain.gain.linearRampToValueAtTime(0.32 * this.masterVolume, now + 0.25);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.45);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 1.5);
+            });
+        } catch (e) {
+            console.warn("Dragon roar SFX error:", e);
+        }
+    }
+
+    playTrap() {
+        try {
+            const ctx = this._getAudioCtx();
+            const now = ctx.currentTime;
+            // High metallic trigger click
+            const clickOsc = ctx.createOscillator();
+            const clickGain = ctx.createGain();
+            clickOsc.type = 'triangle';
+            clickOsc.frequency.setValueAtTime(2200, now);
+            clickGain.gain.setValueAtTime(0.3 * this.masterVolume, now);
+            clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            clickOsc.connect(clickGain);
+            clickGain.connect(ctx.destination);
+            clickOsc.start(now);
+            clickOsc.stop(now + 0.06);
+
+            // Heavy spring snap 40ms later
+            const snapOsc = ctx.createOscillator();
+            const snapGain = ctx.createGain();
+            snapOsc.type = 'sawtooth';
+            snapOsc.frequency.setValueAtTime(450, now + 0.04);
+            snapOsc.frequency.exponentialRampToValueAtTime(60, now + 0.25);
+            snapGain.gain.setValueAtTime(0.35 * this.masterVolume, now + 0.04);
+            snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            snapOsc.connect(snapGain);
+            snapGain.connect(ctx.destination);
+            snapOsc.start(now + 0.04);
+            snapOsc.stop(now + 0.3);
+        } catch (e) {
+            console.warn("Trap SFX error:", e);
+        }
+    }
+
+    playRestChime() {
+        try {
+            const ctx = this._getAudioCtx();
+            const now = ctx.currentTime;
+            // Serene ethereal celestial harp arpeggio (C4, E4, G4, B4, C5, E5)
+            const notes = [261.63, 329.63, 392.00, 493.88, 523.25, 659.25];
+            notes.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                gain.gain.setValueAtTime(0, now + idx * 0.12);
+                gain.gain.linearRampToValueAtTime(0.22 * this.masterVolume, now + idx * 0.12 + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.0005, now + idx * 0.12 + 1.8);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + idx * 0.12);
+                osc.stop(now + idx * 0.12 + 1.85);
+            });
+        } catch (e) {
+            console.warn("Rest chime error:", e);
+        }
+    }
+
+    playTurnChime() {
+        try {
+            const ctx = this._getAudioCtx();
+            const now = ctx.currentTime;
+            // Subtle crisp tabletop turn prompt: G5 (784Hz) -> C6 (1046Hz)
+            [783.99, 1046.50].forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                gain.gain.setValueAtTime(0, now + idx * 0.08);
+                gain.gain.linearRampToValueAtTime(0.18 * this.masterVolume, now + idx * 0.08 + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.45);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.5);
+            });
+        } catch (e) {
+            console.warn("Turn chime error:", e);
+        }
+    }
+
+    playVictoryFanfare() {
+        try {
+            const ctx = this._getAudioCtx();
+            const now = ctx.currentTime;
+            // Triumphant orchestral brass chords
+            const chords = [
+                { time: 0.0, freqs: [261.63, 329.63, 392.00] },
+                { time: 0.22, freqs: [349.23, 440.00, 523.25] },
+                { time: 0.45, freqs: [392.00, 493.88, 587.33] },
+                { time: 0.72, freqs: [523.25, 659.25, 783.99] }
+            ];
+            chords.forEach((chord) => {
+                chord.freqs.forEach((freq) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + chord.time);
+                    gain.gain.setValueAtTime(0, now + chord.time);
+                    gain.gain.linearRampToValueAtTime(0.15 * this.masterVolume, now + chord.time + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + chord.time + 0.65);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + chord.time);
+                    osc.stop(now + chord.time + 0.7);
+                });
+            });
+        } catch (e) {
+            console.warn("Victory fanfare error:", e);
+        }
+    }
+
+    playSfxByName(name) {
+        if (!name) return;
+        const key = name.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        if (key.includes('fireball') || key.includes('blast') || key.includes('explosion')) {
+            this.playFireball();
+        } else if (key.includes('sword') || key.includes('clash') || key.includes('strike') || key.includes('hit')) {
+            this.playStrike();
+        } else if (key.includes('dragon') || key.includes('roar') || key.includes('beast')) {
+            this.playDragonRoar();
+        } else if (key.includes('victory') || key.includes('fanfare') || key.includes('win')) {
+            this.playVictoryFanfare();
+        } else if (key.includes('defeat') || key.includes('bell') || key.includes('toll') || key.includes('death')) {
+            this.playBell();
+        } else if (key.includes('trap')) {
+            this.playTrap();
+        } else if (key.includes('secret') || key.includes('reveal')) {
+            this.playSecret();
+        } else if (key.includes('boss')) {
+            this.playBossThreat();
+        } else if (key.includes('nat20') || key.includes('crit')) {
+            this.playNat20();
+        } else if (key.includes('nat1') || key.includes('fumble')) {
+            this.playNat1();
+        } else if (key.includes('heartbeat')) {
+            this.playHeartbeat();
+        } else if (key.includes('rest')) {
+            this.playRestChime();
+        } else if (key.includes('turn')) {
+            this.playTurnChime();
+        } else {
+            this.playStrike();
+        }
+    }
 }
 
 // Global engine instance

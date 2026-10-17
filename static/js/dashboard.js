@@ -14888,19 +14888,261 @@ function copyStreamDeckMacroUrl(url) {
     showToast("Macro URL copied to clipboard!", "success");
 }
 
+// -----------------------------------------------------------------------------
+// REAL-TIME STREAM DECK WEBSOCKET BUS & HARDWARE EVENT DISPATCHER
+// -----------------------------------------------------------------------------
+let streamDeckWs = null;
+let streamDeckWsReconnectTimer = null;
+
+function initStreamDeckWebSocket() {
+    if (streamDeckWs) {
+        try { streamDeckWs.close(); } catch (e) {}
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/streamdeck`;
+
+    try {
+        streamDeckWs = new WebSocket(wsUrl);
+
+        streamDeckWs.onopen = function() {
+            console.log("⚡ Stream Deck Hardware Real-time Bus Connected");
+            clearTimeout(streamDeckWsReconnectTimer);
+        };
+
+        streamDeckWs.onmessage = function(evt) {
+            try {
+                const msg = JSON.parse(evt.data);
+                handleStreamDeckLiveEvent(msg);
+            } catch (e) {
+                console.warn("Stream Deck message parse error:", e);
+            }
+        };
+
+        streamDeckWs.onclose = function() {
+            clearTimeout(streamDeckWsReconnectTimer);
+            streamDeckWsReconnectTimer = setTimeout(initStreamDeckWebSocket, 3500);
+        };
+
+        streamDeckWs.onerror = function() {
+            try { streamDeckWs.close(); } catch (e) {}
+        };
+    } catch (e) {
+        streamDeckWsReconnectTimer = setTimeout(initStreamDeckWebSocket, 4000);
+    }
+}
+
+function handleStreamDeckLiveEvent(event) {
+    if (!event || !event.event) return;
+
+    if (event.event === "dice_roll") {
+        playDiceSound();
+        const sides = event.sides || 20;
+        const chosen = event.chosen || event.roll || 20;
+        const total = event.total || chosen;
+        const isCrit = event.isCrit || (sides === 20 && chosen === 20);
+        const isFumble = event.isFumble || (sides === 20 && chosen === 1);
+
+        showDiceRollOverlay({
+            sides: sides,
+            chosen: chosen,
+            total: total,
+            roll1: chosen,
+            roll2: chosen,
+            adv: 'normal',
+            mod: 0,
+            modStr: ''
+        });
+
+        if (isCrit) {
+            if (window.AudioEngine && window.AudioEngine.playNat20) window.AudioEngine.playNat20();
+            if (window.LightingEngine) window.LightingEngine.triggerNat20Flash();
+        } else if (isFumble) {
+            if (window.AudioEngine && window.AudioEngine.playNat1) window.AudioEngine.playNat1();
+            if (window.LightingEngine) window.LightingEngine.triggerNat1Flash();
+        }
+
+        const formulaStr = `d${sides}`;
+        const resultText = `${chosen} = **${total}**`;
+        const banner = document.getElementById('dice-result-banner');
+        if (banner) {
+            const specialClass = isCrit ? "text-emerald-400 font-extrabold animate-bounce" : (isFumble ? "text-rose-500 font-extrabold" : "text-amber-300");
+            banner.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-400 font-mono text-xs">${formulaStr}:</span>
+                    <span class="text-sm font-bold font-mono ${specialClass}">${resultText}</span>
+                </div>
+            `;
+        }
+
+        if (event.entry) {
+            appState.diceHistory.unshift({
+                sides: sides,
+                total: total,
+                text: `${formulaStr} ➔ ${resultText}`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            });
+            if (appState.diceHistory.length > 20) appState.diceHistory.pop();
+            renderDiceHistory();
+        }
+
+        showToast(`🎲 Stream Deck Roll: d${sides} → ${total}${isCrit ? ' ★ CRITICAL HIT!' : (isFumble ? ' 💀 FUMBLE!' : '')}`, isCrit ? 'success' : (isFumble ? 'error' : 'info'));
+    }
+
+    else if (event.event === "combat_turn") {
+        if (event.combat) {
+            appState.combat = event.combat;
+        }
+        renderCombatTracker();
+        const combatants = appState.combat.combatants || [];
+        const idx = appState.combat.currentTurnIndex || 0;
+        if (combatants.length > 0 && idx < combatants.length) {
+            applyCombatTurnLighting(combatants[idx]);
+        }
+        if (window.AudioEngine && window.AudioEngine.playTurnChime) {
+            window.AudioEngine.playTurnChime();
+        }
+        const name = event.activeCombatant || (combatants[idx] ? combatants[idx].name : "Turn");
+        showToast(`⚔️ Initiative: ${name} (Round ${event.round || appState.combat.round || 1})`, "info");
+    }
+
+    else if (event.event === "combat_update") {
+        if (event.combat) {
+            appState.combat = event.combat;
+        }
+        renderCombatTracker();
+        showToast(`⚔️ Combat Tracker: ${event.action.toUpperCase()}`, "info");
+    }
+
+    else if (event.event === "audio_sfx") {
+        const sfx = event.sfx || 'fireball';
+        if (window.AudioEngine && window.AudioEngine.playSfxByName) {
+            window.AudioEngine.playSfxByName(sfx);
+        }
+        const cleanName = sfx.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        showToast(`🔊 Stream Deck SFX: ${cleanName}`, "info");
+    }
+
+    else if (event.event === "lighting_preset") {
+        const preset = (event.preset || 'fireplace').toLowerCase();
+        const map = {
+            'fireplace': 'preset-camp',
+            'camp': 'preset-camp',
+            'tavern': 'preset-tavern',
+            'dungeon': 'preset-stormy-crypt',
+            'crypt': 'preset-stormy-crypt',
+            'boss': 'preset-combat-boss',
+            'thunderstorm': 'preset-stormy-crypt',
+            'forest': 'preset-arcane-sanctum'
+        };
+        if (window.LightingEngine) {
+            if (preset === 'off') {
+                window.LightingEngine.toggleOverhead(false);
+                window.LightingEngine.toggleAtmosphere(false);
+            } else {
+                const key = map[preset] || 'preset-tavern';
+                window.LightingEngine.applyPreset(key);
+            }
+        }
+        showToast(`💡 Stream Deck Lighting: ${preset.toUpperCase()}`, "info");
+    }
+
+    else if (event.event === "lighting_event") {
+        const effect = (event.effect || 'nat20').toLowerCase();
+        if (window.LightingEngine) {
+            if (effect.includes('nat20') || effect.includes('crit')) {
+                window.LightingEngine.triggerNat20Flash();
+            } else if (effect.includes('nat1') || effect.includes('fail') || effect.includes('fumble')) {
+                window.LightingEngine.triggerNat1Flash();
+            } else if (effect.includes('strike') || effect.includes('hit')) {
+                window.LightingEngine.triggerStrikeFlash();
+            } else if (effect.includes('bloodied')) {
+                window.LightingEngine.triggerBloodiedPulse({ name: 'Target', type: 'monster' });
+            } else if (effect.includes('death')) {
+                window.LightingEngine.triggerDeathBlow('Target');
+            }
+        }
+        showToast(`✨ Stream Deck Lighting FX: ${effect.toUpperCase()}`, "info");
+    }
+
+    else if (event.event === "party_rest") {
+        fetchFullState().then(() => {
+            renderPartyHUD();
+            if (window.AudioEngine && window.AudioEngine.playRestChime) {
+                window.AudioEngine.playRestChime();
+            }
+            showToast(`🏕️ Party ${event.type === 'short' ? 'Short' : 'Long'} Rest Completed!`, "success");
+        });
+    }
+
+    else if (event.event === "battlemap_action") {
+        if (window.BattlemapController) {
+            if (event.action === "reveal_all") {
+                window.BattlemapController.revealAll();
+            } else if (event.action === "reset_fog") {
+                window.BattlemapController.resetFog();
+            }
+        }
+        showToast(`🗺️ Battlemap: ${event.action.replace('_', ' ').toUpperCase()}`, "info");
+    }
+
+    else if (event.event === "encoder_adjust") {
+        const encoder = event.encoder;
+        const delta = event.delta || 0;
+        if (encoder === "table_light" && window.LightingEngine) {
+            const cur = window.LightingEngine.state.overhead.brightness || 45;
+            const next = Math.max(0, Math.min(100, cur + delta * 5));
+            window.LightingEngine.setOverheadBrightness(next);
+            showToast(`💡 Table Light (60d S): ${next}%`, "info");
+        } else if (encoder === "atmosphere_light" && window.LightingEngine) {
+            const cur = window.LightingEngine.state.atmosphere.brightness || 70;
+            const next = Math.max(0, Math.min(100, cur + delta * 5));
+            window.LightingEngine.setAtmosphereBrightness(next);
+            showToast(`🔮 Atmosphere Light (Ace 25c): ${next}%`, "info");
+        } else if (encoder === "volume" && window.AudioEngine) {
+            const cur = Math.round((window.AudioEngine.masterVolume || 0.75) * 100);
+            const next = Math.max(0, Math.min(100, cur + delta * 5));
+            window.AudioEngine.setMasterVolume(next / 100);
+            const slider = document.getElementById('master-volume-slider');
+            if (slider) slider.value = next;
+            showToast(`🔊 Master Volume: ${next}%`, "info");
+        }
+    }
+}
+
 async function testStreamDeckEndpoint(path) {
     try {
         const fullUrl = path.startsWith('http') ? path : `${window.location.origin}${path}`;
         const res = await fetch(fullUrl, { method: 'POST' });
         if (res.ok) {
             const data = await res.json().catch(() => ({}));
-            showToast(`Stream Deck OK: ${data.message || data.status || path}`, "success");
-            if (path.includes('/combat/')) {
-                await fetchFullState();
-                renderCombatTracker();
-            } else if (path.includes('/party/')) {
-                await fetchFullState();
-                renderPartyHUD();
+            
+            // If the WebSocket is NOT connected, perform immediate client-side execution as a guaranteed fallback:
+            if (!streamDeckWs || streamDeckWs.readyState !== WebSocket.OPEN) {
+                if (path.includes('/combat/next-turn') || path.includes('/combat/prev-turn')) {
+                    if (data.combat) {
+                        handleStreamDeckLiveEvent({ event: 'combat_turn', combat: data.combat, round: data.round, activeCombatant: data.activeCombatant });
+                    } else {
+                        await fetchFullState();
+                        renderCombatTracker();
+                    }
+                } else if (path.includes('/roll/d20')) {
+                    handleStreamDeckLiveEvent({ event: 'dice_roll', sides: 20, chosen: data.roll || 20, total: data.roll || 20, isCrit: data.isCrit, isFumble: data.isFumble, entry: data.entry });
+                } else if (path.includes('/roll/')) {
+                    handleStreamDeckLiveEvent({ event: 'dice_roll', sides: data.sides || 20, chosen: data.roll || 10, total: data.roll || 10 });
+                } else if (path.includes('/audio/sfx/')) {
+                    const sfxName = path.split('/audio/sfx/')[1];
+                    handleStreamDeckLiveEvent({ event: 'audio_sfx', sfx: sfxName });
+                } else if (path.includes('/lighting/event/')) {
+                    const evtName = path.split('/lighting/event/')[1];
+                    handleStreamDeckLiveEvent({ event: 'lighting_event', effect: evtName });
+                } else if (path.includes('/lighting/preset/')) {
+                    const presetName = path.split('/lighting/preset/')[1];
+                    handleStreamDeckLiveEvent({ event: 'lighting_preset', preset: presetName });
+                } else if (path.includes('/party/')) {
+                    handleStreamDeckLiveEvent({ event: 'party_rest', type: path.includes('short') ? 'short' : 'long' });
+                }
+            } else {
+                showToast(`Stream Deck OK: ${data.message || data.status || data.action || path}`, "success");
             }
         } else {
             showToast(`Stream Deck Error: HTTP ${res.status}`, "error");
@@ -16236,6 +16478,7 @@ window.saveSessionRecapToTimeline = saveSessionRecapToTimeline;
 window.exportTimelineMarkdown = exportTimelineMarkdown;
 window.openStreamDeckModal = openStreamDeckModal;
 window.initStreamDeckUI = initStreamDeckUI;
+window.initStreamDeckWebSocket = initStreamDeckWebSocket;
 window.filterStreamDeckCategory = filterStreamDeckCategory;
 window.filterStreamDeckList = filterStreamDeckList;
 window.renderStreamDeckEndpoints = renderStreamDeckEndpoints;
@@ -16275,6 +16518,7 @@ window.onload = async function() {
     renderModuleToggles();
     loadSecuritySettingsUI();
     initStreamDeckUI();
+    initStreamDeckWebSocket();
     if (window.LightingEngine) window.LightingEngine.init();
     initUpdater();
 };

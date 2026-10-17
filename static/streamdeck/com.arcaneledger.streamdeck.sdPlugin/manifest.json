@@ -1,0 +1,247 @@
+{
+  "Actions": [
+    {
+      "UUID": "com.arcaneledger.combat.next-turn",
+      "Name": "Next Combat Turn",
+      "Tooltip": "Advance combat initiative to next combatant (shows current round & active hero on key)",
+      "Icon": "icons/action_next_turn",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_next_turn",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "TitleColor": "#f8fafc"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.combat.prev-turn",
+      "Name": "Previous Combat Turn",
+      "Tooltip": "Step combat initiative backward",
+      "Icon": "icons/action_prev_turn",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_prev_turn",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "TitleColor": "#cbd5e1"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.combat.toggle",
+      "Name": "Toggle Encounter",
+      "Tooltip": "Start, pause, or resume encounter tracker",
+      "Icon": "icons/action_combat",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_combat",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "TitleColor": "#fda4af"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.dice.roll-d20",
+      "Name": "Roll d20",
+      "Tooltip": "Roll d20 with 3D animation, smart Amaran lighting, and audio (shows roll on key)",
+      "Icon": "icons/action_d20",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_d20",
+          "TitleAlignment": "bottom",
+          "FontSize": 11,
+          "TitleColor": "#fbbf24"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.dice.roll",
+      "Name": "Polyhedral Dice (d4-d100)",
+      "Tooltip": "Roll standard RPG dice (d4, d6, d8, d10, d12, d100)",
+      "Icon": "icons/action_dice",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_dice",
+          "TitleAlignment": "bottom",
+          "FontSize": 10,
+          "TitleColor": "#e9d5ff"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.audio.sfx",
+      "Name": "Soundboard SFX",
+      "Tooltip": "Trigger Fireball, Sword Clash, Dragon Roar, Victory, or Trap sound",
+      "Icon": "icons/action_sfx",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_sfx",
+          "TitleAlignment": "bottom",
+          "FontSize": 9,
+          "TitleColor": "#fecaca"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.lighting.preset",
+      "Name": "Scene Atmosphere Light",
+      "Tooltip": "Switch Amaran lights to Fireplace, Tavern, Dungeon, Crypt, or Boss",
+      "Icon": "icons/action_light",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_light",
+          "TitleAlignment": "bottom",
+          "FontSize": 9,
+          "TitleColor": "#fef08a"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.lighting.event",
+      "Name": "Lighting FX Fanfare",
+      "Tooltip": "Instant Nat 20 golden fanfare or Nat 1 crimson dread pulse",
+      "Icon": "icons/action_flash",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_flash",
+          "TitleAlignment": "bottom",
+          "FontSize": 9,
+          "TitleColor": "#f5d0fe"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.party.rest",
+      "Name": "Party Rest",
+      "Tooltip": "Execute Short Rest or Long Rest with party heal & chime",
+      "Icon": "icons/action_rest",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_rest",
+          "TitleAlignment": "bottom",
+          "FontSize": 9,
+          "TitleColor": "#a7f3d0"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.map.action",
+      "Name": "Battlemap Controls",
+      "Tooltip": "Reveal all fog, conceal fog, or ping tabletop location",
+      "Icon": "icons/action_map",
+      "PropertyInspectorPath": "property_inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "icons/action_map",
+          "TitleAlignment": "bottom",
+          "FontSize": 9,
+          "TitleColor": "#bae6fd"
+        }
+      ]
+    },
+    {
+      "UUID": "com.arcaneledger.dial.table-light",
+      "Name": "Table Light Dial (60d S)",
+      "Tooltip": "Stream Deck + Dial: Rotate to adjust Reading Light; press to toggle on/off",
+      "Icon": "icons/action_dial_light",
+      "Controllers": [
+        "Encoder"
+      ],
+      "Encoder": {
+        "layout": "$B1",
+        "StackColor": "#f59e0b",
+        "Icon": "icons/action_dial_light",
+        "background": "icons/dial_bg.png"
+      }
+    },
+    {
+      "UUID": "com.arcaneledger.dial.atmosphere",
+      "Name": "Atmosphere Dial (Ace 25c)",
+      "Tooltip": "Stream Deck + Dial: Rotate to adjust mood brightness; press to cycle scene presets",
+      "Icon": "icons/action_dial_atmosphere",
+      "Controllers": [
+        "Encoder"
+      ],
+      "Encoder": {
+        "layout": "$B1",
+        "StackColor": "#a855f7",
+        "Icon": "icons/action_dial_atmosphere",
+        "background": "icons/dial_bg.png"
+      }
+    },
+    {
+      "UUID": "com.arcaneledger.dial.volume",
+      "Name": "Master Volume Dial",
+      "Tooltip": "Stream Deck + Dial: Rotate to adjust tabletop sound level; press to mute",
+      "Icon": "icons/action_dial_volume",
+      "Controllers": [
+        "Encoder"
+      ],
+      "Encoder": {
+        "layout": "$B1",
+        "StackColor": "#06b6d4",
+        "Icon": "icons/action_dial_volume",
+        "background": "icons/dial_bg.png"
+      }
+    }
+  ],
+  "Author": "Arcane Ledger",
+  "Category": "Arcane Ledger",
+  "CategoryIcon": "icons/category_icon",
+  "CodePath": "index.html",
+  "Description": "Tabletop controller for D&D 5.5e: Initiative Combat, 3D Dice, Amaran Studio Lighting, Sound Effects, and Battlemaps.",
+  "Icon": "icons/plugin_icon",
+  "Name": "Arcane Ledger",
+  "Version": "1.1.0",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.0"
+  },
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    },
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    }
+  ]
+}

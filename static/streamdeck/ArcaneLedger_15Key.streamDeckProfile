@@ -1,0 +1,114 @@
+{
+  "Name": "Arcane Ledger DM Console",
+  "DeviceModel": "Stream Deck (15 Keys)",
+  "Actions": [
+    {
+      "Key": 0,
+      "Action": "com.arcaneledger.combat.prev-turn",
+      "Title": "Prev Turn"
+    },
+    {
+      "Key": 1,
+      "Action": "com.arcaneledger.combat.next-turn",
+      "Title": "Next Turn"
+    },
+    {
+      "Key": 2,
+      "Action": "com.arcaneledger.combat.toggle",
+      "Title": "Combat"
+    },
+    {
+      "Key": 3,
+      "Action": "com.arcaneledger.dice.roll-d20",
+      "Title": "Roll d20"
+    },
+    {
+      "Key": 4,
+      "Action": "com.arcaneledger.lighting.event",
+      "Settings": {
+        "effect": "nat20"
+      },
+      "Title": "Nat 20"
+    },
+    {
+      "Key": 5,
+      "Action": "com.arcaneledger.lighting.preset",
+      "Settings": {
+        "preset": "tavern"
+      },
+      "Title": "Tavern"
+    },
+    {
+      "Key": 6,
+      "Action": "com.arcaneledger.lighting.preset",
+      "Settings": {
+        "preset": "fireplace"
+      },
+      "Title": "Campfire"
+    },
+    {
+      "Key": 7,
+      "Action": "com.arcaneledger.lighting.preset",
+      "Settings": {
+        "preset": "dungeon"
+      },
+      "Title": "Dungeon"
+    },
+    {
+      "Key": 8,
+      "Action": "com.arcaneledger.lighting.preset",
+      "Settings": {
+        "preset": "boss"
+      },
+      "Title": "Boss Fight"
+    },
+    {
+      "Key": 9,
+      "Action": "com.arcaneledger.lighting.preset",
+      "Settings": {
+        "preset": "thunderstorm"
+      },
+      "Title": "Storm"
+    },
+    {
+      "Key": 10,
+      "Action": "com.arcaneledger.audio.sfx",
+      "Settings": {
+        "sound": "fireball"
+      },
+      "Title": "Fireball"
+    },
+    {
+      "Key": 11,
+      "Action": "com.arcaneledger.audio.sfx",
+      "Settings": {
+        "sound": "sword_clash"
+      },
+      "Title": "Sword"
+    },
+    {
+      "Key": 12,
+      "Action": "com.arcaneledger.audio.sfx",
+      "Settings": {
+        "sound": "dragon_roar"
+      },
+      "Title": "Dragon"
+    },
+    {
+      "Key": 13,
+      "Action": "com.arcaneledger.party.rest",
+      "Settings": {
+        "restType": "short"
+      },
+      "Title": "Short Rest"
+    },
+    {
+      "Key": 14,
+      "Action": "com.arcaneledger.party.rest",
+      "Settings": {
+        "restType": "long"
+      },
+      "Title": "Long Rest"
+    }
+  ]
+}
