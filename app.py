@@ -1258,19 +1258,27 @@ async def update_companion_slots(payload: Dict[str, Any]):
 
 @app.post("/api/companion/roll")
 async def record_companion_roll(payload: Dict[str, Any]):
+    roll_id = payload.get("id") or f"roll-{uuid.uuid4().hex[:8]}"
+    raw_val = payload.get("rawRoll", payload.get("chosen", payload.get("total", 0)))
+    total_val = payload.get("total", raw_val)
+    dice_list = payload.get("dice", [raw_val] if isinstance(raw_val, (int, float)) else (raw_val if isinstance(raw_val, list) else []))
+    label_val = payload.get("label", payload.get("rollType", "d20 Check"))
     roll_entry = {
-        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "id": roll_id,
+        "source": payload.get("source", "companion"),
         "timestamp": time.time(),
         "timeStr": datetime.now().strftime("%H:%M:%S"),
         "characterId": payload.get("characterId", ""),
         "characterName": payload.get("characterName", "Adventurer"),
         "player": payload.get("player", ""),
         "avatarUrl": payload.get("avatarUrl", ""),
-        "rollType": payload.get("rollType", "d20 Check"),
+        "rollType": label_val,
+        "label": label_val,
         "formula": payload.get("formula", "1d20"),
-        "dice": payload.get("dice", []),
+        "dice": dice_list,
+        "rawRoll": raw_val,
         "modifier": payload.get("modifier", 0),
-        "total": payload.get("total", 0),
+        "total": total_val,
         "isCrit": payload.get("isCrit", False),
         "isFumble": payload.get("isFumble", False),
         "isDM": False
@@ -1283,8 +1291,14 @@ async def record_companion_roll(payload: Dict[str, Any]):
     try:
         await streamdeck_manager.broadcast({
             "event": "player_roll",
+            **roll_entry,
+            "id": roll_id,
             "roll": roll_entry,
-            "isPlayer": True
+            "entry": roll_entry,
+            "total": total_val,
+            "rawRoll": raw_val,
+            "isPlayer": True,
+            "isDM": False
         })
     except Exception:
         pass
@@ -1298,19 +1312,35 @@ async def get_companion_rolls():
 @app.post("/api/rolls/record")
 async def record_generic_roll(payload: Dict[str, Any]):
     is_dm = bool(payload.get("isDM", True))
+    raw_val = payload.get("rawRoll", payload.get("chosen", payload.get("total", 20)))
+    total_val = payload.get("total", raw_val)
+    dice_type = payload.get("diceType", "d20")
+    sides_val = 20
+    if isinstance(dice_type, str) and dice_type.lower().startswith("d"):
+        try:
+            sides_val = int(dice_type[1:])
+        except ValueError:
+            sides_val = 20
+
+    roll_id = payload.get("id") or f"roll-{uuid.uuid4().hex[:8]}"
+    source_val = payload.get("source", "dashboard" if is_dm else "companion")
+    label_val = payload.get("label", payload.get("rollType", "Roll"))
     roll_entry = {
-        "id": f"roll-{uuid.uuid4().hex[:8]}",
+        "id": roll_id,
+        "source": source_val,
         "timestamp": time.time(),
         "timeStr": datetime.now().strftime("%H:%M:%S"),
         "characterId": payload.get("characterId", "dm" if is_dm else ""),
         "characterName": payload.get("characterName", "Dungeon Master" if is_dm else "Player"),
         "player": payload.get("player", "DM" if is_dm else ""),
         "avatarUrl": payload.get("avatarUrl", ""),
-        "rollType": payload.get("rollType", "Roll"),
+        "rollType": label_val,
+        "label": label_val,
         "formula": payload.get("formula", ""),
-        "dice": payload.get("dice", []),
+        "dice": payload.get("dice", [raw_val] if isinstance(raw_val, (int, float)) else (raw_val if isinstance(raw_val, list) else [])),
+        "rawRoll": raw_val,
         "modifier": payload.get("modifier", 0),
-        "total": payload.get("total", 0),
+        "total": total_val,
         "isCrit": payload.get("isCrit", False),
         "isFumble": payload.get("isFumble", False),
         "isDM": is_dm
@@ -1322,9 +1352,16 @@ async def record_generic_roll(payload: Dict[str, Any]):
     try:
         await streamdeck_manager.broadcast({
             "event": "dice_roll" if is_dm else "player_roll",
+            **roll_entry,
+            "id": roll_id,
+            "source": source_val,
             "entry": roll_entry,
-            "roll": roll_entry,
-            "isPlayer": not is_dm
+            "roll": total_val,
+            "chosen": raw_val,
+            "total": total_val,
+            "sides": sides_val,
+            "isPlayer": not is_dm,
+            "isDM": is_dm
         })
     except Exception:
         pass

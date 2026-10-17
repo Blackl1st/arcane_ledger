@@ -512,13 +512,21 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         equipped = bool(inv.get("equipped", False))
         attuned = bool(inv.get("isAttuned", False))
 
+        damage_info = def_item.get("damage") or {}
+        damage_dice = damage_info.get("diceString")
+        if not damage_dice and damage_info.get("diceCount") and damage_info.get("diceValue"):
+            damage_dice = f"{damage_info['diceCount']}d{damage_info['diceValue']}"
+
         notes = def_item.get("snippet") or def_item.get("description") or ""
-        # Clean HTML tags from item description snippet
         clean_notes = re.sub(r"<[^>]+>", "", notes).strip()
+        if damage_dice and damage_dice not in clean_notes:
+            dmg_type = (def_item.get("damageType") or "").strip()
+            prefix = f"{damage_dice} {dmg_type}".strip()
+            clean_notes = f"{prefix} • {clean_notes}" if clean_notes else prefix
         if len(clean_notes) > 160:
             clean_notes = clean_notes[:157] + "..."
 
-        inventory_items.append({
+        item_dict = {
             "id": f"inv-{inv.get('id', len(inventory_items) + 1)}",
             "name": item_name,
             "category": cat,
@@ -528,7 +536,10 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
             "equipped": equipped,
             "attuned": attuned,
             "notes": clean_notes
-        })
+        }
+        if damage_dice:
+            item_dict["damageDice"] = damage_dice
+        inventory_items.append(item_dict)
 
     # 15. Notes & Backstory
     notes_list = []

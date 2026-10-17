@@ -1466,8 +1466,17 @@
             }
         }
 
-        function showCinematicRoll(roll) {
+        function showCinematicRoll(rollPayload) {
+            if (!rollPayload) return;
+            const roll = (rollPayload.roll && typeof rollPayload.roll === 'object' && rollPayload.roll.total !== undefined)
+                ? rollPayload.roll
+                : (rollPayload.entry || rollPayload);
             if (!roll || roll.isDM) return;
+
+            // Immediately mark this roll ID as seen to prevent polling fallback duplicate execution
+            if (roll.id) {
+                lastSeenPlayerRollId = roll.id;
+            }
 
             const overlay = document.getElementById('cinematic-roll-overlay');
             const card = document.getElementById('cinematic-roll-card');
@@ -1491,7 +1500,12 @@
 
             charName.textContent = roll.characterName || 'Hero';
             labelEl.textContent = roll.label || (roll.rollType ? `${roll.rollType} Roll` : 'Dice Roll');
-            totalEl.textContent = roll.total !== undefined ? roll.total : roll.rawRoll;
+
+            let totalVal = roll.total !== undefined ? roll.total : (roll.rawRoll !== undefined ? roll.rawRoll : (roll.chosen !== undefined ? roll.chosen : ''));
+            if (typeof totalVal === 'object' && totalVal !== null) {
+                totalVal = totalVal.total ?? totalVal.rawRoll ?? totalVal.chosen ?? 20;
+            }
+            totalEl.textContent = totalVal;
 
             if (roll.avatarUrl) {
                 avatarImg.src = roll.avatarUrl;
@@ -1513,10 +1527,13 @@
             } else if (roll.details) {
                 breakdownEl.textContent = roll.details;
             } else {
-                breakdownEl.textContent = `Total: ${roll.total}`;
+                breakdownEl.textContent = `Total: ${totalVal}`;
             }
 
-            if (roll.isCrit) {
+            const isCrit = Boolean(roll.isCrit || (roll.rawRoll === 20 || roll.chosen === 20 || (Array.isArray(roll.dice) && roll.dice[0] === 20)));
+            const isFumble = Boolean(roll.isFumble || (roll.rawRoll === 1 || roll.chosen === 1 || (Array.isArray(roll.dice) && roll.dice[0] === 1)));
+
+            if (isCrit) {
                 card.className = "relative z-10 pointer-events-auto parchment-border rounded-3xl p-6 sm:p-8 border-2 border-emerald-400 shadow-[0_0_80px_rgba(16,185,129,0.5),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
                 glowEl.className = "absolute inset-0 bg-emerald-500/30 blur-3xl rounded-full pointer-events-none";
                 totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-emerald-400 tracking-tight drop-shadow-[0_5px_20px_rgba(16,185,129,0.7)] animate-bounce";
@@ -1524,7 +1541,7 @@
                 badgeEl.innerHTML = `<span>⚡</span><span>NATURAL 20 / CRITICAL HIT!</span>`;
                 badgeEl.classList.remove('hidden');
                 timerBar.className = "h-full bg-emerald-400 w-full";
-            } else if (roll.isFumble) {
+            } else if (isFumble) {
                 card.className = "relative z-10 pointer-events-auto parchment-border rounded-3xl p-6 sm:p-8 border-2 border-rose-500 shadow-[0_0_80px_rgba(244,63,94,0.5),0_25px_60px_rgba(0,0,0,0.95)] max-w-lg w-full bg-ledger-950/98 backdrop-blur-2xl flex flex-col items-center text-center space-y-4 transform transition-all duration-300";
                 glowEl.className = "absolute inset-0 bg-rose-500/30 blur-3xl rounded-full pointer-events-none";
                 totalEl.className = "relative font-display font-black text-6xl sm:text-7xl text-rose-500 tracking-tight drop-shadow-[0_5px_20px_rgba(244,63,94,0.7)]";
@@ -1540,7 +1557,7 @@
                 timerBar.className = "h-full bg-amber-400 w-full";
             }
 
-            playDiceFanfare(roll.isCrit, roll.isFumble);
+            playDiceFanfare(isCrit, isFumble);
 
             overlay.classList.remove('hidden', 'opacity-0', 'scale-95', 'pointer-events-none');
             overlay.classList.add('opacity-100', 'scale-100');
@@ -1678,13 +1695,15 @@
                     try {
                         const msg = JSON.parse(evt.data);
                         if (msg.event === "player_roll") {
-                            if (!msg.isDM) {
-                                const exists = playerRollsHistory.some(r => r.id === msg.id);
+                            const roll = (msg.roll && typeof msg.roll === 'object' && msg.roll.total !== undefined) ? msg.roll : (msg.entry || msg);
+                            if (!roll.isDM) {
+                                if (roll.id) lastSeenPlayerRollId = roll.id;
+                                const exists = playerRollsHistory.some(r => r.id === roll.id);
                                 if (!exists) {
-                                    playerRollsHistory.unshift(msg);
+                                    playerRollsHistory.unshift(roll);
                                     if (playerRollsHistory.length > 50) playerRollsHistory.pop();
                                 }
-                                showCinematicRoll(msg);
+                                showCinematicRoll(roll);
                                 renderPlayerRollHistory();
                             }
                         } else if (msg.event === "rolls_cleared") {

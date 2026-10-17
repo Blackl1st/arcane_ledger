@@ -661,15 +661,64 @@
             renderInventory(pc);
         }
 
+        // Spell Slots Normalizer (Supports arrays, objects, level_X or direct numbers)
+        function normalizeSpellSlots(rawSlots) {
+            if (!rawSlots) return {};
+            const normalized = {};
+
+            if (Array.isArray(rawSlots)) {
+                rawSlots.forEach((s, idx) => {
+                    if (!s) return;
+                    const lvl = s.level || (idx + 1);
+                    const total = typeof s === 'number' ? s : (s.total ?? s.max ?? s.available ?? s.value ?? 0);
+                    const used = typeof s === 'number' ? 0 : (s.used ?? (s.max && s.current !== undefined ? s.max - s.current : 0));
+                    if (total > 0) {
+                        const key = s.isPact ? `pact_level_${lvl}` : `level_${lvl}`;
+                        normalized[key] = { total: Number(total), used: Number(used) };
+                    }
+                });
+                return normalized;
+            }
+
+            if (typeof rawSlots === 'object') {
+                for (const [k, v] of Object.entries(rawSlots)) {
+                    if (v === null || v === undefined) continue;
+                    let total = 0;
+                    let used = 0;
+                    if (typeof v === 'number') {
+                        total = v;
+                        used = 0;
+                    } else if (typeof v === 'object') {
+                        total = v.total ?? v.max ?? v.available ?? v.value ?? 0;
+                        used = v.used ?? (v.max && v.current !== undefined ? v.max - v.current : 0);
+                    }
+                    if (total > 0) {
+                        let key = k;
+                        if (!key.startsWith('level_') && !key.startsWith('pact_')) {
+                            key = `level_${k}`;
+                        }
+                        normalized[key] = { total: Number(total), used: Number(used) };
+                    }
+                }
+            }
+            return normalized;
+        }
+
         // Spell Slots & Class Powers
         function renderSpellSlots(pc) {
             const container = document.getElementById('spell-slots-grid');
             if (!container) return;
 
-            const slots = pc.spellSlots || {};
+            const slots = normalizeSpellSlots(pc.spellSlots);
+            pc.spellSlots = slots;
             const slotEntries = Object.entries(slots).filter(([lvl, data]) => {
                 const total = data ? (data.total !== undefined ? data.total : (data.max || 0)) : 0;
                 return total > 0;
+            });
+            slotEntries.sort((a, b) => {
+                const numA = parseInt(a[0].replace(/\D/g, '') || 0);
+                const numB = parseInt(b[0].replace(/\D/g, '') || 0);
+                return numA - numB;
             });
 
             container.innerHTML = '';
@@ -843,8 +892,8 @@
                 const name = it.name || 'Item';
                 const notes = it.notes || '';
                 const qty = it.qty || it.quantity || 1;
-                const damageDice = getWeaponDamageDice(name, notes);
-                const isWeapon = cat.includes('weapon') || notes.toLowerCase().includes('mastery') || (cat.includes('item') && damageDice && !cat.includes('potion') && !cat.includes('gear'));
+                const damageDice = it.damageDice || it.damage || getWeaponDamageDice(name, notes);
+                const isWeapon = cat.includes('weapon') || notes.toLowerCase().includes('mastery') || (damageDice && !cat.includes('potion') && !cat.includes('armor'));
 
                 if (isWeapon) {
                     weaponsList.innerHTML += `
@@ -858,7 +907,7 @@
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 <button onclick="rollWeaponAttack('${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll 1d20 Attack">
-                                    <span>⚔️</span><span>Atk</span>
+                                    <span>⚔️</span><span>d20 Atk</span>
                                 </button>
                                 <button onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')" class="px-2.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll Damage (${damageDice})">
                                     <span>💥</span><span>${damageDice}</span>
@@ -867,7 +916,7 @@
                         </div>
                     `;
                 } else if (cat.includes('potion') || name.toLowerCase().includes('potion')) {
-                    const potionDiceMatch = notes.match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
+                    const potionDiceMatch = (notes + ' ' + (it.formula || '') + ' ' + (it.damage || '')).match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
                     const potionDice = potionDiceMatch ? potionDiceMatch[1].replace(/\s+/g, '') : null;
                     consumablesList.innerHTML += `
                         <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm gap-2">
@@ -880,8 +929,8 @@
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 ${potionDice ? `
-                                    <button onclick="executeDiceFormulaRoll('${potionDice}', '${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-mono text-xs font-bold tap-active" title="Roll ${potionDice}">
-                                        🎲 ${potionDice}
+                                    <button onclick="executeDiceFormulaRoll('${potionDice}', '${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll ${potionDice}">
+                                        <span>🎲</span><span>${potionDice}</span>
                                     </button>
                                 ` : ''}
                                 <button onclick="useItem('${it.id || name}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold shadow tap-active">
@@ -891,7 +940,7 @@
                         </div>
                     `;
                 } else {
-                    const gearDiceMatch = notes.match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
+                    const gearDiceMatch = (notes + ' ' + (it.damageDice || '') + ' ' + (it.damage || '') + ' ' + (it.formula || '') + ' ' + name).match(/\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b/i);
                     const gearDice = gearDiceMatch ? gearDiceMatch[1].replace(/\s+/g, '') : null;
                     gearList.innerHTML += `
                         <div class="p-2.5 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-between text-xs font-mono gap-2">
@@ -905,8 +954,8 @@
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 ${gearDice ? `
-                                    <button onclick="executeDiceFormulaRoll('${gearDice}', '${escapeHTML(name)}')" class="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold tap-active">
-                                        🎲 ${gearDice}
+                                    <button onclick="executeDiceFormulaRoll('${gearDice}', '${escapeHTML(name)}')" class="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-[11px] font-bold tap-active flex items-center gap-1" title="Roll ${gearDice}">
+                                        <span>🎲</span><span>${gearDice}</span>
                                     </button>
                                 ` : ''}
                                 <span class="text-[10px] text-slate-500">${it.rarity || 'Common'}</span>
@@ -1095,7 +1144,10 @@
                     player: activeCharacter?.player || '',
                     avatarUrl: activeCharacter?.avatarUrl || '',
                     rollType: rollLabel,
+                    label: rollLabel,
                     formula: `1d20${mod >= 0 ? '+' : ''}${mod}`,
+                    rawRoll: chosenDie,
+                    chosen: chosenDie,
                     dice: [chosenDie],
                     modifier: mod,
                     total: total,
@@ -1123,12 +1175,15 @@
                     player: activeCharacter?.player || '',
                     avatarUrl: activeCharacter?.avatarUrl || '',
                     rollType: `d${sides} Roll`,
+                    label: `d${sides} Roll`,
                     formula: `1d${sides}`,
+                    rawRoll: roll,
+                    chosen: roll,
                     dice: [roll],
                     modifier: 0,
                     total: roll,
-                    isCrit: false,
-                    isFumble: false
+                    isCrit: sides === 20 && roll === 20,
+                    isFumble: sides === 20 && roll === 1
                 })
             });
             fetchCompanionState();
@@ -1229,7 +1284,10 @@
                     player: activeCharacter?.player || '',
                     avatarUrl: activeCharacter?.avatarUrl || '',
                     rollType: rollLabel,
+                    label: rollLabel,
                     formula: formulaStr,
+                    rawRoll: diceSum,
+                    chosen: diceSum,
                     dice: dice,
                     modifier: mod,
                     total: total,

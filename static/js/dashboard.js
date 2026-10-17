@@ -2140,7 +2140,42 @@ let diceTumbleInterval = null;
 
 function showDiceRollOverlay(data) {
     const overlay = document.getElementById('dice-roll-overlay');
-    if (!overlay) return;
+    if (!overlay || !data) return;
+
+    // Sanitize input properties to guarantee numeric values and prevent [object Object]
+    let totalVal = data.total;
+    if (typeof totalVal === 'object' && totalVal !== null) {
+        totalVal = totalVal.total ?? totalVal.rawRoll ?? totalVal.chosen ?? 20;
+    } else if (totalVal === undefined || totalVal === null) {
+        totalVal = data.chosen ?? 20;
+    }
+    if (typeof totalVal === 'object' && totalVal !== null) {
+        totalVal = 20;
+    }
+
+    let chosenVal = data.chosen;
+    if (typeof chosenVal === 'object' && chosenVal !== null) {
+        chosenVal = chosenVal.chosen ?? chosenVal.rawRoll ?? chosenVal.total ?? 20;
+    } else if (chosenVal === undefined || chosenVal === null) {
+        chosenVal = totalVal;
+    }
+    if (typeof chosenVal === 'object' && chosenVal !== null) {
+        chosenVal = totalVal;
+    }
+
+    let sides = typeof data.sides === 'number' ? data.sides : (parseInt(data.sides) || 20);
+    let roll1 = typeof data.roll1 === 'number' ? data.roll1 : (typeof data.roll1 === 'object' && data.roll1 !== null ? (data.roll1.chosen ?? chosenVal) : chosenVal);
+    let roll2 = typeof data.roll2 === 'number' ? data.roll2 : (typeof data.roll2 === 'object' && data.roll2 !== null ? (data.roll2.chosen ?? chosenVal) : chosenVal);
+    let mod = typeof data.mod === 'number' ? data.mod : 0;
+    let modStr = data.modStr || (mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : '');
+
+    data.total = totalVal;
+    data.chosen = chosenVal;
+    data.sides = sides;
+    data.roll1 = roll1;
+    data.roll2 = roll2;
+    data.mod = mod;
+    data.modStr = modStr;
 
     const iconEl = document.getElementById('dice-overlay-icon');
     const titleEl = document.getElementById('dice-overlay-title');
@@ -2317,11 +2352,17 @@ function rollDie(sides) {
         modStr
     });
 
+    const localRollId = 'dm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    window.lastLocalDmRollId = localRollId;
+    window.lastLocalDmRollTime = Date.now();
+
     // Record DM roll to Table History
     fetch('/api/rolls/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            id: localRollId,
+            source: 'dashboard',
             isDM: true,
             characterName: 'Dungeon Master',
             label: `d${sides} Roll`,
@@ -15476,12 +15517,36 @@ function handleStreamDeckLiveEvent(event) {
     if (!event || !event.event) return;
 
     if (event.event === "dice_roll") {
+        // If this roll was initiated locally by this dashboard window, only refresh table roll history
+        if (event.id && event.id === window.lastLocalDmRollId) {
+            fetchTableRollHistory();
+            return;
+        }
+        if (event.source === 'dashboard' && window.lastLocalDmRollTime && (Date.now() - window.lastLocalDmRollTime < 3000)) {
+            fetchTableRollHistory();
+            return;
+        }
+
+        const sides = typeof event.sides === 'number' ? event.sides : (parseInt(event.sides) || 20);
+
+        let rawVal = event.chosen ?? event.rawRoll ?? event.total ?? event.roll ?? 20;
+        if (typeof rawVal === 'object' && rawVal !== null) {
+            rawVal = rawVal.chosen ?? rawVal.rawRoll ?? rawVal.total ?? 20;
+        }
+        if (typeof rawVal === 'object' || rawVal === undefined) rawVal = 20;
+
+        let totalVal = event.total ?? event.roll ?? rawVal;
+        if (typeof totalVal === 'object' && totalVal !== null) {
+            totalVal = totalVal.total ?? totalVal.chosen ?? rawVal;
+        }
+        if (typeof totalVal === 'object' || totalVal === undefined) totalVal = rawVal;
+
+        const chosen = Number(rawVal);
+        const total = Number(totalVal);
+        const isCrit = Boolean(event.isCrit || (sides === 20 && chosen === 20));
+        const isFumble = Boolean(event.isFumble || (sides === 20 && chosen === 1));
+
         playDiceSound();
-        const sides = event.sides || 20;
-        const chosen = event.chosen || event.roll || 20;
-        const total = event.total || chosen;
-        const isCrit = event.isCrit || (sides === 20 && chosen === 20);
-        const isFumble = event.isFumble || (sides === 20 && chosen === 1);
 
         showDiceRollOverlay({
             sides: sides,
@@ -15526,7 +15591,8 @@ function handleStreamDeckLiveEvent(event) {
             renderDiceHistory();
         }
 
-        showToast(`🎲 Stream Deck Roll: d${sides} → ${total}${isCrit ? ' ★ CRITICAL HIT!' : (isFumble ? ' 💀 FUMBLE!' : '')}`, isCrit ? 'success' : (isFumble ? 'error' : 'info'));
+        const sourceLabel = event.source === 'streamdeck' ? 'Stream Deck' : (event.player || 'Live Table');
+        showToast(`🎲 ${sourceLabel} Roll: d${sides} → ${total}${isCrit ? ' ★ CRITICAL HIT!' : (isFumble ? ' 💀 FUMBLE!' : '')}`, isCrit ? 'success' : (isFumble ? 'error' : 'info'));
         fetchTableRollHistory();
     }
 
