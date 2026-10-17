@@ -437,19 +437,16 @@ class TabletopLightingEngine {
                 const intensity = Math.round(this.state.atmosphere.brightness * 10);
                 this.sendRequest("set_intensity", { intensity: intensity }, nodeId);
                 setTimeout(() => {
-                    if (this.state.atmosphere.mode === "rgb" || (this.state.atmosphere.rgb && this.state.atmosphere.effect !== "solid")) {
+                    if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
+                        const mapped = this._mapEffectName(this.state.atmosphere.effect);
+                        this.sendRequest("set_system_effect", { effect_type: mapped }, nodeId);
+                    } else if (this.state.atmosphere.mode === "rgb" || this.state.atmosphere.rgb) {
                         const hex = this._rgbToHex(this.state.atmosphere.rgb);
                         this.sendRequest("set_color", { color: hex }, nodeId);
                     } else {
                         this.sendRequest("set_cct", { cct: this.state.atmosphere.cct }, nodeId);
                     }
-                    if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
-                        setTimeout(() => {
-                            const mapped = this._mapEffectName(this.state.atmosphere.effect);
-                            this.sendRequest("set_system_effect", { effect_type: mapped }, nodeId);
-                        }, 50);
-                    }
-                }, 50);
+                }, 180);
             }
 
             this.updateAtmosphereUI();
@@ -457,7 +454,7 @@ class TabletopLightingEngine {
         }
     }
 
-    async sendAtmosphereRequest(type, args = null, delayBetweenNodes = 100) {
+    async sendAtmosphereRequest(type, args = null, delayBetweenNodes = 180) {
         const ids = this.getAtmosphereNodeIds();
         if (!ids || ids.length === 0) return;
 
@@ -539,23 +536,22 @@ class TabletopLightingEngine {
             const intensity = this.state.atmosphere.enabled ? Math.round(this.state.atmosphere.brightness * 10) : 0;
 
             // Phase 1: Set intensity across all atmosphere fixtures
-            await this.sendAtmosphereRequest("set_intensity", { intensity: intensity }, 100);
+            await this.sendAtmosphereRequest("set_intensity", { intensity: intensity }, 180);
 
-            // Phase 2: Set color or CCT base tone across all atmosphere fixtures first
-            await new Promise(r => setTimeout(r, 120));
-            if (this.state.atmosphere.mode === "rgb" || (this.state.atmosphere.rgb && this.state.atmosphere.effect !== "solid")) {
-                const hex = this._rgbToHex(this.state.atmosphere.rgb);
-                await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
-            } else {
-                const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
-                await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
-            }
+            await new Promise(r => setTimeout(r, 200));
 
-            // Phase 3: Dynamic hardware effect (if not solid), after color baseline is set
+            // Phase 2: Dynamic hardware effect OR solid tone
             if (this.state.atmosphere.effect && this.state.atmosphere.effect !== "solid") {
-                await new Promise(r => setTimeout(r, 120));
                 const mapped = this._mapEffectName(this.state.atmosphere.effect);
-                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 100);
+                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 180);
+            } else {
+                if (this.state.atmosphere.mode === "rgb" || this.state.atmosphere.rgb) {
+                    const hex = this._rgbToHex(this.state.atmosphere.rgb);
+                    await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
+                } else {
+                    const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
+                    await this.sendAtmosphereRequest("set_cct", { cct: cct }, 180);
+                }
             }
         });
     }
@@ -644,7 +640,7 @@ class TabletopLightingEngine {
 
         const intensity = Math.round(b * 10);
         return this._enqueue(async () => {
-            await this.sendAtmosphereRequest("set_intensity", { intensity: intensity }, 100);
+            await this.sendAtmosphereRequest("set_intensity", { intensity: intensity }, 180);
         });
     }
 
@@ -659,7 +655,7 @@ class TabletopLightingEngine {
         this._debouncedSyncToServer();
 
         return this._enqueue(async () => {
-            await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
+            await this.sendAtmosphereRequest("set_cct", { cct: cct }, 180);
         });
     }
 
@@ -675,7 +671,7 @@ class TabletopLightingEngine {
         this._debouncedSyncToServer();
 
         return this._enqueue(async () => {
-            await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+            await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
         });
     }
 
@@ -700,26 +696,16 @@ class TabletopLightingEngine {
 
         return this._enqueue(async () => {
             if (effectName === "solid") {
-                if (this.state.atmosphere.mode === "rgb") {
+                if (this.state.atmosphere.mode === "rgb" || this.state.atmosphere.rgb) {
                     const hex = this._rgbToHex(this.state.atmosphere.rgb);
-                    await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+                    await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
                 } else {
                     const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
-                    await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
+                    await this.sendAtmosphereRequest("set_cct", { cct: cct }, 180);
                 }
             } else {
-                // Ensure base tone is prepared across all fixtures before triggering hardware effect
-                if (this.state.atmosphere.mode === "rgb" && this.state.atmosphere.rgb) {
-                    const hex = this._rgbToHex(this.state.atmosphere.rgb);
-                    await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
-                    await new Promise(r => setTimeout(r, 120));
-                } else {
-                    const cct = Math.max(2300, Math.min(10000, this.state.atmosphere.cct || 3200));
-                    await this.sendAtmosphereRequest("set_cct", { cct: cct }, 100);
-                    await new Promise(r => setTimeout(r, 120));
-                }
                 const mapped = this._mapEffectName(effectName);
-                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 100);
+                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 180);
             }
         });
     }
@@ -922,9 +908,8 @@ class TabletopLightingEngine {
 
             // Shift Ace 25c to eerie cold blue pulse
             const hex = "#1E3A8A";
-            this.sendAtmosphereRequest("set_intensity", { intensity: 400 });
-            this.sendAtmosphereRequest("set_color", { color: hex });
-            this.sendAtmosphereRequest("set_system_effect", { effect_type: "pulsing" });
+            this.sendAtmosphereRequest("set_intensity", { intensity: 400 }, 180);
+            this.sendAtmosphereRequest("set_system_effect", { effect_type: "pulsing" }, 180);
 
             const sim = document.getElementById("lighting-ambiance-box");
             if (sim) {
@@ -1119,12 +1104,10 @@ class TabletopLightingEngine {
             await new Promise(r => setTimeout(r, 100));
 
             if (effect && effect !== "solid") {
-                await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
-                await new Promise(r => setTimeout(r, 100));
                 const mapped = this._mapEffectName(effect);
-                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 100);
+                await this.sendAtmosphereRequest("set_system_effect", { effect_type: mapped }, 180);
             } else {
-                await this.sendAtmosphereRequest("set_color", { color: hex }, 100);
+                await this.sendAtmosphereRequest("set_color", { color: hex }, 180);
             }
 
             // 2. If Link Flashes is enabled, also flash the overhead 60d S
