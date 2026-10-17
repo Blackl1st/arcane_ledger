@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.3"
+CURRENT_VERSION = "1.1.4"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -608,24 +608,25 @@ set STAGED={staged_folder.resolve()}
 set TARGET={target_dir.resolve()}
 set EXE_NAME=ArcaneLedger.exe
 
-:wait_loop
-timeout /t 1 /nobreak > nul
-tasklist /fi "PID eq %OLD_PID%" | find "%OLD_PID%" > nul
-if %errorlevel% == 0 goto wait_loop
+:: 1. Allow 2 seconds for parent process to exit cleanly, then force-terminate OLD_PID if still holding locks
+timeout /t 2 /nobreak > nul
+taskkill /F /PID %OLD_PID% > nul 2>&1
 
+:: 2. Terminate any browser window displaying Arcane Ledger so the relaunch opens fresh
+taskkill /F /FI "WINDOWTITLE eq Arcane Ledger*" > nul 2>&1
 timeout /t 1 /nobreak > nul
 
-:: Overwrite binaries and app assets, explicitly preserving user data
+:: 3. Overwrite binaries and app assets, explicitly preserving user data
 robocopy "%STAGED%" "%TARGET%" /E /IS /IT /XD "%STAGED%\\data" /R:2 /W:1 > nul
 if exist "%STAGED%\\%EXE_NAME%" (
     copy /y "%STAGED%\\%EXE_NAME%" "%TARGET%\\%EXE_NAME%" > nul
 )
 
-:: Cleanup staging
+:: 4. Cleanup staging
 rd /s /q "{staging_dir.resolve()}" 2> nul
 del /f /q "{zip_path.resolve()}" 2> nul
 
-:: Relaunch
+:: 5. Relaunch Arcane Ledger
 cd /d "%TARGET%"
 start "" "%TARGET%\\%EXE_NAME%"
 exit
@@ -633,9 +634,13 @@ exit
         with open(script_path, "w", newline="\r\n") as f:
             f.write(script_content)
 
-        creationflags = 0x08000000 | 0x00000008  # CREATE_NO_WINDOW | DETACHED_PROCESS
         logging.info(f"Launching Windows patch script: {script_path}")
-        subprocess.Popen([str(script_path)], creationflags=creationflags, close_fds=True)
+        # Use cmd.exe with CREATE_NO_WINDOW (0x08000000); do NOT combine with DETACHED_PROCESS (0x08) which breaks standard handles
+        subprocess.Popen(
+            ["cmd.exe", "/c", str(script_path)],
+            creationflags=0x08000000,
+            close_fds=True
+        )
 
     with update_state.lock:
         update_state.status = "ready_to_restart"
