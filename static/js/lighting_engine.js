@@ -764,6 +764,20 @@ class TabletopLightingEngine {
     }
 
     async applyPreset(presetId) {
+        // 1. First check appState.audioPresets for live user-edited lighting settings
+        if (typeof appState !== 'undefined' && Array.isArray(appState.audioPresets)) {
+            const ap = appState.audioPresets.find(p => p.id === presetId);
+            if (ap && ap.lighting) {
+                if (ap.lighting.overhead && ap.lighting.overhead.brightness !== undefined) {
+                    await this.setOverheadBrightness(ap.lighting.overhead.brightness);
+                }
+                if (ap.lighting.atmosphere) {
+                    await this.applyAtmosphereConfig(ap.lighting.atmosphere, presetId);
+                    return;
+                }
+            }
+        }
+
         const p = this.presets[presetId];
         if (!p) return;
 

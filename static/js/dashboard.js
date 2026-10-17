@@ -8583,8 +8583,9 @@ function renderAudioPresets() {
                     <div class="flex items-center justify-between mb-1.5">
                         <span class="text-2xl">${escapeHTML(p.icon || '✨')}</span>
                         <div class="flex items-center gap-1">
-                            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ledger-950 text-slate-400 border border-ledger-800">${layerCount} ${layerCount === 1 ? 'audio' : 'audio'}</span>
-                            ${!isBuiltin ? `<button onclick="deleteAudioPreset('${p.id}')" title="Delete Preset" class="text-slate-500 hover:text-rose-400 p-0.5 text-xs">✕</button>` : ''}
+                            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ledger-950 text-slate-400 border border-ledger-800">${layerCount} tracks</span>
+                            <button onclick="openEditPresetModal('${p.id}')" title="Edit Scene Preset (Audio & Lighting)" class="text-slate-400 hover:text-amber-400 p-1 text-xs rounded hover:bg-ledger-800 transition">✏️</button>
+                            ${!isBuiltin ? `<button onclick="deleteAudioPreset('${p.id}')" title="Delete Preset" class="text-slate-500 hover:text-rose-400 p-1 text-xs rounded hover:bg-ledger-800 transition">✕</button>` : ''}
                         </div>
                     </div>
                     <h4 class="font-display font-bold text-xs text-slate-200">${escapeHTML(p.name)}</h4>
@@ -8620,9 +8621,9 @@ function renderAudioTracks() {
         return;
     }
     grid.innerHTML = tracks.map(t => {
-        const engineTrack = (window.AudioEngine && window.AudioEngine.tracks[t.id]) || {};
-        const isPlaying = !!engineTrack.isPlaying;
-        const volume = engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
+        const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
+        const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
+        const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
         const volPercent = Math.round(volume * 100);
         const isCustom = t.category === 'Custom' || t.id.startsWith('track-');
 
@@ -8674,13 +8675,15 @@ function updateActiveLayersSummary() {
         return;
     }
     const active = [];
-    Object.keys(window.AudioEngine.tracks).forEach(id => {
-        const t = window.AudioEngine.tracks[id];
-        if (t.isPlaying && t.volume > 0) {
-            const trackDef = (appState.audioLibrary || []).find(l => l.id === id) || { name: id };
-            active.push(`${trackDef.name} (${Math.round(t.volume * 100)}%)`);
-        }
-    });
+    if (window.AudioEngine && window.AudioEngine.tracks) {
+        const trackList = Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : Object.values(window.AudioEngine.tracks);
+        trackList.forEach(t => {
+            if ((t.active || t.isPlaying) && t.volume > 0) {
+                const trackDef = (appState.audioLibrary || []).find(l => l.id === t.id) || t;
+                active.push(`${trackDef.name || t.id} (${Math.round(t.volume * 100)}%)`);
+            }
+        });
+    }
     if (active.length === 0) {
         summaryEl.innerText = "None (Silence)";
     } else {
@@ -8789,93 +8792,454 @@ async function triggerQuickPreset(presetId) {
     showToast(`Atmosphere & Lighting: "${preset.name}" Active!`, "info");
 }
 
-function openSavePresetModal() {
-    openModal('save-preset-modal');
-    
-    // Auto-populate with current live lighting values
-    if (window.LightingEngine) {
-        const ob = window.LightingEngine.state.overhead.brightness;
-        const ab = window.LightingEngine.state.atmosphere.brightness;
-        const hex = window.LightingEngine._rgbToHex(window.LightingEngine.state.atmosphere.rgb);
-        const eff = window.LightingEngine.state.atmosphere.effect || 'fire';
+// =============================================================================
+// SCENE ATMOSPHERE PRESET EDITOR & STORAGE (AUDIO + AMARAN LIGHTING)
+// =============================================================================
+let _editingPresetLayers = {};
 
-        const oSlider = document.getElementById('new-preset-overhead-slider');
-        const oVal = document.getElementById('new-preset-overhead-val');
-        const aSlider = document.getElementById('new-preset-atm-slider');
-        const aVal = document.getElementById('new-preset-atm-val');
-        const aColor = document.getElementById('new-preset-atm-color');
-        const aEffect = document.getElementById('new-preset-atm-effect');
+const DEFAULT_BUILTIN_PRESETS = [
+    {
+        id: "preset-tavern",
+        name: "Cozy Tavern Common Room",
+        icon: "🍻",
+        tag: "Tavern",
+        description: "Crackling hearth, friendly murmur of patrons, and clinking ale tankards.",
+        layers: { "track-fireplace": 0.65, "track-tavern-murmur": 0.55 },
+        lighting: {
+            overhead: { brightness: 45 },
+            atmosphere: { brightness: 70, color: "#FFA03C", cct: 2500, mode: "rgb", effect: "fire" }
+        }
+    },
+    {
+        id: "preset-camp",
+        name: "Wilderness Night Camp",
+        icon: "🏕️",
+        tag: "Weather",
+        description: "Crackling wood fire, gentle nocturnal stream, and soft night breeze.",
+        layers: { "track-campfire": 0.7, "track-stream": 0.45, "track-wind": 0.25 },
+        lighting: {
+            overhead: { brightness: 30 },
+            atmosphere: { brightness: 55, color: "#FF7714", cct: 2700, mode: "rgb", effect: "fire" }
+        }
+    },
+    {
+        id: "preset-stormy-crypt",
+        name: "Stormy Dungeon / Crypt",
+        icon: "⚡",
+        tag: "Dungeon",
+        description: "Distant raging thunderstorm outside, with a deep subterranean cavern echo.",
+        layers: { "track-cavern-drone": 0.65, "track-thunderstorm": 0.45, "track-heavy-rain": 0.35 },
+        lighting: {
+            overhead: { brightness: 25 },
+            atmosphere: { brightness: 50, color: "#4488FF", cct: 6500, mode: "rgb", effect: "lightning" }
+        }
+    },
+    {
+        id: "preset-combat-boss",
+        name: "Boss Fight / Martial Clash",
+        icon: "🩸",
+        tag: "Combat",
+        description: "Pounding war drums, tense adrenaline heartbeat, and howling storm.",
+        layers: { "track-war-drums": 0.8, "track-heartbeat": 0.55, "track-thunderstorm": 0.4 },
+        lighting: {
+            overhead: { brightness: 60 },
+            atmosphere: { brightness: 85, color: "#FF1414", cct: 4000, mode: "rgb", effect: "pulsing" }
+        }
+    },
+    {
+        id: "preset-arcane-sanctum",
+        name: "Arcane Tower & Sanctum",
+        icon: "🔮",
+        tag: "Mystery",
+        description: "Ethereal mystical harmony, gentle soothing rain outside the stained-glass windows.",
+        layers: { "track-mystic-pad": 0.7, "track-forest-rain": 0.4 },
+        lighting: {
+            overhead: { brightness: 50 },
+            atmosphere: { brightness: 65, color: "#8C1EFF", cct: 5000, mode: "rgb", effect: "solid" }
+        }
+    },
+    {
+        id: "preset-creeping-dread",
+        name: "Creeping Dread & Ambush",
+        icon: "👁️",
+        tag: "Mystery",
+        description: "Eerie crypt drone, solitary creeping heartbeat, cold wind whispering.",
+        layers: { "track-cavern-drone": 0.55, "track-heartbeat": 0.65, "track-wind": 0.35 },
+        lighting: {
+            overhead: { brightness: 15 },
+            atmosphere: { brightness: 45, color: "#3B1154", cct: 7500, mode: "rgb", effect: "pulse" }
+        }
+    }
+];
 
-        if (oSlider) oSlider.value = ob;
-        if (oVal) oVal.textContent = `${ob}%`;
-        if (aSlider) aSlider.value = ab;
-        if (aVal) aVal.textContent = `${ab}%`;
-        if (aColor) aColor.value = hex;
-        if (aEffect) aEffect.value = eff;
+function setPresetOverheadSlider(val) {
+    const slider = document.getElementById('new-preset-overhead-slider');
+    const label = document.getElementById('new-preset-overhead-val');
+    if (slider) slider.value = val;
+    if (label) label.textContent = `${val}%`;
+}
+
+function setPresetAtmosphereSlider(val) {
+    const slider = document.getElementById('new-preset-atm-slider');
+    const label = document.getElementById('new-preset-atm-val');
+    if (slider) slider.value = val;
+    if (label) label.textContent = `${val}%`;
+}
+
+function syncPresetColor(hex) {
+    const hexInput = document.getElementById('new-preset-atm-hex');
+    const prev = document.getElementById('new-preset-color-preview');
+    if (hexInput) hexInput.value = hex.toUpperCase();
+    if (prev) prev.style.backgroundColor = hex;
+}
+
+function syncPresetHex(val) {
+    let clean = (val || '').trim();
+    if (!clean.startsWith('#')) clean = '#' + clean;
+    const prev = document.getElementById('new-preset-color-preview');
+    const colorInput = document.getElementById('new-preset-atm-color');
+    if (/^#[0-9A-Fa-f]{6}$/.test(clean)) {
+        if (colorInput) colorInput.value = clean;
+        if (prev) prev.style.backgroundColor = clean;
     }
 }
 
-async function saveCurrentMixAsPreset() {
-    const nameInput = document.getElementById('new-preset-name') || document.getElementById('preset-name');
-    const descInput = document.getElementById('new-preset-desc') || document.getElementById('preset-desc');
-    const iconInput = document.getElementById('new-preset-icon') || document.getElementById('preset-icon');
-    const name = nameInput ? nameInput.value.trim() : '';
-    const desc = (descInput ? descInput.value.trim() : '') || 'Custom layered scene atmosphere';
-    const icon = (iconInput ? iconInput.value.trim() : '') || '✨';
+function setPresetColorPalette(hex) {
+    const colorInput = document.getElementById('new-preset-atm-color');
+    const hexInput = document.getElementById('new-preset-atm-hex');
+    const prev = document.getElementById('new-preset-color-preview');
+    if (colorInput) colorInput.value = hex;
+    if (hexInput) hexInput.value = hex.toUpperCase();
+    if (prev) prev.style.backgroundColor = hex;
+}
+
+function captureLiveLightingForPreset() {
+    if (!window.LightingEngine) return;
+    const ob = window.LightingEngine.state.overhead.brightness;
+    const ab = window.LightingEngine.state.atmosphere.brightness;
+    const hex = window.LightingEngine._rgbToHex(window.LightingEngine.state.atmosphere.rgb);
+    const eff = window.LightingEngine.state.atmosphere.effect || 'solid';
+
+    setPresetOverheadSlider(ob);
+    setPresetAtmosphereSlider(ab);
+    setPresetColorPalette(hex);
+
+    const effSelect = document.getElementById('new-preset-atm-effect');
+    if (effSelect) effSelect.value = eff;
+
+    showToast("Captured live physical lighting values into preset!", "info");
+}
+
+function previewPresetLightingLive() {
+    if (!window.LightingEngine) return;
+    const ob = parseInt(document.getElementById('new-preset-overhead-slider')?.value || 45);
+    const ab = parseInt(document.getElementById('new-preset-atm-slider')?.value || 70);
+    const color = document.getElementById('new-preset-atm-hex')?.value || document.getElementById('new-preset-atm-color')?.value || '#FFA03C';
+    const effect = document.getElementById('new-preset-atm-effect')?.value || 'solid';
+
+    window.LightingEngine.setOverheadBrightness(ob);
+    window.LightingEngine.applyAtmosphereConfig({
+        brightness: ab,
+        color: color,
+        effect: effect
+    });
+    showToast("Testing preset lighting on live fixtures!", "info");
+}
+
+function renderPresetEditorAudioLayers() {
+    const container = document.getElementById('preset-editor-audio-layers');
+    const countBadge = document.getElementById('preset-editor-track-count');
+    if (!container) return;
+
+    const trackIds = Object.keys(_editingPresetLayers);
+    if (countBadge) countBadge.textContent = `${trackIds.length} track${trackIds.length === 1 ? '' : 's'}`;
+
+    if (trackIds.length === 0) {
+        container.innerHTML = `<div class="text-center py-3 text-slate-500 italic text-[11px]">No audio tracks in this preset. Add tracks below or capture currently active soundscape.</div>`;
+        return;
+    }
+
+    container.innerHTML = trackIds.map(tid => {
+        const trackDef = (appState.audioLibrary || []).find(t => t.id === tid) || { id: tid, name: tid, icon: '🎵', category: 'Ambiance' };
+        const vol = _editingPresetLayers[tid] !== undefined ? Math.round(_editingPresetLayers[tid] * 100) : 50;
+
+        return `
+            <div class="flex items-center justify-between gap-2 bg-ledger-900/90 p-2 rounded-lg border border-ledger-800 text-[11px]">
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="text-base">${escapeHTML(trackDef.icon || '🎵')}</span>
+                    <div class="min-w-0">
+                        <span class="font-bold text-slate-200 block truncate leading-tight">${escapeHTML(trackDef.name)}</span>
+                        <span class="text-[9px] text-slate-400 font-mono">${escapeHTML(trackDef.category || 'Sound')}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="range" min="0" max="100" value="${vol}" oninput="setPresetTrackVolume('${tid}', this.value)" class="w-20 sm:w-28 h-1.5 bg-ledger-950 rounded-lg accent-sky-400 cursor-pointer">
+                    <span id="preset-layer-vol-${tid}" class="font-mono text-sky-300 font-bold w-8 text-right text-[10px]">${vol}%</span>
+                    <button type="button" onclick="removeTrackFromPresetEditor('${tid}')" title="Remove track from preset" class="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-ledger-800 transition">✕</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function populatePresetAddTrackSelect() {
+    const select = document.getElementById('preset-editor-add-track-select');
+    if (!select) return;
+    const currentTrackIds = new Set(Object.keys(_editingPresetLayers));
+    const available = (appState.audioLibrary || []).filter(t => !currentTrackIds.has(t.id));
+
+    if (available.length === 0) {
+        select.innerHTML = `<option value="">(All library tracks added)</option>`;
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+        select.innerHTML = `<option value="">-- Add Track from Library (${available.length} available) --</option>` +
+            available.map(t => `<option value="${t.id}">${escapeHTML(t.icon || '🎵')} ${escapeHTML(t.name)} (${escapeHTML(t.category)})</option>`).join('');
+    }
+}
+
+function addSelectedTrackToPresetEditor() {
+    const select = document.getElementById('preset-editor-add-track-select');
+    if (!select || !select.value) {
+        showToast("Select a track to add to this preset.", "warning");
+        return;
+    }
+    const tid = select.value;
+    const trackDef = (appState.audioLibrary || []).find(t => t.id === tid);
+    _editingPresetLayers[tid] = trackDef && trackDef.defaultVolume !== undefined ? trackDef.defaultVolume : 0.5;
+    renderPresetEditorAudioLayers();
+    populatePresetAddTrackSelect();
+}
+
+function removeTrackFromPresetEditor(trackId) {
+    delete _editingPresetLayers[trackId];
+    renderPresetEditorAudioLayers();
+    populatePresetAddTrackSelect();
+}
+
+function setPresetTrackVolume(trackId, val) {
+    const num = Math.max(0, Math.min(100, parseInt(val) || 0));
+    _editingPresetLayers[trackId] = Math.round((num / 100) * 100) / 100;
+    const label = document.getElementById(`preset-layer-vol-${trackId}`);
+    if (label) label.textContent = `${num}%`;
+}
+
+function captureLiveAudioForPreset() {
+    const captured = {};
+    let count = 0;
+    if (window.AudioEngine && window.AudioEngine.tracks) {
+        const trackList = Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : Object.values(window.AudioEngine.tracks);
+        trackList.forEach(t => {
+            if ((t.active || t.isPlaying) && t.volume > 0) {
+                captured[t.id] = Math.round(t.volume * 100) / 100;
+                count++;
+            }
+        });
+    }
+    _editingPresetLayers = captured;
+    renderPresetEditorAudioLayers();
+    populatePresetAddTrackSelect();
+    showToast(`Captured ${count} active soundscape track(s) into preset!`, count > 0 ? "success" : "info");
+}
+
+function openSavePresetModal() {
+    const idInput = document.getElementById('new-preset-id');
+    const titleText = document.getElementById('new-preset-title-text');
+    const titleIcon = document.getElementById('new-preset-title-icon');
+    const subtitleText = document.getElementById('new-preset-subtitle-text');
+    const saveIcon = document.getElementById('new-preset-save-icon');
+    const saveText = document.getElementById('new-preset-save-text');
+    const resetBtn = document.getElementById('new-preset-reset-btn');
+    const nameInput = document.getElementById('new-preset-name');
+    const iconInput = document.getElementById('new-preset-icon');
+    const descInput = document.getElementById('new-preset-desc');
+    const tagSelect = document.getElementById('new-preset-tag');
+
+    if (idInput) idInput.value = "";
+    if (titleIcon) titleIcon.textContent = "💾";
+    if (titleText) titleText.textContent = "Save Unified Scene Preset";
+    if (subtitleText) subtitleText.textContent = "Saves active audio layers and dual-channel lighting snapshot together";
+    if (saveIcon) saveIcon.textContent = "💾";
+    if (saveText) saveText.textContent = "Save Scene Preset";
+    if (resetBtn) resetBtn.classList.add('hidden');
+
+    if (nameInput) nameInput.value = "";
+    if (iconInput) iconInput.value = "✨";
+    if (descInput) descInput.value = "";
+    if (tagSelect) tagSelect.value = "Ambiance";
+
+    // Auto-capture live lighting
+    captureLiveLightingForPreset();
+
+    // Auto-capture active audio layers
+    captureLiveAudioForPreset();
+
+    openModal('save-preset-modal');
+}
+
+function openEditPresetModal(presetId) {
+    const preset = (appState.audioPresets || []).find(p => p.id === presetId);
+    if (!preset) {
+        showToast("Preset not found", "error");
+        return;
+    }
+
+    const idInput = document.getElementById('new-preset-id');
+    const titleText = document.getElementById('new-preset-title-text');
+    const titleIcon = document.getElementById('new-preset-title-icon');
+    const subtitleText = document.getElementById('new-preset-subtitle-text');
+    const saveIcon = document.getElementById('new-preset-save-icon');
+    const saveText = document.getElementById('new-preset-save-text');
+    const resetBtn = document.getElementById('new-preset-reset-btn');
+    const nameInput = document.getElementById('new-preset-name');
+    const iconInput = document.getElementById('new-preset-icon');
+    const descInput = document.getElementById('new-preset-desc');
+    const tagSelect = document.getElementById('new-preset-tag');
+
+    if (idInput) idInput.value = preset.id;
+    if (titleIcon) titleIcon.textContent = "✏️";
+    if (titleText) titleText.textContent = `Edit Scene Preset: "${preset.name}"`;
+    if (subtitleText) subtitleText.textContent = "Customize bundled audio layers and physical Amaran lighting settings";
+    if (saveIcon) saveIcon.textContent = "💾";
+    if (saveText) saveText.textContent = "Save Changes";
+
+    // Check if built-in
+    const isBuiltin = DEFAULT_BUILTIN_PRESETS.some(b => b.id === preset.id);
+    if (resetBtn) {
+        if (isBuiltin) resetBtn.classList.remove('hidden');
+        else resetBtn.classList.add('hidden');
+    }
+
+    if (nameInput) nameInput.value = preset.name || "";
+    if (iconInput) iconInput.value = preset.icon || "✨";
+    if (descInput) descInput.value = preset.description || "";
+    if (tagSelect) tagSelect.value = preset.tag || "Ambiance";
+
+    // Lighting
+    const l = preset.lighting || {};
+    const overheadB = l.overhead ? l.overhead.brightness : (preset.id === 'preset-creeping-dread' ? 15 : (preset.id === 'preset-camp' ? 30 : 45));
+    const atm = l.atmosphere || {};
+    const atmB = atm.brightness !== undefined ? atm.brightness : 70;
+    const atmColor = atm.color || '#FFA03C';
+    const atmEffect = atm.effect || 'solid';
+
+    setPresetOverheadSlider(overheadB);
+    setPresetAtmosphereSlider(atmB);
+    setPresetColorPalette(atmColor);
+
+    const effSelect = document.getElementById('new-preset-atm-effect');
+    if (effSelect) effSelect.value = atmEffect;
+
+    // Audio layers
+    _editingPresetLayers = Object.assign({}, preset.layers || {});
+    renderPresetEditorAudioLayers();
+    populatePresetAddTrackSelect();
+
+    openModal('save-preset-modal');
+}
+
+async function savePresetFromModal() {
+    const idInput = document.getElementById('new-preset-id');
+    const nameInput = document.getElementById('new-preset-name');
+    const descInput = document.getElementById('new-preset-desc');
+    const iconInput = document.getElementById('new-preset-icon');
+    const tagSelect = document.getElementById('new-preset-tag');
+
+    const presetId = idInput ? idInput.value.trim() : "";
+    const name = nameInput ? nameInput.value.trim() : "";
+    const desc = descInput ? descInput.value.trim() : "";
+    const icon = (iconInput ? iconInput.value.trim() : "") || "✨";
+    const tag = tagSelect ? tagSelect.value : "Ambiance";
+
     if (!name) {
         showToast("Please enter a preset name.", "error");
         return;
     }
 
-    // Capture active audio layers
-    const layers = {};
-    if (window.AudioEngine && Array.isArray(window.AudioEngine.tracks)) {
-        window.AudioEngine.tracks.forEach(t => {
-            if (t.active && t.volume > 0) {
-                layers[t.id] = Math.round(t.volume * 100) / 100;
-            }
-        });
-    }
+    const overheadB = parseInt(document.getElementById('new-preset-overhead-slider')?.value || 45);
+    const atmB = parseInt(document.getElementById('new-preset-atm-slider')?.value || 70);
+    const atmColor = document.getElementById('new-preset-atm-hex')?.value || document.getElementById('new-preset-atm-color')?.value || '#FFA03C';
+    const atmEffect = document.getElementById('new-preset-atm-effect')?.value || 'solid';
 
-    // Capture current lighting settings
-    const overheadB = parseInt(document.getElementById('new-preset-overhead-slider')?.value || (window.LightingEngine?.state?.overhead?.brightness ?? 45));
-    const atmB = parseInt(document.getElementById('new-preset-atm-slider')?.value || (window.LightingEngine?.state?.atmosphere?.brightness ?? 70));
-    const atmColor = document.getElementById('new-preset-atm-color')?.value || (window.LightingEngine?._rgbToHex(window.LightingEngine.state.atmosphere.rgb) || '#FFA03C');
-    const atmEffect = document.getElementById('new-preset-atm-effect')?.value || (window.LightingEngine?.state?.atmosphere?.effect || 'fire');
-
-    const newPreset = {
-        id: 'preset-' + Date.now(),
-        name: name,
-        icon: icon,
-        description: desc,
-        layers: layers,
-        lighting: {
-            overhead: {
-                brightness: overheadB
-            },
-            atmosphere: {
-                brightness: atmB,
-                color: atmColor,
-                cct: 2500,
-                mode: "rgb",
-                effect: atmEffect
-            }
+    const lightingObj = {
+        overhead: {
+            brightness: overheadB
+        },
+        atmosphere: {
+            brightness: atmB,
+            color: atmColor,
+            cct: 2500,
+            mode: "rgb",
+            effect: atmEffect
         }
     };
 
-    appState.audioPresets.push(newPreset);
+    let targetPreset = null;
+    let isNew = false;
+
+    if (presetId) {
+        targetPreset = (appState.audioPresets || []).find(p => p.id === presetId);
+    }
+
+    if (targetPreset) {
+        // Edit existing
+        targetPreset.name = name;
+        targetPreset.icon = icon;
+        targetPreset.tag = tag;
+        targetPreset.description = desc;
+        targetPreset.layers = Object.assign({}, _editingPresetLayers);
+        targetPreset.lighting = lightingObj;
+    } else {
+        // Create new
+        isNew = true;
+        targetPreset = {
+            id: 'preset-' + Date.now(),
+            name: name,
+            icon: icon,
+            tag: tag,
+            description: desc,
+            layers: Object.assign({}, _editingPresetLayers),
+            lighting: lightingObj
+        };
+        appState.audioPresets.push(targetPreset);
+    }
+
+    // Keep LightingEngine presets cache synchronized
+    if (window.LightingEngine && window.LightingEngine.presets) {
+        const clean = atmColor.replace('#', '');
+        const r = parseInt(clean.substring(0, 2), 16) || 0;
+        const g = parseInt(clean.substring(2, 4), 16) || 0;
+        const b = parseInt(clean.substring(4, 6), 16) || 0;
+
+        window.LightingEngine.presets[targetPreset.id] = {
+            name: targetPreset.name,
+            icon: targetPreset.icon,
+            mode: "rgb",
+            cct: 2500,
+            brightness: atmB,
+            rgb: [r, g, b],
+            effect: atmEffect,
+            description: desc
+        };
+    }
+
     try {
         const res = await fetch('/api/audio/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(appState.audioPresets)
         });
+
         if (res.ok) {
             closeModal('save-preset-modal');
-            if (nameInput) nameInput.value = '';
-            if (descInput) descInput.value = '';
-            renderAudioMixer();
-            showToast(`Scene Preset "${name}" saved with audio & lighting!`, "success");
+            renderAudioPresets();
+
+            // If the preset being edited is currently active, re-apply it live
+            if (appState.activeAudioPresetId === targetPreset.id) {
+                await triggerQuickPreset(targetPreset.id);
+            }
+
+            showToast(isNew ? `Scene Preset "${name}" created!` : `Scene Preset "${name}" updated!`, "success");
         } else {
             showToast("Failed to save preset to server.", "error");
         }
@@ -8883,6 +9247,57 @@ async function saveCurrentMixAsPreset() {
         console.error("Save preset error:", e);
         showToast("Error saving preset.", "error");
     }
+}
+
+async function resetPresetToDefault() {
+    const idInput = document.getElementById('new-preset-id');
+    const presetId = idInput ? idInput.value.trim() : "";
+    if (!presetId) return;
+
+    const defaultPreset = DEFAULT_BUILTIN_PRESETS.find(b => b.id === presetId);
+    if (!defaultPreset) {
+        showToast("Default definition not found for this preset.", "warning");
+        return;
+    }
+
+    if (!confirm(`Restore "${defaultPreset.name}" to its original factory settings? This will revert your lighting and audio customization for this preset.`)) {
+        return;
+    }
+
+    const idx = (appState.audioPresets || []).findIndex(p => p.id === presetId);
+    if (idx !== -1) {
+        appState.audioPresets[idx] = JSON.parse(JSON.stringify(defaultPreset));
+    }
+
+    try {
+        const res = await fetch('/api/audio/presets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(appState.audioPresets)
+        });
+
+        if (res.ok) {
+            closeModal('save-preset-modal');
+            renderAudioPresets();
+
+            // If currently active, re-trigger with restored defaults
+            if (appState.activeAudioPresetId === presetId) {
+                await triggerQuickPreset(presetId);
+            }
+
+            showToast(`Preset "${defaultPreset.name}" restored to factory defaults!`, "success");
+        } else {
+            showToast("Failed to save default reset.", "error");
+        }
+    } catch (e) {
+        console.error("Reset preset error:", e);
+        showToast("Error resetting preset.", "error");
+    }
+}
+
+// Backward-compatibility alias
+function saveCurrentMixAsPreset() {
+    savePresetFromModal();
 }
 
 async function deleteAudioPreset(presetId) {
@@ -9010,9 +9425,13 @@ async function deleteAudioTrack(trackId) {
             method: 'DELETE'
         });
         if (res.ok) {
-            if (window.AudioEngine && window.AudioEngine.tracks[trackId]) {
+            if (window.AudioEngine) {
                 window.AudioEngine.pauseTrack(trackId);
-                delete window.AudioEngine.tracks[trackId];
+                if (Array.isArray(window.AudioEngine.tracks)) {
+                    window.AudioEngine.tracks = window.AudioEngine.tracks.filter(tr => tr.id !== trackId);
+                } else if (window.AudioEngine.tracks && window.AudioEngine.tracks[trackId]) {
+                    delete window.AudioEngine.tracks[trackId];
+                }
             }
             appState.audioLibrary = appState.audioLibrary.filter(t => t.id !== trackId);
             renderAudioTracks();
