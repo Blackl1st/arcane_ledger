@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import json
+import re
 import shutil
 import zipfile
 import logging
@@ -24,7 +25,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.5"
+CURRENT_VERSION = "1.1.6-beta.1"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -53,11 +54,16 @@ router = APIRouter(prefix="/api/updates", tags=["Updates"])
 
 
 def parse_version_tuple(v_str: str):
-    """Convert version string like 'v1.0.3' or '1.0.4-rc1' to comparable tuple."""
+    """Convert version string like 'v1.0.3', '1.1.6-beta.1', or '1.1.6-nightly.1' to a comparable tuple."""
     if not v_str:
-        return (0, 0, 0)
+        return (0, 0, 0, 0, 0, 0)
     cleaned = v_str.strip().lstrip("vV")
-    base = cleaned.split("-")[0].split("+")[0]
+    prerelease = ""
+    if "-" in cleaned:
+        base, prerelease = cleaned.split("-", 1)
+    else:
+        base = cleaned
+
     parts = []
     for piece in base.split("."):
         try:
@@ -66,7 +72,23 @@ def parse_version_tuple(v_str: str):
             parts.append(0)
     while len(parts) < 3:
         parts.append(0)
-    return tuple(parts)
+
+    # In semver, a release without prerelease tag (e.g. 1.1.6) is HIGHER than a prerelease (1.1.6-beta.1).
+    # 4th component: 1 for stable, 0 for prerelease.
+    if not prerelease:
+        return (parts[0], parts[1], parts[2], 1, 0, 0)
+    else:
+        # Match type and optional number: e.g. "beta.1", "beta1", "nightly.20261016", "rc2"
+        m = re.match(r"^([a-zA-Z]+)[._-]?(\d+)?", prerelease)
+        if m:
+            pre_type = m.group(1).lower()
+            num_str = m.group(2)
+            pre_num = int(num_str) if num_str else 0
+        else:
+            pre_type = prerelease.lower()
+            pre_num = 0
+        type_weight = {"alpha": 1, "nightly": 2, "beta": 3, "rc": 4}.get(pre_type, 2)
+        return (parts[0], parts[1], parts[2], 0, type_weight, pre_num)
 
 
 def get_updater_settings() -> Dict[str, Any]:
@@ -245,7 +267,7 @@ def fetch_latest_release(token: Optional[str] = None, channel: str = "stable") -
                     tag = r.get("tag_name", "").lower()
                     if not r.get("prerelease", False) and not any(x in tag for x in ["-beta", "-nightly", "-rc", "-alpha"]):
                         return r
-                return valid[0]
+                raise HTTPException(status_code=404, detail="No official stable release found on the stable channel.")
     except urllib.error.HTTPError as e:
         if e.code == 404:
             raise HTTPException(
@@ -277,7 +299,23 @@ def check_for_updates_internal(force: bool = False, token: Optional[str] = None)
     auth_token = token if token is not None else settings.get("github_token", "")
     channel = settings.get("channel", "stable")
 
-    release = fetch_latest_release(auth_token, channel=channel)
+    try:
+        release = fetch_latest_release(auth_token, channel=channel)
+    except HTTPException as e:
+        if e.status_code == 404 and "No official stable release" in str(e.detail):
+            with update_state.lock:
+                update_state.status = "idle"
+                update_state.target_version = None
+                update_state.release_info = None
+            return {
+                "update_available": False,
+                "current_version": CURRENT_VERSION,
+                "target_version": None,
+                "release_info": None,
+                "channel": channel,
+                "message": e.detail
+            }
+        raise
     tag_name = release.get("tag_name", "").strip()
     latest_version = tag_name.lstrip("vV")
 

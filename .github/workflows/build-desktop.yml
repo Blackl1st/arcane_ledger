@@ -204,12 +204,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || (github.event.inputs.tag_name != '' && github.event.inputs.tag_name || 'v1.0.0') }}
-          name: ${{ github.event.inputs.release_name != '' && github.event.inputs.release_name || 'Arcane Ledger Standalone Desktop Release' }}
+          name: ${{ github.event.inputs.release_name != '' && github.event.inputs.release_name || (github.ref_type == 'tag' && format('Arcane Ledger {0}', github.ref_name) || 'Arcane Ledger Standalone Desktop Release') }}
           body_path: release_notes.md
           files: |
             ArcaneLedger-Windows-x64.zip
             ArcaneLedger-macOS.zip
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-nightly') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-nightly') || contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') || contains(github.event.inputs.tag_name, '-beta') || contains(github.event.inputs.tag_name, '-nightly') || contains(github.event.inputs.tag_name, '-rc') }}
 
 
