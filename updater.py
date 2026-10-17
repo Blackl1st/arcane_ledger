@@ -258,6 +258,9 @@ def fetch_latest_release(token: Optional[str] = None, channel: str = "stable") -
             if not valid:
                 raise HTTPException(status_code=404, detail="No published releases found.")
 
+            # Sort releases strictly by SemVer descending so beta.10 is always higher than beta.9
+            valid.sort(key=lambda r: parse_version_tuple(r.get("tag_name", "")), reverse=True)
+
             if channel == "beta":
                 # In beta channel, accept the newest release whether prerelease or stable
                 return valid[0]
