@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from map_generator import ProceduralMapGenerator, get_random_title
 import updater
 import ddb_importer
+import cos_module_pack
 
 # Resource & Data Directory Resolution (Handles Live Dev & PyInstaller Frozen App)
 if getattr(sys, "frozen", False):
@@ -352,6 +353,7 @@ CAMPAIGN_SCOPED_FILES = {
     "faction_relations.json",
     "party_stash.json",
     "travel.json",
+    "tarokka.json",
 }
 
 DEFAULT_MODULES = {
@@ -1214,6 +1216,7 @@ async def get_companion_state(heroId: Optional[str] = None):
         "broadcast": broadcast,
         "handouts": delivered_handouts,
         "lastRest": last_rest,
+        "tarokka": read_json("tarokka.json", None),
         "recentRolls": sorted([r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)], key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
     }
 
@@ -2902,6 +2905,45 @@ async def create_campaign(payload: CampaignCreate):
             for f in active_dir.glob("*.json"):
                 if f.name in CAMPAIGN_SCOPED_FILES:
                     shutil.copy2(f, camp_dir / f.name)
+    elif payload.template == "curse_of_strahd":
+        defaults = {
+            "party.json": [],
+            "combat.json": {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []},
+            "roster.json": cos_module_pack.get_cos_roster(),
+            "world.json": {"customFactions": [], "customLocations": [], "useOnlyCustomFactions": False, "useOnlyCustomLocations": False},
+            "session_notes.json": [
+                {
+                    "id": "note-cos-prep",
+                    "title": "Barovia DM Primer & Chapter Milestones",
+                    "content": "• Tser Pool: Run Madam Eva's Tarokka reading to determine relic placements.\n• Vallaki: Key powder keg between Baron Vargas and Lady Wachter.\n• Relics: Sunsword deals 20 radiant/round to Strahd and halts his regeneration.\n• Heart of Sorrow: Absorbs first 50 HP of damage dealt to Strahd.",
+                    "category": "Session Notes",
+                    "pinned": True,
+                    "createdAt": time.time()
+                }
+            ],
+            "time_weather.json": cos_module_pack.get_cos_time_weather(),
+            "locations.json": cos_module_pack.get_cos_locations(),
+            "factions.json": cos_module_pack.get_cos_factions(),
+            "quests.json": cos_module_pack.get_cos_quests(),
+            "broadcast.json": {"active": False, "title": "", "subtitle": "", "content": "", "type": "text", "imageUrl": ""},
+            "encounters.json": cos_module_pack.get_cos_encounters(),
+            "secrets.json": [],
+            "handouts.json": cos_module_pack.get_cos_handouts(),
+            "battlemap.json": get_default_battlemap_state(),
+            "overworld.json": get_default_overworld_state([]),
+            "faction_relations.json": {"relations": [], "turnHistory": []},
+            "pantheon.json": [
+                {"id": "ptn-morninglord", "name": "The Morninglord", "domain": "Light, Life", "description": "The patron god of Barovia before the mists fell. Worshiped at the village church and St. Andral's in Vallaki."},
+                {"id": "ptn-mother-night", "name": "Mother Night", "domain": "Death, Twilight, Trickery", "description": "The ancient, dark deity worshiped by the wild druids, werewolves, and Baba Lysaga."}
+            ],
+            "timeline.json": {"eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS], "events": []},
+            "party_stash.json": {"currency": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}, "items": []},
+            "travel.json": get_default_travel_state(),
+            "tarokka.json": cos_module_pack.draw_tarokka_reading(),
+        }
+        for fname, dval in defaults.items():
+            with open(camp_dir / fname, "w", encoding="utf-8") as f:
+                json.dump(dval, f, indent=2, ensure_ascii=False)
     else:
         empty_party = []
         empty_combat = {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []}
@@ -6123,6 +6165,136 @@ async def generate_handouts_batch_preset():
     handouts = presets + handouts
     write_json("handouts.json", handouts)
     return {"status": "success", "added": len(presets), "handouts": handouts}
+
+# -------------------------------------------------------------
+# CURSE OF STRAHD: TAROKKA DECK ENGINE
+# -------------------------------------------------------------
+def format_tarokka_summary_note(t: dict) -> str:
+    lines = [
+        "Madam Eva's Tarokka Reading for Barovia:",
+        "",
+        f"1. THE TOME OF STRAHD: {t.get('tome', {}).get('card', 'Unknown')} ({t.get('tome', {}).get('suit', '')})",
+        f"   Clue: \"{t.get('tome', {}).get('clue', '')}\"",
+        f"   Exact Location: {t.get('tome', {}).get('location', '')}",
+        "",
+        f"2. THE HOLY SYMBOL OF RAVENKIND: {t.get('holySymbol', {}).get('card', 'Unknown')} ({t.get('holySymbol', {}).get('suit', '')})",
+        f"   Clue: \"{t.get('holySymbol', {}).get('clue', '')}\"",
+        f"   Exact Location: {t.get('holySymbol', {}).get('location', '')}",
+        "",
+        f"3. THE SUNSWORD: {t.get('sunsword', {}).get('card', 'Unknown')} ({t.get('sunsword', {}).get('suit', '')})",
+        f"   Clue: \"{t.get('sunsword', {}).get('clue', '')}\"",
+        f"   Exact Location: {t.get('sunsword', {}).get('location', '')}",
+        "",
+        f"4. STRAHD'S FATED ENEMY: {t.get('enemy', {}).get('card', 'Unknown')}",
+        f"   Fated Ally: {t.get('enemy', {}).get('ally', '')}",
+        "",
+        f"5. STRAHD'S LAIR (FINAL CONFRONTATION): {t.get('location', {}).get('card', 'Unknown')}",
+        f"   Sanctuary in Castle Ravenloft: {t.get('location', {}).get('location', '')}",
+        "",
+        f"Drawn at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t.get('timestamp', time.time())))}"
+    ]
+    return "\n".join(lines)
+
+
+@app.get("/api/tarokka/cards")
+async def get_tarokka_cards():
+    return {
+        "status": "success",
+        "common": cos_module_pack.TAROKKA_COMMON_DECK,
+        "high": cos_module_pack.TAROKKA_HIGH_DECK
+    }
+
+
+@app.get("/api/tarokka/current")
+async def get_current_tarokka():
+    reading = read_json("tarokka.json", None)
+    if not reading:
+        reading = cos_module_pack.draw_tarokka_reading()
+        write_json("tarokka.json", reading)
+    return {"status": "success", "reading": reading}
+
+
+@app.post("/api/tarokka/draw")
+async def draw_tarokka(payload: Optional[Dict[str, Any]] = None):
+    auto_save = False
+    if payload and payload.get("save"):
+        auto_save = True
+    new_reading = cos_module_pack.draw_tarokka_reading()
+    if auto_save:
+        write_json("tarokka.json", new_reading)
+    return {"status": "success", "reading": new_reading}
+
+
+@app.post("/api/tarokka/save")
+async def save_tarokka(payload: Dict[str, Any]):
+    reading = payload.get("reading", payload)
+    if not reading or not isinstance(reading, dict):
+        raise HTTPException(status_code=400, detail="Invalid reading payload")
+    
+    reading["timestamp"] = reading.get("timestamp") or time.time()
+    write_json("tarokka.json", reading)
+
+    # Sync to session_notes.json
+    try:
+        notes = read_json("session_notes.json", [])
+        note_title = "Madam Eva's Tarokka Reading"
+        existing_note = next((n for n in notes if n.get("title") == note_title or n.get("id") == "note-cos-tarokka"), None)
+        note_content = format_tarokka_summary_note(reading)
+        if existing_note:
+            existing_note["content"] = note_content
+            existing_note["updatedAt"] = time.time()
+        else:
+            notes.insert(0, {
+                "id": "note-cos-tarokka",
+                "title": note_title,
+                "content": note_content,
+                "category": "Curse of Strahd",
+                "pinned": True,
+                "createdAt": time.time(),
+                "updatedAt": time.time()
+            })
+        write_json("session_notes.json", notes)
+    except Exception as e:
+        print(f"Error syncing Tarokka to session notes: {e}")
+
+    return {"status": "success", "reading": reading}
+
+
+@app.post("/api/tarokka/broadcast")
+async def broadcast_tarokka_endpoint(payload: Optional[Dict[str, Any]] = None):
+    reading = None
+    if payload and payload.get("reading"):
+        reading = payload.get("reading")
+    else:
+        reading = read_json("tarokka.json", None)
+        if not reading:
+            reading = cos_module_pack.draw_tarokka_reading()
+            write_json("tarokka.json", reading)
+
+    player_summary = (
+        "🔮 MADAM EVA'S TAROKKA PROPHECY 🔮\n\n"
+        f"• The Tome of Strahd: {reading.get('tome', {}).get('card', 'Unknown')}\n"
+        f"  \"{reading.get('tome', {}).get('clue', '')}\"\n\n"
+        f"• Holy Symbol of Ravenkind: {reading.get('holySymbol', {}).get('card', 'Unknown')}\n"
+        f"  \"{reading.get('holySymbol', {}).get('clue', '')}\"\n\n"
+        f"• The Sunsword: {reading.get('sunsword', {}).get('card', 'Unknown')}\n"
+        f"  \"{reading.get('sunsword', {}).get('clue', '')}\"\n\n"
+        f"• Strahd's Enemy: {reading.get('enemy', {}).get('card', 'Unknown')}\n"
+        f"  Ally: {reading.get('enemy', {}).get('ally', '')}\n\n"
+        f"• The Darklord's Lair: {reading.get('location', {}).get('card', 'Unknown')}"
+    )
+
+    broadcast_data = {
+        "active": True,
+        "title": "Madam Eva's Tarokka Reading",
+        "subtitle": "The Mists of Fate Reveal Barovia's Secrets",
+        "content": player_summary,
+        "type": "tarokka",
+        "imageUrl": "",
+        "tarokka": reading
+    }
+    write_json("broadcast.json", broadcast_data)
+    return {"status": "success", "broadcast": broadcast_data}
 
 # -------------------------------------------------------------
 # PHASE 4: PLAYER DISPLAY SCREEN & BROADCAST HANDOUTS

@@ -583,6 +583,20 @@
                 </div>
             </div>
 
+            <!-- MADAM EVA'S TAROKKA PROPHECY BANNER CARD -->
+            <div id="companion-tarokka-card" class="hidden p-3.5 rounded-2xl bg-gradient-to-r from-ledger-900 via-rose-950/40 to-ledger-900 border border-rose-900/70 shadow-lg cursor-pointer hover:border-rose-700 transition" onclick="openCompanionTarokkaModal()">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-2xl bg-rose-950 border border-rose-700/60 flex items-center justify-center text-rose-300 text-xl shadow-inner">🔮</span>
+                        <div>
+                            <h4 class="font-display font-bold text-sm text-rose-200">Madam Eva's Prophecy</h4>
+                            <p class="text-[11px] text-slate-400">5 Tarokka Cards Revealed</p>
+                        </div>
+                    </div>
+                    <span class="text-rose-400 text-xs font-mono font-bold bg-rose-950/60 px-2 py-1 rounded-lg border border-rose-900/40">View Cards →</span>
+                </div>
+            </div>
+
             <div id="companion-handouts-list" class="space-y-3">
                 <div class="text-slate-500 text-center py-8 font-mono text-xs">No unlocked handouts yet.</div>
             </div>
@@ -737,6 +751,32 @@
         </div>
     </div>
 
+    <!-- MODAL: MADAM EVA'S TAROKKA PROPHECY (MOBILE) -->
+    <div id="modal-companion-tarokka" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-gradient-to-b from-ledger-900 via-rose-950/40 to-ledger-950 border border-rose-900/80 rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col relative overflow-hidden">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-rose-900/60 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-xl bg-rose-950 border border-rose-700/60 flex items-center justify-center text-rose-300 text-base">🔮</span>
+                    <div>
+                        <h3 class="font-display font-bold text-sm text-rose-300">Madam Eva's Prophecy</h3>
+                        <p class="text-[10px] text-slate-400 font-mono">The 5 Cards of Destiny</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-companion-tarokka')" class="w-7 h-7 rounded-full bg-ledger-800 hover:bg-ledger-700 text-slate-300 flex items-center justify-center text-xs font-bold transition">✕</button>
+            </div>
+
+            <!-- Scrollable 5-Card List -->
+            <div id="companion-tarokka-cards-list" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+                <!-- Inserted dynamically -->
+            </div>
+
+            <div class="pt-2 border-t border-rose-950 text-center text-[10px] text-rose-400/60 font-mono italic">
+                "The mists part for none save fate itself."
+            </div>
+        </div>
+    </div>
+
     <!-- JAVASCRIPT CONTROLLER -->
     <script>
         function escapeHTML(str) {
@@ -814,6 +854,9 @@
 
                 // Render Handouts
                 renderHandouts(handouts);
+
+                // Render Tarokka Prophecy (if CoS active)
+                renderCompanionTarokka(data.tarokka);
 
                 // Render Recent Rolls
                 renderRollLog(recentRolls);
@@ -2458,6 +2501,62 @@
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             });
+        }
+
+        let companionTarokkaReading = null;
+
+        function renderCompanionTarokka(tarokka) {
+            companionTarokkaReading = tarokka;
+            const cardEl = document.getElementById('companion-tarokka-card');
+            if (!cardEl) return;
+            if (tarokka && (tarokka.tome || tarokka.holySymbol)) {
+                cardEl.classList.remove('hidden');
+            } else {
+                cardEl.classList.add('hidden');
+            }
+        }
+
+        function openCompanionTarokkaModal() {
+            if (!companionTarokkaReading) return;
+            const list = document.getElementById('companion-tarokka-cards-list');
+            if (!list) return;
+
+            const t = companionTarokkaReading;
+            const cards = [
+                { title: 'The Tome of Strahd', role: 'History', card: t.tome, icon: '📜' },
+                { title: 'Holy Symbol of Ravenkind', role: 'Hope', card: t.holySymbol, icon: '☀️' },
+                { title: 'The Sunsword', role: 'Power', card: t.sunsword, icon: '🗡️' },
+                { title: 'Strahd\'s Enemy', role: 'Fated Ally', card: t.enemy, icon: '⚔️' },
+                { title: 'The Darklord\'s Lair', role: 'Castle Ravenloft', card: t.location, icon: '🏰' }
+            ];
+
+            list.innerHTML = cards.map(c => {
+                const cd = c.card || {};
+                const name = cd.card || 'The Unknown';
+                const suit = cd.suit ? `Suit of ${cd.suit}` : (cd.ally || cd.location ? 'High Deck' : '');
+                const clue = cd.clue ? `"${cd.clue}"` : (cd.ally ? `"${name} stands with you against the shadow."` : (cd.location ? `"${name} awaits in the darkest hall."` : ''));
+                return `
+                    <div class="bg-ledger-950/90 border border-rose-900/60 rounded-2xl p-3.5 space-y-2 shadow">
+                        <div class="flex items-center justify-between border-b border-rose-950/80 pb-1.5">
+                            <span class="font-bold text-rose-300 flex items-center gap-1.5">
+                                <span>${c.icon}</span> <span>${c.title}</span>
+                            </span>
+                            <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-900/50">${suit || c.role}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs font-semibold text-rose-100">
+                            <span>${name}</span>
+                            <span class="text-base">${cd.symbol || c.icon}</span>
+                        </div>
+                        <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-2.5">
+                            <p class="text-[11px] font-serif italic text-slate-300 leading-relaxed">${clue}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const modal = document.getElementById('modal-companion-tarokka');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function closeModal(id) {

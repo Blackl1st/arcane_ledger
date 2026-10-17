@@ -6262,7 +6262,8 @@ const WORLD_SUBTAB_METADATA = {
     'timeline': { icon: '⏳', title: 'Campaign Historical Timeline', desc: 'Chronological eras feed and session log synchronization with the in-game calendar' },
     'travel': { icon: '🏕️', title: 'Wilderness Travel & Foraging Calculator', desc: 'Overland pace calculator, 5.5e foraging & navigation DCs, and roadside exploration complications' },
     'secrets': { icon: '🔍', title: 'Secrets & Clues Engine', desc: 'Prepare revelations, lore discoveries, and plot clues to drop during session play' },
-    'handouts': { icon: '📜', title: 'In-World Handouts & Letters', desc: 'Forge authentic missives, burned journals, bounties, and decipherable coded notes' }
+    'handouts': { icon: '📜', title: 'In-World Handouts & Letters', desc: 'Forge authentic missives, burned journals, bounties, and decipherable coded notes' },
+    'tarokka': { icon: '🔮', title: 'Madam Eva\'s Tarokka Deck of Fate', desc: 'Interactive 5-card cross reading engine divining holy relics, fated allies, and Strahd\'s sanctuary' }
 };
 
 function toggleWorldSidebarSubmenu(forceOpen = null) {
@@ -6318,7 +6319,11 @@ function switchWorldSubtab(subtab) {
     if (activePanel) activePanel.classList.remove('hidden');
     if (activeBtn) {
         activeBtn.classList.remove('text-slate-400');
-        activeBtn.classList.add('bg-amber-500/20', 'text-amber-300', 'border', 'border-amber-500/40');
+        if (subtab === 'tarokka') {
+            activeBtn.classList.add('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/40');
+        } else {
+            activeBtn.classList.add('bg-amber-500/20', 'text-amber-300', 'border', 'border-amber-500/40');
+        }
     }
 
     // Update Header Breadcrumb in #view-world
@@ -6340,6 +6345,7 @@ function switchWorldSubtab(subtab) {
     else if (subtab === 'travel') renderTravel();
     else if (subtab === 'secrets') renderSecrets();
     else if (subtab === 'handouts') renderHandouts();
+    else if (subtab === 'tarokka') { fetchTarokkaState(); renderTarokka(); }
 }
 
 function renderWorldView() {
@@ -9512,9 +9518,340 @@ window.applyCipher = applyCipher;
 window.getHandoutTypeBadge = getHandoutTypeBadge;
 window.populateHandoutDropdowns = populateHandoutDropdowns;
 window.onHandoutAuthorSelectChange = onHandoutAuthorSelectChange;
-window.onHandoutRecipientSelectChange = onHandoutRecipientSelectChange;
-window.onHandoutLocationSelectChange = onHandoutLocationSelectChange;
-window.onHandoutNpcSelectChange = onHandoutNpcSelectChange;
+// =============================================================================
+// CURSE OF STRAHD: TAROKKA DECK CONTROLLER
+// =============================================================================
+const tarokkaState = {
+    reading: null,
+    showDmSpoilers: true,
+    flipped: {
+        tome: false,
+        holySymbol: false,
+        sunsword: false,
+        enemy: false,
+        location: false
+    },
+    compendiumCards: null
+};
+
+async function fetchTarokkaState() {
+    try {
+        const res = await fetch('/api/tarokka/current');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.reading) {
+                tarokkaState.reading = data.reading;
+                renderTarokka();
+            }
+        }
+    } catch (e) {
+        console.error("Error fetching Tarokka state:", e);
+    }
+}
+
+function renderTarokka() {
+    const reading = tarokkaState.reading;
+    if (!reading) return;
+
+    const slots = [
+        { key: 'tome', label: 'Tome of Strahd', role: 'History', icon: '📜', accent: 'amber' },
+        { key: 'holySymbol', label: 'Holy Symbol of Ravenkind', role: 'Hope', icon: '☀️', accent: 'sky' },
+        { key: 'sunsword', label: 'The Sunsword', role: 'Power', icon: '🗡️', accent: 'amber' },
+        { key: 'enemy', label: 'Strahd\'s Enemy', role: 'Fated Ally', icon: '⚔️', accent: 'emerald' },
+        { key: 'location', label: 'The Darklord\'s Lair', role: 'Final Battle', icon: '🏰', accent: 'rose' }
+    ];
+
+    slots.forEach(slot => {
+        const container = document.getElementById(`tarokka-card-slot-${slot.key}`);
+        if (!container) return;
+        const cardData = reading[slot.key] || {};
+        const isFlipped = !!tarokkaState.flipped[slot.key];
+        container.innerHTML = buildTarokkaCardHtml(slot, cardData, isFlipped);
+    });
+
+    // Update Spoiler Toggle Button
+    const spoilerBtnText = document.getElementById('tarokka-spoiler-text');
+    if (spoilerBtnText) {
+        spoilerBtnText.textContent = tarokkaState.showDmSpoilers ? 'Hide DM Spoilers' : 'Show DM Spoilers';
+    }
+
+    // Update Reveal All Button
+    const allFlipped = Object.values(tarokkaState.flipped).every(v => v);
+    const revealAllText = document.getElementById('tarokka-reveal-all-text');
+    if (revealAllText) {
+        revealAllText.textContent = allFlipped ? 'Conceal All' : 'Reveal All';
+    }
+
+    // Spoken Clues Summary Table
+    renderTarokkaCluesSummary(reading);
+}
+
+function buildTarokkaCardHtml(slot, card, isFlipped) {
+    const isDm = tarokkaState.showDmSpoilers;
+    const cardName = card.card || 'The Unknown';
+    const cardSuit = card.suit ? `Suit of ${card.suit}` : (card.ally || card.location ? 'High Deck' : '');
+    const cardSymbol = card.symbol || slot.icon;
+    const clueText = card.clue ? `"${card.clue}"` : (card.ally ? `"${card.card} brings aid in the darkest hour."` : 'The shadows shroud this card in mist.');
+    
+    let dmLocation = '';
+    if (slot.key === 'enemy') {
+        dmLocation = card.ally ? `🤝 Ally: ${card.ally}` : 'Alone (No Ally)';
+    } else if (slot.key === 'location') {
+        dmLocation = card.location ? `📍 Sanctuary: ${card.location}` : 'Castle Ravenloft';
+    } else {
+        dmLocation = card.location ? `📍 Location: ${card.location}` : 'Unknown Location';
+    }
+
+    return `
+        <div id="tarokka-card-inner-${slot.key}" class="tarokka-card-inner ${isFlipped ? 'flipped' : ''}">
+            <!-- CARD BACK (Concealed) -->
+            <div class="tarokka-card-back p-4 sm:p-5 flex flex-col justify-between items-center text-center select-none tarokka-border-filigree">
+                <div class="w-full flex items-center justify-between text-[10px] font-mono text-rose-400/80 uppercase">
+                    <span>Barovia</span>
+                    <span>Tarokka</span>
+                </div>
+                <div class="space-y-3 my-auto">
+                    <div class="w-16 h-16 rounded-2xl bg-rose-950/80 border-2 border-rose-800/80 flex items-center justify-center text-3xl mx-auto shadow-inner text-rose-300">
+                        ${slot.icon}
+                    </div>
+                    <div>
+                        <div class="font-display font-bold text-sm text-rose-200 tracking-wider">${slot.label.toUpperCase()}</div>
+                        <div class="text-[10px] font-mono text-rose-400/70 mt-0.5">${slot.role}</div>
+                    </div>
+                </div>
+                <div class="w-full pt-2 border-t border-rose-900/40 text-[10px] font-semibold text-rose-400/60 uppercase tracking-widest flex items-center justify-center gap-1">
+                    <span>✨</span> <span>Tap to Reveal</span> <span>✨</span>
+                </div>
+            </div>
+
+            <!-- CARD FRONT (Revealed) -->
+            <div class="tarokka-card-front p-4 sm:p-5 flex flex-col justify-between text-left select-none tarokka-border-filigree">
+                <div class="flex items-center justify-between border-b border-rose-900/60 pb-2">
+                    <span class="text-[10px] font-mono uppercase tracking-wider text-rose-400/80">${cardSuit}</span>
+                    <span class="text-xl">${cardSymbol}</span>
+                </div>
+
+                <div class="my-auto space-y-2.5">
+                    <div>
+                        <span class="text-[9px] font-mono uppercase text-slate-400 tracking-widest block">${slot.label}</span>
+                        <h4 class="font-display font-bold text-base text-rose-200 tracking-wide">${cardName}</h4>
+                    </div>
+                    <div class="bg-ledger-950/80 border border-rose-950 rounded-xl p-3 shadow-inner">
+                        <p class="text-[11px] font-serif italic text-rose-100/90 leading-relaxed">${clueText}</p>
+                    </div>
+
+                    ${isDm ? `
+                        <div class="bg-rose-950/60 border border-rose-800/80 rounded-xl p-2.5 space-y-1 shadow-sm">
+                            <span class="text-[9px] font-mono uppercase tracking-widest text-amber-300 font-bold block flex items-center gap-1">
+                                <span>🔒</span> <span>DM Adventure Secret</span>
+                            </span>
+                            <div class="text-[11px] font-semibold text-rose-200 leading-snug">${dmLocation}</div>
+                        </div>
+                    ` : `
+                        <div class="p-2 text-center text-[10px] text-slate-500 font-mono italic">
+                            (Exact DM Location Concealed)
+                        </div>
+                    `}
+                </div>
+
+                <div class="pt-2 border-t border-rose-900/40 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                    <span class="text-rose-400/80 font-bold">${slot.role}</span>
+                    <span class="text-slate-500">Tap to Flip</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderTarokkaCluesSummary(reading) {
+    const container = document.getElementById('tarokka-clues-summary');
+    if (!container) return;
+
+    const cards = [
+        { label: '1. Tome of Strahd', card: reading.tome, icon: '📜', role: 'History' },
+        { label: '2. Holy Symbol', card: reading.holySymbol, icon: '☀️', role: 'Hope' },
+        { label: '3. Sunsword', card: reading.sunsword, icon: '🗡️', role: 'Power' },
+        { label: '4. Strahd\'s Enemy', card: reading.enemy, icon: '⚔️', role: 'Fated Ally' },
+        { label: '5. Strahd\'s Lair', card: reading.location, icon: '🏰', role: 'Final Confrontation' }
+    ];
+
+    container.innerHTML = cards.map(c => {
+        const cd = c.card || {};
+        const clue = cd.clue ? `"${cd.clue}"` : (cd.ally ? `Ally: ${cd.ally}` : (cd.location ? `Lair: ${cd.location}` : 'Unrevealed'));
+        const isDm = tarokkaState.showDmSpoilers;
+        const loc = cd.location || cd.ally || '';
+
+        return `
+            <div class="bg-ledger-950 border border-ledger-800 rounded-xl p-3.5 space-y-2 hover:border-rose-900/60 transition shadow-sm">
+                <div class="flex items-center justify-between border-b border-ledger-800 pb-1.5">
+                    <span class="font-bold text-rose-300 flex items-center gap-1.5">
+                        <span>${c.icon}</span> <span>${c.label}</span>
+                    </span>
+                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-950/60 text-rose-400 border border-rose-900/40">${cd.card || 'Unknown'}</span>
+                </div>
+                <p class="text-xs font-serif italic text-slate-300 leading-relaxed">${clue}</p>
+                ${isDm && loc ? `
+                    <div class="text-[11px] font-mono text-amber-300/90 pt-1 border-t border-ledger-800/80 flex items-center gap-1">
+                        <span>📍</span> <span class="truncate">${loc}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function flipTarokkaCard(slotKey) {
+    tarokkaState.flipped[slotKey] = !tarokkaState.flipped[slotKey];
+    const inner = document.getElementById(`tarokka-card-inner-${slotKey}`);
+    if (inner) {
+        if (tarokkaState.flipped[slotKey]) {
+            inner.classList.add('flipped');
+        } else {
+            inner.classList.remove('flipped');
+        }
+    }
+    // Update reveal all button text
+    const allFlipped = Object.values(tarokkaState.flipped).every(v => v);
+    const revealAllText = document.getElementById('tarokka-reveal-all-text');
+    if (revealAllText) {
+        revealAllText.textContent = allFlipped ? 'Conceal All' : 'Reveal All';
+    }
+}
+
+function toggleTarokkaRevealAll() {
+    const allFlipped = Object.values(tarokkaState.flipped).every(v => v);
+    const targetState = !allFlipped;
+    Object.keys(tarokkaState.flipped).forEach(k => {
+        tarokkaState.flipped[k] = targetState;
+    });
+    renderTarokka();
+}
+
+function toggleTarokkaSpoilers() {
+    tarokkaState.showDmSpoilers = !tarokkaState.showDmSpoilers;
+    renderTarokka();
+    showToast(tarokkaState.showDmSpoilers ? "DM Spoilers Visible (Exact Locations Shown)" : "DM Spoilers Hidden (Player Safe Mode)", "info");
+}
+
+async function drawNewTarokkaReading() {
+    try {
+        const res = await fetch('/api/tarokka/draw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ save: true })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            tarokkaState.reading = data.reading;
+            // Reset cards to face down for dramatic flip reveal
+            tarokkaState.flipped = { tome: false, holySymbol: false, sunsword: false, enemy: false, location: false };
+            renderTarokka();
+            showToast("🔮 Madam Eva has shuffled the Tarokka Deck! 5 cards drawn face down.", "success");
+        }
+    } catch (e) {
+        console.error("Error drawing Tarokka reading:", e);
+        showToast("Failed to draw Tarokka reading", "error");
+    }
+}
+
+async function broadcastTarokkaReading() {
+    try {
+        const res = await fetch('/api/tarokka/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reading: tarokkaState.reading })
+        });
+        if (res.ok) {
+            showToast("📡 Madam Eva's Prophecy broadcast to all player companion phones!", "success");
+        }
+    } catch (e) {
+        console.error("Error broadcasting Tarokka reading:", e);
+        showToast("Failed to broadcast Tarokka reading", "error");
+    }
+}
+
+async function saveTarokkaToNotes() {
+    if (!tarokkaState.reading) return;
+    try {
+        const res = await fetch('/api/tarokka/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reading: tarokkaState.reading })
+        });
+        if (res.ok) {
+            showToast("📝 Tarokka reading pinned to Session Notes under 'Curse of Strahd'!", "success");
+            if (typeof fetchSessionNotes === 'function') fetchSessionNotes();
+        }
+    } catch (e) {
+        console.error("Error saving Tarokka reading to notes:", e);
+        showToast("Failed to save Tarokka reading", "error");
+    }
+}
+
+async function toggleTarokkaCompendium() {
+    const tray = document.getElementById('tarokka-compendium-tray');
+    const chevron = document.getElementById('tarokka-compendium-chevron');
+    if (!tray) return;
+
+    const isHidden = tray.classList.contains('hidden');
+    if (isHidden) {
+        tray.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+        if (!tarokkaState.compendiumCards) {
+            await fetchTarokkaCompendium();
+        }
+    } else {
+        tray.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+    }
+}
+
+async function fetchTarokkaCompendium() {
+    try {
+        const res = await fetch('/api/tarokka/cards');
+        if (res.ok) {
+            const data = await res.json();
+            tarokkaState.compendiumCards = data;
+            renderTarokkaCompendiumGrid(data);
+        }
+    } catch (e) {
+        console.error("Error fetching Tarokka compendium:", e);
+    }
+}
+
+function renderTarokkaCompendiumGrid(data) {
+    const container = document.getElementById('tarokka-compendium-grid');
+    if (!container) return;
+
+    const allCards = [
+        ...(data.common || []),
+        ...(data.high || []).map(c => ({ ...c, suit: 'High Deck', clue: c.ally ? `Ally: ${c.ally}` : `Lair: ${c.strahd_loc}`, loc: c.strahd_loc || c.ally }))
+    ];
+
+    container.innerHTML = allCards.map(c => `
+        <div class="p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 text-xs space-y-1 hover:border-rose-700/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-rose-300 flex items-center gap-1">
+                    <span>${c.symbol || '🃏'}</span> <span>${c.name}</span>
+                </span>
+                <span class="text-[9px] font-mono text-slate-500">${c.suit || 'Common'}</span>
+            </div>
+            <p class="text-[11px] font-serif italic text-slate-400 line-clamp-2">${c.clue || ''}</p>
+            ${c.loc ? `<div class="text-[10px] font-mono text-amber-300/80 truncate">📍 ${c.loc}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+// Window exports
+window.fetchTarokkaState = fetchTarokkaState;
+window.renderTarokka = renderTarokka;
+window.flipTarokkaCard = flipTarokkaCard;
+window.toggleTarokkaRevealAll = toggleTarokkaRevealAll;
+window.toggleTarokkaSpoilers = toggleTarokkaSpoilers;
+window.drawNewTarokkaReading = drawNewTarokkaReading;
+window.broadcastTarokkaReading = broadcastTarokkaReading;
+window.saveTarokkaToNotes = saveTarokkaToNotes;
+window.toggleTarokkaCompendium = toggleTarokkaCompendium;
 
 // =============================================================================
 // PHASE 4: IMMERSION, BROADCAST, PROCEDURAL AUDIO & BACKUP CONTROLLER

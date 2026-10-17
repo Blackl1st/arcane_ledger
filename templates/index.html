@@ -132,6 +132,46 @@
             background: radial-gradient(circle at 35% 35%, #a855f7, #6b21a8 70%, #3b0764);
         }
 
+        /* Tarokka Deck 3D Flip & Gothic Styles */
+        .tarokka-card-container {
+            perspective: 1200px;
+        }
+        .tarokka-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+        .tarokka-card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+        .tarokka-card-front, .tarokka-card-back {
+            position: absolute;
+            inset: 0;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.75);
+        }
+        .tarokka-card-back {
+            background: radial-gradient(circle at center, #24141d 0%, #100b13 75%, #060408 100%);
+            border: 2px solid #881337;
+            transform: rotateY(0deg);
+        }
+        .tarokka-card-front {
+            background: radial-gradient(circle at 50% 25%, #2e1822 0%, #170d18 65%, #0a060a 100%);
+            border: 2px solid #e11d48;
+            transform: rotateY(180deg);
+        }
+        .tarokka-border-filigree {
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            box-shadow: inset 0 0 18px rgba(136, 19, 55, 0.45);
+        }
+
         body {
             background-color: #0f141c;
             color: #e2e8f0;
@@ -550,6 +590,14 @@
                             </div>
                             <span id="handouts-nav-badge" class="sidebar-text hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">0</span>
                             <span class="sidebar-tooltip">Handouts & Letters</span>
+                        </button>
+                        <button id="world-subtab-tarokka" onclick="switchWorldSubtab('tarokka')" class="world-subtab-btn w-full flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-rose-300 hover:bg-rose-950/40 transition relative group/nav">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="text-sm shrink-0 w-5 text-center">🔮</span>
+                                <span class="sidebar-text hidden truncate">Tarokka Deck</span>
+                            </div>
+                            <span class="sidebar-text hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">CoS</span>
+                            <span class="sidebar-tooltip">Madam Eva's Tarokka Deck of Fate</span>
                         </button>
                     </div>
                 </div>
@@ -2666,6 +2714,144 @@
                 </div>
             </div>
 
+            <!-- SUB-VIEW J: MADAM EVA'S TAROKKA DECK OF FATE -->
+            <div id="world-panel-tarokka" class="world-panel space-y-5 hidden">
+                
+                <!-- Atmospheric Gothic Header -->
+                <div class="bg-gradient-to-r from-ledger-900 via-rose-950/30 to-ledger-900 border border-rose-900/60 rounded-3xl p-5 shadow-2xl relative overflow-hidden">
+                    <div class="absolute -right-8 -top-8 w-44 h-44 bg-rose-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                        <div class="space-y-1.5">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-10 h-10 rounded-2xl bg-rose-950/80 border border-rose-700/60 flex items-center justify-center text-rose-300 text-xl shadow-inner">🔮</span>
+                                <div>
+                                    <h3 class="font-display font-bold text-lg text-rose-300 tracking-wide flex items-center gap-2">
+                                        Madam Eva's Tarokka Deck of Fate
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">Curse of Strahd</span>
+                                    </h3>
+                                    <p class="text-xs text-slate-400">The 54-card Barovian deck that divines the holy relics, fated allies, and Strahd's final sanctuary.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Toolbar -->
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button onclick="drawNewTarokkaReading()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-950/50 flex items-center gap-2 transition tap-active">
+                                <span>🔀</span> <span>Shuffle & Draw 5 Cards</span>
+                            </button>
+                            <button onclick="toggleTarokkaRevealAll()" id="tarokka-reveal-all-btn" class="px-3.5 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition">
+                                <span>👁️</span> <span id="tarokka-reveal-all-text">Reveal All</span>
+                            </button>
+                            <button onclick="toggleTarokkaSpoilers()" id="tarokka-spoiler-toggle-btn" class="px-3.5 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-700 border border-ledger-700 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Hide/Show DM-only exact adventure room numbers and locations">
+                                <span>🔒</span> <span id="tarokka-spoiler-text">Hide DM Spoilers</span>
+                            </button>
+                            <button onclick="broadcastTarokkaReading()" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow flex items-center gap-1.5 transition">
+                                <span>📡</span> <span>Broadcast to Phones</span>
+                            </button>
+                            <button onclick="saveTarokkaToNotes()" class="px-3.5 py-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition">
+                                <span>📝</span> <span>Save to Notes</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5-CARD CROSS FORMATION READING STAGE -->
+                <div class="bg-ledger-950/90 border border-rose-950/60 rounded-3xl p-6 sm:p-8 shadow-inner relative overflow-hidden flex flex-col justify-center items-center">
+                    
+                    <!-- Cross Layout: Grid -->
+                    <div class="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center gap-6">
+                        
+                        <!-- Top Row: Card 2 - Holy Symbol of Ravenkind -->
+                        <div class="flex flex-col items-center space-y-2">
+                            <span class="text-[11px] font-mono uppercase tracking-wider text-sky-400 font-bold flex items-center gap-1.5">
+                                <span>☀️</span> <span>Card 2: Holy Symbol of Ravenkind</span>
+                            </span>
+                            <div id="tarokka-card-slot-holySymbol" class="tarokka-card-container w-60 h-84 sm:w-64 sm:h-92 cursor-pointer" onclick="flipTarokkaCard('holySymbol')">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Middle Row: Card 1 (Left), Card 5 (Center), Card 3 (Right) -->
+                        <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                            
+                            <!-- Card 1: The Tome of Strahd (Left) -->
+                            <div class="flex flex-col items-center space-y-2">
+                                <span class="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                                    <span>📜</span> <span>Card 1: The Tome of Strahd</span>
+                                </span>
+                                <div id="tarokka-card-slot-tome" class="tarokka-card-container w-60 h-84 sm:w-64 sm:h-92 cursor-pointer" onclick="flipTarokkaCard('tome')">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Card 5: Strahd's Castle Lair (Center) -->
+                            <div class="flex flex-col items-center space-y-2">
+                                <span class="text-[11px] font-mono uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1.5">
+                                    <span>🏰</span> <span>Card 5: The Darklord's Lair</span>
+                                </span>
+                                <div id="tarokka-card-slot-location" class="tarokka-card-container w-60 h-84 sm:w-64 sm:h-92 cursor-pointer" onclick="flipTarokkaCard('location')">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Card 3: The Sunsword (Right) -->
+                            <div class="flex flex-col items-center space-y-2">
+                                <span class="text-[11px] font-mono uppercase tracking-wider text-amber-300 font-bold flex items-center gap-1.5">
+                                    <span>🗡️</span> <span>Card 3: The Sunsword</span>
+                                </span>
+                                <div id="tarokka-card-slot-sunsword" class="tarokka-card-container w-60 h-84 sm:w-64 sm:h-92 cursor-pointer" onclick="flipTarokkaCard('sunsword')">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Bottom Row: Card 4 - Strahd's Enemy / Fated Ally -->
+                        <div class="flex flex-col items-center space-y-2">
+                            <span class="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+                                <span>⚔️</span> <span>Card 4: Strahd's Enemy (Fated Ally)</span>
+                            </span>
+                            <div id="tarokka-card-slot-enemy" class="tarokka-card-container w-60 h-84 sm:w-64 sm:h-92 cursor-pointer" onclick="flipTarokkaCard('enemy')">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Prophecy Clue Transcription Sheet -->
+                <div class="bg-ledger-900 border border-ledger-700 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center justify-between border-b border-ledger-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">📜</span>
+                            <h4 class="font-display font-bold text-sm text-slate-200">Madam Eva's Spoken Clues (Table Recitation)</h4>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400">Read aloud to players as each card turns</span>
+                    </div>
+
+                    <div id="tarokka-clues-summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                        <!-- Populated dynamically via renderTarokka() -->
+                    </div>
+                </div>
+
+                <!-- Collapsible Complete 54-Card Reference Deck -->
+                <div class="bg-ledger-900 border border-ledger-800 rounded-2xl p-4 shadow-lg space-y-3">
+                    <button onclick="toggleTarokkaCompendium()" class="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-300 hover:text-white transition">
+                        <div class="flex items-center gap-2">
+                            <span>🃏</span>
+                            <span>Complete 54-Card Tarokka Compendium (40 Common Deck + 14 High Deck)</span>
+                        </div>
+                        <span id="tarokka-compendium-chevron" class="text-slate-500 font-mono transition-transform duration-200">▼</span>
+                    </button>
+                    <div id="tarokka-compendium-tray" class="hidden pt-3 border-t border-ledger-800/80 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" id="tarokka-compendium-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
         </section>
 
         <!-- 8. ATMOSPHERE STUDIO & SCENE LIGHTING VIEW -->
@@ -3603,7 +3789,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.15</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.17</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -6408,19 +6594,26 @@
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Initial Data Template</label>
-                    <div class="grid grid-cols-2 gap-2.5">
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 cursor-pointer hover:border-amber-500/50">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 cursor-pointer hover:border-amber-500/50 transition">
                             <input type="radio" name="new-campaign-template" value="blank" checked class="text-amber-500">
                             <div>
                                 <span class="font-bold text-slate-200 block text-xs">Fresh Slate</span>
                                 <span class="text-[10px] text-slate-400 block">Empty party & world state</span>
                             </div>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 cursor-pointer hover:border-amber-500/50">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 cursor-pointer hover:border-amber-500/50 transition">
                             <input type="radio" name="new-campaign-template" value="clone_active" class="text-amber-500">
                             <div>
                                 <span class="font-bold text-slate-200 block text-xs">Clone Active</span>
                                 <span class="text-[10px] text-slate-400 block">Copy party & lore from current</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-rose-900/60 bg-rose-950/30 cursor-pointer hover:border-rose-500/70 transition">
+                            <input type="radio" name="new-campaign-template" value="curse_of_strahd" class="text-rose-500" onchange="if(this.checked && !document.getElementById('new-campaign-name').value.trim()){ document.getElementById('new-campaign-name').value='Curse of Strahd'; document.getElementById('new-campaign-desc').value='Gothic horror campaign set in the mist-shrouded domain of Barovia. Preloaded with Strahd, Madam Eva, Barovian handouts & Tarokka deck.'; }">
+                            <div>
+                                <span class="font-bold text-rose-300 block text-xs flex items-center gap-1"><span>🦇</span> Curse of Strahd</span>
+                                <span class="text-[10px] text-slate-400 block">Preloaded NPCs, handouts & Tarokka</span>
                             </div>
                         </label>
                     </div>
