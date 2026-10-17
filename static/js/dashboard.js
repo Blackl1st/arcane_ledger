@@ -1444,99 +1444,159 @@ function renderCombatTracker() {
         else if (c.type === 'npc') badgeTypeColor = "bg-purple-500/20 text-purple-300 border-purple-500/30";
         else if (c.type === 'boss') badgeTypeColor = "bg-amber-500/20 text-amber-300 border-amber-500/40";
 
+        const isMonsterOrBoss = c.type === 'monster' || c.type === 'boss';
+        const monsterData = isMonsterOrBoss ? getMonsterDataForCombatant(c) : null;
+        window.combatantOpenDrawers = window.combatantOpenDrawers || {};
+        const isDrawerOpen = monsterData && (window.combatantOpenDrawers[c.id] !== undefined ? window.combatantOpenDrawers[c.id] : isActiveTurn);
+
         return `
-            <div class="trait-card rounded-xl p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 transition relative overflow-hidden ${isActiveTurn ? 'border-amber-400 shadow-xl shadow-amber-950/40 ring-1 ring-amber-400/50 bg-ledger-800/95' : (isDefeated ? 'opacity-60 bg-ledger-950/90' : '')}">
+            <div class="trait-card rounded-xl p-3 flex flex-col items-stretch gap-2.5 transition relative overflow-hidden ${isActiveTurn ? 'border-amber-400 shadow-xl shadow-amber-950/40 ring-1 ring-amber-400/50 bg-ledger-800/95' : (isDefeated ? 'opacity-60 bg-ledger-950/90' : '')}">
                 
                 ${isActiveTurn ? `<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-400"></div>` : ''}
 
-                <!-- Left: Initiative Badge + Combatant Identity -->
-                <div class="flex items-center gap-3 min-w-[200px] flex-1">
-                    <!-- Initiative Editable Pill -->
-                    <div class="flex flex-col items-center justify-center w-11 h-11 rounded-lg bg-ledger-950 border border-ledger-700 shrink-0">
-                        <span class="text-[9px] uppercase tracking-wider text-slate-500 leading-none">Init</span>
-                        <input type="number" value="${c.initiative}" onchange="updateCombatantInit('${c.id}', this.value)" class="w-full text-center bg-transparent text-sm font-mono font-bold text-amber-300 focus:outline-none">
-                    </div>
-
-                    ${c.imageUrl ? `
-                        <div class="w-11 h-11 rounded-lg bg-ledger-950 border border-amber-500/50 overflow-hidden shrink-0 shadow-sm flex items-center justify-center">
-                            <img src="${escapeHTML(c.imageUrl)}" alt="${escapeHTML(c.name)}" class="w-full h-full object-cover">
+                <!-- Main Combatant Row -->
+                <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    <!-- Left: Initiative Badge + Combatant Identity -->
+                    <div class="flex items-center gap-3 min-w-[200px] flex-1">
+                        <!-- Initiative Editable Pill -->
+                        <div class="flex flex-col items-center justify-center w-11 h-11 rounded-lg bg-ledger-950 border border-ledger-700 shrink-0">
+                            <span class="text-[9px] uppercase tracking-wider text-slate-500 leading-none">Init</span>
+                            <input type="number" value="${c.initiative}" onchange="updateCombatantInit('${c.id}', this.value)" class="w-full text-center bg-transparent text-sm font-mono font-bold text-amber-300 focus:outline-none">
                         </div>
-                    ` : ''}
 
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase border ${badgeTypeColor}">${c.type}</span>
-                            <h4 onclick="setCombatTurn(${idx})" class="font-bold text-sm text-slate-100 hover:text-amber-300 cursor-pointer truncate transition" title="Click to jump active turn here">${escapeHTML(c.name)}</h4>
-                            ${c.hidden ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700" title="Hidden from Player Screen (Stealth / Fog)">🙈 Stealth</span>` : ''}
-                            ${isBloodied ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">Bloodied</span>` : ''}
-                            ${isDefeated ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40">Defeated</span>` : ''}
-                        </div>
-                        <p class="text-[11px] text-slate-400 truncate mt-0.5">AC <span class="text-amber-300 font-bold">${c.ac}</span> • ${c.statDetails ? escapeHTML(c.statDetails) : 'Standard'}</p>
-                    </div>
-                </div>
-
-                <!-- Center: HP Bar & Quick Damage / Heal Inputs -->
-                <div class="flex flex-col gap-1 w-full md:w-64 shrink-0">
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="font-mono font-semibold text-slate-300">
-                            HP: <span class="text-white font-bold">${c.currentHp}</span> / ${c.maxHp}
-                            ${c.tempHp > 0 ? `<span class="text-sky-300 text-[10px]">+${c.tempHp}</span>` : ''}
-                        </span>
-                        <span class="text-[10px] text-slate-400">${hpPct}%</span>
-                    </div>
-
-                    <div class="w-full bg-ledger-950 rounded-full h-2 overflow-hidden border border-ledger-700">
-                        <div class="${c.currentHp <= 0 ? 'bg-rose-700' : (isBloodied ? 'bg-amber-500' : 'bg-emerald-500')} h-full transition-all duration-300" style="width: ${hpPct}%"></div>
-                    </div>
-
-                    <!-- Quick Inline Damage / Heal -->
-                    <div class="flex items-center gap-1 pt-0.5">
-                        <input id="dmg-input-${c.id}" type="number" placeholder="Amt" class="w-14 bg-ledger-950 border border-ledger-700 rounded px-1.5 py-0.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500">
-                        <button onclick="applyCombatantDamage('${c.id}', true)" title="Deal Damage" class="px-2 py-0.5 rounded bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-200 text-xs font-bold transition">Dmg</button>
-                        <button onclick="applyCombatantDamage('${c.id}', false)" title="Heal" class="px-2 py-0.5 rounded bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-200 text-xs font-bold transition">Heal</button>
-                        <button onclick="applyCombatantTempHP('${c.id}')" title="Temp HP" class="px-1.5 py-0.5 rounded bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-200 text-xs font-bold transition">Temp</button>
-                    </div>
-                </div>
-
-                <!-- Right: Conditions, Concentration & Actions -->
-                <div class="flex items-center gap-2 flex-wrap justify-between md:justify-end flex-1">
-                    <!-- Conditions Badges -->
-                    <div class="flex items-center gap-1 flex-wrap max-w-xs">
-                        ${c.isConcentrating ? `
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center gap-1">
-                                <span>🧠 Conc: ${escapeHTML(c.concentratingSpell || 'Spell')}</span>
-                                <button onclick="toggleConcentration('${c.id}')" class="hover:text-rose-400">✕</button>
-                            </span>
+                        ${c.imageUrl ? `
+                            <div class="w-11 h-11 rounded-lg bg-ledger-950 border border-amber-500/50 overflow-hidden shrink-0 shadow-sm flex items-center justify-center">
+                                <img src="${escapeHTML(c.imageUrl)}" alt="${escapeHTML(c.name)}" class="w-full h-full object-cover">
+                            </div>
                         ` : ''}
 
-                        ${(c.conditions || []).map((cond, condIdx) => `
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1" title="${escapeHTML(cond.detail || cond.name)}">
-                                <span>${escapeHTML(cond.name)}${cond.detail ? ` (${escapeHTML(cond.detail)})` : ''}</span>
-                                <button onclick="removeCondition('${c.id}', ${condIdx})" class="hover:text-white">✕</button>
-                            </span>
-                        `).join('')}
-
-                        <button onclick="openConditionPicker('${c.id}')" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white border border-ledger-700 transition">
-                            + Condition
-                        </button>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase border ${badgeTypeColor}">${c.type}</span>
+                                <h4 onclick="setCombatTurn(${idx})" class="font-bold text-sm text-slate-100 hover:text-amber-300 cursor-pointer truncate transition" title="Click to jump active turn here">${escapeHTML(c.name)}</h4>
+                                ${c.hidden ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-slate-800 text-slate-400 border border-slate-700" title="Hidden from Player Screen (Stealth / Fog)">🙈 Stealth</span>` : ''}
+                                ${isBloodied ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">Bloodied</span>` : ''}
+                                ${isDefeated ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40">Defeated</span>` : ''}
+                            </div>
+                            <p class="text-[11px] text-slate-400 truncate mt-0.5">AC <span class="text-amber-300 font-bold">${c.ac}</span> • ${c.statDetails ? escapeHTML(c.statDetails) : 'Standard'}</p>
+                        </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex items-center gap-1 shrink-0">
-                        <button onclick="toggleCombatantVisibility('${c.id}')" title="${c.hidden ? 'Show on Player Screen (Currently Hidden)' : 'Hide from Player Screen (Stealth / Fog)'}" class="p-1.5 rounded hover:bg-ledger-700 ${c.hidden ? 'text-slate-500' : 'text-emerald-400'} border border-ledger-700 transition">
-                            ${c.hidden ? '🙈' : '👁️'}
-                        </button>
-                        <button onclick="addCombatantTokenToBattlemap('${c.id}')" title="Place token onto tabletop battlemap" class="p-1.5 rounded hover:bg-emerald-950/80 text-slate-400 hover:text-emerald-400 border border-ledger-700 transition">
-                            🗺️
-                        </button>
-                        <button onclick="duplicateCombatant('${c.id}')" title="Duplicate Combatant" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 border border-ledger-700 transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
-                        </button>
-                        <button onclick="removeCombatant('${c.id}')" title="Remove from Combat" class="p-1.5 rounded hover:bg-rose-950/80 text-slate-400 hover:text-rose-400 border border-ledger-700 transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        </button>
+                    <!-- Center: HP Bar & Quick Damage / Heal Inputs -->
+                    <div class="flex flex-col gap-1 w-full md:w-64 shrink-0">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-mono font-semibold text-slate-300">
+                                HP: <span class="text-white font-bold">${c.currentHp}</span> / ${c.maxHp}
+                                ${c.tempHp > 0 ? `<span class="text-sky-300 text-[10px]">+${c.tempHp}</span>` : ''}
+                            </span>
+                            <span class="text-[10px] text-slate-400">${hpPct}%</span>
+                        </div>
+
+                        <div class="w-full bg-ledger-950 rounded-full h-2 overflow-hidden border border-ledger-700">
+                            <div class="${c.currentHp <= 0 ? 'bg-rose-700' : (isBloodied ? 'bg-amber-500' : 'bg-emerald-500')} h-full transition-all duration-300" style="width: ${hpPct}%"></div>
+                        </div>
+
+                        <!-- Quick Inline Damage / Heal -->
+                        <div class="flex items-center gap-1 pt-0.5">
+                            <input id="dmg-input-${c.id}" type="number" placeholder="Amt" class="w-14 bg-ledger-950 border border-ledger-700 rounded px-1.5 py-0.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500">
+                            <button onclick="applyCombatantDamage('${c.id}', true)" title="Deal Damage" class="px-2 py-0.5 rounded bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-200 text-xs font-bold transition">Dmg</button>
+                            <button onclick="applyCombatantDamage('${c.id}', false)" title="Heal" class="px-2 py-0.5 rounded bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-200 text-xs font-bold transition">Heal</button>
+                            <button onclick="applyCombatantTempHP('${c.id}')" title="Temp HP" class="px-1.5 py-0.5 rounded bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-200 text-xs font-bold transition">Temp</button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Conditions, Concentration & Actions -->
+                    <div class="flex items-center gap-2 flex-wrap justify-between md:justify-end flex-1">
+                        <!-- Conditions Badges -->
+                        <div class="flex items-center gap-1 flex-wrap max-w-xs">
+                            ${c.isConcentrating ? `
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 flex items-center gap-1">
+                                    <span>🧠 Conc: ${escapeHTML(c.concentratingSpell || 'Spell')}</span>
+                                    <button onclick="toggleConcentration('${c.id}')" class="hover:text-rose-400">✕</button>
+                                </span>
+                            ` : ''}
+
+                            ${(c.conditions || []).map((cond, condIdx) => `
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1" title="${escapeHTML(cond.detail || cond.name)}">
+                                    <span>${escapeHTML(cond.name)}${cond.detail ? ` (${escapeHTML(cond.detail)})` : ''}</span>
+                                    <button onclick="removeCondition('${c.id}', ${condIdx})" class="hover:text-white">✕</button>
+                                </span>
+                            `).join('')}
+
+                            <button onclick="openConditionPicker('${c.id}')" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white border border-ledger-700 transition">
+                                + Condition
+                            </button>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex items-center gap-1 shrink-0">
+                            ${monsterData ? `
+                                <button onclick="toggleCombatantActionsDrawer('${c.id}')" title="${isDrawerOpen ? 'Collapse Monster Actions' : 'Expand Monster Actions'}" class="px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1 border ${isDrawerOpen ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-ledger-800 text-slate-300 hover:text-white border-ledger-700'}">
+                                    <span>⚔️</span>
+                                    <span class="hidden sm:inline">Actions</span>
+                                    <span class="text-[10px]">${isDrawerOpen ? '▲' : '▼'}</span>
+                                </button>
+                                <button onclick="openCombatMonsterStatblockModal('${c.id}')" title="View Full Statblock" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-300 border border-ledger-700 transition">
+                                    📖
+                                </button>
+                            ` : ''}
+                            <button onclick="toggleCombatantVisibility('${c.id}')" title="${c.hidden ? 'Show on Player Screen (Currently Hidden)' : 'Hide from Player Screen (Stealth / Fog)'}" class="p-1.5 rounded hover:bg-ledger-700 ${c.hidden ? 'text-slate-500' : 'text-emerald-400'} border border-ledger-700 transition">
+                                ${c.hidden ? '🙈' : '👁️'}
+                            </button>
+                            <button onclick="addCombatantTokenToBattlemap('${c.id}')" title="Place token onto tabletop battlemap" class="p-1.5 rounded hover:bg-emerald-950/80 text-slate-400 hover:text-emerald-400 border border-ledger-700 transition">
+                                🗺️
+                            </button>
+                            <button onclick="duplicateCombatant('${c.id}')" title="Duplicate Combatant" class="p-1.5 rounded hover:bg-ledger-700 text-slate-400 hover:text-amber-400 border border-ledger-700 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                            </button>
+                            <button onclick="removeCombatant('${c.id}')" title="Remove from Combat" class="p-1.5 rounded hover:bg-rose-950/80 text-slate-400 hover:text-rose-400 border border-ledger-700 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Bottom Drawer: Monster Actions & 1-Click Rolls -->
+                ${monsterData && isDrawerOpen ? `
+                    <div class="mt-1 pt-2.5 border-t border-ledger-750/80 space-y-2">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                            <span class="font-display text-amber-400 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                                <span>⚔️ Monster Actions</span>
+                                <span class="text-[10px] text-slate-400 font-mono font-normal">(${escapeHTML(monsterData.name)})</span>
+                            </span>
+                            <button onclick="openCombatMonsterStatblockModal('${c.id}')" class="text-[10px] text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1">
+                                <span>Full Statblock</span> <span>➔</span>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                            ${(monsterData.actions || []).map(a => renderMonsterActionInteractive(c.name, a, c.id)).join('')}
+                        </div>
+                        ${(monsterData.bonusActions && monsterData.bonusActions.length > 0) ? `
+                            <div class="pt-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400">Bonus Actions</span>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-1">
+                                    ${monsterData.bonusActions.map(ba => renderMonsterActionInteractive(c.name, ba, c.id)).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${(monsterData.reactions && monsterData.reactions.length > 0) ? `
+                            <div class="pt-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Reactions</span>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-1">
+                                    ${monsterData.reactions.map(r => renderMonsterActionInteractive(c.name, r, c.id)).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${(monsterData.legendaryActions && monsterData.legendaryActions.length > 0) ? `
+                            <div class="pt-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Legendary Actions</span>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-1">
+                                    ${monsterData.legendaryActions.map(la => renderMonsterActionInteractive(c.name, la, c.id)).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
 
             </div>
         `;
@@ -5048,23 +5108,601 @@ function selectBestiaryMonster(id) {
     renderMonsterStatblock();
 }
 
-function renderMonsterStatblock() {
-    const container = document.getElementById('bestiary-statblock-container');
+// ===================================================================
+// INTERACTIVE MONSTER ACTIONS & 1-CLICK COMBAT ROLLS
+// ===================================================================
+
+function escapeJsArg(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '&quot;');
+}
+
+function getMonsterDataForCombatant(c) {
+    if (!c) return null;
+    let monster = null;
+    if (c.monsterId) {
+        monster = (appState.monsters || []).find(m => m.id === c.monsterId);
+    }
+    if (!monster && c.name) {
+        const cleanName = c.name.replace(/\s+\d+$/, '').trim().toLowerCase();
+        monster = (appState.monsters || []).find(m => m.name.toLowerCase() === cleanName);
+    }
+    return monster;
+}
+
+function parseMonsterActionRolls(actionName, actionDesc) {
+    const text = (actionName || '') + ' ' + (actionDesc || '');
+    const results = {
+        attack: null, // { mod: number, display: string }
+        damages: [], // array of { formula: string, type: string }
+        save: null, // { dc: number, stat: string }
+        recharge: null // { min: number, label: string }
+    };
+
+    // Attack roll: "Melee Attack Roll: +5" or "+4 to hit"
+    const atkMatch = text.match(/(?:(?:Melee|Ranged|Melee\s+or\s+Ranged)\s+(?:Weapon|Spell|Attack)?\s*Roll:\s*([+-]?\d+)|([+-]?\d+)\s+to\s+hit)/i);
+    if (atkMatch) {
+        const rawMod = atkMatch[1] || atkMatch[2];
+        const mod = parseInt(rawMod);
+        if (!isNaN(mod)) {
+            results.attack = {
+                mod: mod,
+                display: mod >= 0 ? `+${mod}` : `${mod}`
+            };
+        }
+    }
+
+    // Damage rolls: e.g. "5 (1d6 + 2) Slashing damage" or "13 (1d10 + 8) Slashing damage plus 5 (2d4) Fire damage"
+    const dmgRegex = /(?:\((\d+d\d+(?:\s*[+-]\s*\d+)?)\)|\b(\d+d\d+(?:\s*[+-]\s*\d+)?)\b)\s*([A-Za-z]+)?\s*damage/gi;
+    let dmgMatch;
+    while ((dmgMatch = dmgRegex.exec(text)) !== null) {
+        const formula = (dmgMatch[1] || dmgMatch[2] || '').replace(/\s+/g, '');
+        const dmgType = (dmgMatch[3] || '').trim();
+        if (formula && !results.damages.some(d => d.formula === formula && d.type === dmgType)) {
+            results.damages.push({
+                formula: formula,
+                type: dmgType
+            });
+        }
+    }
+
+    // Saving throw DC: "Dexterity Saving Throw: DC 21" or "DC 14 Strength saving throw"
+    const saveMatch = text.match(/(?:(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|STR|DEX|CON|INT|WIS|CHA)\s+Saving\s+Throw:\s*DC\s*(\d+)|DC\s*(\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|STR|DEX|CON|INT|WIS|CHA))/i);
+    if (saveMatch) {
+        const stat = saveMatch[1] || saveMatch[4];
+        const dc = parseInt(saveMatch[2] || saveMatch[3]);
+        if (!isNaN(dc)) {
+            results.save = {
+                dc: dc,
+                stat: stat.toUpperCase().slice(0, 3)
+            };
+        }
+    }
+
+    // Recharge check: "Recharge 5–6" or "Recharge 6"
+    const rechMatch = text.match(/Recharge\s+(\d+)(?:[\u2013\u2014-](\d+))?/i);
+    if (rechMatch) {
+        const minVal = parseInt(rechMatch[1]);
+        if (!isNaN(minVal)) {
+            results.recharge = {
+                min: minVal,
+                label: rechMatch[0]
+            };
+        }
+    }
+
+    return results;
+}
+
+function evaluateDiceExpression(formulaStr) {
+    let total = 0;
+    const dice = [];
+    const breakdownParts = [];
+
+    const clean = (formulaStr || '1d6').replace(/\s+/g, '');
+    const tokens = clean.match(/([+-]?\d*d\d+|[+-]?\d+)/gi) || [];
+
+    for (const token of tokens) {
+        if (/d/i.test(token)) {
+            const sign = token.startsWith('-') ? -1 : 1;
+            const unsigned = token.replace(/^[+-]/, '');
+            const parts = unsigned.split(/d/i);
+            const count = parseInt(parts[0]) || 1;
+            const sides = parseInt(parts[1]) || 6;
+            const rolled = [];
+            let sum = 0;
+            for (let i = 0; i < count; i++) {
+                const val = Math.floor(Math.random() * sides) + 1;
+                rolled.push(val);
+                sum += val;
+            }
+            total += (sum * sign);
+            dice.push(...rolled);
+            breakdownParts.push(`${sign < 0 ? '-' : (breakdownParts.length > 0 ? '+ ' : '')}${count}d${sides}[${rolled.join(',')}]`);
+        } else {
+            const val = parseInt(token);
+            if (!isNaN(val)) {
+                total += val;
+                breakdownParts.push(`${val >= 0 ? (breakdownParts.length > 0 ? '+ ' : '') : '- '}${Math.abs(val)}`);
+            }
+        }
+    }
+
+    return {
+        total: Math.max(0, total),
+        dice: dice,
+        breakdown: breakdownParts.join(' ') || `${total}`
+    };
+}
+
+function rollMonsterAttack(monsterName, actionName, mod) {
+    playDiceSound();
+    const adv = appState.activeAdvantage || 'normal';
+    const roll1 = Math.floor(Math.random() * 20) + 1;
+    const roll2 = Math.floor(Math.random() * 20) + 1;
+    let chosen = roll1;
+    let tag = "";
+
+    if (adv === 'advantage') {
+        chosen = Math.max(roll1, roll2);
+        tag = ` [Adv: ${roll1}, ${roll2}]`;
+    } else if (adv === 'disadvantage') {
+        chosen = Math.min(roll1, roll2);
+        tag = ` [Disadv: ${roll1}, ${roll2}]`;
+    }
+
+    const total = chosen + mod;
+    const modStr = mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` - ${Math.abs(mod)}`) : '';
+    const formulaStr = `1d20${modStr}`;
+    const resultText = `${chosen}${tag}${modStr} = **${total}**`;
+
+    // Special effects
+    let specialClass = "text-amber-300";
+    if (chosen === 20) {
+        specialClass = "text-emerald-400 font-extrabold animate-bounce";
+        if (window.AudioEngine && (window.ArcaneSettings?.diceFanfares !== false)) window.AudioEngine.playNat20();
+        if (window.LightingEngine) window.LightingEngine.triggerNat20Flash();
+    } else if (chosen === 1) {
+        specialClass = "text-rose-500 font-extrabold";
+        if (window.AudioEngine && (window.ArcaneSettings?.diceFanfares !== false)) window.AudioEngine.playNat1();
+        if (window.LightingEngine) window.LightingEngine.triggerNat1Flash();
+    }
+
+    const banner = document.getElementById('dice-result-banner');
+    if (banner) {
+        banner.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-mono text-xs">${escapeHTML(monsterName)} - ${escapeHTML(actionName)}:</span>
+                <span class="text-sm font-bold font-mono ${specialClass}">${resultText}</span>
+            </div>
+        `;
+    }
+
+    showDiceRollOverlay({
+        sides: 20,
+        chosen: chosen,
+        total: total,
+        formulaStr: formulaStr,
+        roll1: roll1,
+        roll2: roll2,
+        adv: adv,
+        tag: `${monsterName}: ${actionName}`,
+        mod: mod,
+        modStr: modStr
+    });
+
+    appState.diceHistory.unshift({
+        sides: 20,
+        total: total,
+        text: `${monsterName} • ${actionName} ➔ ${formulaStr}${tag} = ${total}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    });
+    if (appState.diceHistory.length > 20) appState.diceHistory.pop();
+    renderDiceHistory();
+
+    const localRollId = 'dm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    fetch('/api/rolls/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: localRollId,
+            source: 'dashboard',
+            isDM: true,
+            characterName: monsterName,
+            label: `${actionName} (Attack)`,
+            diceType: 'd20',
+            formula: formulaStr,
+            rawRoll: chosen,
+            modifier: mod,
+            total: total,
+            isCrit: chosen === 20,
+            isFumble: chosen === 1,
+            details: `Attack roll for ${actionName}${tag}`
+        })
+    }).then(res => {
+        if (res.ok) fetchTableRollHistory();
+    }).catch(() => {});
+
+    showToast(`⚔️ ${monsterName} (${actionName}): ${total} to hit!${chosen === 20 ? ' (CRIT!)' : (chosen === 1 ? ' (FUMBLE!)' : '')}`, chosen === 20 ? 'success' : (chosen === 1 ? 'error' : 'info'));
+}
+
+function rollMonsterDamage(monsterName, actionName, formula, damageType, combatantId) {
+    playDiceSound();
+    const result = evaluateDiceExpression(formula);
+    const total = result.total;
+    const formulaStr = `${formula}${damageType ? ' ' + damageType : ''}`;
+
+    const banner = document.getElementById('dice-result-banner');
+    if (banner) {
+        banner.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-mono text-xs">${escapeHTML(monsterName)} - ${escapeHTML(actionName)}:</span>
+                <span class="text-sm font-bold font-mono text-rose-400">${result.breakdown} = <strong>${total}</strong> ${escapeHTML(damageType || 'damage')}</span>
+            </div>
+        `;
+    }
+
+    showDiceRollOverlay({
+        sides: 6,
+        chosen: total,
+        total: total,
+        formulaStr: formulaStr,
+        roll1: total,
+        roll2: total,
+        adv: 'normal',
+        tag: `${monsterName}: ${actionName} Damage`,
+        mod: 0,
+        modStr: ''
+    });
+
+    appState.diceHistory.unshift({
+        sides: 'Dmg',
+        total: total,
+        text: `${monsterName} • ${actionName} ➔ ${formula} (${result.breakdown}) = ${total} ${damageType || ''}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    });
+    if (appState.diceHistory.length > 20) appState.diceHistory.pop();
+    renderDiceHistory();
+
+    const localRollId = 'dm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    fetch('/api/rolls/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: localRollId,
+            source: 'dashboard',
+            isDM: true,
+            characterName: monsterName,
+            label: `${actionName} (Damage)`,
+            diceType: formula,
+            formula: formulaStr,
+            rawRoll: total,
+            modifier: 0,
+            total: total,
+            isCrit: false,
+            isFumble: false,
+            details: `${total} ${damageType || ''} damage (${result.breakdown})`.trim()
+        })
+    }).then(res => {
+        if (res.ok) fetchTableRollHistory();
+    }).catch(() => {});
+
+    showToast(`💥 ${monsterName} (${actionName}): ${total} ${damageType || ''} damage!`, "info");
+
+    // Open Quick Apply Bar
+    openQuickApplyDamage(monsterName, actionName, total, damageType, combatantId);
+}
+
+function callMonsterSaveDC(monsterName, actionName, stat, dc) {
+    const localRollId = 'dm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    fetch('/api/rolls/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: localRollId,
+            source: 'dashboard',
+            isDM: true,
+            characterName: monsterName,
+            label: `${actionName} (Save DC)`,
+            diceType: 'DC',
+            formula: `DC ${dc} ${stat}`,
+            rawRoll: dc,
+            modifier: 0,
+            total: dc,
+            isCrit: false,
+            isFumble: false,
+            details: `Saving Throw: DC ${dc} ${stat} (${actionName})`
+        })
+    }).then(res => {
+        if (res.ok) fetchTableRollHistory();
+    }).catch(() => {});
+
+    showToast(`🛡️ ${monsterName} (${actionName}): DC ${dc} ${stat} Saving Throw required!`, "info");
+}
+
+function rollMonsterRecharge(monsterName, actionName, minRecharge) {
+    playDiceSound();
+    const roll = Math.floor(Math.random() * 6) + 1;
+    const success = roll >= minRecharge;
+
+    const banner = document.getElementById('dice-result-banner');
+    if (banner) {
+        banner.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-slate-400 font-mono text-xs">${escapeHTML(monsterName)} - ${escapeHTML(actionName)} Recharge:</span>
+                <span class="text-sm font-bold font-mono ${success ? 'text-emerald-400' : 'text-rose-400'}">Rolled ${roll} vs ${minRecharge}-6 ➔ ${success ? 'RECHARGED! ⚡' : 'Not Ready ❌'}</span>
+            </div>
+        `;
+    }
+
+    showDiceRollOverlay({
+        sides: 6,
+        chosen: roll,
+        total: roll,
+        formulaStr: `1d6 (Recharge ${minRecharge}+)`,
+        roll1: roll,
+        roll2: roll,
+        adv: 'normal',
+        tag: `${monsterName}: Recharge`,
+        mod: 0,
+        modStr: ''
+    });
+
+    const localRollId = 'dm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    fetch('/api/rolls/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: localRollId,
+            source: 'dashboard',
+            isDM: true,
+            characterName: monsterName,
+            label: `${actionName} (Recharge)`,
+            diceType: 'd6',
+            formula: `1d6 (Req: ${minRecharge}+)`,
+            rawRoll: roll,
+            modifier: 0,
+            total: roll,
+            isCrit: roll === 6,
+            isFumble: roll === 1,
+            details: success ? `⚡ RECHARGED! (Rolled ${roll} vs ${minRecharge}-6)` : `❌ Not Recharged (Rolled ${roll} vs ${minRecharge}-6)`
+        })
+    }).then(res => {
+        if (res.ok) fetchTableRollHistory();
+    }).catch(() => {});
+
+    if (success) {
+        showToast(`⚡ ${monsterName} (${actionName}): RECHARGED! (Rolled ${roll})`, "success");
+    } else {
+        showToast(`❌ ${monsterName} (${actionName}): Did not recharge (Rolled ${roll} vs ${minRecharge}+)`, "info");
+    }
+}
+
+// Quick Apply Monster Damage Floating Bar
+window.pendingQuickApplyDamage = null;
+
+function openQuickApplyDamage(monsterName, actionName, totalDmg, damageType, combatantId) {
+    window.pendingQuickApplyDamage = {
+        monsterName,
+        actionName,
+        totalDmg,
+        damageType,
+        combatantId
+    };
+
+    const container = document.getElementById('monster-damage-quick-apply');
     if (!container) return;
 
-    const monster = (appState.monsters || []).find(m => m.id === appState.selectedMonsterId) || (appState.monsters || [])[0];
-    if (!monster) {
-        container.innerHTML = `
-            <div class="p-12 text-center text-slate-500 text-xs">
-                Select a monster from the list to view its complete 5.5e statblock.
-            </div>`;
+    const titleEl = document.getElementById('quick-apply-title');
+    const subEl = document.getElementById('quick-apply-subtitle');
+    const fullValEl = document.getElementById('quick-apply-full-val');
+    const halfValEl = document.getElementById('quick-apply-half-val');
+    const targetSelect = document.getElementById('quick-apply-target-select');
+
+    if (titleEl) titleEl.innerText = `${monsterName}: ${actionName}`;
+    if (subEl) subEl.innerText = `${totalDmg} ${damageType || 'Damage'}`;
+    if (fullValEl) fullValEl.innerText = totalDmg;
+    if (halfValEl) halfValEl.innerText = Math.floor(totalDmg / 2);
+
+    if (targetSelect) {
+        const options = [];
+        const party = appState.party || [];
+        const combatants = appState.combat?.combatants || [];
+
+        // Prefer PC combatants if in combat
+        const pcCombatants = combatants.filter(c => c.type === 'pc' || c.type === 'player');
+        if (pcCombatants.length > 0) {
+            pcCombatants.forEach(c => {
+                options.push(`<option value="comb:${c.id}">${escapeHTML(c.name)} (HP: ${c.currentHp}/${c.maxHp}${c.tempHp ? ' +' + c.tempHp : ''})</option>`);
+            });
+        } else if (party.length > 0) {
+            party.forEach(p => {
+                options.push(`<option value="party:${p.id}">${escapeHTML(p.name)} (HP: ${p.currentHp}/${p.maxHp}${p.tempHp ? ' +' + p.tempHp : ''})</option>`);
+            });
+        }
+
+        if (options.length === 0) {
+            options.push(`<option value="">No player characters found</option>`);
+        }
+        targetSelect.innerHTML = options.join('');
+    }
+
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+}
+
+function dismissQuickApplyDamage() {
+    window.pendingQuickApplyDamage = null;
+    const container = document.getElementById('monster-damage-quick-apply');
+    if (container) {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+    }
+}
+
+function confirmQuickApplyDamage(multiplier) {
+    if (!window.pendingQuickApplyDamage) return;
+    const { totalDmg } = window.pendingQuickApplyDamage;
+    const dmg = Math.floor(totalDmg * multiplier);
+
+    const targetSelect = document.getElementById('quick-apply-target-select');
+    const val = targetSelect?.value;
+    if (!val) {
+        dismissQuickApplyDamage();
         return;
     }
+
+    if (val.startsWith('comb:')) {
+        const combatantId = val.replace('comb:', '');
+        const c = (appState.combat?.combatants || []).find(item => item.id === combatantId);
+        if (c) {
+            let remainingDmg = dmg;
+            const oldHp = c.currentHp;
+            const halfHp = Math.floor(c.maxHp / 2);
+            const wasBloodied = oldHp <= halfHp && oldHp > 0;
+            const wasAlive = oldHp > 0;
+
+            if (c.tempHp > 0) {
+                if (c.tempHp >= remainingDmg) {
+                    c.tempHp -= remainingDmg;
+                    remainingDmg = 0;
+                } else {
+                    remainingDmg -= c.tempHp;
+                    c.tempHp = 0;
+                }
+            }
+            c.currentHp = Math.max(0, c.currentHp - remainingDmg);
+
+            // Lighting & SFX
+            const isNowBloodied = c.currentHp <= halfHp && c.currentHp > 0;
+            const isNowDown = c.currentHp === 0;
+            if (window.LightingEngine && window.LightingEngine.reactiveCombat) {
+                if (wasAlive && isNowDown && (c.type === 'pc' || c.type === 'player')) {
+                    window.LightingEngine.setHeroDownState(true, c.name);
+                } else if (!wasBloodied && isNowBloodied) {
+                    window.LightingEngine.triggerBloodiedPulse(c);
+                }
+            }
+
+            // Sync to party member
+            if (c.sourceId) {
+                const pc = (appState.party || []).find(p => p.id === c.sourceId);
+                if (pc) {
+                    pc.currentHp = c.currentHp;
+                    pc.tempHp = c.tempHp;
+                }
+            }
+
+            if (c.isConcentrating && remainingDmg > 0) {
+                const conDC = Math.max(10, Math.floor(remainingDmg / 2));
+                showToast(`⚠️ ${c.name} took ${dmg} dmg! Make CON save: DC ${conDC} to keep Concentration!`, "error");
+            } else {
+                showToast(`💥 Applied ${dmg} damage to ${c.name}!`, "info");
+            }
+
+            renderCombatTracker();
+            apiSaveCombat();
+            renderPartyHUD();
+            apiSaveParty();
+        }
+    } else if (val.startsWith('party:')) {
+        const pcId = val.replace('party:', '');
+        const pc = (appState.party || []).find(p => p.id === pcId);
+        if (pc) {
+            modifyPCHp(pcId, -dmg);
+            showToast(`💥 Applied ${dmg} damage to ${pc.name}!`, "info");
+        }
+    }
+
+    dismissQuickApplyDamage();
+}
+
+function toggleCombatantActionsDrawer(id) {
+    window.combatantOpenDrawers = window.combatantOpenDrawers || {};
+    const activeCombatant = appState.combat?.combatants?.[appState.combat?.currentTurnIndex];
+    const currentlyActive = activeCombatant && activeCombatant.id === id;
+    const currentState = window.combatantOpenDrawers[id] !== undefined ? window.combatantOpenDrawers[id] : currentlyActive;
+    window.combatantOpenDrawers[id] = !currentState;
+    renderCombatTracker();
+}
+
+function renderMonsterActionInteractive(monsterName, action, combatantId) {
+    if (!action) return '';
+    const safeMonsterName = escapeJsArg(monsterName);
+    const safeActionName = escapeJsArg(action.name);
+    const safeCombatantId = escapeJsArg(combatantId || '');
+
+    const parsed = parseMonsterActionRolls(action.name, action.desc);
+    const rollButtons = [];
+
+    // 1. Attack roll button
+    if (parsed.attack) {
+        rollButtons.push(`
+            <button onclick="event.stopPropagation(); rollMonsterAttack('${safeMonsterName}', '${safeActionName}', ${parsed.attack.mod})" class="px-2 py-0.5 rounded-md bg-rose-950/80 hover:bg-rose-900 border border-rose-700/80 text-rose-200 hover:text-white font-mono text-[11px] font-bold tap-active flex items-center gap-1 shadow-sm transition" title="Roll 1d20 ${parsed.attack.display} Attack">
+                <span>⚔️</span>
+                <span>${parsed.attack.display} to Hit</span>
+            </button>
+        `);
+    }
+
+    // 2. Damage roll buttons
+    if (parsed.damages && parsed.damages.length > 0) {
+        parsed.damages.forEach(d => {
+            const safeFormula = escapeJsArg(d.formula);
+            const safeType = escapeJsArg(d.type);
+            const typeLabel = d.type ? d.type : 'Dmg';
+            rollButtons.push(`
+                <button onclick="event.stopPropagation(); rollMonsterDamage('${safeMonsterName}', '${safeActionName}', '${safeFormula}', '${safeType}', '${safeCombatantId}')" class="px-2 py-0.5 rounded-md bg-amber-950/80 hover:bg-amber-900 border border-amber-700/80 text-amber-200 hover:text-white font-mono text-[11px] font-bold tap-active flex items-center gap-1 shadow-sm transition" title="Roll ${d.formula} ${d.type} Damage">
+                    <span>💥</span>
+                    <span>${d.formula} ${typeLabel}</span>
+                </button>
+            `);
+        });
+    }
+
+    // 3. Saving throw DC prompt
+    if (parsed.save) {
+        rollButtons.push(`
+            <button onclick="event.stopPropagation(); callMonsterSaveDC('${safeMonsterName}', '${safeActionName}', '${parsed.save.stat}', ${parsed.save.dc})" class="px-2 py-0.5 rounded-md bg-sky-950/80 hover:bg-sky-900 border border-sky-700/80 text-sky-200 hover:text-white font-mono text-[11px] font-bold tap-active flex items-center gap-1 shadow-sm transition" title="Broadcast DC ${parsed.save.dc} ${parsed.save.stat} Save Prompt to Table">
+                <span>🛡️</span>
+                <span>DC ${parsed.save.dc} ${parsed.save.stat}</span>
+            </button>
+        `);
+    }
+
+    // 4. Recharge check
+    if (parsed.recharge) {
+        rollButtons.push(`
+            <button onclick="event.stopPropagation(); rollMonsterRecharge('${safeMonsterName}', '${safeActionName}', ${parsed.recharge.min})" class="px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-200 hover:text-white font-mono text-[11px] font-bold tap-active flex items-center gap-1 shadow-sm transition" title="Roll 1d6 Recharge check (Success on ${parsed.recharge.min}-6)">
+                <span>⚡</span>
+                <span>${parsed.recharge.label}</span>
+            </button>
+        `);
+    }
+
+    return `
+        <div class="bg-ledger-950/70 p-2.5 rounded-lg border border-ledger-800/90 space-y-1.5 transition hover:border-ledger-750">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="font-bold text-amber-300 text-xs">${escapeHTML(action.name)}.</span>
+                <div class="flex items-center gap-1 flex-wrap">
+                    ${rollButtons.join('')}
+                </div>
+            </div>
+            <div class="text-slate-300 leading-relaxed text-xs">${escapeHTML(action.desc)}</div>
+        </div>
+    `;
+}
+
+function buildMonsterStatblockHtml(monster, isInCombatModal = false, combatantId = null) {
+    if (!monster) return '<div class="p-8 text-center text-slate-500 text-xs">No monster data available.</div>';
 
     const bloodiedHp = Math.floor((monster.hp || 10) / 2);
     const stats = monster.stats || { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
 
-    container.innerHTML = `
+    return `
         <div class="space-y-4 text-xs font-sans">
             
             <!-- Header / Title Banner -->
@@ -5074,9 +5712,10 @@ function renderMonsterStatblock() {
                         <div class="w-14 h-14 rounded-xl bg-ledger-950 border-2 border-amber-500/60 p-0.5 shadow-md overflow-hidden flex items-center justify-center">
                             <img src="${escapeHTML(monster.imageUrl || `/static/images/monsters/${monster.id}.webp`)}" alt="${escapeHTML(monster.name)}" class="w-full h-full object-contain rounded-lg">
                         </div>
+                        ${!isInCombatModal ? `
                         <button onclick="promptEditMonsterArt('${monster.id}')" title="Edit Monster Artwork URL" class="absolute -bottom-1 -right-1 p-1 rounded-full bg-ledger-900 border border-ledger-700 hover:border-amber-400 text-amber-300 text-[10px] shadow">
                             ✏️
-                        </button>
+                        </button>` : ''}
                     </div>
                     <div>
                         <h3 class="font-display font-bold text-xl text-amber-300 tracking-wide">${escapeHTML(monster.name)}</h3>
@@ -5088,15 +5727,16 @@ function renderMonsterStatblock() {
                         <span>🗺️</span>
                         <span>Place on Map</span>
                     </button>
+                    ${!isInCombatModal ? `
                     <button onclick="openSpawnMonsterModal('${monster.id}')" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-rose-950/40 transition">
                         <span>⚔️</span>
                         <span>Send to Combat</span>
-                    </button>
+                    </button>` : ''}
                     <button onclick="broadcastCurrentMonster()" title="Broadcast monster handout to player display" class="px-3 py-1.5 rounded-lg bg-sky-900/80 hover:bg-sky-800 text-sky-200 border border-sky-600/70 text-xs font-bold flex items-center gap-1.5 shadow-md shadow-sky-950/40 transition">
                         <span>📺</span>
                         <span>Broadcast</span>
                     </button>
-                    ${monster.id && monster.id.startsWith('m-') ? `
+                    ${(!isInCombatModal && monster.id && monster.id.startsWith('m-')) ? `
                         <button onclick="deleteMonster('${monster.id}')" title="Delete custom monster" class="p-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition">
                             🗑️
                         </button>` : ''}
@@ -5186,12 +5826,7 @@ function renderMonsterStatblock() {
                 <div class="space-y-2 pt-2 border-t border-ledger-800">
                     <h4 class="font-display font-bold text-rose-400 text-xs uppercase tracking-wider">Actions</h4>
                     <div class="space-y-2">
-                        ${monster.actions.map(a => `
-                            <div class="bg-ledger-950/60 p-2.5 rounded-lg border border-ledger-800/80">
-                                <span class="font-bold text-amber-300">${escapeHTML(a.name)}.</span> 
-                                <span class="text-slate-300 leading-relaxed">${escapeHTML(a.desc)}</span>
-                            </div>
-                        `).join('')}
+                        ${monster.actions.map(a => renderMonsterActionInteractive(monster.name, a, combatantId)).join('')}
                     </div>
                 </div>
             ` : ''}
@@ -5201,9 +5836,7 @@ function renderMonsterStatblock() {
                 <div class="space-y-2 pt-2 border-t border-ledger-800">
                     <h4 class="font-display font-bold text-sky-400 text-xs uppercase tracking-wider">Bonus Actions</h4>
                     <div class="space-y-1.5">
-                        ${monster.bonusActions.map(ba => `
-                            <p class="text-slate-300 text-xs leading-relaxed"><span class="font-bold text-sky-200 italic">${escapeHTML(ba.name)}.</span> ${escapeHTML(ba.desc)}</p>
-                        `).join('')}
+                        ${monster.bonusActions.map(ba => renderMonsterActionInteractive(monster.name, ba, combatantId)).join('')}
                     </div>
                 </div>
             ` : ''}
@@ -5213,9 +5846,7 @@ function renderMonsterStatblock() {
                 <div class="space-y-2 pt-2 border-t border-ledger-800">
                     <h4 class="font-display font-bold text-emerald-400 text-xs uppercase tracking-wider">Reactions</h4>
                     <div class="space-y-1.5">
-                        ${monster.reactions.map(r => `
-                            <p class="text-slate-300 text-xs leading-relaxed"><span class="font-bold text-emerald-300 italic">${escapeHTML(r.name)}.</span> ${escapeHTML(r.desc)}</p>
-                        `).join('')}
+                        ${monster.reactions.map(r => renderMonsterActionInteractive(monster.name, r, combatantId)).join('')}
                     </div>
                 </div>
             ` : ''}
@@ -5225,14 +5856,46 @@ function renderMonsterStatblock() {
                 <div class="space-y-2 pt-2 border-t border-ledger-800">
                     <h4 class="font-display font-bold text-amber-400 text-xs uppercase tracking-wider">Legendary Actions</h4>
                     <div class="space-y-1.5">
-                        ${monster.legendaryActions.map(la => `
-                            <p class="text-slate-300 text-xs leading-relaxed"><span class="font-bold text-amber-200 italic">${escapeHTML(la.name)}.</span> ${escapeHTML(la.desc)}</p>
-                        `).join('')}
+                        ${monster.legendaryActions.map(la => renderMonsterActionInteractive(monster.name, la, combatantId)).join('')}
                     </div>
                 </div>
             ` : ''}
 
         </div>`;
+}
+
+function openCombatMonsterStatblockModal(combatantId) {
+    const c = (appState.combat?.combatants || []).find(x => x.id === combatantId);
+    if (!c) return;
+    const monster = getMonsterDataForCombatant(c);
+    if (!monster) {
+        showToast("Monster statblock not found for this combatant.", "error");
+        return;
+    }
+
+    const titleEl = document.getElementById('combat-modal-statblock-title');
+    const bodyEl = document.getElementById('combat-modal-statblock-body');
+    if (titleEl) titleEl.innerText = `${c.name} (${monster.name}) Statblock`;
+    if (bodyEl) {
+        bodyEl.innerHTML = buildMonsterStatblockHtml(monster, true, c.id);
+    }
+    openModal('combat-monster-statblock-modal');
+}
+
+function renderMonsterStatblock() {
+    const container = document.getElementById('bestiary-statblock-container');
+    if (!container) return;
+
+    const monster = (appState.monsters || []).find(m => m.id === appState.selectedMonsterId) || (appState.monsters || [])[0];
+    if (!monster) {
+        container.innerHTML = `
+            <div class="p-12 text-center text-slate-500 text-xs">
+                Select a monster from the list to view its complete 5.5e statblock.
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = buildMonsterStatblockHtml(monster, false, null);
 }
 
 function openSpawnMonsterModal(monsterId) {
