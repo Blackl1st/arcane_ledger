@@ -21,7 +21,17 @@
   },
   "atmosphere": {
     "node_id": "400U5-52611A",
-    "name": "amaran Ace 25c #1",
+    "node_ids": [
+      "400U5-52611A"
+    ],
+    "fixtures": [
+      {
+        "node_id": "400U5-52611A",
+        "name": "amaran Ace 25c #1",
+        "enabled": true
+      }
+    ],
+    "name": "amaran Ace 25c (Group)",
     "brightness": 70,
     "cct": 2500,
     "rgb": [

@@ -10519,6 +10519,75 @@ function toggleReactiveCombatLighting() {
     }
 }
 
+function promptAddAce25c() {
+    const modal = document.getElementById('add-ace-modal');
+    if (!modal) {
+        const nodeId = prompt("Enter amaran Ace 25c Node ID (e.g. 400U5-52611B):");
+        if (nodeId && window.LightingEngine) {
+            const name = prompt("Enter friendly name / location (optional):", "amaran Ace 25c");
+            window.LightingEngine.addAtmosphereFixture(nodeId, name);
+        }
+        return;
+    }
+
+    const idInput = document.getElementById('add-ace-node-id');
+    const nameInput = document.getElementById('add-ace-name');
+    if (idInput) idInput.value = '';
+    if (nameInput) {
+        const count = (window.LightingEngine?.state?.atmosphere?.fixtures?.length || 0) + 1;
+        nameInput.value = `amaran Ace 25c #${count}`;
+    }
+
+    const discSec = document.getElementById('add-ace-discovered-section');
+    const discList = document.getElementById('add-ace-discovered-list');
+    if (discSec && discList && window.LightingEngine) {
+        const currentIds = (window.LightingEngine.state.atmosphere.fixtures || []).map(f => f.node_id);
+        const unassigned = (window.LightingEngine.fixtures || []).filter(f => {
+            const isAce = (f.name || '').toLowerCase().includes('ace') || (f.node_id || '').includes('400U');
+            return isAce && !currentIds.includes(f.node_id);
+        });
+
+        if (unassigned.length > 0) {
+            discSec.classList.remove('hidden');
+            discList.innerHTML = unassigned.map(f => `
+                <div class="flex items-center justify-between p-1.5 rounded bg-ledger-900 border border-indigo-500/20">
+                    <div class="truncate">
+                        <span class="font-bold text-slate-200 text-[10px] block truncate">${f.name}</span>
+                        <span class="font-mono text-indigo-300 text-[9px]">${f.node_id}</span>
+                    </div>
+                    <button onclick="document.getElementById('add-ace-node-id').value = '${f.node_id}'; document.getElementById('add-ace-name').value = '${f.name}';" class="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-[9px] font-bold transition">
+                        Select
+                    </button>
+                </div>
+            `).join('');
+        } else {
+            discSec.classList.add('hidden');
+        }
+    }
+
+    openModal('add-ace-modal');
+}
+
+function submitAddAce25c() {
+    const idInput = document.getElementById('add-ace-node-id');
+    const nameInput = document.getElementById('add-ace-name');
+    const nodeId = idInput ? idInput.value.trim() : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+
+    if (!nodeId) {
+        if (typeof showToast === 'function') showToast("Please enter a valid Node ID", "warning");
+        return;
+    }
+
+    if (window.LightingEngine) {
+        window.LightingEngine.addAtmosphereFixture(nodeId, name);
+    }
+    closeModal('add-ace-modal');
+}
+
+window.promptAddAce25c = promptAddAce25c;
+window.submitAddAce25c = submitAddAce25c;
+
 // -----------------------------------------------------------------------------
 // KEYBOARD SHORTCUTS & INIT
 // -----------------------------------------------------------------------------

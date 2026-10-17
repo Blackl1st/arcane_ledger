@@ -15,7 +15,7 @@ import zipfile
 import zlib
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -1396,6 +1396,20 @@ async def streamdeck_combat_stop():
 async def streamdeck_combat_reset():
     return await reset_combat()
 
+def get_atmosphere_node_ids() -> List[str]:
+    try:
+        cfg = read_json("lighting.json", {})
+        atm = cfg.get("atmosphere", {})
+        node_ids = atm.get("node_ids") or []
+        if not node_ids:
+            if isinstance(atm.get("fixtures"), list) and atm.get("fixtures"):
+                node_ids = [f["node_id"] for f in atm["fixtures"] if f.get("enabled", True) and f.get("node_id")]
+        if not node_ids and atm.get("node_id"):
+            node_ids = [atm.get("node_id")]
+        return [n for n in node_ids if n]
+    except Exception:
+        return ["400U5-52611A"]
+
 @app.api_route("/api/streamdeck/roll/d20", methods=["GET", "POST"])
 async def streamdeck_roll_d20():
     roll = random.randint(1, 20)
@@ -1404,9 +1418,9 @@ async def streamdeck_roll_d20():
 
     # Lighting trigger if Amaran connected
     if is_crit:
-        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "golden_fanfare"}))
+        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "golden_fanfare"}, node_ids=get_atmosphere_node_ids()))
     elif is_fumble:
-        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "crimson_dread"}))
+        asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": "crimson_dread"}, node_ids=get_atmosphere_node_ids()))
 
     roll_entry = {
         "id": f"roll-{uuid.uuid4().hex[:8]}",
@@ -1487,12 +1501,12 @@ async def streamdeck_lighting_preset(preset_name: str):
     write_json("lighting.json", current)
 
     # Dispatch to Amaran desktop bridge
-    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "set_scene", {"preset": preset_name}))
+    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "set_scene", {"preset": preset_name}, node_ids=get_atmosphere_node_ids()))
     return {"status": "success", "preset": preset_name, "config": cfg}
 
 @app.api_route("/api/streamdeck/lighting/event/{event_name}", methods=["GET", "POST"])
 async def streamdeck_lighting_event(event_name: str):
-    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": event_name}))
+    asyncio.create_task(asyncio.to_thread(_send_amaran_raw, "special_fx", {"effect": event_name}, node_ids=get_atmosphere_node_ids()))
     return {"status": "success", "event": event_name}
 
 @app.api_route("/api/streamdeck/audio/sfx/{sound_name}", methods=["GET", "POST"])
@@ -6137,56 +6151,71 @@ async def launch_encounter(enc_id: str):
 # -----------------------------------------------------------------------------
 # LIGHTING & AMARAN DESKTOP INTEGRATION
 # -----------------------------------------------------------------------------
-def _send_amaran_raw(msg_type: str, args: Optional[Dict[str, Any]] = None, node_id: Optional[str] = None) -> Dict[str, Any]:
-    try:
-        s = socket.create_connection(('127.0.0.1', 12345), timeout=2.0)
-        key = base64.b64encode(os.urandom(16)).decode('ascii')
-        req = f'GET / HTTP/1.1\r\nHost: 127.0.0.1:12345\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n'
-        s.sendall(req.encode('ascii'))
-        s.recv(2048)
+def _send_amaran_raw(msg_type: str, args: Optional[Dict[str, Any]] = None, node_id: Optional[Union[str, List[str]]] = None, node_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+    targets: List[Optional[str]] = []
+    if node_ids and isinstance(node_ids, list):
+        targets.extend(node_ids)
+    elif isinstance(node_id, list):
+        targets.extend(node_id)
+    elif isinstance(node_id, str) and node_id:
+        targets.append(node_id)
+    else:
+        targets.append(None)
 
-        payload = {'version': 1, 'client_id': 'dnd_dashboard', 'type': msg_type}
-        if node_id:
-            payload['node_id'] = node_id
-        if args is not None:
-            payload['args'] = args
+    last_result = {}
+    for nid in targets:
+        try:
+            s = socket.create_connection(('127.0.0.1', 12345), timeout=2.0)
+            key = base64.b64encode(os.urandom(16)).decode('ascii')
+            req = f'GET / HTTP/1.1\r\nHost: 127.0.0.1:12345\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n'
+            s.sendall(req.encode('ascii'))
+            s.recv(2048)
 
-        data = json.dumps(payload).encode('utf-8')
-        mask = os.urandom(4)
-        frame = bytearray([0x81])
-        if len(data) < 126:
-            frame.append(0x80 | len(data))
-        elif len(data) < 65536:
-            frame.append(0x80 | 126)
-            frame.extend(struct.pack('>H', len(data)))
-        else:
-            frame.append(0x80 | 127)
-            frame.extend(struct.pack('>Q', len(data)))
+            payload = {'version': 1, 'client_id': 'dnd_dashboard', 'type': msg_type}
+            if nid:
+                payload['node_id'] = nid
+            if args is not None:
+                payload['args'] = args
 
-        frame.extend(mask)
-        frame.extend(bytearray(b ^ mask[i % 4] for i, b in enumerate(data)))
-        s.sendall(frame)
+            data = json.dumps(payload).encode('utf-8')
+            mask = os.urandom(4)
+            frame = bytearray([0x81])
+            if len(data) < 126:
+                frame.append(0x80 | len(data))
+            elif len(data) < 65536:
+                frame.append(0x80 | 126)
+                frame.extend(struct.pack('>H', len(data)))
+            else:
+                frame.append(0x80 | 127)
+                frame.extend(struct.pack('>Q', len(data)))
 
-        hdr = s.recv(2)
-        if not hdr:
+            frame.extend(mask)
+            frame.extend(bytearray(b ^ mask[i % 4] for i, b in enumerate(data)))
+            s.sendall(frame)
+
+            hdr = s.recv(2)
+            if not hdr:
+                s.close()
+                last_result = {'error': 'No response header from amaran Desktop'}
+                continue
+            length = hdr[1] & 0x7F
+            if length == 126:
+                length = struct.unpack('>H', s.recv(2))[0]
+            elif length == 127:
+                length = struct.unpack('>Q', s.recv(8))[0]
+
+            buf = b''
+            while len(buf) < length:
+                chunk = s.recv(length - len(buf))
+                if not chunk:
+                    break
+                buf += chunk
             s.close()
-            return {'error': 'No response header from amaran Desktop'}
-        length = hdr[1] & 0x7F
-        if length == 126:
-            length = struct.unpack('>H', s.recv(2))[0]
-        elif length == 127:
-            length = struct.unpack('>Q', s.recv(8))[0]
+            last_result = json.loads(buf.decode('utf-8'))
+        except Exception as e:
+            last_result = {'error': str(e)}
 
-        buf = b''
-        while len(buf) < length:
-            chunk = s.recv(length - len(buf))
-            if not chunk:
-                break
-            buf += chunk
-        s.close()
-        return json.loads(buf.decode('utf-8'))
-    except Exception as e:
-        return {'error': str(e)}
+    return last_result
 
 @app.get("/api/lighting")
 async def get_lighting():
@@ -6222,7 +6251,8 @@ async def send_amaran_command_endpoint(payload: Dict[str, Any]):
     msg_type = payload.get("type", "")
     args = payload.get("args")
     node_id = payload.get("node_id")
-    resp = await asyncio.to_thread(_send_amaran_raw, msg_type, args, node_id)
+    node_ids = payload.get("node_ids")
+    resp = await asyncio.to_thread(_send_amaran_raw, msg_type, args, node_id, node_ids)
     return resp
 
 

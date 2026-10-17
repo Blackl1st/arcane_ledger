@@ -2824,6 +2824,23 @@
                                 </div>
                             </div>
 
+                            <!-- Synced Ace 25c Group Header & Drawer -->
+                            <div class="bg-ledger-900/80 p-2.5 rounded-xl border border-indigo-500/20 space-y-1.5 mb-2.5">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs">🔗</span>
+                                        <span class="font-bold text-slate-300 text-[10px]">Synced Ace 25c Group</span>
+                                        <span id="atmosphere-tab-fixtures-count" class="px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[9px] border border-indigo-500/30">1 Active</span>
+                                    </div>
+                                    <button onclick="promptAddAce25c()" class="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-[9px] font-bold transition">
+                                        + Add Light
+                                    </button>
+                                </div>
+                                <div id="atmosphere-tab-fixtures-list" class="space-y-1 max-h-24 overflow-y-auto">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
                             <!-- Atmosphere Dimmer Slider -->
                             <div class="space-y-1 bg-ledger-900/80 p-2.5 rounded-xl border border-ledger-800">
                                 <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
@@ -3579,7 +3596,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.0</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.1</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -5207,6 +5224,18 @@
                 </button>
             </div>
 
+            <!-- Discovered Mesh Hardware Container -->
+            <div id="lighting-fixtures-container" class="hidden bg-ledger-950 p-2.5 rounded-xl border border-ledger-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs">📡</span>
+                        <span class="font-bold text-slate-300 text-[11px]">Discovered Mesh Hardware</span>
+                    </div>
+                    <span id="lighting-fixtures-count" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[9px] border border-emerald-500/30 font-semibold">0 Active</span>
+                </div>
+                <div id="lighting-fixtures-list" class="space-y-1.5 max-h-36 overflow-y-auto"></div>
+            </div>
+
             <!-- ======================================================= -->
             <!-- CHANNEL 1: OVERHEAD TABLE LIGHT (amaran 60d S)          -->
             <!-- ======================================================= -->
@@ -5276,6 +5305,28 @@
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span id="atmosphere-dimmer-value" class="font-mono font-bold text-indigo-400 text-xs">70%</span>
+                    </div>
+                </div>
+
+                <!-- Synced Ace 25c Multi-Light Group Manager -->
+                <div class="bg-ledger-900/90 p-2.5 rounded-xl border border-indigo-500/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs">🔗</span>
+                            <div>
+                                <span class="font-bold text-slate-200 text-[11px] block">Synced Ace 25c Fixtures</span>
+                                <span class="text-[9px] text-slate-400">All lights in this group mirror atmosphere colors, FX, & combat pulses</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="atmosphere-modal-fixtures-count" class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[9px] border border-indigo-500/30 font-semibold">1 Active</span>
+                            <button onclick="promptAddAce25c()" class="px-2 py-1 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold flex items-center gap-1 transition">
+                                <span>+</span> Add Ace 25c
+                            </button>
+                        </div>
+                    </div>
+                    <div id="atmosphere-modal-fixtures-list" class="space-y-1.5 max-h-40 overflow-y-auto">
+                        <!-- Populated dynamically by LightingEngine -->
                     </div>
                 </div>
 
@@ -5399,6 +5450,45 @@
 
             <div class="flex justify-end gap-2 pt-2 border-t border-ledger-800">
                 <button onclick="closeModal('lighting-modal')" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 19b. ADD AMARAN ACE 25C FIXTURE MODAL -->
+    <div id="add-ace-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-indigo-500/60 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎭</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-indigo-400">Add amaran Ace 25c</h3>
+                        <p class="text-[10px] text-slate-400">Enroll an Ace 25c fixture into the synced atmospheric group</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('add-ace-modal')" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <!-- Detected Unassigned Fixtures (if any) -->
+            <div id="add-ace-discovered-section" class="hidden space-y-1.5 bg-ledger-950 p-2.5 rounded-xl border border-indigo-500/30">
+                <span class="font-bold text-indigo-300 text-[10px] block">Detected on Mesh:</span>
+                <div id="add-ace-discovered-list" class="space-y-1"></div>
+            </div>
+
+            <div class="space-y-3 bg-ledger-950 p-3 rounded-xl border border-ledger-800">
+                <div class="space-y-1">
+                    <label class="font-bold text-slate-300 text-[11px] block">Fixture Node ID</label>
+                    <input id="add-ace-node-id" type="text" placeholder="e.g. 400U5-52611B or 400U..." class="w-full px-3 py-1.5 rounded-lg bg-ledger-900 border border-ledger-700 text-slate-200 font-mono text-xs focus:border-indigo-500 focus:outline-none">
+                    <p class="text-[9px] text-slate-500">Found on fixture back label, amaran app, or Amaran Desktop status.</p>
+                </div>
+                <div class="space-y-1">
+                    <label class="font-bold text-slate-300 text-[11px] block">Friendly Name / Placement</label>
+                    <input id="add-ace-name" type="text" placeholder="e.g. amaran Ace 25c #2 (Right Wall)" class="w-full px-3 py-1.5 rounded-lg bg-ledger-900 border border-ledger-700 text-slate-200 text-xs focus:border-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-ledger-800">
+                <button onclick="closeModal('add-ace-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold">Cancel</button>
+                <button onclick="submitAddAce25c()" class="px-5 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-bold">Add to Group</button>
             </div>
         </div>
     </div>
