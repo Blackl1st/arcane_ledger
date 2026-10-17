@@ -1195,7 +1195,7 @@ async def get_companion_state():
         "combat": combat,
         "broadcast": broadcast,
         "handouts": [h for h in handouts if h.get("isUnlocked", True) or h.get("unlocked", True)],
-        "recentRolls": sorted(RECENT_TABLE_ROLLS, key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
+        "recentRolls": sorted([r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)], key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
     }
 
 @app.post("/api/companion/update-hp")
@@ -1316,7 +1316,7 @@ async def record_companion_roll(payload: Dict[str, Any]):
 
 @app.get("/api/companion/rolls")
 async def get_companion_rolls():
-    rolls = list(RECENT_TABLE_ROLLS)
+    rolls = [r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)]
     return {"status": "success", "rolls": sorted(rolls, key=lambda r: r.get("timestamp", 0), reverse=True)[:25]}
 
 @app.post("/api/rolls/record")

@@ -563,10 +563,12 @@ document.addEventListener('click', function(e) {
     });
 });
 
-// Close popovers on Escape key
+// Close popovers and modals on Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeAllTopPopovers();
+        closeModal('combat-monster-statblock-modal');
+        if (typeof dismissQuickApplyDamage === 'function') dismissQuickApplyDamage();
     }
 });
 

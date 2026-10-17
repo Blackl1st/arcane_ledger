@@ -1863,16 +1863,16 @@
         function renderRollLog(rolls) {
             const container = document.getElementById('companion-roll-log');
             if (!container) return;
-            if (!rolls || rolls.length === 0) {
+            const playerRolls = (rolls || []).filter(r => !r.isDM);
+            if (playerRolls.length === 0) {
                 container.innerHTML = '<div class="text-slate-500 text-center py-3">No recent rolls yet.</div>';
                 return;
             }
 
-            const sorted = [...rolls].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            const sorted = [...playerRolls].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             container.innerHTML = sorted.slice(0, 15).map(r => {
-                const isDM = !!r.isDM;
                 const critBadge = r.isCrit ? '<span class="text-amber-400 font-bold">★ CRIT</span>' : (r.isFumble ? '<span class="text-rose-500 font-bold">💀 FUMBLE</span>' : '');
-                const rollerTag = isDM ? '<span class="text-purple-400 font-bold">DM:</span>' : `<span class="text-slate-200 font-bold">${escapeHTML(r.characterName || 'Hero')}:</span>`;
+                const rollerTag = `<span class="text-slate-200 font-bold">${escapeHTML(r.characterName || 'Hero')}:</span>`;
                 return `
                     <div class="flex items-center justify-between p-2 rounded-xl bg-ledger-950 border border-ledger-800">
                         <div class="truncate max-w-[200px]">
