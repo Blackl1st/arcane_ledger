@@ -4352,6 +4352,7 @@ async function triggerRest(type) {
             if (res.ok) {
                 const data = await res.json();
                 appState.party = data.party;
+                if (data.combat) appState.combat = data.combat;
             }
         } catch (e) {
             appState.party.forEach(pc => {
@@ -4362,17 +4363,29 @@ async function triggerRest(type) {
         }
         await advanceInGameTime(480);
         renderPartyHUD();
+        if (typeof renderCombatants === 'function') renderCombatants();
+        if (typeof renderCombatPartyVitals === 'function') renderCombatPartyVitals();
+        if (typeof renderPartySpellsModal === 'function') renderPartySpellsModal();
         showToast("☀️ Long Rest complete! Full HP restored, Death Saves reset.", "success");
     } else {
         if (!confirm("Take a Short Rest (1 Hour)?\n\n• Recharges short-rest class features\n• Spend Hit Dice to heal")) return;
         try {
-            await fetch('/api/party/rest', {
+            const res = await fetch('/api/party/rest', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: 'short' })
             });
+            if (res.ok) {
+                const data = await res.json();
+                appState.party = data.party;
+                if (data.combat) appState.combat = data.combat;
+            }
         } catch (e) {}
         await advanceInGameTime(60);
+        renderPartyHUD();
+        if (typeof renderCombatants === 'function') renderCombatants();
+        if (typeof renderCombatPartyVitals === 'function') renderCombatPartyVitals();
+        if (typeof renderPartySpellsModal === 'function') renderPartySpellsModal();
         showToast("⛺ Short Rest complete (1 Hour). Recharged short rest powers.", "info");
     }
 }
@@ -8434,7 +8447,8 @@ async function renderHandouts() {
         const tags = [
             h.tiedLocation ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-emerald-300 text-[10px]">📍 ${escapeHTML(h.tiedLocation)}</span>` : '',
             h.tiedNpc ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-purple-300 text-[10px]">👤 ${escapeHTML(h.tiedNpc)}</span>` : '',
-            h.dateString ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-amber-300 text-[10px]">📅 ${escapeHTML(h.dateString)}</span>` : ''
+            h.dateString ? `<span class="px-1.5 py-0.5 rounded bg-ledger-950 border border-ledger-700/80 text-amber-300 text-[10px]">📅 ${escapeHTML(h.dateString)}</span>` : '',
+            h.isDelivered ? `<span class="px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-700/80 text-amber-300 text-[10px] font-mono">📱 Sent: ${escapeHTML(h.targetHeroName || 'All Party')}${h.secretWhisper ? ' 🔒' : ''}</span>` : ''
         ].filter(Boolean).join('');
 
         const themeLabels = {
@@ -8501,7 +8515,10 @@ async function renderHandouts() {
 
                 <!-- Bottom Action Toolbar -->
                 <div class="flex items-center justify-between gap-1.5 pt-2.5 border-t border-ledger-800/80 text-[11px] flex-wrap">
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button onclick="openDeliverHandoutModal('${h.id}')" title="Deliver to Player Companion Phones" class="px-2.5 py-1 rounded-lg ${h.isDelivered ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-ledger-950 text-slate-300 hover:text-amber-300 border-ledger-700'} border flex items-center gap-1 transition font-bold">
+                            <span>📱</span> <span>${h.isDelivered ? 'Delivered' : 'Send to Phone'}</span>
+                        </button>
                         <button onclick="broadcastInWorldHandout('${h.id}')" title="Broadcast directly to Player Screen" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-800 text-sky-300 flex items-center gap-1 transition font-bold">
                             <span>📺</span> <span>Broadcast</span>
                         </button>
@@ -9285,6 +9302,80 @@ async function broadcastInWorldHandout(id) {
     }
 }
 
+function openDeliverHandoutModal(id) {
+    const h = (appState.handouts || []).find(it => it.id === id);
+    if (!h) return;
+
+    const idInput = document.getElementById('deliver-handout-id');
+    const titleEl = document.getElementById('deliver-handout-title');
+    const typeEl = document.getElementById('deliver-handout-type');
+    const snippetEl = document.getElementById('deliver-handout-snippet');
+    const targetSelect = document.getElementById('deliver-target-hero');
+    const whisperInput = document.getElementById('deliver-secret-whisper');
+
+    if (idInput) idInput.value = h.id;
+    if (titleEl) titleEl.textContent = h.title || 'Untitled Handout';
+    if (typeEl) typeEl.textContent = (h.type || 'letter').toUpperCase();
+    if (snippetEl) snippetEl.textContent = h.content ? `"${h.content.slice(0, 140)}..."` : 'No text content.';
+    if (whisperInput) whisperInput.value = h.secretWhisper || '';
+
+    // Populate party options dynamically
+    if (targetSelect) {
+        let opts = `<option value="all">👥 Entire Party (Public Handout - All Players)</option>`;
+        const party = appState.party || [];
+        party.forEach(pc => {
+            const isSelected = h.targetHeroId === pc.id;
+            opts += `<option value="${pc.id}" ${isSelected ? 'selected' : ''}>👤 ${escapeHTML(pc.name)} (${escapeHTML(pc.classRole || pc.player || 'Hero')})</option>`;
+        });
+        targetSelect.innerHTML = opts;
+        if (!h.targetHeroId || h.targetHeroId === 'all') {
+            targetSelect.value = 'all';
+        }
+    }
+
+    openModal('modal-deliver-handout');
+}
+
+async function submitDeliverHandout(event) {
+    if (event) event.preventDefault();
+    const id = document.getElementById('deliver-handout-id')?.value;
+    const targetSelect = document.getElementById('deliver-target-hero');
+    const targetId = targetSelect?.value || 'all';
+    const targetOption = targetSelect?.options[targetSelect.selectedIndex];
+    const targetName = targetId === 'all' ? 'All Party' : (targetOption ? targetOption.text.replace(/^[👤👥]\s*/, '') : 'Selected Hero');
+    const secretWhisper = document.getElementById('deliver-secret-whisper')?.value || '';
+
+    if (!id) return;
+
+    try {
+        const res = await fetch(`/api/handouts/${id}/deliver`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                targetHeroId: targetId,
+                targetHeroName: targetName,
+                secretWhisper: secretWhisper
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            appState.handouts = data.handouts;
+            closeModal('modal-deliver-handout');
+            renderHandouts();
+            showToast(`📱 Missive delivered to ${targetName}'s phone!`, "success");
+            if (window.TabletopAudio && window.TabletopAudio.playSecret) {
+                TabletopAudio.playSecret();
+            }
+        } else {
+            showToast("Failed to deliver handout.", "error");
+        }
+    } catch (e) {
+        console.error("Delivery error:", e);
+        showToast("Network error delivering handout.", "error");
+    }
+}
+
 async function generateHandoutBatchPresets() {
     try {
         const res = await fetch('/api/handouts/batch-preset', { method: 'POST' });
@@ -9412,6 +9503,8 @@ window.saveAndBroadcastHandout = saveAndBroadcastHandout;
 window.deleteCustomHandout = deleteCustomHandout;
 window.toggleHandoutDecipher = toggleHandoutDecipher;
 window.broadcastInWorldHandout = broadcastInWorldHandout;
+window.openDeliverHandoutModal = openDeliverHandoutModal;
+window.submitDeliverHandout = submitDeliverHandout;
 window.generateHandoutBatchPresets = generateHandoutBatchPresets;
 window.rollQuickMissive = rollQuickMissive;
 window.convertHandoutToRumor = convertHandoutToRumor;

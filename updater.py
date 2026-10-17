@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.6-beta.15"
+CURRENT_VERSION = "1.1.6-beta.16"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -93,9 +93,10 @@ def parse_version_tuple(v_str: str):
 
 def get_updater_settings() -> Dict[str, Any]:
     """Load updater preferences from disk."""
+    is_prerelease = any(x in CURRENT_VERSION.lower() for x in ["-beta", "-alpha", "-rc", "-nightly"])
     default_settings = {
         "auto_check": True,
-        "channel": "stable",
+        "channel": "beta" if is_prerelease else "stable",
         "github_token": "",
         "last_check_time": None,
         "last_version_seen": None

@@ -6313,6 +6313,64 @@
         </div>
     </div>
 
+    <!-- MODAL: DELIVER HANDOUT TO PLAYER PHONES -->
+    <div id="modal-deliver-handout" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 text-base">📱</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-amber-300">Deliver Handout to Players</h3>
+                        <p class="text-[11px] text-slate-400">Send directly to player companion phones</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('modal-deliver-handout')" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 transition">✕</button>
+            </div>
+
+            <form id="deliver-handout-form" onsubmit="submitDeliverHandout(event)" class="space-y-3.5">
+                <input type="hidden" id="deliver-handout-id">
+
+                <!-- Handout Summary Card -->
+                <div class="p-3 rounded-xl bg-ledger-950 border border-ledger-800 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <h4 id="deliver-handout-title" class="font-display font-bold text-amber-200 text-sm truncate">Handout Title</h4>
+                        <span id="deliver-handout-type" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Letter</span>
+                    </div>
+                    <p id="deliver-handout-snippet" class="text-[11px] text-slate-400 line-clamp-2 italic font-serif">Handout preview snippet...</p>
+                </div>
+
+                <!-- Recipient Target Selection -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-200 mb-1">Send To Recipient *</label>
+                    <select id="deliver-target-hero" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-3 py-2 text-white font-semibold focus:outline-none focus:border-amber-400">
+                        <option value="all">👥 Entire Party (Public Handout - All Players)</option>
+                    </select>
+                    <p class="text-[10px] text-slate-500 mt-1">If sending to a specific hero, only that player's phone will receive this secret missive.</p>
+                </div>
+
+                <!-- Secret DM Whisper -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[11px] font-bold text-slate-200">DM Secret Whisper (Optional)</label>
+                        <span class="text-[10px] text-purple-300 font-mono">🔒 Private to Recipient</span>
+                    </div>
+                    <textarea id="deliver-secret-whisper" rows="2" placeholder="e.g. You notice this letter slipped under your tavern door at midnight..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-400"></textarea>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Appears as a gilded wax-sealed secret note attached to the missive.</p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-3 border-t border-ledger-800 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-deliver-handout')" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold shadow-lg transition flex items-center gap-1.5">
+                        <span>📱</span> <span>Send to Phone</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 27. NEW CAMPAIGN PROFILE MODAL -->
     <div id="new-campaign-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-amber-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">

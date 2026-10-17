@@ -16,7 +16,7 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Cinzel+Decorative:wght@700&family=Great+Vibes&family=MedievalSharp&family=Courier+Prime&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
@@ -39,6 +39,9 @@
                         decorative: ['"Cinzel Decorative"', 'serif'],
                         sans: ['Inter', 'sans-serif'],
                         mono: ['"JetBrains Mono"', 'monospace'],
+                        cursive: ['"Great Vibes"', 'cursive'],
+                        blackletter: ['"MedievalSharp"', 'serif'],
+                        typewriter: ['"Courier Prime"', 'monospace']
                     }
                 }
             }
@@ -63,6 +66,91 @@
         }
         .animate-turn-pulse {
             animation: pulse-gold 2s infinite ease-in-out;
+        }
+
+        /* In-World Handouts & Typography */
+        .font-handout-cursive { font-family: 'Great Vibes', 'Brush Script MT', 'Apple Chancery', cursive; }
+        .font-handout-blackletter { font-family: 'MedievalSharp', 'Cinzel', 'Palatino', serif; }
+        .font-handout-serif { font-family: 'Cinzel', Georgia, serif; }
+        .font-handout-chisel { font-family: 'MedievalSharp', 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+        .font-handout-typewriter { font-family: 'Courier Prime', 'Courier New', monospace; }
+
+        /* Authentic Parchment Styles */
+        .handout-paper-parchment {
+            background: radial-gradient(circle at center, #fbf6ec 0%, #eddcc3 70%, #d8be98 100%);
+            color: #1c1917;
+            border: 2px solid #b39775;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 35px rgba(120,70,20,0.18);
+        }
+        .handout-paper-burnt {
+            background: radial-gradient(circle at center, #ecdcc4 0%, #caa67b 55%, #5a3821 85%, #24140a 100%);
+            color: #1a0f07;
+            border: 2px dashed #452410;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9), inset 0 0 50px rgba(25,10,0,0.55);
+        }
+        .handout-paper-vellum {
+            background: radial-gradient(circle at center, #ffffff 0%, #f9f6ef 70%, #efe7d6 100%);
+            color: #0f172a;
+            border: 3px double #d97706;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 30px rgba(217,119,6,0.12);
+        }
+        .handout-paper-blood {
+            background: radial-gradient(circle at center, #f5efe6 0%, #dfd3c0 60%, #b3837c 85%, #6b1414 100%);
+            color: #200808;
+            border: 2px solid #881337;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 50px rgba(159,18,57,0.3);
+        }
+        .handout-paper-arcane {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 70%, #020617 100%);
+            color: #e0e7ff;
+            border: 2px solid #6366f1;
+            box-shadow: 0 0 35px rgba(99,102,241,0.35), inset 0 0 40px rgba(99,102,241,0.25);
+        }
+
+        /* Wax Seal 3D Styling */
+        .wax-seal {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.5);
+            border: 3px double rgba(255,255,255,0.25);
+            transform: rotate(-6deg);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .wax-seal:hover {
+            transform: rotate(0deg) scale(1.06);
+        }
+        .wax-seal-inner {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px dashed rgba(255,255,255,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .wax-seal-red {
+            background: radial-gradient(circle at 35% 35%, #dc2626, #991b1b 70%, #450a0a);
+        }
+        .wax-seal-gold {
+            background: radial-gradient(circle at 35% 35%, #fbbf24, #d97706 70%, #78350f);
+        }
+        .wax-seal-black {
+            background: radial-gradient(circle at 35% 35%, #475569, #0f172a 70%, #020617);
+        }
+        .wax-seal-green {
+            background: radial-gradient(circle at 35% 35%, #22c55e, #15803d 70%, #052e16);
+        }
+        .wax-seal-purple {
+            background: radial-gradient(circle at 35% 35%, #a855f7, #6b21a8 70%, #3b0764);
         }
     </style>
 </head>
@@ -124,6 +212,23 @@
         <!-- TAB 1: VITALS & COMBAT DASHBOARD                               -->
         <!-- ============================================================== -->
         <section id="tab-vitals" class="tab-pane space-y-4">
+
+            <!-- REST NOTIFICATION BANNER (Triggered by DM) -->
+            <div id="companion-rest-banner" class="hidden p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-xl transition-all duration-300">
+                <div class="flex items-center gap-2.5">
+                    <span id="rest-banner-icon" class="text-2xl shrink-0">☀️</span>
+                    <div>
+                        <h4 id="rest-banner-title" class="font-display font-bold text-xs tracking-wide">Rest Completed</h4>
+                        <p id="rest-banner-sub" class="text-[10px] font-mono leading-tight">Your HP and abilities have been refreshed.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button id="rest-banner-spend-hd-btn" onclick="spendHitDie()" class="hidden px-2.5 py-1 rounded-xl bg-sky-500 hover:bg-sky-400 text-ledger-950 font-bold font-mono text-[10px] shadow tap-active">
+                        🎲 Spend HD
+                    </button>
+                    <button onclick="dismissRestBanner()" class="text-slate-400 hover:text-white p-1 text-xs">✕</button>
+                </div>
+            </div>
             
             <!-- MAIN HIT POINTS CARD -->
             <div class="p-4 rounded-3xl bg-ledger-900 border border-ledger-750 shadow-2xl relative overflow-hidden">
@@ -508,9 +613,10 @@
             <span class="text-[10px] font-mono font-bold">Gear</span>
         </button>
 
-        <button onclick="switchTab('handouts')" id="nav-btn-handouts" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
+        <button onclick="switchTab('handouts')" id="nav-btn-handouts" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
             <span class="text-lg">📜</span>
             <span class="text-[10px] font-mono font-bold">Notes</span>
+            <span id="handouts-unread-badge" class="hidden absolute top-1 right-2 w-2.5 h-2.5 rounded-full bg-amber-400 border border-black animate-pulse"></span>
         </button>
     </nav>
 
@@ -555,15 +661,78 @@
         </div>
     </div>
 
-    <!-- MODAL: VIEW HANDOUT DETAIL -->
-    <div id="modal-handout-detail" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="bg-ledger-900 border-2 border-amber-500/50 rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-            <div class="flex items-center justify-between border-b border-ledger-750 pb-2">
-                <h3 id="modal-handout-title" class="font-display font-bold text-base text-amber-300 truncate">Handout</h3>
-                <button onclick="closeModal('modal-handout-detail')" class="text-slate-400 hover:text-white text-lg">✕</button>
+    <!-- MODAL: SEALED MISSIVE ALERT -->
+    <div id="modal-sealed-missive-alert" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 relative overflow-hidden">
+            <div class="space-y-1">
+                <span class="text-3xl block animate-bounce">✉️</span>
+                <h3 class="font-display font-bold text-base text-amber-300">Sealed Missive Arrived</h3>
+                <p id="sealed-alert-hero-target" class="text-[11px] font-mono text-purple-300">Delivered by the DM</p>
             </div>
-            <div id="modal-handout-body" class="flex-1 overflow-y-auto text-xs leading-relaxed font-sans space-y-2 text-slate-200">
-                <!-- Content inserted dynamically -->
+
+            <!-- Authentic 3D Wax Seal with Tap Interaction -->
+            <div class="py-3 flex flex-col items-center justify-center space-y-2">
+                <div id="sealed-alert-wax-seal" onclick="breakSealAndOpenCurrentMissive()" class="wax-seal wax-seal-red cursor-pointer transition transform hover:scale-110 active:scale-95 shadow-2xl">
+                    <div id="sealed-alert-seal-inner" class="wax-seal-inner text-white font-serif">👑</div>
+                </div>
+                <span class="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-widest animate-pulse">Tap Seal to Break & Read</span>
+            </div>
+
+            <div class="space-y-1 bg-ledger-950 p-3 rounded-xl border border-ledger-800 text-left">
+                <h4 id="sealed-alert-title" class="font-display font-bold text-sm text-slate-100 truncate">Title of Missive</h4>
+                <p id="sealed-alert-author" class="text-[11px] font-serif text-slate-400 italic">From: Unknown</p>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                <button onclick="closeModal('modal-sealed-missive-alert')" class="flex-1 py-2 rounded-xl bg-ledger-800 hover:bg-ledger-750 text-slate-300 font-semibold text-xs">
+                    Later
+                </button>
+                <button onclick="breakSealAndOpenCurrentMissive()" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow-md tap-active">
+                    Break Seal →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VIEW AUTHENTIC HANDOUT DETAIL -->
+    <div id="modal-handout-detail" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+        <div id="modal-handout-card-container" class="handout-paper-parchment rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[88vh] flex flex-col relative overflow-hidden transition-all duration-300">
+            <!-- Header bar with Seal & Close -->
+            <div class="flex items-start justify-between border-b border-black/10 pb-3">
+                <div class="space-y-0.5 pr-2">
+                    <span id="modal-handout-type-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-black/10 inline-block mb-1">
+                        LETTER
+                    </span>
+                    <h3 id="modal-handout-title" class="font-display font-bold text-base tracking-wide">Document Title</h3>
+                    <p id="modal-handout-meta" class="text-[11px] font-serif opacity-80">From: Unknown • To: You</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div id="modal-handout-seal" class="wax-seal wax-seal-red">
+                        <div id="modal-handout-seal-inner" class="wax-seal-inner">👑</div>
+                    </div>
+                    <button onclick="closeModal('modal-handout-detail')" class="w-7 h-7 rounded-full bg-black/20 hover:bg-black/30 text-current flex items-center justify-center text-xs font-bold transition">✕</button>
+                </div>
+            </div>
+
+            <!-- Body text container with parchment typography -->
+            <div id="modal-handout-body-wrapper" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs leading-relaxed">
+                <div id="modal-handout-body" class="whitespace-pre-line leading-relaxed font-handout-serif">
+                    <!-- Content inserted dynamically -->
+                </div>
+
+                <!-- DM Secret Whisper Box (if any) -->
+                <div id="modal-handout-whisper-container" class="hidden p-3 rounded-xl border border-amber-800/40 bg-amber-950/20 text-amber-950 space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-[11px]">
+                        <span>🔒</span> <span>DM Secret Whisper</span>
+                    </div>
+                    <p id="modal-handout-whisper-text" class="italic text-[11px] leading-relaxed"></p>
+                </div>
+            </div>
+
+            <!-- Footer date / info -->
+            <div id="modal-handout-footer" class="pt-2 border-t border-black/10 flex items-center justify-between text-[10px] font-mono opacity-70">
+                <span id="modal-handout-date">Date: Unknown</span>
+                <span id="modal-handout-target">Recipient: All Party</span>
             </div>
         </div>
     </div>
@@ -606,16 +775,21 @@
             }
         }
 
+        let lastRestDismissedTimestamp = parseFloat(localStorage.getItem('arcane_last_rest_seen') || '0');
+        let pendingAlertHandout = null;
+
         // Fetch Live State
         async function fetchCompanionState() {
             try {
-                const res = await fetch('/api/companion/state');
+                const url = activeCharacterId ? `/api/companion/state?heroId=${encodeURIComponent(activeCharacterId)}` : '/api/companion/state';
+                const res = await fetch(url);
                 if (!res.ok) return;
                 const data = await res.json();
                 
                 currentParty = data.party || [];
                 activeCombat = data.combat || null;
                 recentRolls = data.recentRolls || [];
+                const handouts = data.handouts || [];
 
                 // Render Party in Selection Modal
                 renderHeroSelectionModal(currentParty);
@@ -632,8 +806,14 @@
                     renderActiveHero(activeCharacter);
                 }
 
+                // Check Rest Notification from DM
+                checkRestNotification(data.lastRest);
+
+                // Check Unread Handout Notifications
+                checkHandoutNotifications(handouts);
+
                 // Render Handouts
-                renderHandouts(data.handouts || []);
+                renderHandouts(handouts);
 
                 // Render Recent Rolls
                 renderRollLog(recentRolls);
@@ -1985,50 +2165,298 @@
             switchTab('vitals');
         }
 
-        // Render Handouts
-        function renderHandouts(handouts) {
-            const list = document.getElementById('companion-handouts-list');
-            if (!list) return;
-            if (handouts.length === 0) {
-                list.innerHTML = '<div class="text-slate-500 text-center py-8 font-mono text-xs">No campaign handouts available.</div>';
+        // -----------------------------------------------------------------
+        // REST SYNCHRONIZATION CONTROLLER (DM TRIGGERED)
+        // -----------------------------------------------------------------
+        function checkRestNotification(lastRest) {
+            const banner = document.getElementById('companion-rest-banner');
+            if (!banner || !lastRest || !lastRest.timestamp) {
+                if (banner) banner.classList.add('hidden');
                 return;
             }
 
+            // Only show if newer than dismissed timestamp and within last 2 hours
+            const now = Date.now() / 1000;
+            if (lastRest.timestamp <= lastRestDismissedTimestamp || (now - lastRest.timestamp) > 7200) {
+                banner.classList.add('hidden');
+                return;
+            }
+
+            const iconEl = document.getElementById('rest-banner-icon');
+            const titleEl = document.getElementById('rest-banner-title');
+            const subEl = document.getElementById('rest-banner-sub');
+            const spendHdBtn = document.getElementById('rest-banner-spend-hd-btn');
+
+            if (lastRest.type === 'long') {
+                banner.className = 'p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-xl transition-all duration-300 bg-amber-950/40 border-amber-500/50 text-amber-200';
+                if (iconEl) iconEl.textContent = '☀️';
+                if (titleEl) titleEl.textContent = 'Long Rest (8 Hours) Completed';
+                if (subEl) subEl.textContent = 'Full HP restored, spell slots recharged, death saves reset.';
+                if (spendHdBtn) spendHdBtn.classList.add('hidden');
+            } else {
+                banner.className = 'p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-xl transition-all duration-300 bg-sky-950/40 border-sky-500/50 text-sky-200';
+                if (iconEl) iconEl.textContent = '⛺';
+                if (titleEl) titleEl.textContent = 'Short Rest (1 Hour) Completed';
+                if (subEl) subEl.textContent = 'Warlock pact slots and short-rest abilities recharged.';
+                if (spendHdBtn) {
+                    if (activeCharacter && activeCharacter.currentHp < activeCharacter.maxHp) {
+                        spendHdBtn.classList.remove('hidden');
+                    } else {
+                        spendHdBtn.classList.add('hidden');
+                    }
+                }
+            }
+
+            banner.classList.remove('hidden');
+        }
+
+        function dismissRestBanner() {
+            const banner = document.getElementById('companion-rest-banner');
+            if (banner) banner.classList.add('hidden');
+            lastRestDismissedTimestamp = Date.now() / 1000;
+            localStorage.setItem('arcane_last_rest_seen', lastRestDismissedTimestamp.toString());
+        }
+
+        async function spendHitDie() {
+            if (!activeCharacter) return;
+            const maxHp = activeCharacter.maxHp || 10;
+            const currentHp = activeCharacter.currentHp || 0;
+            if (currentHp >= maxHp) {
+                showToast("You are already at maximum HP!", "info");
+                return;
+            }
+
+            // Determine Hit Die size from class
+            const role = (activeCharacter.classRole || '').toLowerCase();
+            let dieSize = 8; // Default d8
+            if (role.includes('barbarian')) dieSize = 12;
+            else if (role.includes('fighter') || role.includes('paladin') || role.includes('ranger')) dieSize = 10;
+            else if (role.includes('sorcerer') || role.includes('wizard')) dieSize = 6;
+
+            const dieRoll = Math.floor(Math.random() * dieSize) + 1;
+            const conMod = 2; // Approximated constitution modifier
+            const healAmount = Math.max(1, dieRoll + conMod);
+            const newHp = Math.min(maxHp, currentHp + healAmount);
+
+            activeCharacter.currentHp = newHp;
+            renderActiveHero(activeCharacter);
+
+            // Send HP update
+            try {
+                await fetch('/api/companion/update-hp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, currentHp: newHp })
+                });
+
+                // Send roll to table roll log
+                await fetch('/api/companion/roll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        characterId: activeCharacter.id,
+                        characterName: activeCharacter.name,
+                        player: activeCharacter.player,
+                        label: `Short Rest Hit Die (1d${dieSize}+${conMod})`,
+                        formula: `1d${dieSize}+${conMod}`,
+                        total: healAmount,
+                        breakdown: `[${dieRoll}] + ${conMod} = ${healAmount} HP healed`,
+                        isCrit: false,
+                        isFumble: false
+                    })
+                });
+
+                showToast(`🎲 Hit Die: +${healAmount} HP restored! (${newHp}/${maxHp})`, "success");
+            } catch (e) {
+                console.error("Error spending hit die:", e);
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // IN-WORLD HANDOUTS & SEALED MISSIVES
+        // -----------------------------------------------------------------
+        function checkHandoutNotifications(handouts) {
+            const seenList = JSON.parse(localStorage.getItem('arcane_seen_handouts') || '[]');
+            const unreadBadge = document.getElementById('handouts-unread-badge');
+
+            // Delivered handouts for this player
+            const delivered = (handouts || []).filter(h => h.isDelivered || h.status === 'delivered');
+            const unseen = delivered.filter(h => !seenList.includes(h.id));
+
+            if (unseen.length > 0) {
+                if (unreadBadge) unreadBadge.classList.remove('hidden');
+
+                // If not currently in handouts tab, alert on newest unseen handout
+                const activeTabEl = document.querySelector('.tab-pane:not(.hidden)');
+                const isOnHandoutsTab = activeTabEl && activeTabEl.id === 'tab-handouts';
+                const newest = unseen[0];
+                const lastAlertedId = sessionStorage.getItem('arcane_last_alerted_handout');
+
+                if (!isOnHandoutsTab && newest && newest.id !== lastAlertedId) {
+                    sessionStorage.setItem('arcane_last_alerted_handout', newest.id);
+                    openSealedMissiveAlert(newest);
+                }
+            } else {
+                if (unreadBadge) unreadBadge.classList.add('hidden');
+            }
+        }
+
+        function openSealedMissiveAlert(h) {
+            pendingAlertHandout = h;
+            const modal = document.getElementById('modal-sealed-missive-alert');
+            if (!modal) return;
+
+            document.getElementById('sealed-alert-title').textContent = h.title || 'Untitled Document';
+            document.getElementById('sealed-alert-author').textContent = h.author ? `From: ${h.author}` : (h.recipient ? `To: ${h.recipient}` : 'Bearer');
+            document.getElementById('sealed-alert-hero-target').textContent = (h.targetHeroId && h.targetHeroId !== 'all') ? '🔒 Secret missive intended only for you' : '👥 Delivered to the party';
+
+            const sealIcons = { crown: '👑', skull: '💀', arcane: '👁️', scales: '⚖️', daggers: '🗡️', dragon: '🐉', tree: '🌳', none: '📜' };
+            const sealColors = { red: 'wax-seal-red', gold: 'wax-seal-gold', black: 'wax-seal-black', green: 'wax-seal-green', purple: 'wax-seal-purple' };
+
+            const sealEl = document.getElementById('sealed-alert-wax-seal');
+            const innerEl = document.getElementById('sealed-alert-seal-inner');
+            if (sealEl) {
+                sealEl.className = `wax-seal ${sealColors[h.sealColor || 'red'] || 'wax-seal-red'} cursor-pointer transition transform hover:scale-110 active:scale-95 shadow-2xl`;
+            }
+            if (innerEl) {
+                innerEl.textContent = sealIcons[h.seal || 'crown'] || '📜';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function breakSealAndOpenCurrentMissive() {
+            closeModal('modal-sealed-missive-alert');
+            if (pendingAlertHandout) {
+                viewHandoutDetail(pendingAlertHandout.id);
+            }
+        }
+
+        function renderHandouts(handouts) {
+            const list = document.getElementById('companion-handouts-list');
+            if (!list) return;
+
+            if (handouts.length === 0) {
+                list.innerHTML = '<div class="text-slate-500 text-center py-8 font-mono text-xs">No campaign handouts or letters delivered yet.</div>';
+                return;
+            }
+
+            const seenList = JSON.parse(localStorage.getItem('arcane_seen_handouts') || '[]');
+            const sealIcons = { crown: '👑', skull: '💀', arcane: '👁️', scales: '⚖️', daggers: '🗡️', dragon: '🐉', tree: '🌳', none: '📜' };
+            const sealColors = { red: 'wax-seal-red', gold: 'wax-seal-gold', black: 'wax-seal-black', green: 'wax-seal-green', purple: 'wax-seal-purple' };
+
             list.innerHTML = handouts.map(h => {
-                const typeIcon = h.type === 'bounty' ? '🎯' : (h.type === 'cipher' ? '🔐' : '📜');
+                const isSeen = seenList.includes(h.id);
+                const isPrivate = h.targetHeroId && h.targetHeroId !== 'all';
+                const sealIcon = sealIcons[h.seal || 'crown'] || '📜';
+                const sealClass = sealColors[h.sealColor || 'red'] || 'wax-seal-red';
+
                 return `
-                    <div onclick="viewHandoutDetail('${h.id}')" class="p-3.5 rounded-2xl bg-ledger-900 border border-ledger-750 hover:border-amber-500/50 flex items-center justify-between cursor-pointer transition shadow-md tap-active">
+                    <div onclick="viewHandoutDetail('${h.id}')" class="p-3.5 rounded-2xl bg-ledger-900 border ${isSeen ? 'border-ledger-750' : 'border-amber-500/80 ring-1 ring-amber-500/30'} hover:border-amber-500/60 flex items-center justify-between cursor-pointer transition shadow-md tap-active relative">
+                        ${!isSeen ? '<span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>' : ''}
                         <div class="flex items-center gap-3">
-                            <span class="text-2xl">${typeIcon}</span>
+                            <div class="wax-seal ${sealClass} scale-75 origin-center shrink-0">
+                                <div class="wax-seal-inner text-white font-serif">${sealIcon}</div>
+                            </div>
                             <div>
-                                <h4 class="font-display font-bold text-xs text-amber-200">${h.title || 'Untitled Document'}</h4>
-                                <p class="text-[10px] text-slate-400 font-mono">${h.author ? `From: ${h.author}` : ''} ${h.recipient ? `• To: ${h.recipient}` : ''}</p>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <h4 class="font-display font-bold text-xs text-amber-200">${escapeHTML(h.title || 'Untitled Document')}</h4>
+                                    ${isPrivate ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-950 border border-purple-800 text-purple-300">🔒 Secret</span>' : ''}
+                                    ${h.isCoded && !h.isDeciphered ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-purple-950 border border-purple-800 text-purple-300">Coded</span>' : ''}
+                                </div>
+                                <p class="text-[10px] text-slate-400 font-mono mt-0.5">
+                                    ${h.author ? `From: ${escapeHTML(h.author)}` : ''} ${h.dateString ? `• ${escapeHTML(h.dateString)}` : ''}
+                                </p>
                             </div>
                         </div>
-                        <span class="text-xs text-amber-400 font-mono">Inspect →</span>
+                        <span class="text-xs text-amber-400 font-mono shrink-0 font-bold">Read →</span>
                     </div>
                 `;
             }).join('');
         }
 
         function viewHandoutDetail(handoutId) {
-            // Find in current data
-            fetch('/api/companion/state').then(r => r.json()).then(data => {
+            const url = activeCharacterId ? `/api/companion/state?heroId=${encodeURIComponent(activeCharacterId)}` : '/api/companion/state';
+            fetch(url).then(r => r.json()).then(data => {
                 const h = (data.handouts || []).find(it => it.id === handoutId);
                 if (!h) return;
-                document.getElementById('modal-handout-title').textContent = h.title || 'Handout';
-                document.getElementById('modal-handout-body').innerHTML = `
-                    <div class="p-4 rounded-xl bg-ledger-950 border border-ledger-800 space-y-2">
-                        <div class="flex justify-between text-[10px] font-mono text-slate-400 pb-2 border-b border-ledger-800">
-                            <span>Author: ${h.author || 'Unknown'}</span>
-                            <span>Recipient: ${h.recipient || 'Bearer'}</span>
-                        </div>
-                        <p class="whitespace-pre-line text-slate-200 font-sans text-xs leading-relaxed">${h.content || h.body || 'No text content.'}</p>
-                        ${h.secretNotes ? `<div class="mt-2 p-2 rounded bg-amber-950/40 border border-amber-800 text-amber-300 text-[11px]">Note: ${h.secretNotes}</div>` : ''}
-                    </div>
-                `;
-                document.getElementById('modal-handout-detail').classList.remove('hidden');
-                document.getElementById('modal-handout-detail').classList.add('flex');
+
+                // Mark as seen in localStorage
+                let seenList = JSON.parse(localStorage.getItem('arcane_seen_handouts') || '[]');
+                if (!seenList.includes(h.id)) {
+                    seenList.push(h.id);
+                    localStorage.setItem('arcane_seen_handouts', JSON.stringify(seenList));
+                    renderHandouts(data.handouts || []);
+                    checkHandoutNotifications(data.handouts || []);
+                }
+
+                // Themes
+                const themeClasses = {
+                    parchment: 'handout-paper-parchment',
+                    vellum: 'handout-paper-vellum',
+                    burnt: 'handout-paper-burnt',
+                    blood: 'handout-paper-blood',
+                    arcane: 'handout-paper-arcane'
+                };
+                const fontClasses = {
+                    cursive: 'font-handout-cursive text-sm',
+                    blackletter: 'font-handout-blackletter text-xs',
+                    serif: 'font-handout-serif text-xs',
+                    chisel: 'font-handout-chisel text-xs',
+                    typewriter: 'font-handout-typewriter text-xs font-mono'
+                };
+                const sealIcons = { crown: '👑', skull: '💀', arcane: '👁️', scales: '⚖️', daggers: '🗡️', dragon: '🐉', tree: '🌳', none: '📜' };
+                const sealColors = { red: 'wax-seal-red', gold: 'wax-seal-gold', black: 'wax-seal-black', green: 'wax-seal-green', purple: 'wax-seal-purple' };
+
+                const chosenTheme = themeClasses[h.theme || 'parchment'] || 'handout-paper-parchment';
+                const chosenFont = fontClasses[h.fontStyle || 'serif'] || 'font-handout-serif text-xs';
+
+                const cardContainer = document.getElementById('modal-handout-card-container');
+                if (cardContainer) {
+                    cardContainer.className = `${chosenTheme} rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[88vh] flex flex-col relative overflow-hidden transition-all duration-300`;
+                }
+
+                document.getElementById('modal-handout-title').textContent = h.title || 'In-World Document';
+                document.getElementById('modal-handout-type-badge').textContent = (h.type || 'Letter').toUpperCase();
+                document.getElementById('modal-handout-meta').textContent = `${h.author ? 'From: ' + h.author : ''} ${h.recipient ? '• To: ' + h.recipient : ''}`;
+                document.getElementById('modal-handout-date').textContent = h.dateString ? `Date: ${h.dateString}` : '';
+                document.getElementById('modal-handout-target').textContent = (h.targetHeroId && h.targetHeroId !== 'all') ? 'Recipient: You (Secret)' : 'Recipient: All Party';
+
+                // Wax Seal
+                const sealEl = document.getElementById('modal-handout-seal');
+                const sealInner = document.getElementById('modal-handout-seal-inner');
+                if (h.seal !== 'none') {
+                    sealEl.classList.remove('hidden');
+                    sealEl.className = `wax-seal ${sealColors[h.sealColor || 'red'] || 'wax-seal-red'}`;
+                    sealInner.textContent = sealIcons[h.seal || 'crown'] || '📜';
+                } else {
+                    sealEl.classList.add('hidden');
+                }
+
+                // Body content: handle cipher
+                let contentText = h.content || h.body || 'No text content.';
+                if (h.isCoded && !h.isDeciphered) {
+                    contentText = `[🔒 ENCRYPTED CLUE — DC ${h.investigationDC || 14} Investigation to Decipher]\n\n` + (h.cipherHint ? `Hint: ${h.cipherHint}\n\n` : '') + contentText;
+                }
+
+                const bodyEl = document.getElementById('modal-handout-body');
+                bodyEl.className = `whitespace-pre-line leading-relaxed ${chosenFont}`;
+                bodyEl.textContent = contentText;
+
+                // Secret DM Whisper
+                const whisperBox = document.getElementById('modal-handout-whisper-container');
+                const whisperText = document.getElementById('modal-handout-whisper-text');
+                if (h.secretWhisper && h.secretWhisper.trim()) {
+                    whisperBox.classList.remove('hidden');
+                    whisperText.textContent = `“${h.secretWhisper.trim()}”`;
+                } else {
+                    whisperBox.classList.add('hidden');
+                }
+
+                const modal = document.getElementById('modal-handout-detail');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
             });
         }
 

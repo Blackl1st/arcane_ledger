@@ -864,6 +864,11 @@ class HandoutModel(BaseModel):
     tiedNpc: Optional[str] = ""
     sessionNotes: Optional[str] = ""
     status: str = "ready"  # "draft" | "ready" | "delivered"
+    targetHeroId: Optional[str] = "all"  # "all" or character ID
+    targetHeroName: Optional[str] = "All Party"
+    secretWhisper: Optional[str] = ""
+    isDelivered: bool = False
+    deliveredAt: Optional[float] = None
     createdAt: Optional[float] = None
     updatedAt: Optional[float] = None
 
@@ -1178,15 +1183,28 @@ async def companion_view():
     return {"message": "Player companion template not found"}
 
 @app.get("/api/companion/state")
-async def get_companion_state():
+async def get_companion_state(heroId: Optional[str] = None):
     party = read_json("party.json", [])
     combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
     broadcast = read_json("broadcast.json", {"active": False, "title": "", "content": "", "type": "text"})
     handouts = read_json("handouts.json", [])
+    last_rest = read_json("last_rest.json", None)
     manifest = get_campaigns_manifest()
     active_id = manifest.get("activeCampaignId", "default")
     active_camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == active_id), None)
     camp_name = active_camp.get("name", "Active Campaign") if active_camp else "Active Campaign"
+
+    # Filter handouts delivered to this hero or whole party
+    delivered_handouts = []
+    for h in handouts:
+        is_deliv = h.get("isDelivered") or h.get("status") == "delivered" or h.get("isUnlocked") or h.get("unlocked")
+        if not is_deliv:
+            continue
+        target = h.get("targetHeroId", "all")
+        if not target or target == "all":
+            delivered_handouts.append(h)
+        elif heroId and target == heroId:
+            delivered_handouts.append(h)
 
     return {
         "status": "success",
@@ -1194,7 +1212,8 @@ async def get_companion_state():
         "party": party,
         "combat": combat,
         "broadcast": broadcast,
-        "handouts": [h for h in handouts if h.get("isUnlocked", True) or h.get("unlocked", True)],
+        "handouts": delivered_handouts,
+        "lastRest": last_rest,
         "recentRolls": sorted([r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)], key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
     }
 
@@ -3477,6 +3496,7 @@ async def get_rules():
 async def trigger_party_rest(payload: Dict[str, Any]):
     rest_type = payload.get("type", "short")
     party = read_json("party.json", [])
+    combat = read_json("combat.json", {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []})
     
     for pc in party:
         if rest_type == "long":
@@ -3503,11 +3523,30 @@ async def trigger_party_rest(payload: Dict[str, Any]):
                 for lvl, s in pc.get("spellSlots", {}).items():
                     s["used"] = 0
                     
+    # Sync active combatants matching party members
+    for c in combat.get("combatants", []):
+        match_pc = next((p for p in party if p.get("id") == c.get("id") or p.get("name") == c.get("name")), None)
+        if match_pc:
+            c["currentHp"] = match_pc.get("currentHp", c.get("currentHp"))
+            c["tempHp"] = match_pc.get("tempHp", 0)
+            c["deathSaves"] = match_pc.get("deathSaves", {"successes": 0, "failures": 0})
+
     write_json("party.json", party)
+    write_json("combat.json", combat)
+
+    rest_event = {
+        "type": rest_type,
+        "timestamp": time.time(),
+        "message": f"{rest_type.title()} Rest completed! Slots and features recharged."
+    }
+    write_json("last_rest.json", rest_event)
+
     return {
         "status": "success",
         "message": f"{rest_type.title()} Rest completed! Slots and features recharged.",
-        "party": party
+        "party": party,
+        "combat": combat,
+        "lastRest": rest_event
     }
 
 
@@ -5994,6 +6033,33 @@ async def broadcast_handout_endpoint(handout_id: str):
     }
     write_json("broadcast.json", broadcast_data)
     return {"status": "success", "broadcast": broadcast_data}
+
+@app.post("/api/handouts/{handout_id}/deliver")
+async def deliver_handout_endpoint(handout_id: str, payload: Dict[str, Any]):
+    handouts = read_json("handouts.json", [])
+    handout = next((h for h in handouts if h.get("id") == handout_id), None)
+    if not handout:
+        raise HTTPException(status_code=404, detail="Handout not found")
+
+    target_id = payload.get("targetHeroId", "all")
+    target_name = payload.get("targetHeroName", "All Party")
+    secret_whisper = (payload.get("secretWhisper") or "").strip()
+
+    handout["targetHeroId"] = target_id
+    handout["targetHeroName"] = target_name
+    handout["secretWhisper"] = secret_whisper
+    handout["isDelivered"] = True
+    handout["status"] = "delivered"
+    handout["deliveredAt"] = time.time()
+    handout["updatedAt"] = time.time()
+
+    write_json("handouts.json", handouts)
+    return {
+        "status": "success",
+        "message": f"Handout delivered to {target_name}!",
+        "handout": handout,
+        "handouts": handouts
+    }
 
 @app.post("/api/handouts/batch-preset")
 async def generate_handouts_batch_preset():
