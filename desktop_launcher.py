@@ -7,6 +7,25 @@ Works on Windows, macOS, and Linux in both live dev mode and compiled PyInstalle
 
 import os
 import sys
+
+# In windowless / PyInstaller GUI mode on Windows (--windowed), sys.stdout and sys.stderr are None.
+# Provide valid fallback streams so libraries querying isatty(), write(), or flush() do not crash.
+if sys.stdout is None:
+    try:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr is None:
+    try:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stdin is None:
+    try:
+        sys.stdin = open(os.devnull, "r", encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 import time
 import socket
 import logging
@@ -114,7 +133,8 @@ def start_backend_frozen():
             host="0.0.0.0",
             port=PORT,
             log_level="warning",
-            loop="asyncio"
+            loop="asyncio",
+            log_config=None
         )
         server_instance = uvicorn.Server(config)
         server_instance.run()
