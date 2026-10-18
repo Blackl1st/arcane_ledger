@@ -488,9 +488,12 @@ function switchTab(tab) {
     } else if (tab === 'items') {
         renderItemsView();
     } else if (tab === 'battlemap') {
-        if (window.BattlemapController) {
-            window.BattlemapController.init();
-        }
+        switchTab('session');
+        setTimeout(() => {
+            const sec = document.getElementById('cockpit-battlemap-integrated-section');
+            if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+        }, 120);
+        return;
     } else if (tab === 'settings') {
         renderSettingsView();
     }
@@ -19868,6 +19871,11 @@ function renderSessionCockpit() {
     if (scratchpad && scratchpad.value === '') {
         scratchpad.value = localStorage.getItem('arcane_cockpit_scratchpad') || '';
     }
+
+    // Auto-initialize integrated battlemap workspace
+    if (window.BattlemapController && typeof window.BattlemapController.init === 'function') {
+        window.BattlemapController.init();
+    }
 }
 
 function openCockpitFlowchartFlyaway() {
@@ -20050,31 +20058,26 @@ function renderCockpitChamber() {
                         <option value="cleared" ${node.state === 'cleared' ? 'selected' : ''}>⚔️ Cleared</option>
                     </select>
 
-                    <button onclick="openCockpitFlowchartFlyaway()" class="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs transition" title="Open Flowchart Map Flyaway">
-                        🗺️
+                    <button onclick="openCockpitFlowchartFlyaway()" class="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold transition flex items-center gap-1 shadow-sm" title="Open Flowchart Map Flyaway">
+                        <span>🗺️</span> <span class="hidden sm:inline">Flowchart</span>
                     </button>
 
-                    <button onclick="window.DungeonController && window.DungeonController.openEditChamberModal && window.DungeonController.openEditChamberModal(window.DungeonController.getActiveDungeon().nodes.find(n => n.id === '${node.id}'))" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs transition" title="Edit Chamber Details">
+                    <button onclick="window.DungeonController && window.DungeonController.openEditChamberModal && window.DungeonController.openEditChamberModal('${node.id}')" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs transition" title="Edit Chamber Details">
                         ✏️
                     </button>
                 </div>
             </div>
 
             <!-- Chamber Quick Dropdown Switcher -->
-            <div class="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-ledger-950/80 border border-ledger-800">
-                <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                    <span class="text-xs shrink-0">🚪</span>
-                    <select onchange="cockpitSelectChamber(this.value)" class="bg-transparent text-amber-300 text-xs font-semibold focus:outline-none w-full truncate cursor-pointer">
-                        ${activeDungeon.nodes.map(n => `
-                            <option value="${n.id}" ${n.id === node.id ? 'selected' : ''}>
-                                ${escapeHtml(n.code ? `${n.code}: ${n.name}` : n.name)}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <button onclick="openCockpitFlowchartFlyaway()" class="text-[10px] text-slate-400 hover:text-amber-300 font-mono transition shrink-0 px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-750">
-                    Flowchart ↗
-                </button>
+            <div class="flex items-center gap-1.5 p-1.5 rounded-xl bg-ledger-950/80 border border-ledger-800">
+                <span class="text-xs shrink-0 pl-1 text-slate-400">🚪</span>
+                <select onchange="cockpitSelectChamber(this.value)" class="bg-transparent text-amber-300 text-xs font-semibold focus:outline-none w-full truncate cursor-pointer">
+                    ${activeDungeon.nodes.map(n => `
+                        <option value="${n.id}" ${n.id === node.id ? 'selected' : ''}>
+                            ${escapeHtml(n.code ? `${n.code}: ${n.name}` : n.name)}
+                        </option>
+                    `).join('')}
+                </select>
             </div>
 
             <!-- Party Relocation Button if party not here -->
@@ -20840,6 +20843,24 @@ async function cockpitBattlemapChange(mapId) {
     renderCockpitBattlemap();
 }
 
+function cockpitToggleBattlemapCollapse() {
+    const body = document.getElementById('cockpit-battlemap-body');
+    const btn = document.getElementById('cockpit-battlemap-collapse-btn');
+    if (!body) return;
+    const isHidden = body.classList.contains('hidden');
+    if (isHidden) {
+        body.classList.remove('hidden');
+        if (btn) btn.innerHTML = `<span>▲</span> <span>Collapse</span>`;
+        if (window.BattlemapController && typeof window.BattlemapController.fitMapToWorkspace === 'function') {
+            setTimeout(() => window.BattlemapController.fitMapToWorkspace(), 60);
+        }
+    } else {
+        body.classList.add('hidden');
+        if (btn) btn.innerHTML = `<span>▼</span> <span>Expand</span>`;
+    }
+}
+window.cockpitToggleBattlemapCollapse = cockpitToggleBattlemapCollapse;
+
 let cockpitActiveNoteTag = 'quest';
 function cockpitSetActiveNoteTag(tag) {
     cockpitActiveNoteTag = tag;
@@ -20983,3 +21004,4 @@ window.cockpitSetActiveNoteTag = cockpitSetActiveNoteTag;
 window.cockpitAddTaggedNote = cockpitAddTaggedNote;
 window.renderCockpitNotesFeed = renderCockpitNotesFeed;
 window.cockpitDeleteNote = cockpitDeleteNote;
+window.cockpitToggleBattlemapCollapse = cockpitToggleBattlemapCollapse;

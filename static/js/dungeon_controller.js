@@ -1061,6 +1061,9 @@ window.DungeonController = (function() {
                 const idx = dungeons.findIndex(d => d.id === activeDungeon.id);
                 if (idx >= 0) dungeons[idx] = activeDungeon;
                 if (callback) callback();
+                if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+                    window.renderSessionCockpit();
+                }
                 if (toastMsg && window.showToast) window.showToast(toastMsg, "success");
             }
         } catch (err) {
@@ -1069,9 +1072,10 @@ window.DungeonController = (function() {
         }
     }
 
-    function openEditChamberModal(nodeId) {
+    function openEditChamberModal(nodeOrId) {
         if (!activeDungeon) return;
-        const node = (activeDungeon.nodes || []).find(n => n.id === nodeId);
+        const targetId = (typeof nodeOrId === 'object' && nodeOrId !== null) ? nodeOrId.id : nodeOrId;
+        const node = (activeDungeon.nodes || []).find(n => n.id === targetId);
         if (!node) return;
 
         modalChamberData = JSON.parse(JSON.stringify(node));

@@ -1125,24 +1125,10 @@
                     </div>
                 </div>
 
-                <!-- Dungeon & Floor Quick Selectors -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <div class="flex items-center gap-1.5 bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1">
-                        <span class="text-xs">🗝️</span>
-                        <select id="cockpit-dungeon-select" onchange="window.cockpitChangeDungeon(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none max-w-[150px] sm:max-w-[200px] truncate">
-                            <!-- Populated dynamically -->
-                        </select>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1">
-                        <span class="text-xs">🏢</span>
-                        <select id="cockpit-floor-select" onchange="window.cockpitChangeFloor(this.value)" class="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none max-w-[120px] truncate">
-                            <!-- Populated dynamically -->
-                        </select>
-                    </div>
-
-                    <button onclick="openCockpitFlowchartFlyaway()" class="px-2.5 py-1 rounded-xl bg-ledger-900 hover:bg-amber-500/20 border border-ledger-700 hover:border-amber-500/40 text-slate-300 hover:text-amber-300 text-xs font-semibold transition flex items-center gap-1 shadow-sm" title="Open Flowchart Flyaway Map">
-                        <span>🗺️</span> <span class="hidden sm:inline">Flowchart Map</span>
+                <!-- Quick Battlemap Anchor Link -->
+                <div class="flex items-center gap-2">
+                    <button onclick="document.getElementById('cockpit-battlemap-integrated-section')?.scrollIntoView({ behavior: 'smooth' })" class="px-3 py-1.5 rounded-xl bg-ledger-900 hover:bg-ledger-800 border border-ledger-750 text-slate-300 hover:text-amber-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Scroll down to Tabletop Battlemap">
+                        <span>🗺️</span> <span>Battlemap ↓</span>
                     </button>
                 </div>
             </div>
@@ -1201,49 +1187,6 @@
                             <button onclick="window.LightingEngine && window.LightingEngine.triggerNat1Flash()" class="flex-1 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 text-[10px] font-bold transition text-center">🩸 Nat 1 Flash</button>
                             <button onclick="window.LightingEngine && window.LightingEngine.triggerStrikeFlash()" class="flex-1 py-1 rounded-lg bg-ledger-950 hover:bg-slate-800 text-slate-200 border border-slate-700 text-[10px] font-bold transition text-center">⚡ Clash</button>
                         </div>
-                    </div>
-
-                    <!-- Tabletop Battlemap Quick Remote -->
-                    <div class="bg-ledger-900/90 border border-ledger-750 rounded-2xl p-3.5 shadow-md space-y-3">
-                        <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
-                            <div class="flex items-center gap-2">
-                                <span class="text-base">🗺️</span>
-                                <span class="font-display font-bold text-xs text-amber-300 uppercase tracking-wider">Tabletop Battlemap</span>
-                            </div>
-                            <button onclick="switchTab('battlemap')" class="text-[10px] text-slate-400 hover:text-amber-300 font-mono transition">Full Map ↗</button>
-                        </div>
-
-                        <!-- Map Selection Dropdown -->
-                        <div>
-                            <div class="flex items-center justify-between text-[11px] mb-1">
-                                <span class="text-slate-400">Active Battlemap</span>
-                                <span id="cockpit-battlemap-active-name" class="font-mono text-amber-400 font-bold truncate max-w-[130px]">Dungeon Map</span>
-                            </div>
-                            <select id="cockpit-battlemap-select" onchange="window.cockpitBattlemapChange(this.value)" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-amber-500 truncate">
-                                <!-- Populated dynamically via renderCockpitBattlemap() -->
-                            </select>
-                        </div>
-
-                        <!-- Fog of War & Table Screen Controls -->
-                        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-semibold">
-                            <button onclick="window.BattlemapController && window.BattlemapController.revealAll()" class="p-1.5 rounded-lg bg-ledger-950 hover:bg-sky-500 hover:text-ledger-950 text-sky-300 border border-ledger-800 transition flex items-center justify-center gap-1" title="Reveal entire fog of war on table screen">
-                                <span>👁️</span> Reveal Fog
-                            </button>
-                            <button onclick="window.BattlemapController && window.BattlemapController.resetFog()" class="p-1.5 rounded-lg bg-ledger-950 hover:bg-slate-800 text-slate-300 border border-ledger-800 transition flex items-center justify-center gap-1" title="Reset all fog of war to veiled">
-                                <span>🌫️</span> Veil All Fog
-                            </button>
-                            <button onclick="window.BattlemapController && window.BattlemapController.toggleGrid()" class="p-1.5 rounded-lg bg-ledger-950 hover:bg-amber-500 hover:text-ledger-950 text-slate-300 border border-ledger-800 transition flex items-center justify-center gap-1" title="Toggle 1-inch physical tabletop grid">
-                                <span>📐</span> Toggle Grid
-                            </button>
-                            <button onclick="window.BattlemapController && window.BattlemapController.syncViewportToTable()" class="p-1.5 rounded-lg bg-ledger-950 hover:bg-emerald-500 hover:text-ledger-950 text-emerald-300 border border-ledger-800 transition flex items-center justify-center gap-1" title="Push current view to Table TV display">
-                                <span>📺</span> Push to TV
-                            </button>
-                        </div>
-
-                        <!-- Quick Center / Fit button -->
-                        <button onclick="window.BattlemapController && window.BattlemapController.fitMapToWorkspace()" class="w-full py-1 rounded-lg bg-ledger-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-ledger-800 text-[10px] font-mono transition text-center">
-                            🎯 Center / Reset Map Zoom
-                        </button>
                     </div>
 
                     <!-- Live Dice Tray & Feed -->
@@ -1319,6 +1262,282 @@
                             </summary>
                             <textarea id="cockpit-scratchpad-input" oninput="window.cockpitSaveNotes(this.value)" rows="3" placeholder="Freeform DM scratchpad notes..." class="w-full mt-1.5 bg-ledger-950 border border-ledger-800 rounded-xl p-2 text-slate-200 text-xs focus:outline-none focus:border-amber-500 custom-scrollbar"></textarea>
                         </details>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ===================================================================
+                 INTEGRATED TABLETOP BATTLEMAP WORKSPACE (FULL-WIDTH 3-COLUMN SPAN)
+                 =================================================================== -->
+            <div id="cockpit-battlemap-integrated-section" class="w-full space-y-3 pt-3 border-t border-ledger-800/80">
+                
+                <!-- Section Banner & Quick Anchor Strip -->
+                <div class="flex items-center justify-between gap-3 bg-ledger-900/90 border border-ledger-700/80 px-4 py-2.5 rounded-2xl shadow-md flex-wrap">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-700/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-lg shadow-sm">🗺️</span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-display font-bold text-sm sm:text-base text-amber-400">Integrated Tabletop Battlemap</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Live Table TV</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400">Full DM battlemap, fog of war, miniature tokens, and tabletop display control</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Scroll to Top HUD button -->
+                        <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="px-2.5 py-1 rounded-xl bg-ledger-950 hover:bg-ledger-800 text-slate-300 hover:text-amber-300 border border-ledger-750 text-xs font-semibold flex items-center gap-1 transition shadow-sm" title="Scroll back up to Chamber Dossier & Combat HUD">
+                            <span>▲</span> <span>Cockpit HUD</span>
+                        </button>
+
+                        <!-- Collapse / Expand toggle -->
+                        <button onclick="cockpitToggleBattlemapCollapse()" id="cockpit-battlemap-collapse-btn" class="px-2.5 py-1 rounded-xl bg-ledger-950 hover:bg-ledger-800 text-slate-300 hover:text-white border border-ledger-750 text-xs font-semibold flex items-center gap-1 transition shadow-sm" title="Collapse or expand the battlemap workspace">
+                            <span>▲</span> <span>Collapse</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Battlemap Workspace Container (collapsible) -->
+                <div id="cockpit-battlemap-body" class="space-y-3">
+                    
+                    <!-- Top Header & Map Library Bar (Compact, Streamlined) -->
+                    <div class="flex items-center justify-between gap-3 bg-ledger-900/90 border border-ledger-700/80 px-4 py-2.5 rounded-xl shadow-md flex-wrap">
+                        <div class="flex items-center gap-3">
+                            <!-- Map Selector -->
+                            <div class="flex items-center gap-1.5 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs">
+                                <span class="text-slate-400 text-[11px]">Map:</span>
+                                <select id="dm-map-select" onchange="window.BattlemapController.onMapSelect(this.value)" class="bg-transparent text-amber-300 font-semibold focus:outline-none cursor-pointer text-xs max-w-[220px] truncate">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <!-- Upload Custom Map -->
+                            <input type="file" id="dm-map-file-input" accept="image/*,.svg" class="hidden" onchange="window.BattlemapController.handleFileInput(this)">
+                            <button onclick="document.getElementById('dm-map-file-input').click()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition" title="Upload custom map image (.jpg, .png, .webp, .svg)">
+                                <span>📁</span>
+                                <span class="hidden md:inline">Upload Map</span>
+                            </button>
+
+                            <!-- Procedural Map Generator & Catalog -->
+                            <button onclick="openMapGeneratorModal()" class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-ledger-950 font-bold border border-amber-400 text-xs flex items-center gap-1.5 shadow-sm transition" title="Generate procedural battlemaps">
+                                <span>✨</span>
+                                <span>Generate Map</span>
+                            </button>
+
+                            <!-- Launch Table Display -->
+                            <button onclick="openTabletopMapWindow()" class="px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition" title="Open player battlemap view in a separate window for your table TV">
+                                <span>📺</span>
+                                <span>Launch Table (/map)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- DM Tactical Control Ribbon (Single Clean Row) -->
+                    <div class="bg-ledger-900 border border-ledger-700 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
+                        
+                        <!-- Left: Segmented Tool Tabs -->
+                        <div class="flex items-center bg-ledger-950 border border-ledger-800 p-0.5 rounded-xl shadow-inner">
+                            <!-- Reveal Brush -->
+                            <button id="dm-tool-btn-brush" onclick="window.BattlemapController.setTool('brush')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Reveal Fog Brush (Hotkey: B)">
+                                <span>🖌️</span>
+                                <span>Reveal</span>
+                            </button>
+
+                            <!-- Room Box -->
+                            <button id="dm-tool-btn-box" onclick="window.BattlemapController.setTool('box')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Room Box Reveal (Hotkey: X)">
+                                <span>🔲</span>
+                                <span>Box</span>
+                            </button>
+
+                            <!-- Re-Shroud -->
+                            <button id="dm-tool-btn-shroud" onclick="window.BattlemapController.setTool('shroud')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Re-Shroud Fog (Hotkey: S)">
+                                <span>⬛</span>
+                                <span>Shroud</span>
+                            </button>
+
+                            <div class="h-4 w-px bg-ledger-800 mx-0.5"></div>
+
+                            <!-- Distance Ruler -->
+                            <button id="dm-tool-btn-ruler" onclick="window.BattlemapController.setTool('ruler')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Tactical Distance Ruler (Hotkey: M)">
+                                <span>📏</span>
+                                <span>Ruler</span>
+                            </button>
+
+                            <!-- Spell AoE -->
+                            <button id="dm-tool-btn-template" onclick="window.BattlemapController.setTool('template')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Spell AoE Overlays (Hotkey: T)">
+                                <span>✨</span>
+                                <span>Spell AoE</span>
+                            </button>
+
+                            <div class="h-4 w-px bg-ledger-800 mx-0.5"></div>
+
+                            <!-- Laser Ping -->
+                            <button id="dm-tool-btn-ping" onclick="window.BattlemapController.setTool('ping')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Laser Ping (Shortcut: Shift+Click)">
+                                <span>🔴</span>
+                                <span>Ping</span>
+                            </button>
+                        </div>
+
+                        <!-- Center: Token Spawner & Active Count -->
+                        <div class="flex items-center gap-2">
+                            <button onclick="window.BattlemapController.openTokenSpawnerModal()" class="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-300 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow transition" title="Spawn monster token from Bestiary">
+                                <span>👾</span>
+                                <span>+ Monster</span>
+                            </button>
+
+                            <button id="dm-tokens-drawer-btn" onclick="window.BattlemapController.toggleTokensDrawer()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-ledger-700 transition" title="Manage active tokens">
+                                <span>👥</span>
+                                <span>Tokens (<span id="dm-tokens-count">0</span>)</span>
+                            </button>
+                        </div>
+
+                        <!-- Right: Viewport Controls, Table Viewport Lock & Calibration Popover -->
+                        <div class="flex items-center gap-2">
+                            <!-- Sync View to Table -->
+                            <button onclick="window.BattlemapController.syncViewportToTable()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition" title="Center table TV on current DM view">
+                                <span>🧭</span>
+                                <span class="hidden sm:inline">Sync View</span>
+                            </button>
+
+                            <!-- Fit to Workspace & Zoom Indicator -->
+                            <button onclick="window.BattlemapController.fitMapToWorkspace()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition" title="Fit map to workspace">
+                                <span>🔍</span>
+                                <span id="dm-zoom-display" class="font-mono text-[11px]">41%</span>
+                            </button>
+
+                            <!-- Table Viewport Lock -->
+                            <button id="dm-lock-viewport-btn" onclick="window.BattlemapController.toggleLock()" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border transition">
+                                <span>🔓</span>
+                                <span>Table Free</span>
+                            </button>
+
+                            <!-- Companion Mobile Battlemap Access Toggle -->
+                            <button id="dm-companion-map-toggle-btn" onclick="window.BattlemapController.toggleCompanionAccess()" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition bg-ledger-800 text-slate-400 border-ledger-700 hover:text-slate-200" title="Toggle player mobile battlemap access on the Companion App">
+                                <span id="dm-companion-map-icon">📱</span>
+                                <span id="dm-companion-map-text">Mobile: Off</span>
+                            </button>
+
+                            <!-- Table Setup Popover Toggle Button -->
+                            <div class="relative">
+                                <button id="dm-table-settings-btn" onclick="window.BattlemapController.toggleTableSettingsModal()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition" title="Calibrate 1-inch physical grid, TV rotation, and screen settings">
+                                    <span>⚙️</span>
+                                    <span>Table Setup</span>
+                                </button>
+
+                                <!-- Table Calibration Dropdown Popover -->
+                                <div id="dm-table-calibration-popover" class="absolute right-0 top-10 z-50 w-72 bg-ledger-950/98 backdrop-blur-md border border-ledger-700 rounded-xl shadow-2xl p-3.5 hidden">
+                                    <div class="flex items-center justify-between pb-2 border-b border-ledger-800 mb-3">
+                                        <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                            <span>📺</span>
+                                            <span>Tabletop TV Calibration</span>
+                                        </span>
+                                        <button onclick="window.BattlemapController.toggleTableSettingsModal()" class="text-slate-400 hover:text-white text-xs px-1">✕</button>
+                                    </div>
+                                    
+                                    <!-- 1" Physical Grid Scale -->
+                                    <div class="mb-3">
+                                        <div class="flex items-center justify-between text-xs mb-1">
+                                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                                <input type="checkbox" id="dm-grid-visible-toggle" onchange="window.BattlemapController.toggleGrid(this.checked)" checked class="rounded bg-ledger-900 border-ledger-700 text-amber-500 focus:ring-0">
+                                                <span class="text-slate-300 text-[11px] font-semibold">1" Grid Lines:</span>
+                                            </label>
+                                            <span id="dm-grid-size-label" class="text-amber-400 font-mono font-bold text-xs">50px</span>
+                                        </div>
+                                        <input type="range" id="dm-grid-size-slider" min="25" max="150" value="50" oninput="window.BattlemapController.setGridSize(this.value)" class="w-full h-1.5 bg-ledger-800 accent-amber-500 cursor-pointer">
+                                        <p class="text-[10px] text-slate-500 mt-1">Match grid pixel size to 1" miniature bases on your TV glass.</p>
+                                    </div>
+
+                                    <!-- Table Screen Rotation -->
+                                    <div class="mb-3">
+                                        <span class="text-[11px] text-slate-300 font-semibold block mb-1.5">TV Orientation (Rotation):</span>
+                                        <div class="grid grid-cols-4 gap-1.5 font-mono text-xs">
+                                            <button id="dm-rot-btn-0" onclick="window.BattlemapController.setRotation(0)" class="dm-rot-btn py-1 rounded bg-amber-500 text-ledger-950 font-bold">0°</button>
+                                            <button id="dm-rot-btn-90" onclick="window.BattlemapController.setRotation(90)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">90°</button>
+                                            <button id="dm-rot-btn-180" onclick="window.BattlemapController.setRotation(180)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">180°</button>
+                                            <button id="dm-rot-btn-270" onclick="window.BattlemapController.setRotation(270)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">270°</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick Launch Link -->
+                                    <div class="pt-2 border-t border-ledger-800">
+                                        <button onclick="openTabletopMapWindow()" class="w-full py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                            <span>📺 Launch Table Window (/map)</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Dynamic Tool Context Inspector Bar (Auto-updates based on selected tool) -->
+                    <div id="dm-aoe-ruler-toolbar" class="bg-ledger-900 border border-ledger-700/80 rounded-xl px-3 py-2 flex items-center shadow-md">
+                        <!-- Dynamic Controls Container -->
+                        <div id="dm-overlay-controls" class="w-full">
+                            <!-- Dynamic Tool Controls Injected Here by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- DM Dual-Canvas Interactive Workspace -->
+                    <div id="dm-map-viewport-container" class="w-full h-[680px] bg-ledger-950 border border-ledger-700/80 rounded-2xl relative overflow-hidden select-none shadow-2xl cursor-crosshair">
+                        
+                        <!-- Inner Transform Viewport -->
+                        <div id="dm-map-viewport" class="absolute inset-0 origin-top-left">
+                            <!-- Layer 1: Base Map Image -->
+                            <img id="dm-map-base-img" class="absolute top-0 left-0 pointer-events-none select-none max-w-none max-h-none" alt="DM Battlemap">
+                            
+                            <!-- Layer 2: Grid Lines -->
+                            <canvas id="dm-grid-canvas" class="absolute top-0 left-0 pointer-events-none z-10"></canvas>
+                            
+                            <!-- Layer 3: God Mode Fog Canvas (40% Translucent Dark Shroud) -->
+                            <canvas id="dm-fog-canvas" class="absolute top-0 left-0 pointer-events-none z-20"></canvas>
+
+                            <!-- Layer 4: Interactive Monster & Hero Tokens Layer -->
+                            <div id="dm-tokens-layer" class="absolute top-0 left-0 pointer-events-none" style="z-index: 35;"></div>
+
+                            <!-- Layer 5: Interactive Preview & Stroke Capture Canvas -->
+                            <canvas id="dm-preview-canvas" class="absolute top-0 left-0 z-30"></canvas>
+
+                            <!-- Layer 6: Laser Ping Animation Overlay -->
+                            <div id="dm-ping-layer" class="absolute top-0 left-0 pointer-events-none z-40 overflow-hidden"></div>
+                        </div>
+
+                        <!-- Slide-out Tokens Panel (Top Right inside workspace) -->
+                        <div id="dm-tokens-drawer" class="absolute top-3 right-3 w-80 bg-ledger-950/95 backdrop-blur-md border border-ledger-700 rounded-2xl shadow-2xl p-3.5 z-50 flex flex-col max-h-[580px] hidden">
+                            <div class="flex items-center justify-between pb-2 border-b border-ledger-800">
+                                <div class="flex items-center gap-1.5 font-bold text-amber-400 text-xs">
+                                    <span>👾</span>
+                                    <span>Battlemap Tokens</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="window.BattlemapController.clearAllTokens()" title="Clear all tokens from map" class="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-0.5 rounded bg-rose-950/60 border border-rose-800 transition">Clear All</button>
+                                    <button onclick="window.BattlemapController.toggleTokensDrawer()" class="text-slate-400 hover:text-white px-1 font-bold">✕</button>
+                                </div>
+                            </div>
+                            <div id="dm-tokens-drawer-list" class="space-y-2 overflow-y-auto my-2.5 flex-1 pr-1 custom-scrollbar max-h-[440px]">
+                                <!-- Populated dynamically -->
+                            </div>
+                            <button onclick="window.BattlemapController.openTokenSpawnerModal()" class="w-full py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
+                                <span>+ Spawn Monster Token</span>
+                            </button>
+                        </div>
+
+                        <!-- Bottom Helper Status Overlay -->
+                        <div class="absolute bottom-3 left-4 pointer-events-none bg-ledger-900/85 backdrop-blur-md border border-ledger-700 px-3.5 py-1.5 rounded-full text-[11px] font-mono text-slate-400 flex items-center gap-3 shadow-lg">
+                            <span>💡 <strong class="text-amber-400">Tokens:</strong> Drag tokens to move • Right click for HP/Stealth</span>
+                            <span class="text-ledger-700">|</span>
+                            <span>Pan: <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Middle Click</kbd> or <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Right Click</kbd></span>
+                            <span class="text-ledger-700">|</span>
+                            <span>Zoom: <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Scroll Wheel</kbd></span>
+                            <span class="text-ledger-700">|</span>
+                            <span>Ping: <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Shift+Click</kbd></span>
+                        </div>
+
                     </div>
 
                 </div>
@@ -3856,256 +4075,29 @@
         </section>
 
         <!-- ===============================================================
-             VIEW 11: TABLETOP BATTLEMAP & FOG OF WAR (3RD SCREEN IN-TABLE TV)
+             VIEW 11: TABLETOP BATTLEMAP (INTEGRATED INTO COCKPIT)
              =============================================================== -->
-        <section id="view-battlemap" class="tab-view hidden space-y-4">
-
-            <!-- Top Header & Map Library Bar (Compact, Streamlined) -->
-            <div class="flex items-center justify-between gap-3 bg-ledger-900/90 border border-ledger-700/80 px-4 py-2.5 rounded-xl shadow-md">
-                <div class="flex items-center gap-3">
-                    <h2 class="font-display font-bold text-base text-amber-400 flex items-center gap-2">
-                        <span class="text-lg">🗺️</span>
-                        <span>Battlemap & Fog of War</span>
-                    </h2>
-                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                        5.5e Table TV Engine
-                    </span>
+        <section id="view-battlemap" class="tab-view hidden space-y-6 max-w-4xl mx-auto py-12">
+            <div class="bg-ledger-900 border border-amber-500/50 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
+                <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 text-3xl flex items-center justify-center mx-auto shadow-inner">
+                    🗺️
                 </div>
-                
-                <div class="flex items-center gap-2 flex-wrap">
-                    <!-- Map Selector -->
-                    <div class="flex items-center gap-1.5 bg-ledger-950 border border-ledger-700 px-2.5 py-1 rounded-lg text-xs">
-                        <span class="text-slate-400 text-[11px]">Map:</span>
-                        <select id="dm-map-select" onchange="window.BattlemapController.onMapSelect(this.value)" class="bg-transparent text-amber-300 font-semibold focus:outline-none cursor-pointer text-xs">
-                            <!-- Populated dynamically -->
-                        </select>
-                    </div>
-
-                    <!-- Upload Custom Map -->
-                    <input type="file" id="dm-map-file-input" accept="image/*,.svg" class="hidden" onchange="window.BattlemapController.handleFileInput(this)">
-                    <button onclick="document.getElementById('dm-map-file-input').click()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition" title="Upload custom map image (.jpg, .png, .webp, .svg)">
-                        <span>📁</span>
-                        <span class="hidden md:inline">Upload Map</span>
+                <div class="space-y-2">
+                    <h2 class="font-display font-bold text-2xl text-slate-100">Tabletop Battlemap is Live in Cockpit!</h2>
+                    <p class="text-sm text-slate-400 max-w-lg mx-auto">
+                        The full DM battlemap, fog of war controls, token manager, and table TV engine have been unified directly inside the <strong>Live Session Cockpit</strong> for an all-in-one DM command station.
+                    </p>
+                </div>
+                <div class="flex items-center justify-center gap-3 pt-2 flex-wrap">
+                    <button onclick="switchTab('session'); setTimeout(() => document.getElementById('cockpit-battlemap-integrated-section')?.scrollIntoView({ behavior: 'smooth' }), 100);" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-sm shadow-lg transition flex items-center gap-2 cursor-pointer">
+                        <span>🎯 Open Cockpit Battlemap</span>
+                        <span>→</span>
                     </button>
-
-                    <!-- Procedural Map Generator & Catalog -->
-                    <button onclick="openMapGeneratorModal()" class="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-ledger-950 font-bold border border-amber-400 text-xs flex items-center gap-1.5 shadow-sm transition" title="Generate procedural battlemaps (Dungeon, Cavern, Forest, Tavern, Arcane, Ruins)">
-                        <span>✨</span>
-                        <span>Generate Map</span>
-                    </button>
-
-                    <!-- Launch Table Display -->
-                    <button onclick="openTabletopMapWindow()" class="px-3 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition" title="Open player battlemap view in a separate window for your table TV">
-                        <span>📺</span>
-                        <span>Launch Table (/map)</span>
+                    <button onclick="openTabletopMapWindow()" class="px-4 py-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/80 font-bold text-sm shadow transition flex items-center gap-2 cursor-pointer">
+                        <span>📺 Launch Table Display (/map)</span>
                     </button>
                 </div>
             </div>
-
-            <!-- DM Tactical Control Ribbon (Single Clean Row) -->
-            <div class="bg-ledger-900 border border-ledger-700 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-3 shadow-md">
-                
-                <!-- Left: Segmented Tool Tabs -->
-                <div class="flex items-center bg-ledger-950 border border-ledger-800 p-0.5 rounded-xl shadow-inner">
-                    <!-- Reveal Brush -->
-                    <button id="dm-tool-btn-brush" onclick="window.BattlemapController.setTool('brush')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Reveal Fog Brush (Hotkey: B)">
-                        <span>🖌️</span>
-                        <span>Reveal</span>
-                    </button>
-
-                    <!-- Room Box -->
-                    <button id="dm-tool-btn-box" onclick="window.BattlemapController.setTool('box')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Room Box Reveal (Hotkey: X)">
-                        <span>🔲</span>
-                        <span>Box</span>
-                    </button>
-
-                    <!-- Re-Shroud -->
-                    <button id="dm-tool-btn-shroud" onclick="window.BattlemapController.setTool('shroud')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Re-Shroud Fog (Hotkey: S)">
-                        <span>⬛</span>
-                        <span>Shroud</span>
-                    </button>
-
-                    <div class="h-4 w-px bg-ledger-800 mx-0.5"></div>
-
-                    <!-- Distance Ruler -->
-                    <button id="dm-tool-btn-ruler" onclick="window.BattlemapController.setTool('ruler')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Tactical Distance Ruler (Hotkey: M)">
-                        <span>📏</span>
-                        <span>Ruler</span>
-                    </button>
-
-                    <!-- Spell AoE -->
-                    <button id="dm-tool-btn-template" onclick="window.BattlemapController.setTool('template')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Spell AoE Overlays (Hotkey: T)">
-                        <span>✨</span>
-                        <span>Spell AoE</span>
-                    </button>
-
-                    <div class="h-4 w-px bg-ledger-800 mx-0.5"></div>
-
-                    <!-- Laser Ping -->
-                    <button id="dm-tool-btn-ping" onclick="window.BattlemapController.setTool('ping')" class="dm-tool-btn px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-300 hover:text-white" title="Laser Ping (Shortcut: Shift+Click)">
-                        <span>🔴</span>
-                        <span>Ping</span>
-                    </button>
-                </div>
-
-                <!-- Center: Token Spawner & Active Count -->
-                <div class="flex items-center gap-2">
-                    <button onclick="window.BattlemapController.openTokenSpawnerModal()" class="px-2.5 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-300 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow transition" title="Spawn monster token from Bestiary">
-                        <span>👾</span>
-                        <span>+ Monster</span>
-                    </button>
-
-                    <button id="dm-tokens-drawer-btn" onclick="window.BattlemapController.toggleTokensDrawer()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-ledger-700 transition" title="Manage active tokens">
-                        <span>👥</span>
-                        <span>Tokens (<span id="dm-tokens-count">0</span>)</span>
-                    </button>
-                </div>
-
-                <!-- Right: Viewport Controls, Table Viewport Lock & Calibration Popover -->
-                <div class="flex items-center gap-2">
-                    <!-- Sync View to Table -->
-                    <button onclick="window.BattlemapController.syncViewportToTable()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition" title="Center table TV on current DM view">
-                        <span>🧭</span>
-                        <span class="hidden sm:inline">Sync View</span>
-                    </button>
-
-                    <!-- Fit to Workspace & Zoom Indicator -->
-                    <button onclick="window.BattlemapController.fitMapToWorkspace()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-ledger-700 transition" title="Fit map to workspace">
-                        <span>🔍</span>
-                        <span id="dm-zoom-display" class="font-mono text-[11px]">41%</span>
-                    </button>
-
-                    <!-- Table Viewport Lock -->
-                    <button id="dm-lock-viewport-btn" onclick="window.BattlemapController.toggleLock()" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border transition">
-                        <span>🔓</span>
-                        <span>Table Free</span>
-                    </button>
-
-                    <!-- Companion Mobile Battlemap Access Toggle -->
-                    <button id="dm-companion-map-toggle-btn" onclick="window.BattlemapController.toggleCompanionAccess()" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition bg-ledger-800 text-slate-400 border-ledger-700 hover:text-slate-200" title="Toggle player mobile battlemap access on the Companion App">
-                        <span id="dm-companion-map-icon">📱</span>
-                        <span id="dm-companion-map-text">Mobile: Off</span>
-                    </button>
-
-                    <!-- Table Setup Popover Toggle Button -->
-                    <div class="relative">
-                        <button id="dm-table-settings-btn" onclick="window.BattlemapController.toggleTableSettingsModal()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-ledger-700 text-xs font-semibold flex items-center gap-1.5 transition" title="Calibrate 1-inch physical grid, TV rotation, and screen settings">
-                            <span>⚙️</span>
-                            <span>Table Setup</span>
-                        </button>
-
-                        <!-- Table Calibration Dropdown Popover -->
-                        <div id="dm-table-calibration-popover" class="absolute right-0 top-10 z-50 w-72 bg-ledger-950/98 backdrop-blur-md border border-ledger-700 rounded-xl shadow-2xl p-3.5 hidden">
-                            <div class="flex items-center justify-between pb-2 border-b border-ledger-800 mb-3">
-                                <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                                    <span>📺</span>
-                                    <span>Tabletop TV Calibration</span>
-                                </span>
-                                <button onclick="window.BattlemapController.toggleTableSettingsModal()" class="text-slate-400 hover:text-white text-xs px-1">✕</button>
-                            </div>
-                            
-                            <!-- 1" Physical Grid Scale -->
-                            <div class="mb-3">
-                                <div class="flex items-center justify-between text-xs mb-1">
-                                    <label class="flex items-center gap-1.5 cursor-pointer">
-                                        <input type="checkbox" id="dm-grid-visible-toggle" onchange="window.BattlemapController.toggleGrid(this.checked)" checked class="rounded bg-ledger-900 border-ledger-700 text-amber-500 focus:ring-0">
-                                        <span class="text-slate-300 text-[11px] font-semibold">1" Grid Lines:</span>
-                                    </label>
-                                    <span id="dm-grid-size-label" class="text-amber-400 font-mono font-bold text-xs">50px</span>
-                                </div>
-                                <input type="range" id="dm-grid-size-slider" min="25" max="150" value="50" oninput="window.BattlemapController.setGridSize(this.value)" class="w-full h-1.5 bg-ledger-800 accent-amber-500 cursor-pointer">
-                                <p class="text-[10px] text-slate-500 mt-1">Match grid pixel size to 1" miniature bases on your TV glass.</p>
-                            </div>
-
-                            <!-- Table Screen Rotation -->
-                            <div class="mb-3">
-                                <span class="text-[11px] text-slate-300 font-semibold block mb-1.5">TV Orientation (Rotation):</span>
-                                <div class="grid grid-cols-4 gap-1.5 font-mono text-xs">
-                                    <button id="dm-rot-btn-0" onclick="window.BattlemapController.setRotation(0)" class="dm-rot-btn py-1 rounded bg-amber-500 text-ledger-950 font-bold">0°</button>
-                                    <button id="dm-rot-btn-90" onclick="window.BattlemapController.setRotation(90)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">90°</button>
-                                    <button id="dm-rot-btn-180" onclick="window.BattlemapController.setRotation(180)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">180°</button>
-                                    <button id="dm-rot-btn-270" onclick="window.BattlemapController.setRotation(270)" class="dm-rot-btn py-1 rounded bg-ledger-800 text-slate-300 hover:bg-ledger-700">270°</button>
-                                </div>
-                            </div>
-
-                            <!-- Quick Launch Link -->
-                            <div class="pt-2 border-t border-ledger-800">
-                                <button onclick="openTabletopMapWindow()" class="w-full py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
-                                    <span>📺 Launch Table Window (/map)</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- Dynamic Tool Context Inspector Bar (Auto-updates based on selected tool) -->
-            <div id="dm-aoe-ruler-toolbar" class="bg-ledger-900 border border-ledger-700/80 rounded-xl px-3 py-2 flex items-center shadow-md">
-                <!-- Dynamic Controls Container -->
-                <div id="dm-overlay-controls" class="w-full">
-                    <!-- Dynamic Tool Controls Injected Here by JavaScript -->
-                </div>
-            </div>
-
-            <!-- DM Dual-Canvas Interactive Workspace -->
-            <div id="dm-map-viewport-container" class="w-full h-[680px] bg-ledger-950 border border-ledger-700/80 rounded-2xl relative overflow-hidden select-none shadow-2xl cursor-crosshair">
-                
-                <!-- Inner Transform Viewport -->
-                <div id="dm-map-viewport" class="absolute inset-0 origin-top-left">
-                    <!-- Layer 1: Base Map Image -->
-                    <img id="dm-map-base-img" class="absolute top-0 left-0 pointer-events-none select-none max-w-none max-h-none" alt="DM Battlemap">
-                    
-                    <!-- Layer 2: Grid Lines -->
-                    <canvas id="dm-grid-canvas" class="absolute top-0 left-0 pointer-events-none z-10"></canvas>
-                    
-                    <!-- Layer 3: God Mode Fog Canvas (40% Translucent Dark Shroud) -->
-                    <canvas id="dm-fog-canvas" class="absolute top-0 left-0 pointer-events-none z-20"></canvas>
-
-                    <!-- Layer 4: Interactive Monster & Hero Tokens Layer -->
-                    <div id="dm-tokens-layer" class="absolute top-0 left-0 pointer-events-none" style="z-index: 35;"></div>
-
-                    <!-- Layer 5: Interactive Preview & Stroke Capture Canvas -->
-                    <canvas id="dm-preview-canvas" class="absolute top-0 left-0 z-30"></canvas>
-
-                    <!-- Layer 6: Laser Ping Animation Overlay -->
-                    <div id="dm-ping-layer" class="absolute top-0 left-0 pointer-events-none z-40 overflow-hidden"></div>
-                </div>
-
-                <!-- Slide-out Tokens Panel (Top Right inside workspace) -->
-                <div id="dm-tokens-drawer" class="absolute top-3 right-3 w-80 bg-ledger-950/95 backdrop-blur-md border border-ledger-700 rounded-2xl shadow-2xl p-3.5 z-50 flex flex-col max-h-[580px] hidden">
-                    <div class="flex items-center justify-between pb-2 border-b border-ledger-800">
-                        <div class="flex items-center gap-1.5 font-bold text-amber-400 text-xs">
-                            <span>👾</span>
-                            <span>Battlemap Tokens</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <button onclick="window.BattlemapController.clearAllTokens()" title="Clear all tokens from map" class="text-[10px] text-rose-400 hover:text-rose-300 font-semibold px-2 py-0.5 rounded bg-rose-950/60 border border-rose-800 transition">Clear All</button>
-                            <button onclick="window.BattlemapController.toggleTokensDrawer()" class="text-slate-400 hover:text-white px-1 font-bold">✕</button>
-                        </div>
-                    </div>
-                    <div id="dm-tokens-drawer-list" class="space-y-2 overflow-y-auto my-2.5 flex-1 pr-1 custom-scrollbar max-h-[440px]">
-                        <!-- Populated dynamically -->
-                    </div>
-                    <button onclick="window.BattlemapController.openTokenSpawnerModal()" class="w-full py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow transition">
-                        <span>+ Spawn Monster Token</span>
-                    </button>
-                </div>
-
-                <!-- Bottom Helper Status Overlay -->
-                <div class="absolute bottom-3 left-4 pointer-events-none bg-ledger-900/85 backdrop-blur-md border border-ledger-700 px-3.5 py-1.5 rounded-full text-[11px] font-mono text-slate-400 flex items-center gap-3 shadow-lg">
-                    <span>💡 <strong class="text-amber-400">Tokens:</strong> Drag tokens to move • Right click for HP/Stealth</span>
-                    <span class="text-ledger-700">|</span>
-                    <span>Pan: <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Middle Click</kbd> or <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Right Click</kbd></span>
-                    <span class="text-ledger-700">|</span>
-                    <span>Zoom: <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Scroll Wheel</kbd></span>
-                    <span class="text-ledger-700">|</span>
-                    <span>Ping: <kbd class="bg-ledger-800 text-slate-300 px-1 rounded">Shift+Click</kbd></span>
-                </div>
-
-            </div>
-
         </section>
 
         <!-- ===================================================================
@@ -4159,7 +4151,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.28</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.29</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -6012,35 +6004,46 @@
     <!-- 18.5 COCKPIT FLOWCHART MAP FLYAWAY MODAL -->
     <div id="cockpit-flowchart-flyaway" onclick="if(event.target === this) closeCockpitFlowchartFlyaway()" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden p-2 sm:p-4 transition-all flex items-center justify-center">
         <div class="m-auto bg-ledger-900 border border-amber-500/60 rounded-2xl max-w-6xl w-full h-[90vh] shadow-2xl flex flex-col overflow-hidden text-xs">
-            <!-- Modal Header & Controls Bar -->
-            <div class="flex items-center justify-between border-b border-ledger-700 px-4 py-3 shrink-0 bg-ledger-950/95 flex-wrap gap-2.5">
-                <div class="flex items-center gap-2.5">
-                    <span class="text-xl">🗺️</span>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h3 class="font-display font-bold text-sm sm:text-base text-amber-400">Dungeon Flowchart Navigator</h3>
-                            <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">Cockpit Flyout</span>
+            <!-- Modal Header & Controls Bar (2-Tier Layout for Zero Cut-Off) -->
+            <div class="border-b border-ledger-700 shrink-0 bg-ledger-950/95 divide-y divide-ledger-800/80">
+                <!-- Tier 1: Identity & Action Bar -->
+                <div class="px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-sm shadow-inner">🗺️</span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-display font-bold text-sm sm:text-base text-amber-400">Dungeon Flowchart Navigator</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">Cockpit Flyout</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400">Click any room node to load into Cockpit Column 1</p>
                         </div>
-                        <p class="text-[10px] text-slate-400">Click any room node to select it for Session Cockpit Column 1</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="switchTab('dungeons'); closeCockpitFlowchartFlyaway();" class="px-2.5 py-1 rounded-lg bg-ledger-900 hover:bg-ledger-800 border border-ledger-700 text-slate-300 hover:text-amber-300 text-xs font-semibold transition flex items-center gap-1 shadow-sm" title="Open full Dungeon Flowchart Workspace">
+                            <span>Full Map</span> <span>↗</span>
+                        </button>
+                        <button onclick="closeCockpitFlowchartFlyaway()" class="w-7 h-7 rounded-lg bg-ledger-900 hover:bg-rose-950 hover:text-rose-300 text-slate-400 border border-ledger-750 flex items-center justify-center text-base font-mono transition" title="Close Flyaway">&times;</button>
                     </div>
                 </div>
 
-                <!-- Dungeon Selector, Floor Pills & Canvas Controls -->
-                <div class="flex items-center gap-2 flex-wrap">
-                    <div class="flex items-center gap-1.5 bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1">
+                <!-- Tier 2: Dungeon Selector, Spacious Floor Pills & Zoom Controls -->
+                <div class="px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+                    <!-- Left: Dungeon Selector -->
+                    <div class="flex items-center gap-1.5 bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1 shrink-0">
                         <span class="text-xs">🗝️</span>
-                        <select id="cockpit-flyaway-dungeon-select" onchange="window.cockpitChangeDungeon(this.value); window.DungeonController && window.DungeonController.renderGraph();" class="bg-transparent text-amber-300 text-xs font-semibold focus:outline-none max-w-[160px] truncate">
+                        <select id="cockpit-flyaway-dungeon-select" onchange="window.cockpitChangeDungeon(this.value); window.DungeonController && window.DungeonController.renderGraph();" class="bg-transparent text-amber-300 text-xs font-semibold focus:outline-none max-w-[200px] truncate cursor-pointer">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
 
-                    <!-- Floor Selection Pills -->
-                    <div id="cockpit-flyaway-level-pills" class="flex items-center gap-1 overflow-x-auto max-w-[280px] custom-scrollbar py-0.5">
+                    <!-- Center: Spacious Floor Selection Pills (Full Available Width, No Cut-Off) -->
+                    <div id="cockpit-flyaway-level-pills" class="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5">
                         <!-- Populated dynamically -->
                     </div>
 
-                    <!-- Zoom & Pan Controls -->
-                    <div class="flex items-center gap-1 bg-ledger-900 border border-ledger-700 rounded-xl px-2 py-0.5">
+                    <!-- Right: Zoom & Pan Controls -->
+                    <div class="flex items-center gap-1 bg-ledger-900 border border-ledger-700 rounded-xl px-2 py-0.5 shrink-0">
                         <button onclick="window.DungeonController && window.DungeonController.zoomIn()" class="w-6 h-6 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center transition" title="Zoom In">+</button>
                         <button onclick="window.DungeonController && window.DungeonController.zoomOut()" class="w-6 h-6 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center transition" title="Zoom Out">-</button>
                         <button onclick="window.DungeonController && window.DungeonController.resetView()" class="px-1.5 h-6 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] font-bold flex items-center justify-center transition" title="Reset Zoom">Reset</button>
@@ -6049,8 +6052,6 @@
                         </button>
                         <span id="cockpit-flyaway-zoom-readout" class="text-[10px] font-mono text-slate-400 px-1">100%</span>
                     </div>
-
-                    <button onclick="closeCockpitFlowchartFlyaway()" class="text-slate-400 hover:text-white p-1 text-xl font-mono rounded hover:bg-ledger-800 transition ml-1" title="Close Flyaway">&times;</button>
                 </div>
             </div>
 

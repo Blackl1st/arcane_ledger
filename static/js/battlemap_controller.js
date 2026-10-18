@@ -191,8 +191,8 @@ window.BattlemapController = (function() {
             );
             if (isTyping) return;
 
-            const mapSection = document.getElementById('tab-battlemap');
-            if (mapSection && mapSection.classList.contains('hidden')) return;
+            const isBattlemapActive = (window.appState && (window.appState.activeTab === 'battlemap' || window.appState.activeTab === 'session'));
+            if (!isBattlemapActive) return;
 
             if (e.key === 'm' || e.key === 'M') {
                 e.preventDefault();
