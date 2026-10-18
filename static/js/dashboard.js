@@ -19477,10 +19477,23 @@ async function applyUpdateAndRestart() {
         overlay.innerHTML = `
             <div class="text-5xl animate-bounce">⚡</div>
             <h2 class="text-2xl font-bold font-display text-amber-400">Patching Arcane Ledger</h2>
-            <p class="text-sm text-slate-300 max-w-md">The application is updating its local files and will automatically restart in a few moments.</p>
+            <p class="text-sm text-slate-300 max-w-md">The application is updating its files and relaunching. This window will now close automatically.</p>
             <div class="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mt-2"></div>
+            <button onclick="window.close()" class="mt-4 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition shadow cursor-pointer">
+                Close This Window
+            </button>
         `;
         document.body.appendChild(overlay);
+
+        // Attempt to close this old window after backend acknowledges the update
+        setTimeout(() => {
+            try {
+                window.open('', '_self', '');
+                window.close();
+            } catch (err) {
+                console.warn('Could not auto-close window:', err);
+            }
+        }, 1500);
 
     } catch (e) {
         showToast(`Failed to apply update: ${e.message}`, 'error');
@@ -20103,9 +20116,6 @@ function renderCockpitChamber() {
                             <span>📜</span> Read-Aloud Narration
                         </span>
                         <div class="flex items-center gap-1.5">
-                            <button onclick="window.DungeonController && window.DungeonController.speakBoxedText && window.DungeonController.speakBoxedText()" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-amber-300 text-[10px] font-mono transition flex items-center gap-1" title="Narrate with Text-to-Speech">
-                                <span>🔊</span> Speak
-                            </button>
                             <button onclick="window.DungeonController && window.DungeonController.broadcastChamber && window.DungeonController.broadcastChamber('${node.id}')" class="px-2.5 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-ledger-950 text-[10px] font-bold shadow transition flex items-center gap-1" title="Broadcast Boxed Text to Table Screen">
                                 <span>📢</span> Broadcast
                             </button>

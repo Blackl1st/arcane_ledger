@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.6-beta.29"
+CURRENT_VERSION = "1.1.6-beta.30"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -652,7 +652,7 @@ set EXE_NAME=ArcaneLedger.exe
 
 :: 1. Allow 2 seconds for parent process to exit cleanly, then force-terminate OLD_PID if still holding locks
 timeout /t 2 /nobreak > nul
-taskkill /F /PID %OLD_PID% > nul 2>&1
+taskkill /F /T /PID %OLD_PID% > nul 2>&1
 timeout /t 1 /nobreak > nul
 
 :: 2. Overwrite binaries and app assets, explicitly preserving user data
