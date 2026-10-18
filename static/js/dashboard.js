@@ -9716,6 +9716,15 @@ function flipTarokkaCard(slotKey) {
     if (revealAllText) {
         revealAllText.textContent = allFlipped ? 'Conceal All' : 'Reveal All';
     }
+
+    // Live broadcast flip to all player screens
+    try {
+        fetch('/api/tarokka/flip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotKey: slotKey, flipped: tarokkaState.flipped[slotKey] })
+        }).catch(console.error);
+    } catch (e) {}
 }
 
 function toggleTarokkaRevealAll() {
@@ -9725,6 +9734,15 @@ function toggleTarokkaRevealAll() {
         tarokkaState.flipped[k] = targetState;
     });
     renderTarokka();
+
+    // Live broadcast all flips to all player screens
+    try {
+        fetch('/api/tarokka/flip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ allFlipped: tarokkaState.flipped })
+        }).catch(console.error);
+    } catch (e) {}
 }
 
 function toggleTarokkaSpoilers() {
@@ -13400,7 +13418,10 @@ function renderCampaignSettingsCard() {
                 <p class="text-xs text-slate-300 leading-snug truncate max-w-xl">${escapeHtml(activeCamp.description || 'No description provided.')}</p>
             </div>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+            <button onclick="exportCampaignPack('${activeCamp.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold border border-sky-600/40 transition flex items-center gap-1.5 shadow" title="Export this active campaign to a portable .ledgerpack archive">
+                <span>📤</span> Export Pack
+            </button>
             <button onclick="openEditCampaignModal('${activeCamp.id}')" class="px-3 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-ledger-700 transition flex items-center gap-1.5">
                 <span>✏️</span> Edit Details
             </button>
@@ -13443,6 +13464,9 @@ function renderCampaignSettingsCard() {
 
                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-ledger-800/60">
                     <div class="flex items-center gap-1.5">
+                        <button onclick="exportCampaignPack('${camp.id}')" class="p-1.5 rounded-lg hover:bg-sky-950/60 text-slate-400 hover:text-sky-300 transition" title="Export campaign as .ledgerpack archive">
+                            📤
+                        </button>
                         <button onclick="openEditCampaignModal('${camp.id}')" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition" title="Edit campaign title & notes">
                             ✏️
                         </button>
@@ -13821,6 +13845,111 @@ async function toggleModule(moduleId, isEnabled) {
     } catch (err) {
         console.error('Error toggling module:', err);
     }
+}
+
+function exportCampaignPack(campaignId) {
+    const cid = campaignId || appState.activeCampaignId || 'default';
+    showToast('Packaging campaign into portable .ledgerpack archive...', 'info');
+    const downloadUrl = `/api/campaigns/${encodeURIComponent(cid)}/export-pack`;
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function triggerImportCampaignPack() {
+    const fileInput = document.getElementById('import-pack-file-input');
+    if (fileInput) {
+        fileInput.value = '';
+        fileInput.click();
+    }
+}
+
+async function handleImportCampaignPackFile(event) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    const validExtensions = ['.ledgerpack', '.zip'];
+    const hasValidExt = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!hasValidExt) {
+        showToast('Please select a valid .ledgerpack or .zip campaign pack', 'warning');
+        return;
+    }
+
+    showToast(`Importing module pack '${file.name}'...`, 'info');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('set_active', 'true');
+
+    try {
+        const res = await fetch('/api/campaigns/import-pack', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || `Successfully imported '${file.name}'!`, 'success');
+
+            if (data.campaigns) {
+                appState.campaigns = data.campaigns;
+            }
+            if (data.activeCampaignId) {
+                appState.activeCampaignId = data.activeCampaignId;
+                appState.currentCampaign = data.campaign;
+            }
+            await fetchFullState();
+            renderPartyHUD();
+            renderCombatTracker();
+            renderCurrentNPC();
+            renderRoster();
+            renderRulesScreen();
+            renderTimeWeatherHUD();
+            renderSessionNotes();
+            renderWorldView();
+            renderOverworld();
+            renderFactionRelations();
+            renderPantheon();
+            renderTimeline();
+            renderTravel();
+            renderAudioMixer();
+            renderEncountersView();
+            renderSpellsView();
+            renderItemsView();
+            renderSecrets();
+            renderHandouts();
+            renderBroadcastPill();
+            renderCampaignSettingsCard();
+            renderCampaignTopbar();
+            renderShopInventory();
+            if (typeof renderPartyInventoryModal === 'function') {
+                renderPartyInventoryModal();
+            }
+            if (appState.activeTab === 'battlemap' && window.BattlemapController) {
+                window.BattlemapController.init();
+            }
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to import campaign pack', 'error');
+        }
+    } catch (err) {
+        console.error('Error importing campaign pack:', err);
+        showToast('Network error importing campaign pack.', 'error');
+    } finally {
+        if (event.target) event.target.value = '';
+    }
+}
+
+function downloadOfficialCoSPack() {
+    showToast('Downloading official Curse of Strahd .ledgerpack module...', 'info');
+    const a = document.createElement('a');
+    a.href = '/api/modules/curse-of-strahd/download-pack';
+    a.download = 'Curse_of_Strahd.ledgerpack';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // Render Settings View
@@ -19269,8 +19398,7 @@ window.fetchDdbPreview = fetchDdbPreview;
 window.handleDdbFileUpload = handleDdbFileUpload;
 window.confirmDdbImport = confirmDdbImport;
 window.syncDdbCharacter = syncDdbCharacter;
-
-
-
-
-
+window.exportCampaignPack = exportCampaignPack;
+window.triggerImportCampaignPack = triggerImportCampaignPack;
+window.handleImportCampaignPackFile = handleImportCampaignPackFile;
+window.downloadOfficialCoSPack = downloadOfficialCoSPack;

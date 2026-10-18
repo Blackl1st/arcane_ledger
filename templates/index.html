@@ -3793,7 +3793,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.20</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.21</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -3902,7 +3902,14 @@
                                 <p class="text-xs text-slate-400">Switch between different campaigns or adventuring parties. Combat, party, world lore, handouts, notes, and battlemaps are fully isolated.</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <input type="file" id="import-pack-file-input" accept=".ledgerpack,.zip" class="hidden" onchange="handleImportCampaignPackFile(event)">
+                            <button onclick="triggerImportCampaignPack()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-sky-300 border border-sky-600/40 font-bold text-xs transition flex items-center gap-1.5 shadow-md" title="Import a .ledgerpack campaign module or backup">
+                                <span>📥</span> <span>Import Pack (.ledgerpack)</span>
+                            </button>
+                            <button onclick="downloadOfficialCoSPack()" class="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 font-bold text-xs transition flex items-center gap-1.5 shadow-md" title="Download official complete Curse of Strahd campaign pack">
+                                <span>👑</span> <span>Curse of Strahd Pack</span>
+                            </button>
                             <button onclick="openNewCampaignModal()" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span>+</span> <span>New Campaign</span>
                             </button>

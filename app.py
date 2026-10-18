@@ -3219,6 +3219,180 @@ async def delete_campaign_endpoint(camp_id: str):
 
     return {"status": "success", "activeCampaignId": manifest["activeCampaignId"]}
 
+# -------------------------------------------------------------
+# CAMPAIGN MODULE PACK SYSTEM (.ledgerpack)
+# -------------------------------------------------------------
+@app.get("/api/campaigns/{camp_id}/export-pack")
+async def export_campaign_pack(camp_id: str):
+    manifest = get_campaigns_manifest()
+    campaign = next((c for c in manifest.get("campaigns", []) if c["id"] == camp_id), None)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    camp_dir = CAMPAIGNS_DIR / camp_id
+    if not camp_dir.exists():
+        raise HTTPException(status_code=404, detail="Campaign directory not found")
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        pack_manifest = {
+            "formatVersion": "1.0",
+            "packType": "arcane_ledger_module",
+            "id": campaign.get("id"),
+            "name": campaign.get("name"),
+            "description": campaign.get("description", ""),
+            "preset": campaign.get("preset", "full"),
+            "modules": campaign.get("modules", {}),
+            "template": campaign.get("template", "custom"),
+            "exportedAt": time.time(),
+            "exportDate": datetime.now().isoformat(),
+            "appVersion": updater.CURRENT_VERSION if hasattr(updater, "CURRENT_VERSION") else "1.1.6"
+        }
+        zf.writestr("module_manifest.json", json.dumps(pack_manifest, indent=2, ensure_ascii=False))
+
+        for root, dirs, files in os.walk(camp_dir):
+            for file in files:
+                file_path = Path(root) / file
+                rel_path = file_path.relative_to(camp_dir)
+                zf.write(file_path, arcname=str(rel_path).replace("\\", "/"))
+
+    zip_buffer.seek(0)
+    safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in campaign.get("name", "Campaign")).strip("_")
+    filename = f"{safe_title or 'Campaign'}.ledgerpack"
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+@app.post("/api/campaigns/import-pack")
+async def import_campaign_pack(file: UploadFile = File(...), set_active: bool = True):
+    if not file.filename.lower().endswith((".ledgerpack", ".zip")):
+        raise HTTPException(status_code=400, detail="Only .ledgerpack and .zip campaign packs are supported")
+
+    content = await file.read()
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid package archive: {e}")
+
+    pack_manifest = {}
+    if "module_manifest.json" in zf.namelist():
+        try:
+            pack_manifest = json.loads(zf.read("module_manifest.json").decode("utf-8"))
+        except Exception:
+            pass
+
+    camp_name = pack_manifest.get("name") or file.filename.rsplit(".", 1)[0].replace("_", " ")
+    clean_slug = "".join(ch.lower() if ch.isalnum() else "_" for ch in camp_name).strip("_")[:16]
+    new_camp_id = f"camp_{int(time.time())}_{clean_slug or 'imported'}"
+    target_dir = CAMPAIGNS_DIR / new_camp_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    for member in zf.infolist():
+        norm_name = os.path.normpath(member.filename).replace("\\", "/")
+        if norm_name.startswith("../") or norm_name.startswith("/") or ".." in norm_name.split("/"):
+            continue
+        if norm_name == "module_manifest.json":
+            continue
+        if member.is_dir():
+            (target_dir / norm_name).mkdir(parents=True, exist_ok=True)
+        else:
+            dest_file = target_dir / norm_name
+            dest_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(dest_file, "wb") as f_out:
+                f_out.write(zf.read(member.filename))
+
+    manifest = get_campaigns_manifest()
+    now_str = datetime.now().isoformat()
+    new_campaign = {
+        "id": new_camp_id,
+        "name": camp_name,
+        "description": pack_manifest.get("description", "Imported community campaign module"),
+        "createdAt": now_str,
+        "lastPlayed": now_str,
+        "preset": pack_manifest.get("preset", "full"),
+        "modules": pack_manifest.get("modules") or dict(DEFAULT_MODULES),
+        "template": pack_manifest.get("template", "custom")
+    }
+
+    manifest.setdefault("campaigns", []).append(new_campaign)
+    if set_active:
+        manifest["activeCampaignId"] = new_camp_id
+    save_campaigns_manifest(manifest)
+
+    check_and_upgrade_cos_campaign(target_dir, new_campaign)
+
+    return {
+        "status": "success",
+        "message": f"Successfully imported '{camp_name}'!",
+        "campaign": new_campaign,
+        "activeCampaignId": manifest.get("activeCampaignId"),
+        "campaigns": get_enriched_campaigns()
+    }
+
+
+@app.get("/api/modules/curse-of-strahd/download-pack")
+async def download_curse_of_strahd_official_pack():
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        pack_manifest = {
+            "formatVersion": "1.0",
+            "packType": "arcane_ledger_module",
+            "id": "module-curse-of-strahd",
+            "name": "Curse of Strahd (Complete Adventure Pack)",
+            "description": "Official 5.5e turnkey campaign pack: 32 chapter encounters, 45 NPCs, 5 authentic handouts, 12 locations, 5 factions, weather, and the 54-card Tarokka Deck.",
+            "preset": "full",
+            "template": "curse_of_strahd",
+            "author": "Arcane Ledger Official",
+            "version": "1.1.6",
+            "exportedAt": time.time(),
+            "exportDate": datetime.now().isoformat(),
+            "appVersion": updater.CURRENT_VERSION if hasattr(updater, "CURRENT_VERSION") else "1.1.6"
+        }
+        zf.writestr("module_manifest.json", json.dumps(pack_manifest, indent=2, ensure_ascii=False))
+
+        cos_data = {
+            "party.json": [],
+            "combat.json": {"inCombat": False, "round": 1, "currentTurnIndex": 0, "combatants": []},
+            "roster.json": cos_module_pack.get_cos_roster(),
+            "encounters.json": cos_module_pack.get_cos_encounters(),
+            "handouts.json": cos_module_pack.get_cos_handouts(),
+            "locations.json": cos_module_pack.get_cos_locations(),
+            "factions.json": cos_module_pack.get_cos_factions(),
+            "quests.json": cos_module_pack.get_cos_quests(),
+            "time_weather.json": cos_module_pack.get_cos_time_weather(),
+            "tarokka.json": cos_module_pack.draw_tarokka_reading(),
+            "pantheon.json": [
+                {"id": "ptn-morninglord", "name": "The Morninglord", "domain": "Light, Life", "description": "Patron deity of Barovia before the mists fell."},
+                {"id": "ptn-mother-night", "name": "Mother Night", "domain": "Death, Twilight", "description": "Ancient dark goddess worshiped by druids and werewolves."}
+            ],
+            "session_notes.json": [
+                {
+                    "id": "note-cos-prep",
+                    "title": "Barovia DM Primer & Chapter Milestones",
+                    "content": "• Tser Pool: Run Madam Eva's Tarokka reading to determine relic placements.\n• Vallaki: Key powder keg between Baron Vargas and Lady Wachter.\n• Relics: Sunsword deals 20 radiant/round to Strahd and halts his regeneration.\n• Heart of Sorrow: Absorbs first 50 HP of damage dealt to Strahd.",
+                    "category": "Session Notes",
+                    "pinned": True,
+                    "createdAt": time.time()
+                }
+            ],
+            "world.json": {"customFactions": [], "customLocations": [], "useOnlyCustomFactions": False, "useOnlyCustomLocations": False},
+            "party_stash.json": {"currency": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}, "items": []},
+            "battlemap.json": get_default_battlemap_state()
+        }
+        for fname, dval in cos_data.items():
+            zf.writestr(fname, json.dumps(dval, indent=2, ensure_ascii=False))
+
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": 'attachment; filename="Curse_of_Strahd.ledgerpack"'}
+    )
+
 # Party management
 @app.get("/api/party")
 async def get_party():
@@ -6422,6 +6596,52 @@ async def broadcast_tarokka_endpoint(payload: Optional[Dict[str, Any]] = None):
     }
     write_json("broadcast.json", broadcast_data)
     return {"status": "success", "broadcast": broadcast_data}
+
+@app.post("/api/tarokka/flip")
+async def flip_tarokka_slot_endpoint(payload: Optional[Dict[str, Any]] = None):
+    data = payload or {}
+    slot_key = data.get("slotKey")
+    is_flipped = data.get("flipped")
+    all_flipped = data.get("allFlipped")
+
+    reading = read_json("tarokka.json", None)
+    if not reading:
+        reading = cos_module_pack.draw_tarokka_reading()
+
+    if "flipped" not in reading or not isinstance(reading["flipped"], dict):
+        reading["flipped"] = {
+            "tome": False,
+            "holySymbol": False,
+            "sunsword": False,
+            "enemy": False,
+            "location": False
+        }
+
+    if all_flipped is not None and isinstance(all_flipped, dict):
+        reading["flipped"].update(all_flipped)
+    elif slot_key:
+        if is_flipped is not None:
+            reading["flipped"][slot_key] = bool(is_flipped)
+        else:
+            reading["flipped"][slot_key] = not reading["flipped"].get(slot_key, False)
+
+    reading["broadcasted"] = True
+    reading["isDelivered"] = True
+    reading["updatedAt"] = time.time()
+    write_json("tarokka.json", reading)
+
+    broadcast_data = {
+        "active": True,
+        "title": "Madam Eva's Tarokka Reading",
+        "subtitle": "The Mists of Fate Reveal Barovia's Secrets",
+        "content": format_tarokka_summary_note(reading),
+        "type": "tarokka",
+        "imageUrl": "",
+        "tarokka": reading
+    }
+    write_json("broadcast.json", broadcast_data)
+
+    return {"status": "success", "reading": reading, "flipped": reading["flipped"]}
 
 # -------------------------------------------------------------
 # PHASE 4: PLAYER DISPLAY SCREEN & BROADCAST HANDOUTS

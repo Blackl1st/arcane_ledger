@@ -152,6 +152,63 @@
         .wax-seal-purple {
             background: radial-gradient(circle at 35% 35%, #a855f7, #6b21a8 70%, #3b0764);
         }
+
+        /* Tarokka Fortune Teller's Table Styles */
+        .tarokka-tablecloth {
+            background: radial-gradient(ellipse at center, #2e0d18 0%, #17050d 65%, #0a0206 100%);
+            box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.95), 0 10px 30px rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(217, 119, 6, 0.35);
+        }
+        .candle-glow {
+            box-shadow: 0 0 25px 8px rgba(245, 158, 11, 0.4), 0 0 50px 15px rgba(217, 119, 6, 0.15);
+        }
+        .companion-tarokka-slot {
+            perspective: 1000px;
+            width: 84px;
+            height: 126px;
+        }
+        @media (min-width: 480px) {
+            .companion-tarokka-slot {
+                width: 96px;
+                height: 144px;
+            }
+        }
+        .companion-tarokka-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+        .companion-tarokka-inner.flipped {
+            transform: rotateY(180deg);
+        }
+        .companion-tarokka-front, .companion-tarokka-back {
+            position: absolute;
+            inset: 0;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.75);
+            cursor: pointer;
+        }
+        .companion-tarokka-back {
+            background: radial-gradient(circle at center, #24141d 0%, #100b13 75%, #060408 100%);
+            border: 2px solid #881337;
+            transform: rotateY(0deg);
+        }
+        .companion-tarokka-front {
+            background: radial-gradient(circle at 50% 25%, #2e1822 0%, #170d18 65%, #0a060a 100%);
+            border: 2px solid #e11d48;
+            transform: rotateY(180deg);
+        }
+        .tarokka-card-selected {
+            border-color: #fbbf24 !important;
+            box-shadow: 0 0 16px rgba(251, 191, 36, 0.75), inset 0 0 10px rgba(251, 191, 36, 0.3) !important;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-black">
@@ -756,28 +813,102 @@
         </div>
     </div>
 
-    <!-- MODAL: MADAM EVA'S TAROKKA PROPHECY (MOBILE) -->
-    <div id="modal-companion-tarokka" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
-        <div class="bg-gradient-to-b from-ledger-900 via-rose-950/40 to-ledger-950 border border-rose-900/80 rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col relative overflow-hidden">
+    <!-- MODAL: MADAM EVA'S TAROKKA PROPHECY (FORTUNE TELLER'S TABLE) -->
+    <div id="modal-companion-tarokka" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden items-center justify-center p-2 sm:p-4">
+        <div class="bg-gradient-to-b from-ledger-900 via-rose-950/40 to-ledger-950 border border-rose-900/80 rounded-3xl max-w-xl w-full p-4 sm:p-5 shadow-2xl space-y-3.5 max-h-[94vh] flex flex-col relative overflow-hidden">
             <!-- Header -->
-            <div class="flex items-center justify-between border-b border-rose-900/60 pb-3">
+            <div class="flex items-center justify-between border-b border-rose-900/60 pb-2.5">
                 <div class="flex items-center gap-2.5">
-                    <span class="w-8 h-8 rounded-xl bg-rose-950 border border-rose-700/60 flex items-center justify-center text-rose-300 text-base">🔮</span>
+                    <span class="w-9 h-9 rounded-2xl bg-rose-950 border border-rose-700/60 flex items-center justify-center text-rose-300 text-lg shadow-inner">🔮</span>
                     <div>
-                        <h3 class="font-display font-bold text-sm text-rose-300">Madam Eva's Prophecy</h3>
-                        <p class="text-[10px] text-slate-400 font-mono">The 5 Cards of Destiny</p>
+                        <h3 class="font-display font-bold text-sm sm:text-base text-rose-300">Madam Eva's Prophecy</h3>
+                        <p id="companion-tarokka-status-sub" class="text-[10px] text-slate-400 font-mono">Fortune Teller's Table • 5 Cards of Fate</p>
                     </div>
                 </div>
-                <button onclick="closeModal('modal-companion-tarokka')" class="w-7 h-7 rounded-full bg-ledger-800 hover:bg-ledger-700 text-slate-300 flex items-center justify-center text-xs font-bold transition">✕</button>
+                <div class="flex items-center gap-2">
+                    <!-- Toggle View Mode: Table vs List -->
+                    <div class="flex rounded-xl bg-ledger-950 border border-rose-900/50 p-0.5 text-[10px] font-mono">
+                        <button id="tarokka-toggle-table-btn" onclick="toggleCompanionTarokkaView('table')" class="px-2 py-1 rounded-lg font-bold bg-rose-950 text-rose-200 border border-rose-800/80 transition">🔮 Table</button>
+                        <button id="tarokka-toggle-list-btn" onclick="toggleCompanionTarokkaView('list')" class="px-2 py-1 rounded-lg text-slate-400 hover:text-rose-200 transition">📜 Lore</button>
+                    </div>
+                    <button onclick="closeModal('modal-companion-tarokka')" class="w-7 h-7 rounded-full bg-ledger-800 hover:bg-ledger-700 text-slate-300 flex items-center justify-center text-xs font-bold transition">✕</button>
+                </div>
             </div>
 
-            <!-- Scrollable 5-Card List -->
-            <div id="companion-tarokka-cards-list" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
-                <!-- Inserted dynamically -->
+            <!-- VIEW 1: FORTUNE TELLER'S TABLE (Cross Formation) -->
+            <div id="companion-tarokka-table-view" class="flex-1 overflow-y-auto space-y-3 pr-0.5">
+                <!-- Velvet Tablecloth Area -->
+                <div class="tarokka-tablecloth rounded-2xl p-3 sm:p-4 relative overflow-hidden flex flex-col items-center">
+                    <!-- Mystic Candlelight glow at top corners -->
+                    <div class="absolute top-2 left-2 w-3 h-3 rounded-full bg-amber-400 candle-glow opacity-80 pointer-events-none"></div>
+                    <div class="absolute top-2 right-2 w-3 h-3 rounded-full bg-amber-400 candle-glow opacity-80 pointer-events-none"></div>
+                    <div class="text-[9px] font-mono uppercase tracking-widest text-amber-500/70 mb-2 flex items-center gap-1.5">
+                        <span>🕯️</span> <span>The Cross of Ravenloft</span> <span>🕯️</span>
+                    </div>
+
+                    <!-- 5-Card Cross Formation Grid -->
+                    <div class="flex flex-col items-center gap-2 select-none">
+                        <!-- Top Slot: Holy Symbol (Hope) -->
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] font-mono font-bold text-sky-400 mb-0.5 uppercase tracking-wider">Top • Hope</span>
+                            <div id="comp-tarokka-slot-holySymbol" class="companion-tarokka-slot cursor-pointer" onclick="selectCompanionTarokkaCard('holySymbol')">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Middle Row: Left (Tome), Center (Lair/Sanctuary), Right (Sunsword) -->
+                        <div class="flex items-center justify-center gap-2 sm:gap-4">
+                            <!-- Left: Tome (History) -->
+                            <div class="flex flex-col items-center">
+                                <span class="text-[9px] font-mono font-bold text-amber-400 mb-0.5 uppercase tracking-wider">Left • History</span>
+                                <div id="comp-tarokka-slot-tome" class="companion-tarokka-slot cursor-pointer" onclick="selectCompanionTarokkaCard('tome')">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Center: Strahd's Lair (Location) -->
+                            <div class="flex flex-col items-center">
+                                <span class="text-[9px] font-mono font-bold text-rose-400 mb-0.5 uppercase tracking-wider">Center • Lair</span>
+                                <div id="comp-tarokka-slot-location" class="companion-tarokka-slot cursor-pointer" onclick="selectCompanionTarokkaCard('location')">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Right: Sunsword (Power) -->
+                            <div class="flex flex-col items-center">
+                                <span class="text-[9px] font-mono font-bold text-yellow-300 mb-0.5 uppercase tracking-wider">Right • Power</span>
+                                <div id="comp-tarokka-slot-sunsword" class="companion-tarokka-slot cursor-pointer" onclick="selectCompanionTarokkaCard('sunsword')">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Slot: Strahd's Enemy (Fated Ally) -->
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] font-mono font-bold text-emerald-400 mb-0.5 uppercase tracking-wider">Bottom • Fated Ally</span>
+                            <div id="comp-tarokka-slot-enemy" class="companion-tarokka-slot cursor-pointer" onclick="selectCompanionTarokkaCard('enemy')">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD LORE INSPECTOR (Shows active/selected card details) -->
+                <div id="companion-tarokka-inspector" class="bg-ledger-950/90 border border-rose-900/70 rounded-2xl p-3 sm:p-4 space-y-2 shadow-inner">
+                    <!-- Populated dynamically -->
+                </div>
             </div>
 
-            <div class="pt-2 border-t border-rose-950 text-center text-[10px] text-rose-400/60 font-mono italic">
-                "The mists part for none save fate itself."
+            <!-- VIEW 2: DETAILED LORE LIST -->
+            <div id="companion-tarokka-list-view" class="hidden flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+                <div id="companion-tarokka-cards-list" class="space-y-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-rose-950/80 flex items-center justify-between text-[10px] text-rose-400/70 font-mono italic">
+                <span>"The cards reveal what the shadows conceal."</span>
+                <span id="companion-tarokka-revealed-count">0 / 5 Overturned</span>
             </div>
         </div>
     </div>
@@ -2751,16 +2882,36 @@
         }
 
         let companionTarokkaReading = null;
+        let selectedTarokkaSlotKey = 'holySymbol';
+        let companionTarokkaViewMode = 'table';
+
+        const COMPANION_TAROKKA_SLOTS = [
+            { key: 'tome', label: 'Tome of Strahd', role: 'History', icon: '📜', accent: 'amber' },
+            { key: 'holySymbol', label: 'Holy Symbol of Ravenkind', role: 'Hope', icon: '☀️', accent: 'sky' },
+            { key: 'sunsword', label: 'The Sunsword', role: 'Power', icon: '🗡️', accent: 'amber' },
+            { key: 'enemy', label: 'Strahd\'s Enemy', role: 'Fated Ally', icon: '⚔️', accent: 'emerald' },
+            { key: 'location', label: 'The Darklord\'s Lair', role: 'Castle Ravenloft', icon: '🏰', accent: 'rose' }
+        ];
 
         function renderCompanionTarokka(tarokka) {
             companionTarokkaReading = tarokka;
             const cardEl = document.getElementById('companion-tarokka-card');
-            if (!cardEl) return;
             const isRevealed = tarokka && (tarokka.broadcasted === true || tarokka.isDelivered === true) && (tarokka.tome || tarokka.holySymbol);
-            if (isRevealed) {
-                cardEl.classList.remove('hidden');
-            } else {
-                cardEl.classList.add('hidden');
+            if (cardEl) {
+                if (isRevealed) {
+                    cardEl.classList.remove('hidden');
+                    const flippedCount = Object.values(tarokka.flipped || {}).filter(Boolean).length;
+                    const subText = cardEl.querySelector('p');
+                    if (subText) subText.textContent = `${flippedCount} of 5 Cards Overturned • Tap for Fortune Table`;
+                } else {
+                    cardEl.classList.add('hidden');
+                }
+            }
+
+            // If modal is actively open, live update the flip states in real-time
+            const modal = document.getElementById('modal-companion-tarokka');
+            if (modal && !modal.classList.contains('hidden') && isRevealed) {
+                updateCompanionTarokkaLiveState();
             }
         }
 
@@ -2869,47 +3020,223 @@
             }
         }
 
-        function openCompanionTarokkaModal() {
-            if (!companionTarokkaReading) return;
-            const list = document.getElementById('companion-tarokka-cards-list');
-            if (!list) return;
+        function toggleCompanionTarokkaView(mode) {
+            companionTarokkaViewMode = mode;
+            const tableView = document.getElementById('companion-tarokka-table-view');
+            const listView = document.getElementById('companion-tarokka-list-view');
+            const tableBtn = document.getElementById('tarokka-toggle-table-btn');
+            const listBtn = document.getElementById('tarokka-toggle-list-btn');
 
+            if (mode === 'table') {
+                if (tableView) tableView.classList.remove('hidden');
+                if (listView) listView.classList.add('hidden');
+                if (tableBtn) {
+                    tableBtn.className = "px-2 py-1 rounded-lg font-bold bg-rose-950 text-rose-200 border border-rose-800/80 transition";
+                }
+                if (listBtn) {
+                    listBtn.className = "px-2 py-1 rounded-lg text-slate-400 hover:text-rose-200 transition";
+                }
+            } else {
+                if (tableView) tableView.classList.add('hidden');
+                if (listView) listView.classList.remove('hidden');
+                if (listBtn) {
+                    listBtn.className = "px-2 py-1 rounded-lg font-bold bg-rose-950 text-rose-200 border border-rose-800/80 transition";
+                }
+                if (tableBtn) {
+                    tableBtn.className = "px-2 py-1 rounded-lg text-slate-400 hover:text-rose-200 transition";
+                }
+            }
+        }
+
+        function selectCompanionTarokkaCard(slotKey) {
+            selectedTarokkaSlotKey = slotKey;
+            COMPANION_TAROKKA_SLOTS.forEach(s => {
+                const el = document.getElementById(`comp-card-inner-${s.key}`);
+                if (el) {
+                    if (s.key === slotKey) el.classList.add('tarokka-card-selected');
+                    else el.classList.remove('tarokka-card-selected');
+                }
+            });
+            renderCompanionTarokkaInspector();
+        }
+
+        function renderCompanionTarokkaInspector() {
+            const insp = document.getElementById('companion-tarokka-inspector');
+            if (!insp || !companionTarokkaReading) return;
             const t = companionTarokkaReading;
-            const cards = [
-                { title: 'The Tome of Strahd', role: 'History', card: t.tome, icon: '📜' },
-                { title: 'Holy Symbol of Ravenkind', role: 'Hope', card: t.holySymbol, icon: '☀️' },
-                { title: 'The Sunsword', role: 'Power', card: t.sunsword, icon: '🗡️' },
-                { title: 'Strahd\'s Enemy', role: 'Fated Ally', card: t.enemy, icon: '⚔️' },
-                { title: 'The Darklord\'s Lair', role: 'Castle Ravenloft', card: t.location, icon: '🏰' }
-            ];
+            const slot = COMPANION_TAROKKA_SLOTS.find(s => s.key === selectedTarokkaSlotKey) || COMPANION_TAROKKA_SLOTS[1];
+            const cd = t[slot.key] || {};
+            const isFlipped = !!(t.flipped && t.flipped[slot.key]);
+            const cardName = cd.card || 'The Unknown';
+            const cardSuit = cd.suit ? `Suit of ${cd.suit}` : (cd.ally || cd.location ? 'High Deck' : 'Tarokka');
+            const cardSymbol = cd.symbol || slot.icon;
+            const spokenClue = cd.clue ? `“${cd.clue}”` : (cd.ally ? `“${cardName} stands with you against the shadow.”` : (cd.location ? `“${cardName} awaits in Castle Ravenloft.”` : 'The shadows shroud this fate.'));
 
-            list.innerHTML = cards.map(c => {
-                const cd = c.card || {};
-                const name = cd.card || 'The Unknown';
+            if (isFlipped) {
+                insp.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-rose-900/60 pb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">${cardSymbol}</span>
+                            <div>
+                                <span class="text-[9px] font-mono uppercase text-slate-400 block">${slot.label} • ${slot.role}</span>
+                                <h4 class="font-display font-bold text-sm text-rose-200">${cardName}</h4>
+                            </div>
+                        </div>
+                        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800/60 font-bold">✨ OVERTURNED</span>
+                    </div>
+                    <div class="bg-ledger-900/90 border border-rose-950 rounded-xl p-2.5">
+                        <div class="text-[9px] font-mono uppercase tracking-wider text-rose-400/90 mb-1 flex items-center gap-1">
+                            <span>🔮</span> <span>Madam Eva's Spoken Prophecy:</span>
+                        </div>
+                        <p class="text-xs font-serif italic text-rose-100 leading-relaxed">${spokenClue}</p>
+                    </div>
+                    <div class="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-0.5">
+                        <span>Deck: ${cardSuit}</span>
+                        <span class="text-rose-400">Tap cards to inspect</span>
+                    </div>
+                `;
+            } else {
+                insp.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-rose-900/60 pb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base opacity-50">${slot.icon}</span>
+                            <div>
+                                <span class="text-[9px] font-mono uppercase text-slate-400 block">${slot.label} • ${slot.role}</span>
+                                <h4 class="font-display font-bold text-sm text-slate-400">Card Veiled in Shadow</h4>
+                            </div>
+                        </div>
+                        <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-400 border border-rose-900/50 font-bold">🔒 FACEDOWN</span>
+                    </div>
+                    <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-2.5 text-center">
+                        <p class="text-[11px] font-serif italic text-slate-400 leading-relaxed">
+                            "This card lies facedown upon the velvet cloth. When Madam Eva turns it on the DM's table, its prophecy shall be revealed here in real-time."
+                        </p>
+                    </div>
+                    <div class="flex items-center justify-between text-[9px] font-mono text-slate-500 pt-0.5">
+                        <span>Awaiting the mists of Ravenloft</span>
+                        <span>Tap cards to inspect</span>
+                    </div>
+                `;
+            }
+        }
+
+        function updateCompanionTarokkaLiveState() {
+            if (!companionTarokkaReading) return;
+            const t = companionTarokkaReading;
+            const flippedCount = Object.values(t.flipped || {}).filter(Boolean).length;
+            const revCountEl = document.getElementById('companion-tarokka-revealed-count');
+            if (revCountEl) revCountEl.textContent = `${flippedCount} / 5 Overturned`;
+
+            COMPANION_TAROKKA_SLOTS.forEach(slot => {
+                const inner = document.getElementById(`comp-card-inner-${slot.key}`);
+                const isFlipped = !!(t.flipped && t.flipped[slot.key]);
+                if (inner) {
+                    if (isFlipped) inner.classList.add('flipped');
+                    else inner.classList.remove('flipped');
+                }
+            });
+
+            renderCompanionTarokkaInspector();
+            renderCompanionTarokkaList();
+        }
+
+        function renderCompanionTarokkaList() {
+            const list = document.getElementById('companion-tarokka-cards-list');
+            if (!list || !companionTarokkaReading) return;
+            const t = companionTarokkaReading;
+
+            list.innerHTML = COMPANION_TAROKKA_SLOTS.map(s => {
+                const cd = t[s.key] || {};
+                const isFlipped = !!(t.flipped && t.flipped[s.key]);
+                const name = isFlipped ? (cd.card || 'The Unknown') : 'Card Veiled in Shadow';
                 const suit = cd.suit ? `Suit of ${cd.suit}` : (cd.ally || cd.location ? 'High Deck' : '');
-                const clue = cd.clue ? `"${cd.clue}"` : (cd.ally ? `"${name} stands with you against the shadow."` : (cd.location ? `"${name} awaits in the darkest hall."` : ''));
+                const clue = isFlipped 
+                    ? (cd.clue ? `"${cd.clue}"` : (cd.ally ? `"${name} stands with you against the shadow."` : (cd.location ? `"${name} awaits in the darkest hall."` : '')))
+                    : 'Awaiting Madam Eva to overturn this card.';
+
                 return `
-                    <div class="bg-ledger-950/90 border border-rose-900/60 rounded-2xl p-3.5 space-y-2 shadow">
+                    <div class="bg-ledger-950/90 border ${isFlipped ? 'border-rose-900/60' : 'border-ledger-800/70 opacity-70'} rounded-2xl p-3.5 space-y-2 shadow">
                         <div class="flex items-center justify-between border-b border-rose-950/80 pb-1.5">
                             <span class="font-bold text-rose-300 flex items-center gap-1.5">
-                                <span>${c.icon}</span> <span>${c.title}</span>
+                                <span>${s.icon}</span> <span>${s.label}</span>
                             </span>
-                            <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-900/50">${suit || c.role}</span>
+                            <span class="text-[9px] font-mono px-2 py-0.5 rounded-full ${isFlipped ? 'bg-emerald-950 text-emerald-300 border border-emerald-900/50' : 'bg-rose-950 text-rose-400 border border-rose-900/40'}">
+                                ${isFlipped ? (suit || s.role) : 'VEILED'}
+                            </span>
                         </div>
-                        <div class="flex items-center justify-between text-xs font-semibold text-rose-100">
+                        <div class="flex items-center justify-between text-xs font-semibold ${isFlipped ? 'text-rose-100' : 'text-slate-400'}">
                             <span>${name}</span>
-                            <span class="text-base">${cd.symbol || c.icon}</span>
+                            <span class="text-base">${isFlipped ? (cd.symbol || s.icon) : '🔒'}</span>
                         </div>
                         <div class="bg-ledger-900/80 border border-ledger-800 rounded-xl p-2.5">
-                            <p class="text-[11px] font-serif italic text-slate-300 leading-relaxed">${clue}</p>
+                            <p class="text-[11px] font-serif italic ${isFlipped ? 'text-slate-300' : 'text-slate-500'} leading-relaxed">${clue}</p>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function openCompanionTarokkaModal() {
+            if (!companionTarokkaReading) return;
+            const t = companionTarokkaReading;
+
+            COMPANION_TAROKKA_SLOTS.forEach(slot => {
+                const container = document.getElementById(`comp-tarokka-slot-${slot.key}`);
+                if (!container) return;
+                const cd = t[slot.key] || {};
+                const isFlipped = !!(t.flipped && t.flipped[slot.key]);
+                const isSelected = slot.key === selectedTarokkaSlotKey;
+
+                const cardName = cd.card || 'The Unknown';
+                const cardSuit = cd.suit ? `Suit of ${cd.suit}` : (cd.ally || cd.location ? 'High Deck' : 'Tarokka');
+                const cardSymbol = cd.symbol || slot.icon;
+
+                container.innerHTML = `
+                    <div id="comp-card-inner-${slot.key}" class="companion-tarokka-inner ${isFlipped ? 'flipped' : ''} ${isSelected ? 'tarokka-card-selected' : ''}">
+                        <!-- Card Back -->
+                        <div class="companion-tarokka-back p-1.5 sm:p-2 flex flex-col justify-between items-center text-center select-none">
+                            <div class="text-[8px] font-mono text-rose-400/70 uppercase tracking-widest">Tarokka</div>
+                            <div class="my-auto space-y-1">
+                                <div class="text-xl sm:text-2xl">${slot.icon}</div>
+                                <div class="text-[9px] font-bold text-rose-200 line-clamp-1">${slot.role}</div>
+                            </div>
+                            <div class="text-[7px] sm:text-[8px] font-mono text-rose-400/60 italic">Veiled</div>
+                        </div>
+                        <!-- Card Front -->
+                        <div class="companion-tarokka-front p-1.5 sm:p-2 flex flex-col justify-between text-left select-none">
+                            <div class="flex items-center justify-between text-[8px] font-mono text-rose-300">
+                                <span class="truncate max-w-[48px]">${cardSuit}</span>
+                                <span class="text-xs sm:text-sm">${cardSymbol}</span>
+                            </div>
+                            <div class="my-auto space-y-0.5">
+                                <div class="text-[7px] sm:text-[8px] font-mono text-slate-400 uppercase tracking-wider">${slot.role}</div>
+                                <div class="text-[9px] sm:text-[10px] font-display font-bold text-rose-100 line-clamp-2 leading-tight">${cardName}</div>
+                            </div>
+                            <div class="text-[7px] sm:text-[8px] font-mono text-amber-300/90 truncate">✨ Revealed</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Select first overturned card if current is veiled
+            const currentFlipped = !!(t.flipped && t.flipped[selectedTarokkaSlotKey]);
+            if (!currentFlipped) {
+                const firstFlipped = COMPANION_TAROKKA_SLOTS.find(s => t.flipped && t.flipped[s.key]);
+                if (firstFlipped) selectedTarokkaSlotKey = firstFlipped.key;
+            }
+
+            selectCompanionTarokkaCard(selectedTarokkaSlotKey);
+            renderCompanionTarokkaList();
+
+            const flippedCount = Object.values(t.flipped || {}).filter(Boolean).length;
+            const revCountEl = document.getElementById('companion-tarokka-revealed-count');
+            if (revCountEl) revCountEl.textContent = `${flippedCount} / 5 Overturned`;
 
             const modal = document.getElementById('modal-companion-tarokka');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
         }
 
         function closeModal(id) {

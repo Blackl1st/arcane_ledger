@@ -132,6 +132,58 @@
             background: radial-gradient(circle at 35% 35%, #a855f7, #6b21a8 70%, #3b0764);
         }
 
+        /* Tarokka Fortune Teller's Table Styles for Player Display */
+        .tarokka-tablecloth {
+            background: radial-gradient(ellipse at center, #2e0d18 0%, #17050d 65%, #0a0206 100%) !important;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.95), 0 15px 40px rgba(0, 0, 0, 0.9) !important;
+            border: 2px solid rgba(217, 119, 6, 0.45) !important;
+        }
+        .candle-glow {
+            box-shadow: 0 0 25px 8px rgba(245, 158, 11, 0.4), 0 0 50px 15px rgba(217, 119, 6, 0.15);
+        }
+        .player-tarokka-slot {
+            perspective: 1200px;
+            width: 105px;
+            height: 155px;
+        }
+        @media (min-width: 640px) {
+            .player-tarokka-slot {
+                width: 125px;
+                height: 185px;
+            }
+        }
+        .player-tarokka-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.85s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+        .player-tarokka-inner.flipped {
+            transform: rotateY(180deg);
+        }
+        .player-tarokka-front, .player-tarokka-back {
+            position: absolute;
+            inset: 0;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+        }
+        .player-tarokka-back {
+            background: radial-gradient(circle at center, #24141d 0%, #100b13 75%, #060408 100%);
+            border: 2px solid #881337;
+            transform: rotateY(0deg);
+        }
+        .player-tarokka-front {
+            background: radial-gradient(circle at 50% 25%, #2e1822 0%, #170d18 65%, #0a060a 100%);
+            border: 2px solid #e11d48;
+            transform: rotateY(180deg);
+        }
+
         body {
             background-color: #07090e;
             color: #f1f5f9;
@@ -1194,6 +1246,124 @@
                                 ${item.desc ? `<p class="text-xs text-slate-300 leading-relaxed pt-1.5 border-t border-ledger-800/80 font-serif line-clamp-3">${escapeHTML(item.desc)}</p>` : ''}
                             </div>
                         `).join('')}
+                    </div>
+                `;
+            } else if (b.type === 'tarokka' && b.tarokka) {
+                const t = b.tarokka;
+                imgCol.classList.add('hidden');
+                textCol.className = "col-span-12 flex flex-col items-center justify-center space-y-3";
+                card.className = "tarokka-tablecloth rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl relative overflow-hidden transform transition-all duration-300 scale-100 flex flex-col space-y-3 max-h-[95vh]";
+                if (contentBox) {
+                    contentBox.className = "w-full rounded-2xl overflow-y-auto bg-transparent border-0 p-0 flex flex-col items-center justify-center";
+                }
+
+                const slots = [
+                    { key: 'holySymbol', label: 'Holy Symbol of Ravenkind', role: 'Hope', icon: '☀️', accent: 'sky', pos: 'Top' },
+                    { key: 'tome', label: 'Tome of Strahd', role: 'History', icon: '📜', accent: 'amber', pos: 'Left' },
+                    { key: 'location', label: 'Castle Ravenloft', role: 'Darklord\'s Lair', icon: '🏰', accent: 'rose', pos: 'Center' },
+                    { key: 'sunsword', label: 'The Sunsword', role: 'Power', icon: '🗡️', accent: 'yellow', pos: 'Right' },
+                    { key: 'enemy', label: 'Strahd\'s Enemy', role: 'Fated Ally', icon: '⚔️', accent: 'emerald', pos: 'Bottom' }
+                ];
+
+                function makePlayerSlotHtml(slot) {
+                    const cd = t[slot.key] || {};
+                    const isFlipped = !!(t.flipped && t.flipped[slot.key]);
+                    const name = cd.card || 'The Unknown';
+                    const suit = cd.suit ? `Suit of ${cd.suit}` : (cd.ally || cd.location ? 'High Deck' : 'Tarokka');
+                    const symbol = cd.symbol || slot.icon;
+
+                    return `
+                        <div class="flex flex-col items-center">
+                            <span class="text-[10px] font-mono font-bold text-rose-300 mb-1 uppercase tracking-wider">${slot.pos} • ${slot.role}</span>
+                            <div class="player-tarokka-slot select-none">
+                                <div class="player-tarokka-inner ${isFlipped ? 'flipped' : ''}">
+                                    <!-- Back (Veiled) -->
+                                    <div class="player-tarokka-back p-2 flex flex-col justify-between items-center text-center">
+                                        <div class="text-[9px] font-mono text-rose-400/80 uppercase tracking-widest">Tarokka</div>
+                                        <div class="my-auto space-y-1">
+                                            <div class="text-3xl text-rose-300">${slot.icon}</div>
+                                            <div class="text-[11px] font-bold text-rose-200 line-clamp-1">${slot.role}</div>
+                                        </div>
+                                        <div class="text-[9px] font-mono text-rose-400/60 uppercase">Veiled by Fate</div>
+                                    </div>
+                                    <!-- Front (Revealed) -->
+                                    <div class="player-tarokka-front p-2.5 flex flex-col justify-between text-left">
+                                        <div class="flex items-center justify-between text-[9px] font-mono text-rose-300 border-b border-rose-900/60 pb-1">
+                                            <span class="truncate">${suit}</span>
+                                            <span class="text-base">${symbol}</span>
+                                        </div>
+                                        <div class="my-auto space-y-1">
+                                            <div class="text-[8px] font-mono text-slate-400 uppercase tracking-wider">${slot.role}</div>
+                                            <div class="text-xs sm:text-sm font-display font-bold text-rose-100 leading-tight">${name}</div>
+                                        </div>
+                                        <div class="text-[8px] font-mono text-amber-300 pt-1 border-t border-rose-900/40 truncate">
+                                            ✨ OVERTURNED
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Spoken clues for flipped cards
+                const flippedClues = slots.filter(s => t.flipped && t.flipped[s.key]).map(s => {
+                    const cd = t[s.key] || {};
+                    const name = cd.card || 'The Unknown';
+                    const clue = cd.clue ? `“${cd.clue}”` : (cd.ally ? `“${name} stands with you against the shadow.”` : (cd.location ? `“${name} awaits in the darkest hall.”` : ''));
+                    return `
+                        <div class="bg-ledger-950/90 border border-rose-900/60 rounded-xl p-2.5 space-y-1 shadow">
+                            <div class="flex items-center justify-between text-[10px] font-mono">
+                                <span class="font-bold text-rose-300">${s.icon} ${s.label} (${name})</span>
+                                <span class="text-amber-400">Card Overturned</span>
+                            </div>
+                            <p class="text-xs font-serif italic text-rose-100 leading-relaxed">${clue}</p>
+                        </div>
+                    `;
+                }).join('');
+
+                contentEl.className = "w-full text-center font-sans space-y-3";
+                contentEl.innerHTML = `
+                    <!-- Ambient Candlelight -->
+                    <div class="relative w-full flex flex-col items-center">
+                        <div class="absolute -top-1 left-2 w-3 h-3 rounded-full bg-amber-400 candle-glow opacity-90 pointer-events-none"></div>
+                        <div class="absolute -top-1 right-2 w-3 h-3 rounded-full bg-amber-400 candle-glow opacity-90 pointer-events-none"></div>
+                        
+                        <div class="text-[10px] font-mono uppercase tracking-widest text-amber-500/80 mb-1 flex items-center gap-1.5">
+                            <span>🕯️</span> <span>Madam Eva's Fortune Teller Table • The 5-Card Cross</span> <span>🕯️</span>
+                        </div>
+
+                        <!-- 5-Card Cross Formation Grid -->
+                        <div class="flex flex-col items-center gap-2 sm:gap-3 my-1">
+                            <!-- Top: Holy Symbol -->
+                            ${makePlayerSlotHtml(slots[0])}
+
+                            <!-- Middle Row: Left (Tome), Center (Castle/Lair), Right (Sunsword) -->
+                            <div class="flex items-center justify-center gap-2 sm:gap-4">
+                                ${makePlayerSlotHtml(slots[1])}
+                                ${makePlayerSlotHtml(slots[2])}
+                                ${makePlayerSlotHtml(slots[3])}
+                            </div>
+
+                            <!-- Bottom: Strahd's Enemy -->
+                            ${makePlayerSlotHtml(slots[4])}
+                        </div>
+
+                        <!-- Prophecy Clues Transcriptions -->
+                        ${flippedClues ? `
+                            <div class="w-full mt-3 space-y-2 text-left max-h-[160px] overflow-y-auto pr-1">
+                                <div class="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1">
+                                    <span>🔮</span> <span>Spoken Prophecies of the Overturned Cards</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    ${flippedClues}
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="mt-2 text-center text-xs font-serif italic text-rose-300/70">
+                                "The mists shroud the table. Watch as Madam Eva turns the cards of fate..."
+                            </div>
+                        `}
                     </div>
                 `;
             } else if (b.imageUrl) {
