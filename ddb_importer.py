@@ -183,6 +183,16 @@ KNOWN_SPELL_FORMULAS: Dict[str, Tuple[str, str]] = {
     "flame strike": ("4d6 + 4d6", "Radiant/Fire"),
     "mass cure wounds": ("3d8 + MOD", "Healing"),
     "heal": ("70", "Healing"),
+    "divine smite": ("2d8", "Radiant"),
+    "searing smite": ("1d6", "Fire"),
+    "thunderous smite": ("2d6", "Thunder"),
+    "wrathful smite": ("1d6", "Psychic"),
+    "branding smite": ("2d6", "Radiant"),
+    "blinding smite": ("3d8", "Radiant"),
+    "staggering smite": ("4d6", "Psychic"),
+    "banishing smite": ("5d10", "Force"),
+    "heroism": ("3", "Temp HP"),
+    "aid": ("5", "Max HP"),
     "harm": ("14d6", "Necrotic"),
     "chain lightning": ("10d8", "Lightning"),
     "disintegrate": ("10d6 + 40", "Force"),
@@ -660,15 +670,64 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         raw_spell_candidates.append(cs)
 
     # Class / Race / Feat Action spells (Paladin Oath spells, smites, domain spells, etc.)
+    FEATURE_TO_SPELL_MAP = {
+        "paladin's smite": "divine smite",
+        "faithful steed": "find steed",
+        "channel divinity: sacred weapon": "sacred weapon",
+        "fey step": "misty step"
+    }
+
     actions_dict = d.get("actions") or {}
     if isinstance(actions_dict, dict):
         for act_cat, act_list in actions_dict.items():
             if isinstance(act_list, list):
                 for act in act_list:
                     if isinstance(act, dict):
+                        # 1. Embedded spell
+                        emb = act.get("spell") or act.get("spellDefinition") or (act.get("definition") or {}).get("spell")
+                        if isinstance(emb, dict):
+                            raw_spell_candidates.append(emb)
+
                         act_name = (act.get("name") or (act.get("definition") or {}).get("name") or "").strip().lower()
-                        if act.get("isSpell") or act.get("spell") or act.get("spellId") or (act_name and act_name in compendium_spells):
+                        # 2. Known feature mapping
+                        if act_name in FEATURE_TO_SPELL_MAP and FEATURE_TO_SPELL_MAP[act_name] in compendium_spells:
+                            raw_spell_candidates.append(compendium_spells[FEATURE_TO_SPELL_MAP[act_name]])
+
+                        # 3. Direct compendium match or snippet mention
+                        snippet = (act.get("snippet") or act.get("description") or "").lower()
+                        for sp_k, sp_v in compendium_spells.items():
+                            if sp_k == act_name or (len(sp_k) > 4 and f"cast {sp_k}" in snippet):
+                                raw_spell_candidates.append(sp_v)
+
+                        if act.get("isSpell") or act.get("spellId") or (act_name and act_name in compendium_spells):
                             raw_spell_candidates.append(act)
+
+    # Class Features (e.g. 2024 Paladin's Smite, Faithful Steed)
+    for c in (d.get("classes") or []):
+        if isinstance(c, dict):
+            for cf in (c.get("classFeatures") or []):
+                if isinstance(cf, dict):
+                    cf_def = cf.get("definition") or {}
+                    cf_name = (cf_def.get("name") or cf.get("name") or "").strip().lower()
+                    if cf_name in FEATURE_TO_SPELL_MAP and FEATURE_TO_SPELL_MAP[cf_name] in compendium_spells:
+                        raw_spell_candidates.append(compendium_spells[FEATURE_TO_SPELL_MAP[cf_name]])
+                    cf_snippet = (cf_def.get("snippet") or cf_def.get("description") or "").lower()
+                    if "divine smite" in cf_snippet and "divine smite" in compendium_spells:
+                        raw_spell_candidates.append(compendium_spells["divine smite"])
+                    if "find steed" in cf_snippet and "find steed" in compendium_spells:
+                        raw_spell_candidates.append(compendium_spells["find steed"])
+                    for sp in (cf.get("spells") or cf_def.get("spells") or []):
+                        if isinstance(sp, dict):
+                            raw_spell_candidates.append(sp)
+
+    # Modifiers (e.g. Always-prepared Oath/Domain spells)
+    for mod_cat, mod_list in (d.get("modifiers") or {}).items():
+        if isinstance(mod_list, list):
+            for m in mod_list:
+                if isinstance(m, dict):
+                    m_sub = (m.get("friendlySubTypeName") or m.get("friendlyTypeName") or "").strip().lower()
+                    if m_sub in compendium_spells:
+                        raw_spell_candidates.append(compendium_spells[m_sub])
 
     # Inventory magic item granted spells
     for it in (d.get("inventory") or []):
@@ -709,11 +768,16 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
     for s in raw_spell_candidates:
         if not isinstance(s, dict):
             continue
+        if s.get("spell") and isinstance(s["spell"], dict):
+            s = s["spell"]
         definition = s.get("definition") or s
-        s_name = (s.get("definition") or {}).get("name") or s.get("name")
+        s_name = (definition.get("name") or s.get("name") or "").strip()
         if not s_name:
             continue
         norm_name = s_name.lower().strip()
+        if norm_name in FEATURE_TO_SPELL_MAP and FEATURE_TO_SPELL_MAP[norm_name] in compendium_spells:
+            norm_name = FEATURE_TO_SPELL_MAP[norm_name]
+            s_name = compendium_spells[norm_name]["name"]
         if norm_name in seen_spell_names:
             continue
         seen_spell_names.add(norm_name)
@@ -723,7 +787,7 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         conc = bool(definition.get("concentration", False))
         ritual = bool(definition.get("ritual", False))
 
-        activation = definition.get("activation") or {}
+        activation = definition.get("activation") if isinstance(definition.get("activation"), dict) else {}
         act_type = activation.get("activationType")
         act_time = activation.get("activationTime", 1)
         type_str = {
@@ -736,20 +800,30 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         }.get(act_type, "Action" if act_time == 1 else f"{act_time} Actions")
         cast_time = type_str
 
-        range_info = definition.get("range") or {}
-        range_val = range_info.get("rangeValue")
-        range_origin = range_info.get("origin") or ""
-        range_str = f"{range_val} ft" if range_val else (range_origin or "Self")
+        raw_range = definition.get("range")
+        if isinstance(raw_range, dict):
+            range_val = raw_range.get("rangeValue")
+            range_origin = raw_range.get("origin") or ""
+            range_str = f"{range_val} ft" if range_val else (range_origin or "Self")
+        elif isinstance(raw_range, str) and raw_range:
+            range_str = raw_range
+        else:
+            range_str = "Self"
 
-        dur_info = definition.get("duration") or {}
-        dur_val = dur_info.get("durationInterval")
-        dur_unit = dur_info.get("durationUnit")
-        dur_str = f"{dur_val} {dur_unit}" if dur_val and dur_unit else ("Instantaneous" if not conc else "Concentration")
+        raw_dur = definition.get("duration")
+        if isinstance(raw_dur, dict):
+            dur_val = raw_dur.get("durationInterval")
+            dur_unit = raw_dur.get("durationUnit")
+            dur_str = f"{dur_val} {dur_unit}" if dur_val and dur_unit else ("Instantaneous" if not conc else "Concentration")
+        elif isinstance(raw_dur, str) and raw_dur:
+            dur_str = raw_dur
+        else:
+            dur_str = "Instantaneous" if not conc else "Concentration"
 
         comp_desc = definition.get("componentsDescription")
         if not comp_desc:
             comp_list = []
-            comps = definition.get("components") or []
+            comps = definition.get("components") if isinstance(definition.get("components"), (list, tuple)) else []
             if 1 in comps: comp_list.append("V")
             if 2 in comps: comp_list.append("S")
             if 3 in comps: comp_list.append("M")

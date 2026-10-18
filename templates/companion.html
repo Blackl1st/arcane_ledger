@@ -1268,13 +1268,84 @@
             renderSpellCards(pc);
         }
 
+        function computeUpcastDetails(sp, targetLevel) {
+            const baseLevel = parseInt(sp.level) || 0;
+            const diff = targetLevel - baseLevel;
+            if (diff <= 0) {
+                return {
+                    formula: sp.formula || '',
+                    displayEffect: sp.formula ? (sp.formula + (sp.damageType ? ' ' + sp.damageType : '')) : (sp.duration || ''),
+                    higherNote: ''
+                };
+            }
+
+            const higherText = (sp.higherLevels || '').toLowerCase();
+            const desc = (sp.description || '').toLowerCase();
+            const combinedText = higherText + ' ' + desc;
+
+            // Target count scaling (e.g. Heroism, Charm Person, Banishment, Hold Person, Invisibility)
+            if (combinedText.includes('additional creature') || combinedText.includes('one additional') || combinedText.includes('target one additional')) {
+                return {
+                    formula: sp.formula || '',
+                    displayEffect: `Targets: +${diff}`,
+                    higherNote: `Targets +${diff} additional creature${diff > 1 ? 's' : ''}`
+                };
+            }
+
+            // Specific dice step from higherLevels (e.g. "increases by 1d8", "increases by 1d6")
+            const incMatch = higherText.match(/increases by (\d+)d(\d+)/i);
+            if (incMatch && sp.formula) {
+                const stepCount = parseInt(incMatch[1]) || 1;
+                const die = incMatch[2];
+                const baseDiceMatch = sp.formula.match(new RegExp(`(\\d+)d${die}`, 'i'));
+                if (baseDiceMatch) {
+                    const baseCount = parseInt(baseDiceMatch[1]);
+                    const newCount = baseCount + (stepCount * diff);
+                    const scaledFormula = sp.formula.replace(new RegExp(`\\d+d${die}`, 'i'), `${newCount}d${die}`);
+                    return {
+                        formula: scaledFormula,
+                        displayEffect: sp.damageType ? `${scaledFormula} ${sp.damageType}` : scaledFormula,
+                        higherNote: `+${diff * stepCount}d${die} from Level ${targetLevel} slot`
+                    };
+                }
+            }
+
+            // Generic dice scaling if formula exists (e.g. 2d8 -> 3d8, 1d6 -> 2d6)
+            if (sp.formula) {
+                const mDice = sp.formula.match(/(\d+)d(\d+)/i);
+                if (mDice) {
+                    const count = parseInt(mDice[1]) + diff;
+                    const die = mDice[2];
+                    const scaledFormula = sp.formula.replace(/\d+d\d+/i, `${count}d${die}`);
+                    return {
+                        formula: scaledFormula,
+                        displayEffect: sp.damageType ? `${scaledFormula} ${sp.damageType}` : scaledFormula,
+                        higherNote: `Upcast to Lvl ${targetLevel}`
+                    };
+                }
+            }
+
+            return {
+                formula: sp.formula || '',
+                displayEffect: `Upcast Lvl ${targetLevel}`,
+                higherNote: `Cast with Lvl ${targetLevel} slot`
+            };
+        }
+
         function renderSpellFilterPills(pc) {
             const container = document.getElementById('spellbook-filter-pills');
             if (!container) return;
 
             const spells = pc.spells || [];
+            const slots = normalizeSpellSlots(pc.spellSlots);
             const levelsPresent = new Set();
             spells.forEach(s => levelsPresent.add(parseInt(s.level) || 0));
+            Object.entries(slots).forEach(([k, s]) => {
+                if (s && s.total > 0) {
+                    const lNum = parseInt(k.replace(/\D/g, '') || 0);
+                    if (lNum > 0) levelsPresent.add(lNum);
+                }
+            });
 
             const sortedLevels = Array.from(levelsPresent).sort((a, b) => a - b);
 
@@ -1285,7 +1356,15 @@
             `;
 
             sortedLevels.forEach(lvl => {
-                const count = spells.filter(s => (parseInt(s.level) || 0) === lvl).length;
+                let count = 0;
+                if (lvl === 0) {
+                    count = spells.filter(s => (parseInt(s.level) || 0) === 0).length;
+                } else {
+                    count = spells.filter(s => {
+                        const sLvl = parseInt(s.level) || 0;
+                        return sLvl > 0 && sLvl <= lvl;
+                    }).length;
+                }
                 const label = lvl === 0 ? 'Cantrips' : `Lvl ${lvl}`;
                 const filterKey = String(lvl);
                 const isSelected = currentSpellFilter === filterKey;
@@ -1328,20 +1407,66 @@
                 return;
             }
 
-            let filtered = allSpells.filter(sp => {
-                if (currentSpellFilter !== 'all') {
-                    if ((parseInt(sp.level) || 0) !== parseInt(currentSpellFilter)) return false;
-                }
-                if (currentSpellSearch) {
-                    const q = currentSpellSearch;
-                    const name = (sp.name || '').toLowerCase();
-                    const school = (sp.school || '').toLowerCase();
-                    const desc = (sp.description || '').toLowerCase();
-                    const dmg = (sp.damageType || '').toLowerCase();
-                    if (!name.includes(q) && !school.includes(q) && !desc.includes(q) && !dmg.includes(q)) return false;
-                }
-                return true;
-            });
+            const slots = normalizeSpellSlots(pc.spellSlots);
+            const availableSlotLevels = Object.entries(slots)
+                .filter(([k, s]) => s && s.total > 0)
+                .map(([k]) => parseInt(k.replace(/\D/g, '') || 0))
+                .filter(l => l > 0);
+            const maxSlotLevel = availableSlotLevels.length > 0 ? Math.max(...availableSlotLevels) : 1;
+
+            const targetLvl = currentSpellFilter === 'all' ? null : (parseInt(currentSpellFilter) || 0);
+
+            let filtered = [];
+            if (targetLvl === null) {
+                filtered = allSpells.map(s => ({
+                    spell: s,
+                    isUpcast: false,
+                    slotLevel: parseInt(s.level) || 0,
+                    upcastData: computeUpcastDetails(s, parseInt(s.level) || 0)
+                }));
+            } else if (targetLvl === 0) {
+                filtered = allSpells.filter(s => (parseInt(s.level) || 0) === 0).map(s => ({
+                    spell: s,
+                    isUpcast: false,
+                    slotLevel: 0,
+                    upcastData: computeUpcastDetails(s, 0)
+                }));
+            } else {
+                allSpells.forEach(s => {
+                    const sLvl = parseInt(s.level) || 0;
+                    if (sLvl === targetLvl) {
+                        filtered.push({
+                            spell: s,
+                            isUpcast: false,
+                            slotLevel: targetLvl,
+                            upcastData: computeUpcastDetails(s, targetLvl)
+                        });
+                    } else if (sLvl > 0 && sLvl < targetLvl) {
+                        filtered.push({
+                            spell: s,
+                            isUpcast: true,
+                            slotLevel: targetLvl,
+                            upcastData: computeUpcastDetails(s, targetLvl)
+                        });
+                    }
+                });
+                filtered.sort((a, b) => {
+                    if (a.isUpcast !== b.isUpcast) return a.isUpcast ? 1 : -1;
+                    return (a.spell.name || '').localeCompare(b.spell.name || '');
+                });
+            }
+
+            if (currentSpellSearch) {
+                const q = currentSpellSearch;
+                filtered = filtered.filter(item => {
+                    const s = item.spell;
+                    const name = (s.name || '').toLowerCase();
+                    const school = (s.school || '').toLowerCase();
+                    const desc = (s.description || '').toLowerCase();
+                    const dmg = (s.damageType || '').toLowerCase();
+                    return name.includes(q) || school.includes(q) || desc.includes(q) || dmg.includes(q);
+                });
+            }
 
             if (filtered.length === 0) {
                 container.innerHTML = `
@@ -1352,33 +1477,56 @@
                 return;
             }
 
-            container.innerHTML = filtered.map(sp => {
-                const lvl = parseInt(sp.level) || 0;
-                const lvlName = lvl === 0 ? 'Cantrip' : `Lvl ${lvl}`;
-                const lvlBadge = lvl === 0 ? 'bg-indigo-950 text-indigo-300 border border-indigo-700' : 'bg-purple-950 text-purple-300 border border-purple-700';
+            container.innerHTML = filtered.map(item => {
+                const sp = item.spell;
+                const isUpcast = item.isUpcast;
+                const slotLvl = item.slotLevel;
+                const upcast = item.upcastData;
+
+                const baseLvl = parseInt(sp.level) || 0;
+                const baseLvlName = baseLvl === 0 ? 'Cantrip' : `Lvl ${baseLvl}`;
                 const schoolBadge = getSchoolBadgeClasses(sp.school);
                 const isExpanded = activeExpandedSpellId === sp.id;
 
-                let castBtnText = `⚡ Cast ${lvlName}`;
-                if (sp.formula) {
-                    castBtnText = `⚡ Cast ${lvl === 0 ? 'Cantrip' : `(Lvl ${lvl})`} • ${sp.formula}`;
-                } else if (lvl === 0) {
-                    castBtnText = `⚡ Cast Cantrip`;
+                let lvlBadgeHtml = '';
+                if (isUpcast) {
+                    lvlBadgeHtml = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-blue-950 text-blue-300 border border-blue-700 shadow-sm">1ST CAST</span>`;
+                } else if (baseLvl === 0) {
+                    lvlBadgeHtml = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-indigo-950 text-indigo-300 border border-indigo-700">Cantrip</span>`;
+                } else {
+                    lvlBadgeHtml = `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono bg-purple-950 text-purple-300 border border-purple-700">${baseLvlName}</span>`;
                 }
 
+                const effectText = isUpcast ? upcast.displayEffect : (sp.formula ? (sp.damageType ? `${sp.formula} ${sp.damageType}` : sp.formula) : (sp.duration || 'Instantaneous'));
+
+                let castBtnText = `⚡ Cast`;
+                if (baseLvl === 0) {
+                    castBtnText = sp.formula ? `⚡ Cast Cantrip • ${sp.formula}` : `⚡ Cast Cantrip`;
+                } else if (isUpcast) {
+                    castBtnText = upcast.formula ? `⚡ Cast Lvl ${slotLvl} Slot • ${upcast.formula}` : `⚡ Cast Lvl ${slotLvl} Slot`;
+                } else {
+                    castBtnText = sp.formula ? `⚡ Cast Lvl ${baseLvl} • ${sp.formula}` : `⚡ Cast Lvl ${baseLvl}`;
+                }
+
+                const canUpcastInAll = (currentSpellFilter === 'all' && baseLvl > 0 && maxSlotLevel > baseLvl);
+
                 return `
-                    <div class="p-3.5 rounded-2xl bg-ledger-900 border border-ledger-750 space-y-2.5 shadow-sm transition hover:border-purple-500/40">
+                    <div class="p-3.5 rounded-2xl bg-ledger-900 border ${isUpcast ? 'border-blue-900/60 bg-gradient-to-r from-ledger-900 via-blue-950/20 to-ledger-900' : 'border-ledger-750'} space-y-2.5 shadow-sm transition hover:border-purple-500/40">
                         <!-- Header: Tap to expand details -->
                         <div onclick="toggleSpellExpand('${escapeHTML(sp.id)}')" class="cursor-pointer">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-1.5 flex-wrap">
                                         <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono ${schoolBadge}">${escapeHTML(sp.school || 'Magic')}</span>
-                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase font-mono ${lvlBadge}">${lvlName}</span>
+                                        ${lvlBadgeHtml}
+                                        ${isUpcast ? `<span class="text-[10px] text-blue-300 font-mono">→ Cast with Lvl ${slotLvl} slot</span>` : ''}
                                         ${sp.concentration ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">Conc [C]</span>' : ''}
                                         ${sp.ritual ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Ritual [R]</span>' : ''}
                                     </div>
-                                    <h4 class="font-display font-bold text-sm text-slate-100 hover:text-purple-200 transition mt-1 truncate">${escapeHTML(sp.name)}</h4>
+                                    <h4 class="font-display font-bold text-sm text-slate-100 hover:text-purple-200 transition mt-1 truncate flex items-center gap-2">
+                                        <span>${escapeHTML(sp.name)}</span>
+                                        ${isUpcast ? `<span class="text-xs font-mono font-normal text-blue-300">(${effectText})</span>` : ''}
+                                    </h4>
                                 </div>
                                 <span class="text-slate-400 text-xs transition-transform inline-block ${isExpanded ? 'rotate-180' : ''}">▼</span>
                             </div>
@@ -1390,7 +1538,8 @@
                                 <span>🎯 ${escapeHTML(sp.range || 'Self')}</span>
                                 <span>•</span>
                                 <span>⌛ ${escapeHTML(sp.duration || 'Instantaneous')}</span>
-                                ${sp.formula ? `<span>•</span> <span class="text-purple-300 font-bold">${sp.damageType ? '💥 ' + escapeHTML(sp.formula) + ' ' + escapeHTML(sp.damageType) : '🎲 ' + escapeHTML(sp.formula)}</span>` : ''}
+                                <span>•</span>
+                                <span class="text-purple-300 font-bold">💥 ${escapeHTML(effectText)}</span>
                             </div>
                         </div>
 
@@ -1410,10 +1559,15 @@
                         ` : ''}
 
                         <!-- Action Cast Bar -->
-                        <div class="flex items-center gap-1.5 pt-1">
-                            <button onclick="executeSpellCast('${escapeHTML(sp.id)}', false, ${lvl})" class="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-mono text-xs font-bold shadow tap-active flex items-center justify-center gap-1.5 transition">
+                        <div class="flex items-center gap-1.5 pt-1 flex-wrap">
+                            <button onclick="executeSpellCast('${escapeHTML(sp.id)}', false, ${slotLvl})" class="flex-1 min-w-[140px] py-2 px-3 rounded-xl bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-mono text-xs font-bold shadow tap-active flex items-center justify-center gap-1.5 transition">
                                 ${castBtnText}
                             </button>
+                            ${canUpcastInAll ? `
+                                <button onclick="executeSpellCast('${escapeHTML(sp.id)}', false, ${maxSlotLevel})" class="py-2 px-3 rounded-xl bg-blue-900/60 hover:bg-blue-800/80 border border-blue-600 text-blue-200 font-mono text-xs font-bold tap-active flex items-center gap-1 shadow transition" title="Cast using Level ${maxSlotLevel} Slot">
+                                    <span>⚡ Upcast Lvl ${maxSlotLevel} (${computeUpcastDetails(sp, maxSlotLevel).formula || ''})</span>
+                                </button>
+                            ` : ''}
                             ${sp.ritual ? `
                                 <button onclick="executeSpellCast('${escapeHTML(sp.id)}', true, 0)" class="py-2 px-3 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold tap-active flex items-center gap-1 shadow-sm transition" title="Cast as Ritual (10 min, no slot)">
                                     <span>📜</span> <span>Ritual</span>
@@ -1492,8 +1646,10 @@
             const remaining = Math.max(0, slots[targetKey].total - slots[targetKey].used);
             showCompanionToast(`Cast ${spell.name}! Expended Lvl ${lvl} slot (${remaining} left).`, 'success');
 
-            if (spell.formula) {
-                await executeDiceFormulaRoll(spell.formula, `Spell (Lvl ${lvl}): ${spell.name}${spell.damageType ? ' (' + spell.damageType + ')' : ''}`);
+            const upcast = computeUpcastDetails(spell, lvl);
+            const activeFormula = (lvl > (spell.level || 1)) ? (upcast.formula || spell.formula) : spell.formula;
+            if (activeFormula) {
+                await executeDiceFormulaRoll(activeFormula, `Spell (Lvl ${lvl}): ${spell.name}${spell.damageType ? ' (' + spell.damageType + ')' : ''}`);
             } else {
                 await broadcastSpellCast(spell, `Lvl ${lvl} Slot`, null);
             }

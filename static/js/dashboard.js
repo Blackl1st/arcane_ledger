@@ -17394,9 +17394,10 @@ function renderPartySpellsModal() {
                             <span class="text-slate-400 text-[10px] font-mono">${escapeHTML(s.school || '')}</span>
                             ${s.concentration ? '<span class="px-1 py-0.2 rounded text-[9px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">Conc</span>' : ''}
                             ${s.ritual ? '<span class="px-1 py-0.2 rounded text-[9px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Ritual</span>' : ''}
+                            ${s.higherLevels ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold font-mono bg-blue-500/20 text-blue-300 border border-blue-500/40" title="${escapeHTML(s.higherLevels)}">⚡ Scales</span>` : ''}
                         </div>
                         <h5 class="font-display font-bold text-slate-200 mt-0.5 truncate">${escapeHTML(s.name)}</h5>
-                        <p class="text-[10px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(s.castTime || 'Action')} • ${escapeHTML(s.range || 'Self')} • ${s.formula ? escapeHTML(s.formula) + (s.damageType ? ' ' + escapeHTML(s.damageType) : '') : escapeHTML(s.duration || 'Instant')}</p>
+                        <p class="text-[10px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(s.castTime || 'Action')} • ${escapeHTML(s.range || 'Self')} • ${s.formula ? escapeHTML(s.formula) + (s.damageType ? ' ' + escapeHTML(s.damageType) : '') : escapeHTML(s.duration || 'Instant')}${s.higherLevels ? ' • ' + escapeHTML(s.higherLevels) : ''}</p>
                     </div>
                     <button onclick="deleteSpellFromPC('${currentPc.id}', '${escapeHTML(s.id || s.name)}')" class="w-7 h-7 rounded-lg bg-rose-950/50 hover:bg-rose-900 border border-rose-800 text-rose-300 flex items-center justify-center text-xs shrink-0 transition" title="Remove from Spellbook">
                         🗑️
