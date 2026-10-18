@@ -2986,17 +2986,17 @@ function rollFullNPC() {
 function renderCurrentNPC(flashCards = []) {
     const npc = appState.currentNPC;
     const nameEl = document.getElementById('npc-name');
-    if (!nameEl) return;
+    if (!nameEl || !npc) return;
 
-    nameEl.innerText = npc.name;
-    document.getElementById('npc-epithet').innerText = npc.epithet;
-    document.getElementById('npc-species-badge').innerText = npc.species;
-    document.getElementById('npc-role-badge').innerText = npc.role;
-    document.getElementById('npc-category-tag').innerText = npc.category;
-    document.getElementById('npc-voice').innerText = npc.voice;
-    document.getElementById('npc-appearance').innerText = npc.appearance;
-    document.getElementById('npc-personality').innerText = npc.personality;
-    document.getElementById('npc-backstory').innerText = npc.backstory;
+    nameEl.innerText = npc.name || 'Unnamed NPC';
+    document.getElementById('npc-epithet').innerText = npc.epithet || '';
+    document.getElementById('npc-species-badge').innerText = npc.species || npc.type || 'Humanoid';
+    document.getElementById('npc-role-badge').innerText = npc.role || npc.category || 'NPC';
+    document.getElementById('npc-category-tag').innerText = npc.category || 'Townsfolk';
+    document.getElementById('npc-voice').innerText = npc.voice || '';
+    document.getElementById('npc-appearance').innerText = npc.appearance || '';
+    document.getElementById('npc-personality').innerText = npc.personality || '';
+    document.getElementById('npc-backstory').innerText = npc.backstory || '';
     const facHidden = document.getElementById('npc-faction');
     if (facHidden) facHidden.innerText = npc.faction || '';
     const facStandingEl = document.getElementById('npc-faction-standing');
@@ -3032,10 +3032,10 @@ function renderCurrentNPC(flashCards = []) {
     // Render Location Dropdown
     populateNpcLocationOptions(npc.location);
 
-    document.getElementById('npc-loot').innerText = npc.loot;
-    document.getElementById('npc-stat-name').innerText = npc.statName;
-    document.getElementById('npc-stat-ac-hp').innerText = npc.statAcHp;
-    document.getElementById('npc-stat-details').innerText = npc.statDetails;
+    document.getElementById('npc-loot').innerText = npc.loot || '';
+    document.getElementById('npc-stat-name').innerText = npc.statName || npc.name || 'Statblock Reference';
+    document.getElementById('npc-stat-ac-hp').innerText = npc.statAcHp || (npc.ac && npc.hp ? `AC ${npc.ac} • ${npc.hp} HP` : '');
+    document.getElementById('npc-stat-details').innerText = npc.statDetails || (npc.cr ? `CR ${npc.cr} • Speed ${npc.speed || '30 ft'}` : '');
     document.getElementById('npc-session-notes').value = npc.notes || "";
 
     const portraitEl = document.getElementById('npc-portrait-img');
@@ -11410,8 +11410,11 @@ function renderStagedMonsters() {
     }
 
     container.innerHTML = staged.map(item => {
-        const m = appState.monsters.find(x => x.id === item.monsterId);
-        if (!m) return '';
+        const monId = item.monsterId || item.id;
+        let m = appState.monsters.find(x => x.id === monId || (x.name && item.name && x.name.toLowerCase() === item.name.toLowerCase()));
+        if (!m) {
+            m = { id: monId || 'creature', name: item.name || monId || 'Creature', cr: item.cr || '1', xp: item.xp || 200 };
+        }
         const xpEach = parseInt(m.xp) || 0;
         const subtotal = xpEach * item.count;
         const tokenUrl = m.imageUrl || `/static/images/monsters/${m.id}.webp`;
@@ -11490,8 +11493,10 @@ function renderEncounterTemplates() {
         else if (enc.difficulty === 'Deadly') diffColor = "bg-rose-950 text-rose-300 border-rose-800";
 
         const monsterSummary = (enc.monsters || []).map(m => {
-            const mon = appState.monsters.find(x => x.id === m.monsterId);
-            return `${m.count}x ${mon ? mon.name : m.monsterId}`;
+            const monId = m.monsterId || m.id;
+            const mon = appState.monsters.find(x => x.id === monId || (x.name && m.name && x.name.toLowerCase() === m.name.toLowerCase()));
+            const displayName = m.name || (mon ? mon.name : monId) || 'Creature';
+            return `${m.count || 1}x ${displayName}`;
         }).join(', ');
 
         return `
@@ -11524,7 +11529,14 @@ function renderEncounterTemplates() {
 function loadEncounterTemplate(encId) {
     const enc = (appState.encounters || []).find(e => e.id === encId);
     if (!enc) return;
-    appState.stagedEncounter = (enc.monsters || []).map(m => ({ monsterId: m.monsterId, count: m.count || 1 }));
+    appState.stagedEncounter = (enc.monsters || []).map(m => {
+        const monId = m.monsterId || m.id;
+        const mon = appState.monsters.find(x => x.id === monId || (x.name && m.name && x.name.toLowerCase() === m.name.toLowerCase()));
+        return {
+            monsterId: mon ? mon.id : (monId || 'wolf'),
+            count: m.count || 1
+        };
+    });
     renderEncountersView();
     showToast(`Loaded "${enc.name}" into Encounter Builder!`, "success");
 }
@@ -13034,6 +13046,24 @@ function applyModuleVisibility() {
         });
         const nextTab = firstEnabled ? firstEnabled.id : 'settings';
         switchTab(nextTab);
+    }
+
+    // Scoped CoS features: Tarokka Deck
+    const isCoS = appState.currentCampaign && (
+        appState.currentCampaign.template === 'curse_of_strahd' ||
+        (appState.currentCampaign.name && appState.currentCampaign.name.toLowerCase().includes('strahd')) ||
+        (appState.currentCampaign.description && appState.currentCampaign.description.toLowerCase().includes('strahd'))
+    );
+    const tarokkaSubBtn = document.getElementById('world-subtab-tarokka');
+    if (tarokkaSubBtn) {
+        if (isCoS && worldEnabled) {
+            tarokkaSubBtn.classList.remove('hidden');
+        } else {
+            tarokkaSubBtn.classList.add('hidden');
+            if (appState.worldActiveSubtab === 'tarokka') {
+                switchWorldSubtab('overworld');
+            }
+        }
     }
 
     renderActivePresetBadge();

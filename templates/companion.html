@@ -424,9 +424,14 @@
 
             <!-- Grimoire Search & Filter Pills -->
             <div class="space-y-2">
-                <div class="relative">
-                    <input id="spellbook-search-input" oninput="handleSpellSearch(this.value)" type="text" placeholder="Search spells, damage type, or school..." class="w-full bg-ledger-900 border border-ledger-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-400 font-mono">
-                    <span class="absolute right-3.5 top-2.5 text-slate-500 text-xs">🔍</span>
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <input id="spellbook-search-input" oninput="handleSpellSearch(this.value)" type="text" placeholder="Search spells, damage type, or school..." class="w-full bg-ledger-900 border border-ledger-750 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-400 font-mono">
+                        <span class="absolute right-3.5 top-2.5 text-slate-500 text-xs">🔍</span>
+                    </div>
+                    <button onclick="openAddSpellModal()" type="button" class="px-3 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/60 text-purple-300 font-mono text-xs font-bold tap-active flex items-center gap-1.5 shrink-0 shadow-sm" title="Add New Spell">
+                        <span>✨</span><span>+ Add</span>
+                    </button>
                 </div>
 
                 <!-- Filter Pills: All, Cantrip, 1st, 2nd, 3rd, etc. -->
@@ -774,6 +779,87 @@
             <div class="pt-2 border-t border-rose-950 text-center text-[10px] text-rose-400/60 font-mono italic">
                 "The mists part for none save fate itself."
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD SPELL TO GRIMOIRE -->
+    <div id="modal-add-spell" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-ledger-900 border-2 border-purple-500/60 rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl">✨</span>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-purple-300">Add Spell to Grimoire</h3>
+                        <p class="text-[11px] text-slate-400 font-mono">Type name to auto-fill from compendium</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-add-spell')" class="text-slate-400 hover:text-slate-200 text-lg">✕</button>
+            </div>
+            <form id="form-add-spell" onsubmit="submitAddSpell(event)" class="space-y-3 flex-1 overflow-y-auto pr-1 text-xs font-mono">
+                <div>
+                    <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Spell Name</label>
+                    <input id="add-spell-name" list="compendium-spells-datalist" oninput="onAddSpellNameInput(this.value)" type="text" required placeholder="e.g. Misty Step, Aid, Divine Smite..." class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-400 font-sans">
+                    <datalist id="compendium-spells-datalist"></datalist>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Spell Level</label>
+                        <select id="add-spell-level" class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-400">
+                            <option value="0">Cantrip (0)</option>
+                            <option value="1">1st Level</option>
+                            <option value="2">2nd Level</option>
+                            <option value="3">3rd Level</option>
+                            <option value="4">4th Level</option>
+                            <option value="5">5th Level</option>
+                            <option value="6">6th Level</option>
+                            <option value="7">7th Level</option>
+                            <option value="8">8th Level</option>
+                            <option value="9">9th Level</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">School</label>
+                        <select id="add-spell-school" class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-400">
+                            <option value="Evocation">Evocation</option>
+                            <option value="Abjuration">Abjuration</option>
+                            <option value="Conjuration">Conjuration</option>
+                            <option value="Divination">Divination</option>
+                            <option value="Enchantment">Enchantment</option>
+                            <option value="Illusion">Illusion</option>
+                            <option value="Necromancy">Necromancy</option>
+                            <option value="Transmutation">Transmutation</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Casting Time</label>
+                        <input id="add-spell-cast-time" type="text" placeholder="1 Action" class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-400">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Range</label>
+                        <input id="add-spell-range" type="text" placeholder="Self / 30 ft" class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-400">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Duration</label>
+                        <input id="add-spell-duration" type="text" placeholder="Instantaneous" class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-400">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Damage / Dice</label>
+                        <input id="add-spell-damage" type="text" placeholder="2d6 Radiant" class="w-full bg-ledger-950 border border-ledger-750 rounded-xl px-2.5 py-2 text-slate-200 focus:outline-none focus:border-purple-400">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase text-slate-400 block mb-1 font-bold">Spell Description</label>
+                    <textarea id="add-spell-desc" rows="3" placeholder="Spell rules and effects..." class="w-full bg-ledger-950 border border-ledger-750 rounded-xl p-2.5 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-400 font-sans text-xs"></textarea>
+                </div>
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-add-spell')" class="px-4 py-2 rounded-xl bg-ledger-800 text-slate-300 hover:text-white font-mono text-xs">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold shadow-md">Add Spell ✨</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1634,22 +1720,27 @@
                 const name = it.name || 'Item';
                 const notes = it.notes || '';
                 const qty = it.qty || it.quantity || 1;
-                const damageDice = it.damageDice || it.damage || getWeaponDamageDice(name, notes);
-                const isWeapon = cat.includes('weapon') || notes.toLowerCase().includes('mastery') || (damageDice && !cat.includes('potion') && !cat.includes('armor'));
+                const explicitWeapon = cat.includes('weapon') || it.isWeapon === true;
+                const knownWeaponDice = getWeaponDamageDice(name, null);
+                const hasMastery = notes.toLowerCase().includes('mastery') || (it.mastery && it.mastery.length > 0);
+                const isAdventuringGear = cat.includes('gear') || cat.includes('tool') || cat.includes('equipment') || cat.includes('item');
+                const damageDice = it.damageDice || it.damage || getWeaponDamageDice(name, notes) || (explicitWeapon ? '1d8' : null);
+                const isWeapon = (explicitWeapon || (knownWeaponDice !== null && !isAdventuringGear) || (hasMastery && !isAdventuringGear)) && !cat.includes('potion') && !cat.includes('armor');
+                const finalDice = damageDice || knownWeaponDice || '1d8';
 
                 if (isWeapon) {
                     weaponsList.innerHTML += `
                         <div class="p-3 rounded-2xl bg-ledger-900 border border-ledger-750 flex items-center justify-between shadow-sm gap-2">
-                            <div class="flex-1 min-w-0 pr-1 cursor-pointer" onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')">
+                            <div class="flex-1 min-w-0 pr-1 cursor-pointer" onclick="rollWeaponDamage('${escapeHTML(name)}', '${finalDice}')">
                                 <div class="flex items-center gap-2">
                                     <h4 class="font-display font-bold text-xs text-amber-200 truncate hover:text-amber-100 transition">${escapeHTML(name)}</h4>
                                     ${it.attuned ? '<span class="text-[9px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.2 rounded font-mono shrink-0">Attuned</span>' : ''}
                                 </div>
-                                <p class="text-[11px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(notes || damageDice)}</p>
+                                <p class="text-[11px] text-slate-400 font-mono mt-0.5 truncate">${escapeHTML(notes || finalDice)}</p>
                             </div>
                             <div class="flex items-center gap-1.5 shrink-0">
-                                <button onclick="rollWeaponDamage('${escapeHTML(name)}', '${damageDice}')" class="px-3 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/60 text-amber-300 font-mono text-xs font-bold tap-active flex items-center gap-1.5 shadow-sm" title="Roll Damage (${damageDice})">
-                                    <span>💥</span><span>${damageDice}</span>
+                                <button onclick="rollWeaponDamage('${escapeHTML(name)}', '${finalDice}')" class="px-3 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/60 text-amber-300 font-mono text-xs font-bold tap-active flex items-center gap-1.5 shadow-sm" title="Roll Damage (${finalDice})">
+                                    <span>💥</span><span>${finalDice}</span>
                                 </button>
                                 <button onclick="rollWeaponAttack('${escapeHTML(name)}')" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-750 border border-ledger-700 text-slate-300 font-mono text-xs font-bold tap-active flex items-center gap-1" title="Roll 1d20 Attack">
                                     <span>⚔️</span><span>d20 Atk</span>
@@ -1986,7 +2077,7 @@
             for (const [wName, dice] of Object.entries(STANDARD_WEAPON_DAMAGE)) {
                 if (clean.includes(wName)) return dice;
             }
-            return '1d8';
+            return null;
         }
 
         function rollDiceExpression(formulaStr) {
@@ -2509,10 +2600,116 @@
             companionTarokkaReading = tarokka;
             const cardEl = document.getElementById('companion-tarokka-card');
             if (!cardEl) return;
-            if (tarokka && (tarokka.tome || tarokka.holySymbol)) {
+            const isRevealed = tarokka && (tarokka.broadcasted === true || tarokka.isDelivered === true) && (tarokka.tome || tarokka.holySymbol);
+            if (isRevealed) {
                 cardEl.classList.remove('hidden');
             } else {
                 cardEl.classList.add('hidden');
+            }
+        }
+
+        let compendiumSpellsCache = null;
+        async function openAddSpellModal() {
+            if (!activeCharacter) {
+                showCompanionToast('Please select a character first');
+                return;
+            }
+            const modal = document.getElementById('modal-add-spell');
+            if (!modal) return;
+            document.getElementById('form-add-spell').reset();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            if (!compendiumSpellsCache) {
+                try {
+                    const res = await fetch('/api/spells');
+                    compendiumSpellsCache = await res.json();
+                    const datalist = document.getElementById('compendium-spells-datalist');
+                    if (datalist && Array.isArray(compendiumSpellsCache)) {
+                        datalist.innerHTML = compendiumSpellsCache.map(s => `<option value="${escapeHTML(s.name)}"></option>`).join('');
+                    }
+                } catch (e) {
+                    console.error('Failed to load compendium spells:', e);
+                }
+            }
+        }
+
+        function onAddSpellNameInput(val) {
+            if (!compendiumSpellsCache || !val) return;
+            const norm = val.toLowerCase().trim();
+            const match = compendiumSpellsCache.find(s => s.name && s.name.toLowerCase() === norm);
+            if (match) {
+                if (match.level !== undefined) document.getElementById('add-spell-level').value = String(match.level);
+                if (match.school) document.getElementById('add-spell-school').value = match.school;
+                if (match.castingTime) document.getElementById('add-spell-cast-time').value = match.castingTime;
+                if (match.range) document.getElementById('add-spell-range').value = match.range;
+                if (match.duration) document.getElementById('add-spell-duration').value = match.duration;
+                if (match.damage) document.getElementById('add-spell-damage').value = match.damage;
+                if (match.description) document.getElementById('add-spell-desc').value = match.description;
+            }
+        }
+
+        async function submitAddSpell(e) {
+            e.preventDefault();
+            if (!activeCharacter) return;
+            const name = document.getElementById('add-spell-name').value.trim();
+            if (!name) return;
+            const level = parseInt(document.getElementById('add-spell-level').value) || 0;
+            const school = document.getElementById('add-spell-school').value;
+            const castTime = document.getElementById('add-spell-cast-time').value.trim() || '1 Action';
+            const range = document.getElementById('add-spell-range').value.trim() || 'Self';
+            const duration = document.getElementById('add-spell-duration').value.trim() || 'Instantaneous';
+            const damage = document.getElementById('add-spell-damage').value.trim();
+            const desc = document.getElementById('add-spell-desc').value.trim();
+
+            const spellObj = {
+                id: `spl-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+                name: name,
+                level: level,
+                school: school,
+                castingTime: castTime,
+                range: range,
+                duration: duration,
+                damage: damage || undefined,
+                description: desc,
+                prepared: true
+            };
+
+            try {
+                const res = await fetch('/api/companion/add-spell', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeCharacter.id, spell: spellObj })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if (!activeCharacter.spells) activeCharacter.spells = [];
+                    const existingIdx = activeCharacter.spells.findIndex(s => (s.name || '').toLowerCase() === name.toLowerCase());
+                    if (existingIdx >= 0) {
+                        activeCharacter.spells[existingIdx] = spellObj;
+                    } else {
+                        activeCharacter.spells.push(spellObj);
+                    }
+                    activeCharacter.spells.sort((a, b) => (a.level - b.level) || a.name.localeCompare(b.name));
+
+                    // If character had no spell slots for this level and level > 0, ensure slot exists
+                    if (level > 0) {
+                        const lvlKey = `level_${level}`;
+                        if (!activeCharacter.spellSlots) activeCharacter.spellSlots = {};
+                        if (!activeCharacter.spellSlots[lvlKey] || activeCharacter.spellSlots[lvlKey].total === 0) {
+                            activeCharacter.spellSlots[lvlKey] = { total: 2, used: 0 };
+                        }
+                    }
+
+                    closeModal('modal-add-spell');
+                    renderSpellBook(activeCharacter);
+                    showCompanionToast(`✨ Added ${name} to Grimoire!`);
+                } else {
+                    showCompanionToast('Error: ' + (data.detail || 'Could not add spell'));
+                }
+            } catch (err) {
+                console.error('Failed to add spell:', err);
+                showCompanionToast('Failed to add spell');
             }
         }
 

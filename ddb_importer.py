@@ -64,6 +64,56 @@ FULL_CASTER_SLOTS = [
     {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 3, "used": 0}, "level_5": {"total": 3, "used": 0}, "level_6": {"total": 2, "used": 0}, "level_7": {"total": 2, "used": 0}, "level_8": {"total": 1, "used": 0}, "level_9": {"total": 1, "used": 0}},  # Lvl 20
 ]
 
+# Standard 5e / 2024 Half Caster spell slot table (Paladin & Ranger, index = level)
+HALF_CASTER_SLOTS = [
+    {},  # Lvl 0
+    {"level_1": {"total": 2, "used": 0}},  # Lvl 1 (2024 spellcasting at 1st level)
+    {"level_1": {"total": 2, "used": 0}},  # Lvl 2
+    {"level_1": {"total": 3, "used": 0}},  # Lvl 3
+    {"level_1": {"total": 3, "used": 0}},  # Lvl 4
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 2, "used": 0}},  # Lvl 5
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 2, "used": 0}},  # Lvl 6
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}},  # Lvl 7
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}},  # Lvl 8
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 2, "used": 0}},  # Lvl 9
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 2, "used": 0}},  # Lvl 10
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}},  # Lvl 11
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}},  # Lvl 12
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 1, "used": 0}},  # Lvl 13
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 1, "used": 0}},  # Lvl 14
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 2, "used": 0}},  # Lvl 15
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 2, "used": 0}},  # Lvl 16
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 3, "used": 0}, "level_5": {"total": 1, "used": 0}},  # Lvl 17
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 3, "used": 0}, "level_5": {"total": 1, "used": 0}},  # Lvl 18
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 3, "used": 0}, "level_5": {"total": 2, "used": 0}},  # Lvl 19
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 3, "used": 0}, "level_5": {"total": 2, "used": 0}},  # Lvl 20
+]
+
+# Standard 5e / 2024 Third Caster spell slot table (Eldritch Knight & Arcane Trickster, index = level)
+THIRD_CASTER_SLOTS = [
+    {},  # Lvl 0
+    {},  # Lvl 1
+    {},  # Lvl 2
+    {"level_1": {"total": 2, "used": 0}},  # Lvl 3
+    {"level_1": {"total": 3, "used": 0}},  # Lvl 4
+    {"level_1": {"total": 3, "used": 0}},  # Lvl 5
+    {"level_1": {"total": 3, "used": 0}},  # Lvl 6
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 2, "used": 0}},  # Lvl 7
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 2, "used": 0}},  # Lvl 8
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 2, "used": 0}},  # Lvl 9
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}},  # Lvl 10
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}},  # Lvl 11
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}},  # Lvl 12
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 2, "used": 0}},  # Lvl 13
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 2, "used": 0}},  # Lvl 14
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 2, "used": 0}},  # Lvl 15
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}},  # Lvl 16
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}},  # Lvl 17
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}},  # Lvl 18
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 1, "used": 0}},  # Lvl 19
+    {"level_1": {"total": 4, "used": 0}, "level_2": {"total": 3, "used": 0}, "level_3": {"total": 3, "used": 0}, "level_4": {"total": 1, "used": 0}},  # Lvl 20
+]
+
 # Warlock Pact Magic slot table: (slot_count, slot_level)
 WARLOCK_PACT_SLOTS = {
     1: (1, 1),
@@ -516,15 +566,34 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         )
         spell_attack_mod += atk_bonus
 
-    # 12. Spell Slots Generation (Multiclass Caster Rules)
-    effective_caster_level = full_caster_levels + (half_caster_levels // 2) + ((artificer_levels + 1) // 2) + (third_caster_levels // 3)
+    # 12. Spell Slots Generation (Multiclass Caster Rules & Dedicated Half/Third Caster Tables)
     spell_slots = {}
+    is_single_half = (half_caster_levels > 0 and full_caster_levels == 0 and artificer_levels == 0 and third_caster_levels == 0)
+    is_single_artificer = (artificer_levels > 0 and full_caster_levels == 0 and half_caster_levels == 0 and third_caster_levels == 0)
+    is_single_third = (third_caster_levels > 0 and full_caster_levels == 0 and half_caster_levels == 0 and artificer_levels == 0)
 
-    if effective_caster_level > 0:
-        capped_lvl = min(20, effective_caster_level)
-        slots_template = FULL_CASTER_SLOTS[capped_lvl]
+    if is_single_half:
+        capped_lvl = min(20, half_caster_levels)
+        slots_template = HALF_CASTER_SLOTS[capped_lvl]
         for lvl_key, slot_obj in slots_template.items():
             spell_slots[lvl_key] = {"total": slot_obj["total"], "used": 0}
+    elif is_single_artificer:
+        art_eff = min(20, (artificer_levels + 1) // 2)
+        slots_template = FULL_CASTER_SLOTS[art_eff]
+        for lvl_key, slot_obj in slots_template.items():
+            spell_slots[lvl_key] = {"total": slot_obj["total"], "used": 0}
+    elif is_single_third:
+        capped_lvl = min(20, third_caster_levels)
+        slots_template = THIRD_CASTER_SLOTS[capped_lvl]
+        for lvl_key, slot_obj in slots_template.items():
+            spell_slots[lvl_key] = {"total": slot_obj["total"], "used": 0}
+    else:
+        effective_caster_level = full_caster_levels + (half_caster_levels // 2) + ((artificer_levels + 1) // 2) + (third_caster_levels // 3)
+        if effective_caster_level > 0:
+            capped_lvl = min(20, effective_caster_level)
+            slots_template = FULL_CASTER_SLOTS[capped_lvl]
+            for lvl_key, slot_obj in slots_template.items():
+                spell_slots[lvl_key] = {"total": slot_obj["total"], "used": 0}
 
     # Warlock Pact Magic slots
     if warlock_levels > 0:
@@ -539,7 +608,13 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
             if isinstance(ss, dict):
                 lvl = ss.get("level")
                 used = ss.get("used", 0)
+                total = ss.get("available") or ss.get("total") or ss.get("max")
                 key = f"level_{lvl}"
+                if total and isinstance(total, int) and total > 0:
+                    if key not in spell_slots:
+                        spell_slots[key] = {"total": total, "used": 0}
+                    else:
+                        spell_slots[key]["total"] = max(spell_slots[key]["total"], total)
                 if key in spell_slots and used > 0:
                     spell_slots[key]["used"] = min(spell_slots[key]["total"], used)
 
@@ -584,11 +659,58 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
     for cs in d.get("customSpells") or []:
         raw_spell_candidates.append(cs)
 
+    # Class / Race / Feat Action spells (Paladin Oath spells, smites, domain spells, etc.)
+    actions_dict = d.get("actions") or {}
+    if isinstance(actions_dict, dict):
+        for act_cat, act_list in actions_dict.items():
+            if isinstance(act_list, list):
+                for act in act_list:
+                    if isinstance(act, dict):
+                        act_name = (act.get("name") or (act.get("definition") or {}).get("name") or "").strip().lower()
+                        if act.get("isSpell") or act.get("spell") or act.get("spellId") or (act_name and act_name in compendium_spells):
+                            raw_spell_candidates.append(act)
+
+    # Inventory magic item granted spells
+    for it in (d.get("inventory") or []):
+        if isinstance(it, dict):
+            idef = it.get("definition") or {}
+            for sp in (idef.get("spells") or it.get("spells") or []):
+                if isinstance(sp, dict):
+                    raw_spell_candidates.append(sp)
+
+    # Feat and Racial trait granted spells
+    for ft in (d.get("feats") or []):
+        if isinstance(ft, dict):
+            fdef = ft.get("definition") or {}
+            for sp in (fdef.get("spells") or ft.get("spells") or []):
+                if isinstance(sp, dict):
+                    raw_spell_candidates.append(sp)
+
+    for rt in ((d.get("race") or {}).get("racialTraits") or []):
+        if isinstance(rt, dict):
+            rdef = rt.get("definition") or {}
+            for sp in (rdef.get("spells") or rt.get("spells") or []):
+                if isinstance(sp, dict):
+                    raw_spell_candidates.append(sp)
+
+    options_dict = d.get("options") or {}
+    if isinstance(options_dict, dict):
+        for opt_cat, opt_list in options_dict.items():
+            if isinstance(opt_list, list):
+                for opt in opt_list:
+                    if isinstance(opt, dict):
+                        opt_name = (opt.get("name") or (opt.get("definition") or {}).get("name") or "").strip().lower()
+                        if opt.get("isSpell") or opt.get("spell") or opt.get("spellId") or (opt_name and opt_name in compendium_spells):
+                            raw_spell_candidates.append(opt)
+                        for sp in ((opt.get("definition") or {}).get("spells") or opt.get("spells") or []):
+                            if isinstance(sp, dict):
+                                raw_spell_candidates.append(sp)
+
     for s in raw_spell_candidates:
         if not isinstance(s, dict):
             continue
         definition = s.get("definition") or s
-        s_name = definition.get("name")
+        s_name = (s.get("definition") or {}).get("name") or s.get("name")
         if not s_name:
             continue
         norm_name = s_name.lower().strip()

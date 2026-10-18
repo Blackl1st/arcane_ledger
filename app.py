@@ -477,6 +477,81 @@ def get_active_campaign_dir() -> Path:
     camp_dir.mkdir(parents=True, exist_ok=True)
     return camp_dir
 
+def check_and_upgrade_cos_campaign(camp_dir: Path, camp_obj: Dict[str, Any]):
+    try:
+        is_cos = (
+            camp_obj.get("template") == "curse_of_strahd" or
+            "strahd" in camp_obj.get("name", "").lower() or
+            "strahd" in camp_obj.get("description", "").lower()
+        )
+        if is_cos:
+            # Upgrade Roster if incomplete
+            roster_path = camp_dir / "roster.json"
+            if roster_path.exists():
+                try:
+                    with open(roster_path, "r", encoding="utf-8") as f:
+                        curr_roster = json.load(f)
+                    if len(curr_roster) < 30 or any("statName" not in n for n in curr_roster[:5]):
+                        with open(roster_path, "w", encoding="utf-8") as f:
+                            json.dump(cos_module_pack.get_cos_roster(), f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+
+            # Upgrade Encounters if incomplete or old format
+            enc_path = camp_dir / "encounters.json"
+            if enc_path.exists():
+                try:
+                    with open(enc_path, "r", encoding="utf-8") as f:
+                        curr_encs = json.load(f)
+                    if len(curr_encs) < 15 or any("monsterId" not in m for e in curr_encs for m in e.get("monsters", [])[:1]):
+                        with open(enc_path, "w", encoding="utf-8") as f:
+                            json.dump(cos_module_pack.get_cos_encounters(), f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+
+            # Fix Handouts so Kolyan's plea is not prematurely delivered
+            hnd_path = camp_dir / "handouts.json"
+            if hnd_path.exists():
+                try:
+                    with open(hnd_path, "r", encoding="utf-8") as f:
+                        curr_hnds = json.load(f)
+                    hnd_updated = False
+                    for h in curr_hnds:
+                        if h.get("id") == "hnd-cos-indirovich-plea" and h.get("isDelivered") is True:
+                            h["isDelivered"] = False
+                            h["status"] = "ready"
+                            h.pop("deliveredAt", None)
+                            hnd_updated = True
+                    if hnd_updated:
+                        with open(hnd_path, "w", encoding="utf-8") as f:
+                            json.dump(curr_hnds, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+
+        # Auto-heal spell slots in party.json for Paladins/Rangers
+        for party_path in [camp_dir / "party.json", DATA_DIR / "party.json"]:
+            if party_path.exists():
+                try:
+                    with open(party_path, "r", encoding="utf-8") as f:
+                        party = json.load(f)
+                    party_updated = False
+                    for pc in party:
+                        role = (pc.get("classRole") or "").lower()
+                        lvl = int(pc.get("level") or 1)
+                        if ("paladin" in role or "ranger" in role) and lvl >= 5:
+                            slots = pc.setdefault("spellSlots", {})
+                            if "level_2" not in slots or slots["level_2"].get("total", 0) < 2:
+                                slots["level_1"] = {"total": 4, "used": slots.get("level_1", {}).get("used", 0)}
+                                slots["level_2"] = {"total": 2, "used": slots.get("level_2", {}).get("used", 0)}
+                                party_updated = True
+                    if party_updated:
+                        with open(party_path, "w", encoding="utf-8") as f:
+                            json.dump(party, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"Error checking/upgrading campaign data: {e}")
+
 def ensure_campaigns_system():
     CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
     default_dir = CAMPAIGNS_DIR / "default"
@@ -537,6 +612,15 @@ def ensure_campaigns_system():
             ]
         }
         save_campaigns_manifest(manifest)
+
+    try:
+        manifest = get_campaigns_manifest()
+        act_id = manifest.get("activeCampaignId", "default")
+        act_camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == act_id), None)
+        if act_camp:
+            check_and_upgrade_cos_campaign(CAMPAIGNS_DIR / act_id, act_camp)
+    except Exception:
+        pass
 
 # Initialize on module import
 ensure_campaigns_system()
@@ -1208,6 +1292,9 @@ async def get_companion_state(heroId: Optional[str] = None):
         elif heroId and target == heroId:
             delivered_handouts.append(h)
 
+    tarokka_data = read_json("tarokka.json", None)
+    revealed_tarokka = tarokka_data if (tarokka_data and (tarokka_data.get("broadcasted") is True or tarokka_data.get("isDelivered") is True)) else None
+
     return {
         "status": "success",
         "campaignName": camp_name,
@@ -1216,7 +1303,7 @@ async def get_companion_state(heroId: Optional[str] = None):
         "broadcast": broadcast,
         "handouts": delivered_handouts,
         "lastRest": last_rest,
-        "tarokka": read_json("tarokka.json", None),
+        "tarokka": revealed_tarokka,
         "recentRolls": sorted([r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)], key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
     }
 
@@ -1286,6 +1373,38 @@ async def update_companion_slots(payload: Dict[str, Any]):
     except Exception:
         pass
     return {"status": "success", "spellSlots": pc.get("spellSlots"), "resources": pc.get("resources")}
+
+@app.post("/api/companion/add-spell")
+async def add_companion_spell(payload: Dict[str, Any]):
+    pc_id = payload.get("id") or payload.get("characterId")
+    party = read_json("party.json", [])
+    pc = next((p for p in party if p.get("id") == pc_id), None)
+    if not pc:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    spell = payload.get("spell")
+    if not spell or not isinstance(spell, dict) or not spell.get("name"):
+        raise HTTPException(status_code=400, detail="Invalid spell data")
+
+    if "spells" not in pc or not isinstance(pc["spells"], list):
+        pc["spells"] = []
+
+    existing = next((s for s in pc["spells"] if s.get("name", "").lower() == spell["name"].lower()), None)
+    if not existing:
+        if "id" not in spell:
+            spell["id"] = f"spl-{uuid.uuid4().hex[:8]}"
+        pc["spells"].append(spell)
+
+    write_json("party.json", party)
+    try:
+        await streamdeck_manager.broadcast({
+            "event": "party_updated",
+            "character": pc,
+            "party": party
+        })
+    except Exception:
+        pass
+    return {"status": "success", "spells": pc["spells"], "character": pc}
 
 @app.post("/api/companion/roll")
 async def record_companion_roll(payload: Dict[str, Any]):
@@ -3013,6 +3132,11 @@ async def switch_campaign_endpoint(camp_id: str):
     campaign["lastPlayed"] = datetime.now().isoformat()
     manifest["activeCampaignId"] = camp_id
     save_campaigns_manifest(manifest)
+
+    # Auto-upgrade CoS and heal spell slots if applicable
+    camp_dir = CAMPAIGNS_DIR / camp_id
+    if camp_dir.exists():
+        check_and_upgrade_cos_campaign(camp_dir, campaign)
 
     return {"status": "success", "activeCampaignId": camp_id, "campaign": campaign}
 
@@ -6269,7 +6393,10 @@ async def broadcast_tarokka_endpoint(payload: Optional[Dict[str, Any]] = None):
         reading = read_json("tarokka.json", None)
         if not reading:
             reading = cos_module_pack.draw_tarokka_reading()
-            write_json("tarokka.json", reading)
+
+    reading["broadcasted"] = True
+    reading["isDelivered"] = True
+    write_json("tarokka.json", reading)
 
     player_summary = (
         "🔮 MADAM EVA'S TAROKKA PROPHECY 🔮\n\n"
@@ -6895,9 +7022,9 @@ async def launch_encounter(enc_id: str):
     base_y = 650.0
 
     for item in enc.get("monsters", []):
-        m_id = item.get("id")
+        m_id = item.get("monsterId") or item.get("id")
         count = int(item.get("count", 1))
-        monster = next((m for m in monsters_lib if m.get("id") == m_id), None)
+        monster = next((m for m in monsters_lib if m.get("id") == m_id or (m.get("name") and item.get("name") and m.get("name").lower() == item.get("name").lower())), None)
         if not monster:
             continue
 
