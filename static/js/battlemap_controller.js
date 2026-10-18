@@ -482,19 +482,27 @@ window.BattlemapController = (function() {
             setTimeout(fitMapToWorkspace, 60);
             return;
         }
-        const scaleX = (cWidth - 60) / mapWidth;
-        const scaleY = (cHeight - 60) / mapHeight;
+        const rot = (state.rotation || 0) % 360;
+        const isPerpendicular = rot === 90 || rot === 270;
+        const visualW = isPerpendicular ? mapHeight : mapWidth;
+        const visualH = isPerpendicular ? mapWidth : mapHeight;
+        const scaleX = (cWidth - 60) / (visualW || 2000);
+        const scaleY = (cHeight - 60) / (visualH || 1500);
         dmZoom = Math.min(scaleX, scaleY, 0.85);
-        dmPanX = Math.round((cWidth - mapWidth * dmZoom) / 2);
-        dmPanY = Math.round((cHeight - mapHeight * dmZoom) / 2);
+        dmPanX = Math.round(cWidth / 2 - mapWidth / 2);
+        dmPanY = Math.round(cHeight / 2 - mapHeight / 2);
         applyDMTransform();
     }
 
     function applyDMTransform() {
         if (!viewportEl) return;
-        viewportEl.style.transform = `translate(${dmPanX}px, ${dmPanY}px) scale(${dmZoom})`;
+        const rot = (state.rotation || 0) % 360;
+        viewportEl.style.transformOrigin = 'center center';
+        viewportEl.style.transform = `translate(${dmPanX}px, ${dmPanY}px) scale(${dmZoom}) rotate(${rot}deg)`;
         const zoomLabel = document.getElementById('dm-zoom-display');
         if (zoomLabel) zoomLabel.textContent = `${Math.round(dmZoom * 100)}%`;
+        const rotLabel = document.getElementById('dm-rotation-display');
+        if (rotLabel) rotLabel.textContent = `${rot}°`;
     }
 
     // -------------------------------------------------------------------------
@@ -748,6 +756,13 @@ window.BattlemapController = (function() {
 
     function drawAoEBadge(ctx, bx, by, text, color) {
         ctx.save();
+        const rotDeg = (state.rotation || 0) % 360;
+        if (rotDeg) {
+            ctx.translate(bx, by);
+            ctx.rotate(-rotDeg * Math.PI / 180);
+            bx = 0;
+            by = 0;
+        }
         const fontSize = Math.max(9, Math.round(11 / dmZoom));
         ctx.font = `bold ${fontSize}px sans-serif`;
         const m = ctx.measureText(text);
@@ -1055,7 +1070,7 @@ window.BattlemapController = (function() {
                 <div class="dm-map-token absolute cursor-grab select-none group pointer-events-auto ${auras}"
                      id="dm-token-${t.id}"
                      data-token-id="${t.id}"
-                     style="left: ${t.x}px; top: ${t.y}px; width: ${sizePx}px; height: ${sizePx}px; transform: translate(-50%, -50%); border: ${isHidden ? '3px dashed' : '3.5px solid'} ${borderColor}; border-radius: 50%; opacity: ${isHidden ? '0.65' : '1'}; box-shadow: 0 4px 16px rgba(0,0,0,0.85); will-change: left, top; pointer-events: auto; ${elevShadow}">
+                     style="left: ${t.x}px; top: ${t.y}px; width: ${sizePx}px; height: ${sizePx}px; transform: translate(-50%, -50%) rotate(-${(state.rotation || 0) % 360}deg); border: ${isHidden ? '3px dashed' : '3.5px solid'} ${borderColor}; border-radius: 50%; opacity: ${isHidden ? '0.65' : '1'}; box-shadow: 0 4px 16px rgba(0,0,0,0.85); will-change: left, top; pointer-events: auto; ${elevShadow}">
                     
                     ${avatar ? `
                         <img src="${avatar}" alt="${t.name}" class="w-full h-full rounded-full object-cover bg-neutral-900 pointer-events-none" onerror="this.style.display='none'; if (this.nextElementSibling) { this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex'); }">
@@ -1460,11 +1475,23 @@ window.BattlemapController = (function() {
 
     function centerOnToken(tokenId) {
         const token = (state.tokens || []).find(t => t.id === tokenId);
-        if (!token || !containerEl) return;
+        if (!token || !containerEl || !mapWidth || !mapHeight) return;
         const cWidth = containerEl.clientWidth || 1000;
         const cHeight = containerEl.clientHeight || 650;
-        dmPanX = Math.round((cWidth / 2) - token.x * dmZoom);
-        dmPanY = Math.round((cHeight / 2) - token.y * dmZoom);
+        const cx = mapWidth / 2;
+        const cy = mapHeight / 2;
+        const rotDeg = (state.rotation || 0) % 360;
+        const rad = rotDeg * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const x0 = token.x - cx;
+        const y0 = token.y - cy;
+        const x1 = x0 * cos - y0 * sin;
+        const y1 = x0 * sin + y0 * cos;
+
+        dmPanX = Math.round(cWidth / 2 - cx - x1 * dmZoom);
+        dmPanY = Math.round(cHeight / 2 - cy - y1 * dmZoom);
         applyDMTransform();
     }
 
@@ -1759,13 +1786,26 @@ window.BattlemapController = (function() {
     }
 
     function screenToWorld(clientX, clientY) {
-        if (!viewportEl) return { x: 0, y: 0 };
-        const rect = viewportEl.getBoundingClientRect();
-        if (!rect || rect.width === 0 || rect.height === 0) {
-            return { x: 0, y: 0 };
-        }
-        const worldX = ((clientX - rect.left) / rect.width) * mapWidth;
-        const worldY = ((clientY - rect.top) / rect.height) * mapHeight;
+        if (!viewportEl || !containerEl || !mapWidth || !mapHeight) return { x: 0, y: 0 };
+        const rect = containerEl.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+
+        const cx = mapWidth / 2;
+        const cy = mapHeight / 2;
+        const rotDeg = (state.rotation || 0) % 360;
+        const rad = rotDeg * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const x2 = localX - (cx + dmPanX);
+        const y2 = localY - (cy + dmPanY);
+        const x1 = x2 / (dmZoom || 1.0);
+        const y1 = y2 / (dmZoom || 1.0);
+
+        const worldX = cx + (x1 * cos + y1 * sin);
+        const worldY = cy + (-x1 * sin + y1 * cos);
+
         return {
             x: Math.max(0, Math.min(mapWidth, Math.round(worldX))),
             y: Math.max(0, Math.min(mapHeight, Math.round(worldY)))
@@ -2008,8 +2048,11 @@ window.BattlemapController = (function() {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        dmPanX = mouseX - (mouseX - dmPanX) * (newZoom / dmZoom);
-        dmPanY = mouseY - (mouseY - dmPanY) * (newZoom / dmZoom);
+        const cx = mapWidth / 2;
+        const cy = mapHeight / 2;
+
+        dmPanX = Math.round(mouseX - cx - (mouseX - cx - dmPanX) * (newZoom / dmZoom));
+        dmPanY = Math.round(mouseY - cy - (mouseY - cy - dmPanY) * (newZoom / dmZoom));
         dmZoom = newZoom;
 
         applyDMTransform();
@@ -2555,18 +2598,39 @@ window.BattlemapController = (function() {
         pushStateUpdate({ gridVisible: visible });
     }
 
-    function setRotation(deg) {
-        state.rotation = deg;
+    function setRotation(deg, pushToServer = true) {
+        const normalizedDeg = ((deg % 360) + 360) % 360;
+        state.rotation = normalizedDeg;
         document.querySelectorAll('.dm-rot-btn').forEach(btn => {
             btn.classList.remove('bg-amber-500', 'text-ledger-950');
             btn.classList.add('bg-ledger-800', 'text-slate-300');
         });
-        const activeBtn = document.getElementById(`dm-rot-btn-${deg}`);
+        const activeBtn = document.getElementById(`dm-rot-btn-${normalizedDeg}`);
         if (activeBtn) {
             activeBtn.classList.remove('bg-ledger-800', 'text-slate-300');
             activeBtn.classList.add('bg-amber-500', 'text-ledger-950');
         }
-        pushStateUpdate({ rotation: deg });
+        const rotLabel = document.getElementById('dm-rotation-display');
+        if (rotLabel) {
+            rotLabel.textContent = `${normalizedDeg}°`;
+        }
+
+        applyDMTransform();
+        renderDMTokens();
+        renderPreview();
+
+        if (pushToServer) {
+            pushStateUpdate({ rotation: normalizedDeg });
+            if (typeof showToast === 'function') {
+                showToast(`Battlemap rotated to ${normalizedDeg}°`, 'info');
+            }
+        }
+    }
+
+    function rotateMapClockwise() {
+        const currentRot = (state.rotation || 0) % 360;
+        const newRot = (currentRot + 90) % 360;
+        setRotation(newRot, true);
     }
 
     function toggleTableSettingsModal() {
@@ -2597,11 +2661,38 @@ window.BattlemapController = (function() {
     }
 
     function syncViewportToTable() {
+        if (!containerEl || !mapWidth || !mapHeight) return;
+        const cWidth = containerEl.clientWidth || 800;
+        const cHeight = containerEl.clientHeight || 600;
+        const containerRect = containerEl.getBoundingClientRect();
+        const centerScreenX = containerRect.left + cWidth / 2;
+        const centerScreenY = containerRect.top + cHeight / 2;
+        const worldCenter = screenToWorld(centerScreenX, centerScreenY);
+
+        const targetZoom = parseFloat(dmZoom.toFixed(2));
+        const rotDeg = (state.rotation || 0) % 360;
+        const dx = worldCenter.x - mapWidth / 2;
+        const dy = worldCenter.y - mapHeight / 2;
+        const rad = rotDeg * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const tablePanX = Math.round(-(dx * cos - dy * sin) * targetZoom);
+        const tablePanY = Math.round(-(dx * sin + dy * cos) * targetZoom);
+        const syncId = Date.now();
+
         pushStateUpdate({
-            panX: Math.round(dmPanX),
-            panY: Math.round(dmPanY),
-            zoom: parseFloat(dmZoom.toFixed(2))
+            panX: tablePanX,
+            panY: tablePanY,
+            zoom: targetZoom,
+            focusWorldX: Math.round(worldCenter.x),
+            focusWorldY: Math.round(worldCenter.y),
+            syncId: syncId
         });
+
+        if (typeof showToast === 'function') {
+            showToast("Synced viewport to Tabletop TV", "info");
+        }
     }
 
     function updateCompanionAccessUI() {
@@ -2658,7 +2749,7 @@ window.BattlemapController = (function() {
         const gridCheck = document.getElementById('dm-grid-visible-toggle');
         if (gridCheck) gridCheck.checked = state.gridVisible !== false;
 
-        setRotation(state.rotation || 0);
+        setRotation(state.rotation || 0, false);
         updateLockBtn();
         updateCompanionAccessUI();
     }
@@ -3208,6 +3299,7 @@ window.BattlemapController = (function() {
         setGridSize,
         toggleGrid,
         setRotation,
+        rotateMapClockwise,
         toggleLock,
         toggleCompanionAccess,
         updateCompanionAccessUI,

@@ -1037,6 +1037,9 @@ class BattlemapStateUpdate(BaseModel):
     templates: Optional[List[Dict[str, Any]]] = None
     activeRuler: Optional[Dict[str, Any]] = None
     companionAccessEnabled: Optional[bool] = None
+    focusWorldX: Optional[float] = None
+    focusWorldY: Optional[float] = None
+    syncId: Optional[float] = None
 
 class BattlemapRuler(BaseModel):
     startX: float
@@ -3136,6 +3139,9 @@ def get_default_battlemap_state():
         "templates": [],
         "activeRuler": None,
         "companionAccessEnabled": False,
+        "focusWorldX": None,
+        "focusWorldY": None,
+        "syncId": 0,
         "maps": catalog,
         "updatedAt": time.time()
     }

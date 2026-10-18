@@ -521,6 +521,7 @@
         const rulerCtx = rulerCanvas ? rulerCanvas.getContext('2d') : null;
 
         let lastVersion = 0;
+        let lastSeenSyncId = 0;
         let activePingsSet = new Set();
         let hudTimer = null;
         let isImageLoaded = false;
@@ -646,6 +647,7 @@
 
         // Pointer / Touch Events
         stage.addEventListener('touchstart', (e) => {
+            if (mapState.locked) return;
             if (e.target.closest('#player-map-controls') || e.target.closest('#status-pill')) return;
             if (e.touches.length === 1) {
                 isPointerDragging = true;
@@ -709,6 +711,7 @@
 
         // Mouse Drag to Pan
         stage.addEventListener('mousedown', (e) => {
+            if (mapState.locked) return;
             if (e.target.closest('#player-map-controls') || e.target.closest('#status-pill')) return;
             isPointerDragging = true;
             if (!isFreeCamera) {
@@ -746,6 +749,7 @@
         // Mouse Wheel Zoom
         stage.addEventListener('wheel', (e) => {
             e.preventDefault();
+            if (mapState.locked) return;
             if (!isFreeCamera) {
                 isFreeCamera = true;
                 localPanX = mapState.panX || 0;
@@ -759,15 +763,33 @@
         }, { passive: false });
 
         function sendPingAtScreenPos(screenX, screenY) {
-            const rect = mapContainer.getBoundingClientRect();
-            const clickX = ((screenX - rect.left) / rect.width) * (naturalWidth || 2000);
-            const clickY = ((screenY - rect.top) / rect.height) * (naturalHeight || 1500);
+            const rot = (mapState.rotation || 0) % 360;
+            const panX = isFreeCamera ? localPanX : (mapState.panX || 0);
+            const panY = isFreeCamera ? localPanY : (mapState.panY || 0);
+            const zoom = isFreeCamera ? localZoom : (mapState.zoom || 1.0);
+
+            const screenCenterX = window.innerWidth / 2 + panX;
+            const screenCenterY = window.innerHeight / 2 + panY;
+
+            const dx = (screenX - screenCenterX) / zoom;
+            const dy = (screenY - screenCenterY) / zoom;
+
+            const rad = rot * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+
+            const localX = dx * cos + dy * sin;
+            const localY = -dx * sin + dy * cos;
+
+            const worldX = (naturalWidth || 2000) / 2 + localX;
+            const worldY = (naturalHeight || 1500) / 2 + localY;
+
             fetch('/api/battlemap/ping', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    x: Math.round(clickX),
-                    y: Math.round(clickY),
+                    x: Math.max(0, Math.min(naturalWidth || 2000, Math.round(worldX))),
+                    y: Math.max(0, Math.min(naturalHeight || 1500, Math.round(worldY))),
                     color: '#38bdf8'
                 })
             }).catch(console.error);
@@ -1027,7 +1049,7 @@
 
                 return `
                     <div class="table-token ${auras}" 
-                         style="left: ${t.x}px; top: ${t.y}px; width: ${sizePx}px; height: ${sizePx}px; border: 3.5px solid ${borderColor}; ${elevShadow}">
+                         style="left: ${t.x}px; top: ${t.y}px; width: ${sizePx}px; height: ${sizePx}px; transform: translate(-50%, -50%) rotate(-${(mapState.rotation || 0) % 360}deg); border: 3.5px solid ${borderColor}; ${elevShadow}">
                         
                         <!-- Elevation Altitude Badge -->
                         ${elev !== 0 ? `
@@ -1783,11 +1805,22 @@
                     }
                 }
 
+                // Check for DM Viewport Sync Trigger
+                const syncTriggered = Boolean(state.syncId && state.syncId !== lastSeenSyncId);
+                if (syncTriggered) {
+                    lastSeenSyncId = state.syncId;
+                    isFreeCamera = false;
+                    localPanX = state.panX || 0;
+                    localPanY = state.panY || 0;
+                    localZoom = state.zoom || 1.0;
+                    updateCameraModeButton();
+                }
+
                 const version = state.updatedAt || 0;
                 const mapChanged = state.activeMapUrl !== mapState.activeMapUrl;
                 const fogChanged = state.fogMask !== mapState.fogMask || state.fogEnabled !== mapState.fogEnabled;
                 const gridChanged = state.gridSize !== mapState.gridSize || state.gridVisible !== mapState.gridVisible || state.gridColor !== mapState.gridColor;
-                const transformChanged = state.rotation !== mapState.rotation || state.panX !== mapState.panX || state.panY !== mapState.panY || state.zoom !== mapState.zoom;
+                const transformChanged = syncTriggered || state.rotation !== mapState.rotation || state.panX !== mapState.panX || state.panY !== mapState.panY || state.zoom !== mapState.zoom;
 
                 // Check for new pings
                 if (state.pings && Array.isArray(state.pings)) {
@@ -1815,6 +1848,10 @@
                         renderOverlays();
                         renderRuler();
                     }
+                } else if (syncTriggered) {
+                    mapState = state;
+                    applyTransform();
+                    renderTokens();
                 }
             } catch (err) {
                 console.error("Battlemap sync error:", err);
