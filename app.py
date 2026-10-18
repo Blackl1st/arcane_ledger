@@ -585,10 +585,14 @@ def is_active_campaign_cos() -> bool:
         act_id = manifest.get("activeCampaignId", "default")
         camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == act_id), None)
         if camp:
+            mods = camp.get("modules", {})
             return (
                 camp.get("template") == "curse_of_strahd" or
+                mods.get("curse_of_strahd") is True or
+                mods.get("cos") is True or
                 "strahd" in camp.get("name", "").lower() or
-                "strahd" in camp.get("description", "").lower()
+                "strahd" in camp.get("description", "").lower() or
+                camp.get("preset") == "curse_of_strahd"
             )
     except Exception:
         pass
@@ -3022,35 +3026,90 @@ def get_shared_battlemaps_catalog() -> List[Dict[str, Any]]:
                     return f"/static/images/battlemaps/cos/{cid}{ext}"
         return current_url
 
-    # Always upgrade any existing maps in the catalog if a higher-res image file now exists
-    for m in catalog:
-        if m.get("id", "").startswith("cos_") or m.get("type") == "cos_module":
-            m["url"] = resolve_best_map_url(m["id"], m.get("url", ""))
+    # Base clean catalog strictly excluding any CoS maps
+    clean_catalog = [
+        m for m in catalog
+        if not m.get("id", "").startswith("cos_")
+        and m.get("type") != "cos_module"
+        and "/battlemaps/cos/" not in str(m.get("url", ""))
+    ]
 
-    # If the active campaign is Curse of Strahd, merge canonical CoS battlemaps
-    if is_active_campaign_cos():
-        cos_maps = cos_module_pack.get_cos_battlemaps()
-        merged = list(catalog)
-        existing_ids = {m.get("id") for m in merged}
-        for cm in cos_maps:
-            target_url = resolve_best_map_url(cm["id"], cm.get("url", ""))
-            if cm["id"] not in existing_ids:
-                cm_copy = dict(cm)
-                cm_copy["url"] = target_url
-                merged.append(cm_copy)
-            else:
-                for m in merged:
-                    if m.get("id") == cm["id"]:
-                        m["url"] = target_url
-                        break
-        return merged
+    # If the active campaign is NOT Curse of Strahd, strictly isolate and return only clean non-CoS maps
+    if not is_active_campaign_cos():
+        return clean_catalog
 
-    return catalog
+    # If active campaign IS Curse of Strahd, inject canonical CoS battlemaps
+    cos_maps = cos_module_pack.get_cos_battlemaps()
+    merged = list(clean_catalog)
+    existing_ids = {m.get("id") for m in merged}
+    for cm in cos_maps:
+        target_url = resolve_best_map_url(cm["id"], cm.get("url", ""))
+        if cm["id"] not in existing_ids:
+            cm_copy = dict(cm)
+            cm_copy["url"] = target_url
+            merged.append(cm_copy)
+            existing_ids.add(cm["id"])
+        else:
+            for m in merged:
+                if m.get("id") == cm["id"]:
+                    m["url"] = target_url
+                    break
+
+    extra_cos_maps = [
+        {
+            "id": "cos_castle_ravenloft_court",
+            "name": "Castle Ravenloft - Court of the Count",
+            "url": resolve_best_map_url("cos_castle_ravenloft_court", "/static/images/battlemaps/cos/castle_ravenloft_court.jpg"),
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 4",
+            "notes": "Audience Hall, Throne Room of King Barov, Count’s Balcony"
+        },
+        {
+            "id": "cos_castle_ravenloft_larders",
+            "name": "Castle Ravenloft - Larders of Ill Omen",
+            "url": resolve_best_map_url("cos_castle_ravenloft_larders", "/static/images/battlemaps/cos/castle_ravenloft_larders.jpg"),
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 4",
+            "notes": "Wine Cellars, Iron Golem Vault, Torture Dungeon"
+        },
+        {
+            "id": "cos_castle_ravenloft_weeping",
+            "name": "Castle Ravenloft - Rooms of Weeping",
+            "url": resolve_best_map_url("cos_castle_ravenloft_weeping", "/static/images/battlemaps/cos/castle_ravenloft_weeping.jpg"),
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 4",
+            "notes": "Gertruda’s Chamber, Helga’s Parlor, Clock Tower"
+        }
+    ]
+    for em in extra_cos_maps:
+        if em["id"] not in existing_ids:
+            merged.append(em)
+            existing_ids.add(em["id"])
+
+    return merged
 
 def save_shared_battlemaps_catalog(catalog: List[Dict[str, Any]]) -> None:
     try:
+        clean_catalog = [
+            m for m in catalog
+            if not m.get("id", "").startswith("cos_")
+            and m.get("type") != "cos_module"
+            and "/battlemaps/cos/" not in str(m.get("url", ""))
+        ]
         with open(BATTLEMAPS_CATALOG_FILE, "w", encoding="utf-8") as f:
-            json.dump(catalog, f, indent=2)
+            json.dump(clean_catalog, f, indent=2)
     except Exception as e:
         print(f"Error saving battlemap catalog: {e}")
 
@@ -3248,6 +3307,11 @@ async def update_campaign_endpoint(camp_id: str, payload: CampaignUpdate):
         if "modules" not in campaign:
             campaign["modules"] = dict(DEFAULT_MODULES)
         campaign["modules"].update(payload.modules)
+        if "curse_of_strahd" in payload.modules:
+            if payload.modules["curse_of_strahd"]:
+                campaign["template"] = "curse_of_strahd"
+            elif campaign.get("template") == "curse_of_strahd":
+                campaign["template"] = "custom"
 
     save_campaigns_manifest(manifest)
     return {"status": "success", "campaign": campaign}
@@ -7883,6 +7947,9 @@ async def get_battlemap():
 
     # Ensure activeMapId points to an existing map from the shared catalog
     active_id = state.get("activeMapId")
+    if not is_active_campaign_cos() and active_id and (active_id.startswith("cos_") or "/battlemaps/cos/" in str(state.get("activeMapUrl", ""))):
+        active_id = None
+
     matched = next((m for m in catalog if m["id"] == active_id), None)
     if matched:
         if matched.get("url") and matched["url"] != state.get("activeMapUrl"):
@@ -8268,6 +8335,8 @@ async def generate_battlemap(req: BattlemapGenerateRequest):
 async def select_battlemap(payload: BattlemapSelect):
     state = read_json("battlemap.json", get_default_battlemap_state())
     catalog = get_shared_battlemaps_catalog()
+    if payload.mapId.startswith("cos_") and not is_active_campaign_cos():
+        raise HTTPException(status_code=403, detail="Curse of Strahd battlemaps are only available in a Curse of Strahd campaign.")
     selected = next((m for m in catalog if m["id"] == payload.mapId), None)
     if not selected:
         raise HTTPException(status_code=404, detail="Map not found in shared catalog")

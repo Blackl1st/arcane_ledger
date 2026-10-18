@@ -4151,7 +4151,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.33</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.34</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -7237,6 +7237,18 @@
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-300 mb-1">Campaign Description</label>
                     <textarea id="edit-campaign-desc" rows="3" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div class="pt-1">
+                    <label class="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-xl border border-ledger-700 bg-ledger-950/80 hover:border-amber-500/50 transition">
+                        <input type="checkbox" id="edit-campaign-cos-module" class="rounded text-amber-500 focus:ring-amber-400 bg-ledger-900 border-ledger-700">
+                        <div>
+                            <span class="font-bold text-slate-200 block text-xs flex items-center gap-1.5">
+                                <span>🦇</span> Curse of Strahd Campaign Module
+                            </span>
+                            <span class="text-[10px] text-slate-400 block">Enables Barovia regional map, Death House, Castle Ravenloft & CoS 4K battlemaps.</span>
+                        </div>
+                    </label>
                 </div>
 
                 <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-ledger-800">

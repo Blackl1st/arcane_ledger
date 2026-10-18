@@ -13675,7 +13675,7 @@ async function switchCampaign(campaignId) {
             if (typeof renderPartyInventoryModal === 'function') {
                 renderPartyInventoryModal();
             }
-            if (appState.activeTab === 'battlemap' && window.BattlemapController) {
+            if (window.BattlemapController) {
                 window.BattlemapController.init();
             }
             showToast(`Switched to campaign: ${data.campaign?.name || campaignId}`, 'success');
@@ -13763,9 +13763,18 @@ function openEditCampaignModal(campaignId) {
     const idInput = document.getElementById('edit-campaign-id');
     const nameInput = document.getElementById('edit-campaign-name');
     const descInput = document.getElementById('edit-campaign-desc');
+    const cosCheckbox = document.getElementById('edit-campaign-cos-module');
     if (idInput) idInput.value = camp.id;
     if (nameInput) nameInput.value = camp.name;
     if (descInput) descInput.value = camp.description || '';
+    if (cosCheckbox) {
+        const isCos = camp.template === 'curse_of_strahd' ||
+                      camp.modules?.curse_of_strahd === true ||
+                      camp.modules?.cos === true ||
+                      (camp.name || '').toLowerCase().includes('strahd') ||
+                      (camp.description || '').toLowerCase().includes('strahd');
+        cosCheckbox.checked = !!isCos;
+    }
     openModal('edit-campaign-modal');
     setTimeout(() => nameInput?.focus(), 100);
 }
@@ -13776,12 +13785,18 @@ async function submitEditCampaign(event) {
     const name = document.getElementById('edit-campaign-name')?.value?.trim();
     if (!campId || !name) return;
     const desc = document.getElementById('edit-campaign-desc')?.value?.trim() || '';
+    const cosCheckbox = document.getElementById('edit-campaign-cos-module');
+    const isCos = cosCheckbox ? cosCheckbox.checked : false;
 
     try {
         const res = await fetch(`/api/campaigns/${campId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description: desc })
+            body: JSON.stringify({
+                name,
+                description: desc,
+                modules: { curse_of_strahd: isCos }
+            })
         });
         if (res.ok) {
             const data = await res.json();
@@ -13790,13 +13805,22 @@ async function submitEditCampaign(event) {
             if (target) {
                 target.name = data.campaign.name;
                 target.description = data.campaign.description;
+                target.template = data.campaign.template;
+                if (!target.modules) target.modules = {};
+                target.modules.curse_of_strahd = isCos;
             }
             if (appState.currentCampaign?.id === campId) {
                 appState.currentCampaign.name = data.campaign.name;
                 appState.currentCampaign.description = data.campaign.description;
+                appState.currentCampaign.template = data.campaign.template;
+                if (!appState.currentCampaign.modules) appState.currentCampaign.modules = {};
+                appState.currentCampaign.modules.curse_of_strahd = isCos;
             }
             renderCampaignTopbar();
             renderCampaignSettingsCard();
+            if (window.BattlemapController) {
+                window.BattlemapController.init();
+            }
             showToast('Campaign details updated.', 'success');
         } else {
             showToast('Failed to update campaign.', 'error');
