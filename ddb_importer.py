@@ -674,7 +674,10 @@ def parse_dndbeyond_character(raw_json: Union[str, Dict[str, Any]]) -> Dict[str,
         "paladin's smite": "divine smite",
         "faithful steed": "find steed",
         "channel divinity: sacred weapon": "sacred weapon",
-        "fey step": "misty step"
+        "fey step": "misty step",
+        "favored enemy": "hunter's mark",
+        "wild companion": "find familiar",
+        "pact of the chain": "find familiar",
     }
 
     actions_dict = d.get("actions") or {}
