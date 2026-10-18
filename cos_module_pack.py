@@ -2835,8 +2835,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Settlement",
             "danger": "Moderate",
             "population": "450 Souls (Desolate & Shuttered)",
-            "x": 81.0,
-            "y": 60.5,
+            "x": 80.2,
+            "y": 61.5,
             "discovered": True,
             "icon": "🏚️",
             "notes": "A dismal, mist-shrouded village in the shadow of Castle Ravenloft. Contains Mad Mary's townhouse, the Blood of the Vine Tavern, the village church with Donavich and his undead son Doru, and the sinister Durst Manor (Death House)."
@@ -2850,8 +2850,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Dungeon / Fortress",
             "danger": "Deadly",
             "population": "Count Strahd von Zarovich & The Vampire Court",
-            "x": 68.0,
-            "y": 46.0,
+            "x": 70.7,
+            "y": 51.2,
             "discovered": True,
             "icon": "🏰",
             "notes": "Perched upon a sheer thousand-foot pillar of stone, the ancient gothic citadel looms over the valley. Contains the Great Hall, Court of the Count, Heart of Sorrow in the spires, and the ancestral catacombs below."
@@ -2864,8 +2864,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Wilderness Encampment",
             "danger": "Safe",
             "population": "35 Vistani Travelers",
-            "x": 67.5,
-            "y": 57.0,
+            "x": 69.3,
+            "y": 61.9,
             "discovered": True,
             "icon": "🎪",
             "notes": "Brightly painted barrel-topped vardos encircle a roaring campfire beside the falls. Here Madam Eva reads the Tarokka deck to divine the resting places of the Sunsword, Holy Symbol, Tome of Strahd, and the fated ally."
@@ -2878,8 +2878,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Bridge / Chasm",
             "danger": "Moderate",
             "population": "Gargoyles & Mist",
-            "x": 62.0,
-            "y": 53.0,
+            "x": 57.7,
+            "y": 56.0,
             "discovered": True,
             "icon": "🌉",
             "notes": "A precarious stone bridge spans a thousand-foot chasm through which the River Ivlis plummets into the mist. Weathered stone gargoyles watch from the parapets."
@@ -2892,8 +2892,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Windmill",
             "danger": "Deadly",
             "population": "Morgantha & The Night Hag Coven",
-            "x": 57.0,
-            "y": 49.0,
+            "x": 50.8,
+            "y": 38.0,
             "discovered": True,
             "icon": "🌾",
             "notes": "A decrepit stone windmill with four rotting vanes. Morgantha and her daughters Bella Sunbane and Offalia Wormwiggle grind children's bones to bake addictive Dream Pastries."
@@ -2906,8 +2906,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Walled Town",
             "danger": "Moderate",
             "population": "1,800 Citizens (Fortified)",
-            "x": 47.0,
-            "y": 42.0,
+            "x": 41.8,
+            "y": 31.8,
             "discovered": True,
             "icon": "🏘️",
             "notes": "The largest settlement in Barovia, protected by a stout wooden palisade. Baron Vargas Vallakovich stages endless forced festivals ('All Will Be Well!'), while Lady Fiona Wachter leads a secret cult of Strahd sympathizers."
@@ -2920,8 +2920,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Wilderness Lake / Camp",
             "danger": "Moderate",
             "population": "Luvash & Arrigal's Vistani Clan",
-            "x": 48.0,
-            "y": 33.0,
+            "x": 45.0,
+            "y": 24.5,
             "discovered": True,
             "icon": "⛵",
             "notes": "A deep, icy glacial lake beneath Mount Baratok. Near the south bank sits the second Vistani encampment and the dusk elf hovels led by Kasimir Velikov."
@@ -2934,8 +2934,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Fortress Ruins",
             "danger": "Deadly",
             "population": "Sir Vladimir Horngaard & The Revenant Order",
-            "x": 41.0,
-            "y": 61.0,
+            "x": 37.0,
+            "y": 50.0,
             "discovered": True,
             "icon": "🐉",
             "notes": "The crumbling mansion of the Order of the Silver Dragon. A colossal stone dragon statue guards the courtyard. Sir Vladimir Horngaard leads vengeful undead knights."
@@ -2948,8 +2948,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Swamp Ruins",
             "danger": "Deadly",
             "population": "Baba Lysaga & Creeping Hut",
-            "x": 45.0,
-            "y": 78.0,
+            "x": 40.5,
+            "y": 56.5,
             "discovered": False,
             "icon": "🛖",
             "notes": "A sunken ghost village drowned by Strahd centuries ago. Baba Lysaga lurks in a giant creeping hut animated by a stolen magic vineyard gem, guarded by swarms of flies and scarecrows."
@@ -2962,8 +2962,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Wizard Tower",
             "danger": "Moderate",
             "population": "Rudolph van Richten / Ezmerelda d'Avenir",
-            "x": 34.0,
-            "y": 35.0,
+            "x": 22.8,
+            "y": 27.0,
             "discovered": True,
             "icon": "🗼",
             "notes": "A four-story stone tower on the shores of Lake Baratok, protected by an arcane door trap and an anti-magic field. Ezmerelda's booby-trapped Vistani wagon sits outside."
@@ -2976,8 +2976,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Vineyard / Winery",
             "danger": "Moderate",
             "population": "Davian Martikov & Wereraven Family",
-            "x": 25.0,
-            "y": 68.0,
+            "x": 12.2,
+            "y": 47.5,
             "discovered": True,
             "icon": "🍇",
             "notes": "The sole wine producer in Barovia, operated by the wereraven Keepers of the Feather. Overrun by evil druids and twig/needle blights from Yester Hill who stole the magic gems."
@@ -2990,8 +2990,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Settlement / Abbey",
             "danger": "High",
             "population": "250 Villagers & The Abbot's Mongrelfolk",
-            "x": 18.0,
-            "y": 32.0,
+            "x": 10.4,
+            "y": 29.5,
             "discovered": True,
             "icon": "⛪",
             "notes": "A self-sufficient village behind heavy stone walls. In the cliffside abbey above, a mad celestial Deva (The Abbot) stitches together flesh golems and mongrelfolk."
@@ -3004,11 +3004,25 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Cavern Lair",
             "danger": "Deadly",
             "population": "Kiril Stoyanovich's Pack (20+ Lycanthropes)",
-            "x": 15.0,
-            "y": 21.0,
+            "x": 10.0,
+            "y": 22.0,
             "discovered": False,
             "icon": "🐺",
             "notes": "A subterranean cave complex behind a waterfall in the northwestern foothills. The savage Svalich pack keeps kidnapped children here to infect and train into killers."
+        },
+        {
+            "id": "pin-cos-tsolenka-pass",
+            "locationId": "",
+            "battlemapId": "",
+            "title": "Tsolenka Pass Gatehouse",
+            "type": "Mountain Pass",
+            "danger": "Deadly",
+            "population": "Stone Golems & Cold Winds",
+            "x": 18.5,
+            "y": 58.0,
+            "discovered": False,
+            "icon": "❄️",
+            "notes": "A narrow mountain pass thousands of feet above the snowy abyss. Two stone golems guard the ancient gatehouse curtain wall."
         },
         {
             "id": "pin-cos-amber-temple",
@@ -3018,8 +3032,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Ancient Mountain Vault",
             "danger": "Deadly",
             "population": "Exethanter (Lich), Vestiges of Dark Powers",
-            "x": 38.0,
-            "y": 86.0,
+            "x": 29.5,
+            "y": 79.0,
             "discovered": False,
             "icon": "🏛️",
             "notes": "Carved inside the glacial peaks of Mount Ghakis. Contains the amber sarcophagi where vestiges of extinct evil deities are entombed, offering corrupt Dark Gifts."
@@ -3032,8 +3046,8 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Wilderness Hill / Ritual Site",
             "danger": "High",
             "population": "Berserkers, Blood Druids & Gulthias Tree",
-            "x": 19.0,
-            "y": 84.0,
+            "x": 7.0,
+            "y": 61.0,
             "discovered": False,
             "icon": "🗿",
             "notes": "A windswept hill topped by a circle of standing stones and a black Gulthias tree. The druids chant around a massive effigy of Strahd, preparing to summon a colossal tree blight."
@@ -3046,40 +3060,54 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
             "type": "Gateway",
             "danger": "Moderate",
             "population": "Silent Gargoyles",
-            "x": 92.0,
-            "y": 61.0,
+            "x": 94.0,
+            "y": 54.7,
             "discovered": True,
             "icon": "🚪",
             "notes": "Twin iron gates framed by gargoyles swing open of their own volition. Beyond lies only the suffocating wall of poisonous mists that traps all mortals in Barovia."
+        },
+        {
+            "id": "pin-cos-western-gates",
+            "locationId": "",
+            "battlemapId": "",
+            "title": "Gates of Barovia (Western Svalich)",
+            "type": "Gateway",
+            "danger": "Moderate",
+            "population": "Silent Gargoyles",
+            "x": 3.0,
+            "y": 28.8,
+            "discovered": True,
+            "icon": "🚪",
+            "notes": "The western boundary gates of Barovia leading into the impassable mists."
         }
     ]
 
     main_barovia_map = {
         "id": "map-barovia-regional",
         "title": "The Lands of Barovia",
-        "subtitle": "Curse of Strahd • Domains of Dread • 1 Hex = 1/4 Mile",
+        "subtitle": "Curse of Strahd • Official Regional Cartography • 1 Hex = 1/4 Mile",
         "type": "Kingdom",
         "scale": "1 Hex = 1/4 Mile",
         "scaleMilesPerHex": 0.25,
-        "mapUrl": "/static/images/barovia_map.svg",
+        "mapUrl": "/static/images/barovia_map.webp",
         "partyMarker": {
-            "x": 81.0,
-            "y": 60.5,
+            "x": 80.2,
+            "y": 61.5,
             "label": "Adventurers at Barovia Village",
             "visibleToPlayers": True,
             "terrain": "Settlement"
         },
         "hexGrid": {
             "enabled": True,
-            "opacity": 0.22,
+            "opacity": 0.15,
             "size": 32
         },
         "fog": {
             "enabled": True,
             "revealedPoints": [
-                {"x": 81.0, "y": 60.5, "radius": 12.0},
-                {"x": 68.0, "y": 46.0, "radius": 10.0},
-                {"x": 67.5, "y": 57.0, "radius": 8.0}
+                {"x": 80.2, "y": 61.5, "radius": 12.0},
+                {"x": 70.7, "y": 51.2, "radius": 10.0},
+                {"x": 69.3, "y": 61.9, "radius": 8.0}
             ]
         },
         "trail": [],
@@ -3089,13 +3117,13 @@ def get_cos_barovia_overworld() -> Dict[str, Any]:
     return {
         "activeMapId": "map-barovia-regional",
         "mapTitle": "The Lands of Barovia",
-        "mapSubtitle": "Curse of Strahd • Domains of Dread • 1 Hex = 1/4 Mile",
-        "mapUrl": "/static/images/barovia_map.svg",
+        "mapSubtitle": "Curse of Strahd • Official Regional Cartography • 1 Hex = 1/4 Mile",
+        "mapUrl": "/static/images/barovia_map.webp",
         "scale": "1 Hex = 1/4 Mile",
         "scaleMilesPerHex": 0.25,
         "partyMarker": {
-            "x": 81.0,
-            "y": 60.5,
+            "x": 80.2,
+            "y": 61.5,
             "label": "Adventurers at Barovia Village",
             "visibleToPlayers": True,
             "terrain": "Settlement"

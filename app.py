@@ -538,7 +538,7 @@ def check_and_upgrade_cos_campaign(camp_dir: Path, camp_obj: Dict[str, Any]):
                 else:
                     with open(ow_path, "r", encoding="utf-8") as f:
                         curr_ow = json.load(f)
-                    if not isinstance(curr_ow, dict) or "shattered" in curr_ow.get("mapTitle", "").lower() or len(curr_ow.get("pins", [])) < 8:
+                    if not isinstance(curr_ow, dict) or "shattered" in curr_ow.get("mapTitle", "").lower() or len(curr_ow.get("pins", [])) < 8 or curr_ow.get("mapUrl") != "/static/images/barovia_map.webp":
                         upgrade_ow = True
                 if upgrade_ow:
                     with open(ow_path, "w", encoding="utf-8") as f:

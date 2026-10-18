@@ -527,6 +527,15 @@ def free_port_if_stale(port=PORT):
                         pid = parts[-1]
                         if pid and int(pid) != os.getpid():
                             subprocess.run(f"taskkill /F /PID {pid}", shell=True, capture_output=True)
+                # Also terminate any old browser windows tied to this app profile
+                try:
+                    subprocess.run(
+                        'powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like \'*app_profile*\' } | Stop-Process -Force"',
+                        shell=True,
+                        capture_output=True
+                    )
+                except Exception:
+                    pass
                 time.sleep(0.5)
             except Exception as e:
                 logging.error(f"Error terminating old process on port {port}: {e}")

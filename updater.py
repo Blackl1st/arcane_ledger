@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.6-beta.31"
+CURRENT_VERSION = "1.1.6-beta.32"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -552,9 +552,10 @@ for i in {{1..20}}; do
     sleep 0.3
 done
 
-# Terminate any remaining ArcaneLedger or WebKit processes to release file locks
-echo "Terminating any lingering processes on port 8000..."
-pkill -9 -f "ArcaneLedger.app" 2>/dev/null
+# Terminate any remaining ArcaneLedger, WebKit or app_profile browser processes to release file locks
+echo "Terminating any lingering processes on port 8000 and browser windows..."
+pkill -9 -f "ArcaneLedger" 2>/dev/null
+pkill -9 -f "app_profile" 2>/dev/null
 lsof -ti :8000 | xargs kill -9 2>/dev/null
 sleep 1.0
 
@@ -650,9 +651,10 @@ set STAGED={staged_folder.resolve()}
 set TARGET={target_dir.resolve()}
 set EXE_NAME=ArcaneLedger.exe
 
-:: 1. Allow 2 seconds for parent process to exit cleanly, then force-terminate OLD_PID if still holding locks
+:: 1. Allow 2 seconds for parent process to exit cleanly, then force-terminate OLD_PID and existing app browser windows
 timeout /t 2 /nobreak > nul
 taskkill /F /T /PID %OLD_PID% > nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object {{ $_.CommandLine -like '*app_profile*' -or ($_.CommandLine -like '*msedge*' -and $_.CommandLine -like '*8000*') -or ($_.CommandLine -like '*chrome*' -and $_.CommandLine -like '*8000*') }} | Stop-Process -Force" > nul 2>&1
 timeout /t 1 /nobreak > nul
 
 :: 2. Overwrite binaries and app assets, explicitly preserving user data
