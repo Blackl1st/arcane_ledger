@@ -67,5 +67,41 @@
     "type": "generated",
     "createdAt": 1792097749.0794275,
     "seed": 472267
+  },
+  {
+    "id": "cos_castle_ravenloft_court",
+    "name": "Castle Ravenloft - Court of the Count",
+    "url": "/static/images/battlemaps/cos/castle_ravenloft_court.jpg",
+    "width": 3840,
+    "height": 2160,
+    "defaultGridSize": 70,
+    "theme": "dungeon",
+    "type": "cos_module",
+    "chapter": "Chapter 4",
+    "notes": "Audience Hall, Throne Room of King Barov, Count\u2019s Balcony"
+  },
+  {
+    "id": "cos_castle_ravenloft_larders",
+    "name": "Castle Ravenloft - Larders of Ill Omen",
+    "url": "/static/images/battlemaps/cos/castle_ravenloft_larders.jpg",
+    "width": 3840,
+    "height": 2160,
+    "defaultGridSize": 70,
+    "theme": "dungeon",
+    "type": "cos_module",
+    "chapter": "Chapter 4",
+    "notes": "Wine Cellars, Iron Golem Vault, Torture Dungeon"
+  },
+  {
+    "id": "cos_castle_ravenloft_weeping",
+    "name": "Castle Ravenloft - Rooms of Weeping",
+    "url": "/static/images/battlemaps/cos/castle_ravenloft_weeping.jpg",
+    "width": 3840,
+    "height": 2160,
+    "defaultGridSize": 70,
+    "theme": "dungeon",
+    "type": "cos_module",
+    "chapter": "Chapter 4",
+    "notes": "Gertruda\u2019s Chamber, Helga\u2019s Parlor, Clock Tower"
   }
 ]

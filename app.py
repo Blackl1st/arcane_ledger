@@ -3010,29 +3010,39 @@ def get_shared_battlemaps_catalog() -> List[Dict[str, Any]]:
     if not catalog:
         catalog = list(DEFAULT_BATTLEMAPS_CATALOG)
 
+    cos_dir = STATIC_DIR / "images" / "battlemaps" / "cos"
+    base_cos_dir = BASE_DIR / "static" / "images" / "battlemaps" / "cos"
+
+    def resolve_best_map_url(map_id: str, current_url: str) -> str:
+        cid = map_id.replace("cos_", "")
+        for search_dir in [cos_dir, base_cos_dir]:
+            for ext in [".jpg", ".png", ".webp", ".jpeg"]:
+                candidate = search_dir / f"{cid}{ext}"
+                if candidate.exists():
+                    return f"/static/images/battlemaps/cos/{cid}{ext}"
+        return current_url
+
+    # Always upgrade any existing maps in the catalog if a higher-res image file now exists
+    for m in catalog:
+        if m.get("id", "").startswith("cos_") or m.get("type") == "cos_module":
+            m["url"] = resolve_best_map_url(m["id"], m.get("url", ""))
+
     # If the active campaign is Curse of Strahd, merge canonical CoS battlemaps
     if is_active_campaign_cos():
         cos_maps = cos_module_pack.get_cos_battlemaps()
-        cos_dir = STATIC_DIR / "images" / "battlemaps" / "cos"
         merged = list(catalog)
         existing_ids = {m.get("id") for m in merged}
         for cm in cos_maps:
+            target_url = resolve_best_map_url(cm["id"], cm.get("url", ""))
             if cm["id"] not in existing_ids:
-                cid = cm["id"].replace("cos_", "")
-                target_url = cm["url"]
-                # Detect if custom image (e.g. from DM Andy import) exists
-                for ext in [".jpg", ".png", ".webp", ".jpeg"]:
-                    if (cos_dir / f"{cid}{ext}").exists():
-                        target_url = f"/static/images/battlemaps/cos/{cid}{ext}"
-                        break
-                else:
-                    svg_path = cos_dir / f"{cid}.svg"
-                    if svg_path.exists():
-                        target_url = f"/static/images/battlemaps/cos/{cid}.svg"
-
                 cm_copy = dict(cm)
                 cm_copy["url"] = target_url
                 merged.append(cm_copy)
+            else:
+                for m in merged:
+                    if m.get("id") == cm["id"]:
+                        m["url"] = target_url
+                        break
         return merged
 
     return catalog
@@ -7874,7 +7884,11 @@ async def get_battlemap():
     # Ensure activeMapId points to an existing map from the shared catalog
     active_id = state.get("activeMapId")
     matched = next((m for m in catalog if m["id"] == active_id), None)
-    if not matched and catalog:
+    if matched:
+        if matched.get("url") and matched["url"] != state.get("activeMapUrl"):
+            state["activeMapUrl"] = matched["url"]
+            state["activeMapName"] = matched.get("name", state.get("activeMapName"))
+    elif catalog:
         matched = catalog[0]
         state["activeMapId"] = matched["id"]
         state["activeMapUrl"] = matched["url"]
