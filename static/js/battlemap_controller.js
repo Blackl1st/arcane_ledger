@@ -3263,6 +3263,7 @@ window.BattlemapController = (function() {
         fetchCatalogAndRender,
         renderCatalogGrid,
         deleteMapFromCatalog,
+        selectMap: onMapSelect,
         getMaps: () => state.maps,
         getActiveMapId: () => state.activeMapId,
         getActiveMapName: () => state.activeMapName,

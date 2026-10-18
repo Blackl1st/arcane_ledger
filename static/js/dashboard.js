@@ -15394,6 +15394,16 @@ function renderOverworldPinPopover() {
 
             <!-- Quick Actions Toolbar -->
             <div class="pt-2 border-t border-ledger-800 space-y-2">
+                ${pin.dungeonId ? `
+                    <button onclick="launchDungeonFromOverworld('${pin.dungeonId}')" class="w-full py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>🗝️</span> <span>Open Dungeon in Cockpit</span>
+                    </button>
+                ` : ''}
+                ${pin.battlemapId ? `
+                    <button onclick="launchBattlemapFromOverworld('${pin.battlemapId}')" class="w-full py-1.5 rounded-lg bg-sky-950 hover:bg-sky-900 border border-sky-600 text-sky-200 font-bold text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>📺</span> <span>Load Battlemap & Table TV</span>
+                    </button>
+                ` : ''}
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <button onclick="movePartyMarker(${pin.x}, ${pin.y})" class="py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold shadow transition flex items-center justify-center gap-1">
                         <span>🛡️</span> <span>Move Party Here</span>
@@ -15437,6 +15447,30 @@ async function restPartyAtSettlementPrompt(locName) {
         showToast("Error executing rest.", "error");
     }
 }
+
+async function launchDungeonFromOverworld(dungeonId) {
+    if (!dungeonId) return;
+    switchTab('session');
+    if (window.cockpitChangeDungeon) {
+        await window.cockpitChangeDungeon(dungeonId);
+    }
+    const col1 = document.getElementById('cockpit-chamber-container');
+    if (col1) col1.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast(`Loaded dungeon into Session Cockpit`, 'success');
+}
+window.launchDungeonFromOverworld = launchDungeonFromOverworld;
+
+async function launchBattlemapFromOverworld(battlemapId) {
+    if (!battlemapId) return;
+    switchTab('session');
+    if (window.BattlemapController && typeof window.BattlemapController.selectMap === 'function') {
+        await window.BattlemapController.selectMap(battlemapId);
+    }
+    const mapSection = document.getElementById('cockpit-battlemap-integrated-section');
+    if (mapSection) mapSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast(`Deployed battlemap to Cockpit & Table TV`, 'success');
+}
+window.launchBattlemapFromOverworld = launchBattlemapFromOverworld;
 
 // -------------------------------------------------------------
 // OVERLAND HAZARD & 2024 ENCOUNTER ROLLER

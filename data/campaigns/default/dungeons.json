@@ -1,0 +1,1718 @@
+[
+  {
+    "id": "dungeon-death-house",
+    "name": "Death House (Durst Manor)",
+    "subtitle": "Curse of Strahd • Levels 1-3 Starter Dungeon",
+    "region": "Village of Barovia",
+    "description": "A four-story townhouse with a sinister past and a hidden sub-basement cult undercroft beneath the cobblestones.",
+    "activeChamberId": "dh-1",
+    "levels": [
+      {
+        "id": "lvl-dh-all",
+        "name": "All Floors"
+      },
+      {
+        "id": "lvl-dh-1",
+        "name": "1. Ground Floor"
+      },
+      {
+        "id": "lvl-dh-2",
+        "name": "2. Upper Floor"
+      },
+      {
+        "id": "lvl-dh-3",
+        "name": "3. Attic"
+      },
+      {
+        "id": "lvl-dh-4",
+        "name": "4. Cult Undercroft"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "dh-1",
+        "code": "Area 1",
+        "name": "Entrance Hall",
+        "level": "lvl-dh-1",
+        "x": 140,
+        "y": 140,
+        "state": "active",
+        "boxedText": "A wrought-iron gate with trefoils leads into an arched entrance hall. The walls are paneled in dark wood carved with weeping angels, twisting ivy, and coiled serpents. A heavy, iron-bound oak door stands at the far end.",
+        "lighting": "Darkness • Extinguished iron wall lanterns",
+        "atmosphere": "Drafty mountain air, scent of ancient furniture wax and dried lavender.",
+        "features": [
+          "Intricately carved mahogany paneling depicting cherubs and weeping angels.",
+          "Durst family heraldic shield on wall: a golden windmill on a field of black sable."
+        ],
+        "secrets": [
+          {
+            "dc": 12,
+            "skill": "Perception",
+            "text": "Close examination reveals disturbing details in the carvings: the weeping angels have serpents in their eye sockets, and innocent cherubs are choking on thorned vines."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-2",
+            "label": "Main Hall",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-2",
+        "code": "Area 2",
+        "name": "Main Hall",
+        "level": "lvl-dh-1",
+        "x": 360,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "A wide hall with a black-and-white checkerboard marble floor opens before you. A grand mahogany staircase curves upward with sculpted railings. A tall grandfather clock in the corner ticks with a hollow, rhythmic cadence.",
+        "lighting": "Dim light filtering through fogged bay windows",
+        "atmosphere": "The rhythmic, heavy tick-tock of the tall grandfather clock echoes through the empty mansion.",
+        "features": [
+          "Grand sweeping staircase ascending to the second floor.",
+          "A brass grandfather clock that is meticulously wound and keeps exact Barovian time."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Investigation",
+            "text": "The clock mechanism is pristine and ticking despite decades of thick dust on every other surface in the foyer."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-1",
+            "label": "Entrance Hall",
+            "type": "door",
+            "state": "open"
+          },
+          {
+            "target": "dh-3",
+            "label": "Den of Wolves",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-4",
+            "label": "Kitchen & Pantry",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-5",
+            "label": "Dining Room",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-6",
+            "label": "Upper Hall",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-3",
+        "code": "Area 3",
+        "name": "Den of Wolves",
+        "level": "lvl-dh-1",
+        "x": 580,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "This oak-paneled den is decorated with the trophies of a dedicated hunter. Mounted wolves' heads stare with glass eyes from the walls, and a large taxidermied dire wolf stands snarling on a pedestal. An unlit stone hearth anchors the far wall.",
+        "lighting": "Darkness • Unlit hearth",
+        "atmosphere": "Smell of old animal hide, turpentine, and dry ash.",
+        "features": [
+          "Mounted heads of seven mountain wolves and one enormous dire wolf.",
+          "Comfortable high-backed leather armchairs beside a stone hearth."
+        ],
+        "secrets": [
+          {
+            "dc": 15,
+            "skill": "Perception",
+            "text": "A secret button hidden behind the mounted dire wolf's ear slides open a concealed panel in the oak mantelpiece, holding a silver hip flask of dwarven brandy (worth 25 gp)."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Silver Hip Flask of Dwarven Brandy",
+            "quantity": "1",
+            "notes": "Worth 25 gp, contains 4 sips of potent warming spirit"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-2",
+            "label": "Main Hall",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-4",
+        "code": "Area 4",
+        "name": "Kitchen & Pantry",
+        "level": "lvl-dh-1",
+        "x": 360,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "A tidy kitchen features a high ceiling with iron hooks for smoked meats, now empty. A cold stone hearth with an iron spit dominates one wall. A small dumbwaiter shaft with heavy hemp rope is built into the corner wall.",
+        "lighting": "Darkness",
+        "atmosphere": "Faint sour odor of vinegar and rotten flour.",
+        "features": [
+          "Worktables scrubbed spotless with dried cleavers and carving knives.",
+          "Dumbwaiter shaft connecting directly to the second-floor library and third-floor master suite."
+        ],
+        "secrets": [
+          {
+            "dc": 10,
+            "skill": "Athletics",
+            "text": "A Small creature can squeeze inside the dumbwaiter box to travel between floors."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Iron Chef's Cleaver",
+            "quantity": "1",
+            "notes": "Usable as a dagger"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-2",
+            "label": "Main Hall",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-5",
+            "label": "Dining Room",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-7",
+            "label": "Servants' Stair",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-5",
+        "code": "Area 5",
+        "name": "Dining Room",
+        "level": "lvl-dh-1",
+        "x": 580,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "In the center of this stately room, a mahogany dining table is surrounded by eight high-backed chairs. A crystal chandelier hangs overhead, coated in spiderwebs. The wall paneling depicts feast scenes that turn subtly into cannibalistic depravity.",
+        "lighting": "Darkness",
+        "atmosphere": "Chilly and still.",
+        "features": [
+          "Resplendent crystal chandelier hanging from a central ceiling medallion.",
+          "Silverware set for eight guests, polished to a dull shine."
+        ],
+        "secrets": [
+          {
+            "dc": 12,
+            "skill": "Investigation",
+            "text": "The carved scenes in the paneling show noble men and women smiling warmly while drinking chalices filled with what appears to be human blood."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Fine Silver Tableware Set",
+            "quantity": "8 sets",
+            "notes": "Worth 50 gp total, stamped with Durst windmill crest"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-2",
+            "label": "Main Hall",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-4",
+            "label": "Kitchen & Pantry",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-6",
+        "code": "Area 6",
+        "name": "Upper Hall",
+        "level": "lvl-dh-2",
+        "x": 360,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "Unlit oil lamps hang from red velvet-papered walls. Mounted oil paintings depict stern Durst ancestors whose painted eyes seem to judge every step. The mahogany staircase continues upward toward a dark third floor.",
+        "lighting": "Darkness",
+        "atmosphere": "Soft creaking timber and heavy oppressive stillness.",
+        "features": [
+          "Portrait gallery of Gustav and Elisabeth Durst posing proudly with their infant child.",
+          "Balcony overlook looking down onto Area 2 Main Hall."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-2",
+            "label": "Main Hall (Downstairs)",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "dh-8",
+            "label": "Library & Secret Room",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-9",
+            "label": "Conservatory",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-10",
+            "label": "Balcony & Third Floor",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-7",
+        "code": "Area 7",
+        "name": "Servants' Stair",
+        "level": "lvl-dh-2",
+        "x": 140,
+        "y": 220,
+        "state": "unexplored",
+        "boxedText": "A narrow, steep spiral wooden staircase ascends without risers in the damp darkness between floors, intended for quiet servant movement.",
+        "lighting": "Pitch darkness",
+        "atmosphere": "Musty, cramped, smelling of raw timber.",
+        "features": [
+          "Tight wooden spiral staircase connecting Kitchen (Area 4), Second Floor, and Attic (Area 13)."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-4",
+            "label": "Kitchen & Pantry (Floor 1)",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "dh-6",
+            "label": "Upper Hall (Floor 2)",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-13",
+            "label": "Servants' Quarters (Attic)",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-8",
+        "code": "Area 8",
+        "name": "Library & Secret Room",
+        "level": "lvl-dh-2",
+        "x": 580,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "Floor-to-ceiling mahogany bookshelves line this solemn library. A heavy oak desk sits facing a stone hearth with an iron fire poker. The titles on the shelves treat of dark rituals, necromancy, and ancient bloodlines.",
+        "lighting": "Darkness",
+        "atmosphere": "Heavy smell of leather bindings and decaying parchment.",
+        "features": [
+          "Hundreds of tomes covering history, demonology, and alchemy.",
+          "Locked iron desk drawer holding a key with a feather motif."
+        ],
+        "secrets": [
+          {
+            "dc": 15,
+            "skill": "Perception",
+            "text": "Pulling a false volume entitled 'The King in Golden Raiment' on the north shelf swings open a secret door into a hidden walk-in archive room."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Deed to Durst Manor",
+            "quantity": "1",
+            "notes": "Official legal parchment"
+          },
+          {
+            "name": "Deed to Old Bonegrinder Windmill",
+            "quantity": "1",
+            "notes": "Signed by Gustav Durst"
+          },
+          {
+            "name": "Letter from Strahd von Zarovich",
+            "quantity": "1",
+            "notes": "Handout: Strahd dismissing Gustav's cult as pathetic worms"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-6",
+            "label": "Upper Hall",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-9",
+        "code": "Area 9",
+        "name": "Conservatory",
+        "level": "lvl-dh-2",
+        "x": 580,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "Gauzy white dust covers drape over a standing harp and an ivory-keyed harpsichord. A tall arched stained-glass window looks out into the dreary Barovian mist.",
+        "lighting": "Pale gray exterior light",
+        "atmosphere": "A single note resonates faintly from the harp when the door opens.",
+        "features": [
+          "Ornate standing harp carved with weeping dryads.",
+          "Harpsichord with yellowed ivory keys."
+        ],
+        "secrets": [
+          {
+            "dc": 12,
+            "skill": "Performance",
+            "text": "Playing a minor chord on the harpsichord reveals a secret velvet-lined compartment inside the soundboard containing a Potion of Climbing."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Potion of Climbing",
+            "quantity": "1 vial",
+            "notes": "Clear brown liquid with white sediment"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-6",
+            "label": "Upper Hall",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-10",
+        "code": "Area 10",
+        "name": "Balcony & Animated Armor",
+        "level": "lvl-dh-3",
+        "x": 360,
+        "y": 120,
+        "state": "unexplored",
+        "boxedText": "A wooden balcony wraps around the grand stairwell, thirty feet above the ground floor. In an arched alcove at the center stands an imposing suit of blackened plate armor adorned with wolf-head pauldrons, gripping a greatsword.",
+        "lighting": "Dim light",
+        "atmosphere": "A chill draft sighs along the balcony.",
+        "features": [
+          "Blackened iron plate armor that stirs with unnatural malice when anyone approaches within 5 feet.",
+          "Two flying broadswords hovering in the upper shadows."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Arcana",
+            "text": "The armor radiates abjuration and transmutation magic—it is an Animated Armor primed to push trespassers off the balcony."
+          }
+        ],
+        "traps": [
+          {
+            "name": "Balcony Plunge Hazard",
+            "dc": 13,
+            "trigger": "Armor attempts to shove targets over the 30-ft railing",
+            "effect": "3d6 bludgeoning falling damage and prone in Area 2"
+          }
+        ],
+        "encounters": [
+          {
+            "id": "enc-cos-death-house-armor",
+            "name": "19. Death House: The Animated Armor of the Balcony",
+            "cr": "2",
+            "monsters": [
+              {
+                "name": "Animated Armor",
+                "hp": 33
+              },
+              {
+                "name": "Flying Sword",
+                "hp": 17
+              }
+            ]
+          }
+        ],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-6",
+            "label": "Upper Hall (Floor 2)",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "dh-11",
+            "label": "Master Suite",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-13",
+            "label": "Servants' Quarters",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-14",
+            "label": "Children's Bedroom",
+            "type": "door",
+            "state": "locked"
+          }
+        ]
+      },
+      {
+        "id": "dh-11",
+        "code": "Area 11",
+        "name": "Master Suite",
+        "level": "lvl-dh-3",
+        "x": 580,
+        "y": 120,
+        "state": "unexplored",
+        "boxedText": "A grand mahogany four-poster bed is draped in moth-eaten gossamer lace. An alabaster fireplace sits cold across from a vanity table with an oval glass mirror framed in carved ivy.",
+        "lighting": "Darkness",
+        "atmosphere": "Stale air of perfume gone sour.",
+        "features": [
+          "Silk-lined jewelry box on vanity with a silver comb and garnet ring.",
+          "Adjoining door to Area 12 Nursery."
+        ],
+        "secrets": [
+          {
+            "dc": 13,
+            "skill": "Investigation",
+            "text": "In the wardrobe, behind heavy winter furs, is a secret compartment holding a velvet pouch with 40 gp and 100 sp."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Garnet Silver Ring",
+            "quantity": "1",
+            "notes": "Worth 50 gp"
+          },
+          {
+            "name": "Velvet Pouch of Coin",
+            "quantity": "40 gp, 100 sp",
+            "notes": "Old Barovian stamped coins"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-10",
+            "label": "Balcony & Third Floor",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-12",
+            "label": "Nursery",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-12",
+        "code": "Area 12",
+        "name": "Nursery & Nursemaid's Specter",
+        "level": "lvl-dh-3",
+        "x": 580,
+        "y": 260,
+        "state": "unexplored",
+        "boxedText": "A crib draped in black netting sits in the center of the nursery. Beside it is a rocking chair that rocks gently of its own accord. A translucent figure of a young weeping woman rises from the shadows, her spectral face contorting into an agonized shriek!",
+        "lighting": "Faint cold ghostly glow",
+        "atmosphere": "The spectral temperature plummets below freezing. Breath fogs instantly.",
+        "features": [
+          "Empty crib with bundled blankets (no baby inside).",
+          "Weeping specter of the Nursemaid who was murdered after giving birth to Gustav's bastard child Walter."
+        ],
+        "secrets": [
+          {
+            "dc": 12,
+            "skill": "Insight",
+            "text": "The specter shrieks 'My baby! Where is my Walter?!' and attacks furiously if anyone touches the crib."
+          }
+        ],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-nursemaid-specter",
+            "name": "Nursemaid's Wailing Specter",
+            "cr": "1",
+            "monsters": [
+              {
+                "name": "Specter (Nursemaid)",
+                "hp": 22
+              }
+            ]
+          }
+        ],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-11",
+            "label": "Master Suite",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-13",
+        "code": "Area 13",
+        "name": "Servants' Quarters",
+        "level": "lvl-dh-3",
+        "x": 140,
+        "y": 120,
+        "state": "unexplored",
+        "boxedText": "Sparse wooden bunks with moldering straw mattresses crowd this uninsulated attic corner. Rain patters against bare rafters.",
+        "lighting": "Darkness",
+        "atmosphere": "Smell of damp wool, straw, and mice droppings.",
+        "features": [
+          "Storage trunks with plain wool cloaks and servant uniforms."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-10",
+            "label": "Balcony & Third Floor",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-7",
+            "label": "Servants' Stair (Down to Floor 1)",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "dh-15",
+            "label": "Attic Storage & Secret Stair",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-14",
+        "code": "Area 14",
+        "name": "Children's Bedroom (Rose & Thorn)",
+        "level": "lvl-dh-3",
+        "x": 140,
+        "y": 260,
+        "state": "unexplored",
+        "boxedText": "The heavy door is padlocked from the outside. Inside, small twin beds are covered in dust. Sitting on the floor among wooden toys are two ghostly children holding hands: ten-year-old Rosavalda and seven-year-old Thornboldt, crying softly in the dark.",
+        "lighting": "Ethereal translucent blue-gray glow from the ghosts",
+        "atmosphere": "Profound sadness, faint smell of cedar and childhood tears.",
+        "features": [
+          "Skeletons of Rose and Thorn curled under the bedsheets (locked in by their parents and starved to death).",
+          "An exquisite dollhouse at the foot of the bed that is a perfect replica of the manor."
+        ],
+        "secrets": [
+          {
+            "dc": 10,
+            "skill": "Investigation",
+            "text": "Examining the dollhouse reveals a hidden trapdoor in the attic storage room that opens to a secret spiral stone staircase leading hundreds of feet beneath the mansion."
+          }
+        ],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-ghost-children",
+            "name": "Ghosts of Rose and Thorn (Roleplay / Possession Hazard)",
+            "cr": "1/2",
+            "monsters": [
+              {
+                "name": "Ghost of Rose Durst",
+                "hp": 15
+              },
+              {
+                "name": "Ghost of Thorn Durst",
+                "hp": 12
+              }
+            ]
+          }
+        ],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-10",
+            "label": "Balcony & Third Floor",
+            "type": "door",
+            "state": "locked"
+          }
+        ]
+      },
+      {
+        "id": "dh-15",
+        "code": "Area 15",
+        "name": "Attic Storage & Secret Spiral Stair",
+        "level": "lvl-dh-3",
+        "x": 360,
+        "y": 260,
+        "state": "unexplored",
+        "boxedText": "Cobweb-strewn furniture and wooden crates fill this dead-end attic storage space. Behind an oak armoire lies a hidden flagstone trapdoor that lifts to reveal a narrow stone spiral staircase spiraling down into pitch-black subterranean depths.",
+        "lighting": "Pitch blackness",
+        "atmosphere": "A cold, damp breeze smelling of earth, decay, and stagnant water blows up from below.",
+        "features": [
+          "Flagstone trapdoor leading into the subterranean Cult Undercroft.",
+          "Narrow spiral stone staircase descending 40 feet into ancient soil."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-13",
+            "label": "Servants' Quarters",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "dh-16",
+            "label": "Cultist Quarters (Sub-Basement)",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-16",
+        "code": "Area 16",
+        "name": "Cultist Quarters",
+        "level": "lvl-dh-4",
+        "x": 180,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "The spiral staircase terminates in a damp earthen basement. Clay jugs, rotting straw pallets, and moldy black cultist robes line the low-ceilinged earthen passages.",
+        "lighting": "Pitch blackness",
+        "atmosphere": "Faint, distant rhythmic chanting resonates through the stone floor: 'He is the Ancient. He is the Land.'",
+        "features": [
+          "Dozens of discarded black ceremonial robes with cowls.",
+          "Uneven earthen floors with pooling muddy water."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-15",
+            "label": "Secret Spiral Stairs (Up to Attic)",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "dh-17",
+            "label": "Durst Family Crypts",
+            "type": "archway",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-17",
+        "code": "Area 17",
+        "name": "Durst Family Crypts",
+        "level": "lvl-dh-4",
+        "x": 380,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "Four stone vaults are carved into the damp earth, their lintels inscribed in Barovian script: 'Gustav Durst', 'Elisabeth Durst', 'Rosavalda Durst', and 'Thornboldt Durst'. Four ghouls claw their way up from the damp graves!",
+        "lighting": "Pitch blackness",
+        "atmosphere": "Sickening stench of rotting flesh.",
+        "features": [
+          "Four family burial niches. Rose and Thorn's crypts are empty (their skeletons still lie in the attic).",
+          "Ghouls waiting to ambush any who enter."
+        ],
+        "secrets": [
+          {
+            "dc": 10,
+            "skill": "Religion",
+            "text": "Laying the children's skeletons to rest in their proper crypts grants the party a Blessing of Inspiration."
+          }
+        ],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-death-house-crypts",
+            "name": "2. Death House: Crypts of the Cult",
+            "cr": "2",
+            "monsters": [
+              {
+                "name": "Ghoul",
+                "hp": 22
+              },
+              {
+                "name": "Ghoul",
+                "hp": 22
+              }
+            ]
+          }
+        ],
+        "loot": [],
+        "exits": [
+          {
+            "target": "dh-16",
+            "label": "Cultist Quarters",
+            "type": "archway",
+            "state": "open"
+          },
+          {
+            "target": "dh-18",
+            "label": "Relic Shrine of Dark Powers",
+            "type": "archway",
+            "state": "open"
+          },
+          {
+            "target": "dh-19",
+            "label": "Hidden Prison & Torture Pit",
+            "type": "archway",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-18",
+        "code": "Area 18",
+        "name": "Relic Shrine of Dark Powers",
+        "level": "lvl-dh-4",
+        "x": 580,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "Stone niches around this octagonal shrine hold gruesome cult relics: shriveled mummified frogs, small bones, and dried organs. In the center stands a carved wooden statue of Count Strahd von Zarovich draped in a black cloak, holding an ominous smoky crystal orb. Four shadowy silhouettes rise from the corners!",
+        "lighting": "Pitch blackness",
+        "atmosphere": "The shadows whisper blasphemous syllables in chorus.",
+        "features": [
+          "Life-sized wooden effigy of Strahd holding an Orb of Dark Power.",
+          "Four shadows detach from the stone wall when the orb is touched."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Arcana",
+            "text": "The crystal orb in Strahd's hand is an arcane focus worth 25 gp, but touching it immediately animates the 4 shadows."
+          }
+        ],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-death-house-shadows",
+            "name": "20. Death House: Shadows in the Dark Shrine",
+            "cr": "3",
+            "monsters": [
+              {
+                "name": "Relic Shrine Shadow",
+                "hp": 16
+              },
+              {
+                "name": "Relic Shrine Shadow",
+                "hp": 16
+              },
+              {
+                "name": "Relic Shrine Shadow",
+                "hp": 16
+              },
+              {
+                "name": "Relic Shrine Shadow",
+                "hp": 16
+              }
+            ]
+          }
+        ],
+        "loot": [
+          {
+            "name": "Arcane Focus Crystal Orb",
+            "quantity": "1",
+            "notes": "Deep smoky quartz, worth 25 gp"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-17",
+            "label": "Durst Family Crypts",
+            "type": "archway",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "dh-19",
+        "code": "Area 19",
+        "name": "Hidden Prison & Torture Pit",
+        "level": "lvl-dh-4",
+        "x": 380,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "Rusted iron shackles and chains hang from the damp stone walls. Two skeletons in tattered rags are suspended over a 10-foot-deep pit with sharpened wooden stakes set into the bottom.",
+        "lighting": "Pitch blackness",
+        "atmosphere": "Chilling scent of dried blood and iron rust.",
+        "features": [
+          "Spiked pit trap spanning the doorway to the ritual chamber."
+        ],
+        "secrets": [
+          {
+            "dc": 13,
+            "skill": "Perception",
+            "text": "The wooden floorboards over the pit are rotted through and give way under more than 50 lbs of weight."
+          }
+        ],
+        "traps": [
+          {
+            "name": "Spiked Pit Trap",
+            "dc": 15,
+            "trigger": "Stepping on weakened planks without testing",
+            "effect": "1d6 bludgeoning + 2d6 piercing damage from spikes"
+          }
+        ],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Gold Ring of the Prisoner",
+            "quantity": "1",
+            "notes": "Worth 15 gp, engraved with an unreadable crest"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-17",
+            "label": "Durst Family Crypts",
+            "type": "archway",
+            "state": "open"
+          },
+          {
+            "target": "dh-20",
+            "label": "Ritual Chamber & Flesh Mound Altar",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "dh-20",
+        "code": "Area 20",
+        "name": "Ritual Chamber & Flesh Mound Altar",
+        "level": "lvl-dh-4",
+        "x": 580,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "The earthen passage opens into a cavernous vaulted chamber. Stagnant knee-deep water sloshes beneath your boots. In the center rises a stone dais crowned by a blood-slick sacrificial altar. Thirteen hooded spectral cultists appear on alcoves chanting in unison: 'One must die! One must die!' From a mound of rotting refuse and bone at the rear, a towering horror of decomposing flesh awakens!",
+        "lighting": "Flickering spectral green flames on five stone torches",
+        "atmosphere": "Deafening rhythmic cult chant: 'One must die! One must die!' and putrid reek of decaying flesh.",
+        "features": [
+          "Sacrificial altar on central stone dais (requires a living sacrifice or Lorghoth awakens).",
+          "The Shambling Mound (Walter the Decayer) surges forth from the refuse pile if no sacrifice is made."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Religion",
+            "text": "Slaughtering any living creature—even a rat—upon the altar satisfies the cult and grants safe egress without combat."
+          }
+        ],
+        "traps": [
+          {
+            "name": "Escape Gauntlet / Poison Smoke",
+            "dc": 14,
+            "trigger": "Triggered when Lorghoth is defeated or altar refused",
+            "effect": "House awakens into a deathtrap of scything blades and black choking smoke"
+          }
+        ],
+        "encounters": [
+          {
+            "id": "enc-cos-death-house-shambler",
+            "name": "1. Death House: Walter the Shambling Mound",
+            "cr": "5",
+            "monsters": [
+              {
+                "name": "Lorghoth the Decayer (Shambling Mound)",
+                "hp": 136
+              }
+            ]
+          }
+        ],
+        "loot": [
+          {
+            "name": "Cloak of Protection",
+            "quantity": "1",
+            "notes": "Hidden in cult trunk behind altar"
+          },
+          {
+            "name": "Potion of Healing",
+            "quantity": "4",
+            "notes": "In iron flask container"
+          }
+        ],
+        "exits": [
+          {
+            "target": "dh-19",
+            "label": "Hidden Prison & Torture Pit",
+            "type": "door",
+            "state": "open"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dungeon-castle-ravenloft",
+    "name": "Castle Ravenloft: Key Spire & Catacombs",
+    "subtitle": "Curse of Strahd • Iconic Spires, Crypts & Audience Halls",
+    "region": "Castle Ravenloft",
+    "description": "The terrifying gothic fortress of Count Strahd von Zarovich perched upon a thousand-foot stone pillar above the Svalich Woods.",
+    "activeChamberId": "cr-1",
+    "levels": [
+      {
+        "id": "lvl-cr-all",
+        "name": "All Floors"
+      },
+      {
+        "id": "lvl-cr-main",
+        "name": "Main Floor & Great Halls"
+      },
+      {
+        "id": "lvl-cr-towers",
+        "name": "High Spires & Splay"
+      },
+      {
+        "id": "lvl-cr-crypts",
+        "name": "Catacombs & Dungeons"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "cr-1",
+        "code": "K1",
+        "name": "Front Courtyard & Drawbridge",
+        "level": "lvl-cr-main",
+        "x": 120,
+        "y": 140,
+        "state": "active",
+        "boxedText": "A chilling wind howls across the thousand-foot chasm. The ancient wooden drawbridge groans underfoot, leading to a massive iron portcullis. Two arched towers flank the gateway, their stone gargoyles leering through the driving mist.",
+        "lighting": "Dreary Barovian moonlight & cold drizzle",
+        "atmosphere": "Howling mountain winds and the rumble of distant thunder.",
+        "features": [
+          "1,000-foot drop into the foggy abyss of the pillar of stone."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-7",
+            "label": "K7 Entry Pavilion",
+            "type": "door",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-7",
+        "code": "K7",
+        "name": "Entry Pavilion",
+        "level": "lvl-cr-main",
+        "x": 300,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "Heavy bronze-reinforced oak doors swing inward soundlessly. Beyond lies a grand vestibule where cold air sweeps past stone dragons whose eyes follow your steps.",
+        "lighting": "Dim amber lanterns",
+        "atmosphere": "Uncanny silence broken only by the sound of boots on flagstones.",
+        "features": [
+          "Twin bronze dragons flanking the main entry portal."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-1",
+            "label": "K1 Front Courtyard",
+            "type": "door",
+            "state": "open"
+          },
+          {
+            "target": "cr-8",
+            "label": "K8 Great Entry Hall",
+            "type": "door",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-8",
+        "code": "K8",
+        "name": "Great Entry Hall",
+        "level": "lvl-cr-main",
+        "x": 480,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "Swept gothic arches soar thirty feet overhead in this vast hall. Eight stone gargoyles cling to the ceiling vaults. Cold red rugs lead toward double doors from which the distant sound of somber organ music drifts.",
+        "lighting": "Candelabras flickering with cold pale flames",
+        "atmosphere": "Haunting, melancholic pipe organ melody echoing through the halls.",
+        "features": [
+          "Eight gargoyles perched high on stone corbels."
+        ],
+        "secrets": [
+          {
+            "dc": 15,
+            "skill": "Perception",
+            "text": "Four of the gargoyles are carved stone, but four are living monstrosities waiting for Strahd's command."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-7",
+            "label": "K7 Entry Pavilion",
+            "type": "door",
+            "state": "open"
+          },
+          {
+            "target": "cr-10",
+            "label": "K10 Dining Hall of the Count",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "cr-15",
+            "label": "K15 The Chapel",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "cr-18",
+            "label": "K18 High Tower Stair",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-10",
+        "code": "K10",
+        "name": "Dining Hall of the Count",
+        "level": "lvl-cr-main",
+        "x": 680,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "A blazing fire roars in an ornate hearth beneath a magnificent crystal chandelier. At the far end of an elongated dining table piled high with roast meats and decanters of red wine, an illusion of Count Strahd von Zarovich sits playing a solitary game of chess.",
+        "lighting": "Warm, roaring fireplace and crystal chandelier",
+        "atmosphere": "Delicious scent of roast lamb and aged wine masking a faint undercurrent of embalming spices.",
+        "features": [
+          "Illusion of Strahd that speaks graciously, welcoming the party to dinner.",
+          "Grand feast set with gold chalices and silver platters."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Insight",
+            "text": "Strahd's image is a projected phantasm; his voice echoes from unseen speakers in the chimney masonry."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Set of Golden Goblets",
+            "quantity": "6",
+            "notes": "Worth 25 gp each"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-8",
+            "label": "K8 Great Entry Hall",
+            "type": "door",
+            "state": "open"
+          },
+          {
+            "target": "cr-25",
+            "label": "K25 Audience Hall & Organ",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "cr-15",
+        "code": "K15",
+        "name": "The Chapel of Ravenloft",
+        "level": "lvl-cr-main",
+        "x": 480,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "Shattered stained-glass windows show shards of the Morninglord's solar halo. Behind a desecrated marble altar stands a bronze statue of Saint Andral, weep marks stained down its face. The shadows here feel heavy and defiant.",
+        "lighting": "Faint violet-gray twilight",
+        "atmosphere": "Heavy chill, holy sanctuary aura resisting the surrounding vampiric curse.",
+        "features": [
+          "Desecrated altar of the Morninglord where the Icon of Ravenkind may be discovered."
+        ],
+        "secrets": [
+          {
+            "dc": 15,
+            "skill": "Investigation",
+            "text": "Beneath the fallen altar stone is an intact secret compartment protected by a holy glyph."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Icon of Ravenkind (Possible Fated Relic)",
+            "quantity": "1",
+            "notes": "Holy platinum idol of a raven with ruby eyes"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-8",
+            "label": "K8 Great Entry Hall",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "cr-84",
+            "label": "K84 Grand Catacombs",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-18",
+        "code": "K18",
+        "name": "High Tower Stair & Heart of Sorrow",
+        "level": "lvl-cr-towers",
+        "x": 680,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "A dizzying circular stone stairway spirals up into the clouds inside a hollow tower. Suspended in the void by iron struts is a ten-foot-tall, faceted crystal heart that pulses with a deep crimson rhythm: thump... thump... thump...",
+        "lighting": "Throbbing crimson pulse from the crystal Heart of Sorrow",
+        "atmosphere": "Deep subterranean vibration that shakes the teeth in your jaw.",
+        "features": [
+          "The Heart of Sorrow: absorbs the first 50 HP of damage dealt to Count Strahd von Zarovich.",
+          "Defended by 4 animated halberds and Strahd's flying armor."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Arcana",
+            "text": "Destroying the Heart (HP 50, AC 15) severs Strahd's damage ward and deals him intense psychic agony."
+          }
+        ],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-ravenloft-heart",
+            "name": "31. Castle Ravenloft: The Heart of Sorrow",
+            "cr": "8",
+            "monsters": [
+              {
+                "name": "The Heart of Sorrow",
+                "hp": 50
+              },
+              {
+                "name": "Animated Halberd",
+                "hp": 18
+              },
+              {
+                "name": "Animated Halberd",
+                "hp": 18
+              }
+            ]
+          }
+        ],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-8",
+            "label": "K8 Great Entry Hall",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "cr-37",
+            "label": "K37 Strahd's Study",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "cr-25",
+        "code": "K25",
+        "name": "Audience Hall & Spectral Organ",
+        "level": "lvl-cr-main",
+        "x": 880,
+        "y": 140,
+        "state": "unexplored",
+        "boxedText": "A massive pipe organ built of bone-inlaid silver dominates the northern wall, its keys depressing as if played by invisible master fingers. Above sits a high throne carved from black marble.",
+        "lighting": "Candelabras with black wax tapers",
+        "atmosphere": "Thunderous chords of Bach and gothic funeral dirges vibrating through the stone.",
+        "features": [
+          "Autonomous spectral organ playing haunting dirges."
+        ],
+        "secrets": [
+          {
+            "dc": 16,
+            "skill": "Perception",
+            "text": "Behind the bass organ pipes is a secret latch opening a slide tube down to the catacombs."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-10",
+            "label": "K10 Dining Hall of the Count",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "cr-37",
+            "label": "K37 Strahd's Study",
+            "type": "stairs",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-37",
+        "code": "K37",
+        "name": "Count Strahd's Study & The Tome",
+        "level": "lvl-cr-towers",
+        "x": 880,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "A cozy, book-lined study warmed by a gentle hearth. Above the mantel hangs an oil portrait of an exquisite auburn-haired maiden labeled 'Tatyana'. Upon an oak pedestal lies a heavy, leather-bound grimoire sealed with an iron latch.",
+        "lighting": "Warm hearth glow",
+        "atmosphere": "The scent of cedar, old paper, and sweet dried rose petals.",
+        "features": [
+          "Oil portrait of Tatyana Federovna (identical to Ireena Kolyana).",
+          "The Tome of Strahd resting on the central lectern."
+        ],
+        "secrets": [
+          {
+            "dc": 13,
+            "skill": "Investigation",
+            "text": "The Tome contains Strahd's personal chronicle of Sergei's murder and the pact made with the Dark Powers."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "The Tome of Strahd (Fated Relic)",
+            "quantity": "1",
+            "notes": "Reveals Strahd's history, flaws, and vulnerabilities"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-18",
+            "label": "K18 High Tower Stair",
+            "type": "door",
+            "state": "closed"
+          },
+          {
+            "target": "cr-25",
+            "label": "K25 Audience Hall",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "cr-41",
+            "label": "K41 The Treasury",
+            "type": "door",
+            "state": "locked"
+          }
+        ]
+      },
+      {
+        "id": "cr-41",
+        "code": "K41",
+        "name": "The Treasury of Ravenloft",
+        "level": "lvl-cr-towers",
+        "x": 1080,
+        "y": 300,
+        "state": "unexplored",
+        "boxedText": "Behind a massive adamantine vault door with three keyholes lies Strahd's personal treasury. Piles of mint electrum, platinum crowns, and crystal decanters glitter in the darkness.",
+        "lighting": "Pitch blackness",
+        "atmosphere": "The metallic scent of hoard gold and ancient wards.",
+        "features": [
+          "Three complex mechanical locks (DC 20 each to pick)."
+        ],
+        "secrets": [],
+        "traps": [
+          {
+            "name": "Shadow Ward Trap",
+            "dc": 18,
+            "trigger": "Failing to disarm the vault locks triggers a blast of negative energy",
+            "effect": "4d10 necrotic damage on a failed DC 15 Con save"
+          }
+        ],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Hoard of Ravenloft",
+            "quantity": "500 pp, 2,500 ep, 10,000 sp",
+            "notes": "Caramped into iron chests"
+          },
+          {
+            "name": "The Sunsword (Fated Relic)",
+            "quantity": "1",
+            "notes": "Hilt of living sunlight (if placed here by Tarokka)"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-37",
+            "label": "K37 Strahd's Study",
+            "type": "door",
+            "state": "locked"
+          }
+        ]
+      },
+      {
+        "id": "cr-74",
+        "code": "K74",
+        "name": "Dungeon Cells & Rahadin's Post",
+        "level": "lvl-cr-crypts",
+        "x": 280,
+        "y": 480,
+        "state": "unexplored",
+        "boxedText": "Iron cages hang by chains over stagnant green water. From the shadows steps Rahadin, Strahd's dusk elf chamberlain, as the agonizing psychic screams of thousands of slaughtered innocents fill your mind!",
+        "lighting": "Dying torches in iron wall sconces",
+        "atmosphere": "The Deathly Choir: the psychic screams of Rahadin's victims echo in the mind of everyone within 30 feet.",
+        "features": [
+          "Water-filled cells holding captive prisoners (including Emil the werewolf)."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-ravenloft-rahadin",
+            "name": "32. Castle Ravenloft: Rahadin's Execution Chamber",
+            "cr": "10",
+            "monsters": [
+              {
+                "name": "Rahadin",
+                "hp": 135
+              },
+              {
+                "name": "Shadow",
+                "hp": 16
+              },
+              {
+                "name": "Shadow",
+                "hp": 16
+              }
+            ]
+          }
+        ],
+        "loot": [
+          {
+            "name": "Rahadin's Curved Scimitar +1",
+            "quantity": "1",
+            "notes": "Exquisite dusk elf steel"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-84",
+            "label": "K84 Grand Catacombs",
+            "type": "door",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-84",
+        "code": "K84",
+        "name": "The Grand Catacombs",
+        "level": "lvl-cr-crypts",
+        "x": 520,
+        "y": 480,
+        "state": "unexplored",
+        "boxedText": "A vast underground labyrinth of stone crypts stretches into darkness. Thick white fog covers the stone floor to a depth of three feet. Stone pillars support soaring archways carved with names of ancestors, warlords, and forgotten consorts.",
+        "lighting": "Pitch blackness • White rolling mist floor",
+        "atmosphere": "Deathly cold, total silence, smell of dry bones and ancient lime.",
+        "features": [
+          "Forty crypts carved into the stone.",
+          "Swarming bats clinging to the high vaulted ceiling."
+        ],
+        "secrets": [
+          {
+            "dc": 14,
+            "skill": "Perception",
+            "text": "Following the tracks through the fog floor leads straight to the crypts of Sergei, Barov, and the Dark Master."
+          }
+        ],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-15",
+            "label": "K15 The Chapel (Upstairs)",
+            "type": "stairs",
+            "state": "open"
+          },
+          {
+            "target": "cr-74",
+            "label": "K74 Dungeon Cells",
+            "type": "door",
+            "state": "open"
+          },
+          {
+            "target": "cr-85",
+            "label": "K85 Tomb of Sergei",
+            "type": "archway",
+            "state": "open"
+          },
+          {
+            "target": "cr-86",
+            "label": "K86 Tomb of Barov & Ravenovia",
+            "type": "archway",
+            "state": "open"
+          },
+          {
+            "target": "cr-88",
+            "label": "K88 Tomb of Patrina",
+            "type": "archway",
+            "state": "open"
+          },
+          {
+            "target": "cr-90",
+            "label": "K90 Tomb of Count Strahd",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      },
+      {
+        "id": "cr-85",
+        "code": "K85",
+        "name": "Tomb of Sergei von Zarovich",
+        "level": "lvl-cr-crypts",
+        "x": 720,
+        "y": 440,
+        "state": "unexplored",
+        "boxedText": "Inside this crypt rests a coffin of pure crystal that radiates a soft, holy golden luminescence. Within lies the uncorrupted body of a handsome young man in polished silver armor.",
+        "lighting": "Holy golden light radiating from the crystal coffin",
+        "atmosphere": "Pure peaceful silence defying the dark evil of the castle.",
+        "features": [
+          "The uncorrupted remains of Prince Sergei von Zarovich."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [
+          {
+            "name": "Sergei's Silver Plate Armor (+1)",
+            "quantity": "1 suit",
+            "notes": "Radiates gentle protection"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-84",
+            "label": "K84 Grand Catacombs",
+            "type": "archway",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-86",
+        "code": "K86",
+        "name": "Tomb of Barov and Ravenovia",
+        "level": "lvl-cr-crypts",
+        "x": 720,
+        "y": 540,
+        "state": "unexplored",
+        "boxedText": "Two massive sarcophagi of polished black marble stand side by side, bearing the carved likenesses of King Barov and Queen Ravenovia.",
+        "lighting": "Pitch darkness",
+        "atmosphere": "Heavy ancestral gloom.",
+        "features": [
+          "The sarcophagi of Strahd's parents for whom the valley and castle were named."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [],
+        "loot": [],
+        "exits": [
+          {
+            "target": "cr-84",
+            "label": "K84 Grand Catacombs",
+            "type": "archway",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-88",
+        "code": "K88",
+        "name": "Tomb of Patrina Velikovna",
+        "level": "lvl-cr-crypts",
+        "x": 920,
+        "y": 440,
+        "state": "unexplored",
+        "boxedText": "Rotting funeral lace spills from a stone coffin. From the darkness rises the shrieking banshee of Patrina Velikovna, the dusk elf mage stoned by her people for daring to marry Strahd!",
+        "lighting": "Ghostly pale green light",
+        "atmosphere": "Wailing wind of unfulfilled hatred.",
+        "features": [
+          "The banshee spirit of Patrina."
+        ],
+        "secrets": [],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-patrina-banshee",
+            "name": "Banshee of Patrina Velikovna",
+            "cr": "4",
+            "monsters": [
+              {
+                "name": "Banshee (Patrina)",
+                "hp": 58
+              }
+            ]
+          }
+        ],
+        "loot": [
+          {
+            "name": "Patrina's Spellbook",
+            "quantity": "1",
+            "notes": "Contains 12 high-level wizard spells"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-84",
+            "label": "K84 Grand Catacombs",
+            "type": "archway",
+            "state": "open"
+          }
+        ]
+      },
+      {
+        "id": "cr-90",
+        "code": "K90",
+        "name": "Tomb of Count Strahd von Zarovich",
+        "level": "lvl-cr-crypts",
+        "x": 920,
+        "y": 540,
+        "state": "unexplored",
+        "boxedText": "The air in this vault is colder than the grave. In the center sits a polished black marble bier bearing a single coffin of ancient dark wood, carved with the single word: 'STRAHD'. Upon the bier stands Count Strahd von Zarovich, his red eyes burning with eternal wrath!",
+        "lighting": "Deep, unnatural gloom",
+        "atmosphere": "Oppressive supernatural majesty and deadly terror. The master is here.",
+        "features": [
+          "Strahd's true earth coffin where he regenerates if reduced to 0 HP.",
+          "Three vampire brides lurking on the high walls above."
+        ],
+        "secrets": [
+          {
+            "dc": 10,
+            "skill": "Perception",
+            "text": "Soil from his homeland of Barovia fills the bottom of the coffin."
+          }
+        ],
+        "traps": [],
+        "encounters": [
+          {
+            "id": "enc-cos-castle-ravenloft-spire",
+            "name": "18. Castle Ravenloft: Climax with the Master",
+            "cr": "15",
+            "monsters": [
+              {
+                "name": "Count Strahd von Zarovich",
+                "hp": 144
+              },
+              {
+                "name": "Vampire Spawn",
+                "hp": 82
+              },
+              {
+                "name": "Vampire Spawn",
+                "hp": 82
+              }
+            ]
+          }
+        ],
+        "loot": [
+          {
+            "name": "Lord Strahd's Crested Signet Ring",
+            "quantity": "1",
+            "notes": "Master key to all locks in Castle Ravenloft"
+          }
+        ],
+        "exits": [
+          {
+            "target": "cr-84",
+            "label": "K84 Grand Catacombs",
+            "type": "door",
+            "state": "closed"
+          }
+        ]
+      }
+    ]
+  }
+]

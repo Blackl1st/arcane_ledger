@@ -354,6 +354,7 @@ CAMPAIGN_SCOPED_FILES = {
     "party_stash.json",
     "travel.json",
     "tarokka.json",
+    "dungeons.json",
 }
 
 DEFAULT_MODULES = {
@@ -528,6 +529,32 @@ def check_and_upgrade_cos_campaign(camp_dir: Path, camp_obj: Dict[str, Any]):
                 except Exception:
                     pass
 
+            # Upgrade Overworld to Barovia Regional Map if incomplete or default
+            ow_path = camp_dir / "overworld.json"
+            try:
+                upgrade_ow = False
+                if not ow_path.exists() or ow_path.stat().st_size < 100:
+                    upgrade_ow = True
+                else:
+                    with open(ow_path, "r", encoding="utf-8") as f:
+                        curr_ow = json.load(f)
+                    if not isinstance(curr_ow, dict) or "shattered" in curr_ow.get("mapTitle", "").lower() or len(curr_ow.get("pins", [])) < 8:
+                        upgrade_ow = True
+                if upgrade_ow:
+                    with open(ow_path, "w", encoding="utf-8") as f:
+                        json.dump(cos_module_pack.get_cos_barovia_overworld(), f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"Error upgrading Barovia overworld: {e}")
+
+            # Upgrade Dungeons if missing
+            dung_path = camp_dir / "dungeons.json"
+            try:
+                if not dung_path.exists() or dung_path.stat().st_size < 100:
+                    with open(dung_path, "w", encoding="utf-8") as f:
+                        json.dump(cos_module_pack.get_cos_dungeons(), f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"Error upgrading CoS dungeons: {e}")
+
         # Auto-heal spell slots in party.json for Paladins/Rangers
         for party_path in [camp_dir / "party.json", DATA_DIR / "party.json"]:
             if party_path.exists():
@@ -551,6 +578,21 @@ def check_and_upgrade_cos_campaign(camp_dir: Path, camp_obj: Dict[str, Any]):
                     pass
     except Exception as e:
         print(f"Error checking/upgrading campaign data: {e}")
+
+def is_active_campaign_cos() -> bool:
+    try:
+        manifest = get_campaigns_manifest()
+        act_id = manifest.get("activeCampaignId", "default")
+        camp = next((c for c in manifest.get("campaigns", []) if c.get("id") == act_id), None)
+        if camp:
+            return (
+                camp.get("template") == "curse_of_strahd" or
+                "strahd" in camp.get("name", "").lower() or
+                "strahd" in camp.get("description", "").lower()
+            )
+    except Exception:
+        pass
+    return False
 
 def ensure_campaigns_system():
     CAMPAIGNS_DIR.mkdir(parents=True, exist_ok=True)
@@ -2951,17 +2993,49 @@ DEFAULT_BATTLEMAPS_CATALOG = [
 ]
 
 def get_shared_battlemaps_catalog() -> List[Dict[str, Any]]:
+    catalog = []
     if not BATTLEMAPS_CATALOG_FILE.exists():
         save_shared_battlemaps_catalog(DEFAULT_BATTLEMAPS_CATALOG)
-        return list(DEFAULT_BATTLEMAPS_CATALOG)
-    try:
-        with open(BATTLEMAPS_CATALOG_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, list) and len(data) > 0:
-                return data
-    except Exception as e:
-        print(f"Error loading battlemap catalog: {e}")
-    return list(DEFAULT_BATTLEMAPS_CATALOG)
+        catalog = list(DEFAULT_BATTLEMAPS_CATALOG)
+    else:
+        try:
+            with open(BATTLEMAPS_CATALOG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    catalog = data
+        except Exception as e:
+            print(f"Error loading battlemap catalog: {e}")
+            catalog = list(DEFAULT_BATTLEMAPS_CATALOG)
+
+    if not catalog:
+        catalog = list(DEFAULT_BATTLEMAPS_CATALOG)
+
+    # If the active campaign is Curse of Strahd, merge canonical CoS battlemaps
+    if is_active_campaign_cos():
+        cos_maps = cos_module_pack.get_cos_battlemaps()
+        cos_dir = STATIC_DIR / "images" / "battlemaps" / "cos"
+        merged = list(catalog)
+        existing_ids = {m.get("id") for m in merged}
+        for cm in cos_maps:
+            if cm["id"] not in existing_ids:
+                cid = cm["id"].replace("cos_", "")
+                target_url = cm["url"]
+                # Detect if custom image (e.g. from DM Andy import) exists
+                for ext in [".jpg", ".png", ".webp", ".jpeg"]:
+                    if (cos_dir / f"{cid}{ext}").exists():
+                        target_url = f"/static/images/battlemaps/cos/{cid}{ext}"
+                        break
+                else:
+                    svg_path = cos_dir / f"{cid}.svg"
+                    if svg_path.exists():
+                        target_url = f"/static/images/battlemaps/cos/{cid}.svg"
+
+                cm_copy = dict(cm)
+                cm_copy["url"] = target_url
+                merged.append(cm_copy)
+        return merged
+
+    return catalog
 
 def save_shared_battlemaps_catalog(catalog: List[Dict[str, Any]]) -> None:
     try:
@@ -3055,7 +3129,8 @@ async def create_campaign(payload: CampaignCreate):
             "secrets.json": [],
             "handouts.json": cos_module_pack.get_cos_handouts(),
             "battlemap.json": get_default_battlemap_state(),
-            "overworld.json": get_default_overworld_state([]),
+            "overworld.json": cos_module_pack.get_cos_barovia_overworld(),
+            "dungeons.json": cos_module_pack.get_cos_dungeons(),
             "faction_relations.json": {"relations": [], "turnHistory": []},
             "pantheon.json": [
                 {"id": "ptn-morninglord", "name": "The Morninglord", "domain": "Light, Life", "description": "The patron god of Barovia before the mists fell. Worshiped at the village church and St. Andral's in Vallaki."},
@@ -4471,27 +4546,37 @@ async def delete_rumor(rumor_id: str):
 # -------------------------------------------------------------
 def ensure_overworld_schema(overworld: Dict[str, Any], locations: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     if not isinstance(overworld, dict):
-        overworld = get_default_overworld_state(locations)
+        if is_active_campaign_cos():
+            overworld = cos_module_pack.get_cos_barovia_overworld()
+        else:
+            overworld = get_default_overworld_state(locations)
+
+    is_cos = is_active_campaign_cos()
+    default_title = "The Lands of Barovia" if is_cos else "Realm of the Shattered Coast"
+    default_subtitle = "Curse of Strahd • Domains of Dread • 1 Hex = 1/4 Mile" if is_cos else "Grand Strategic Cartography • 1 Hex = 24 Miles"
+    default_scale = "1 Hex = 1/4 Mile" if is_cos else "1 Hex = 24 Miles"
+    default_miles = 0.25 if is_cos else 24
+    default_url = "/static/images/barovia_map.svg" if is_cos else "/static/images/overworld_default.svg"
 
     if "maps" not in overworld or not isinstance(overworld["maps"], list) or len(overworld["maps"]) == 0:
         main_map = {
-            "id": "map-main",
-            "title": overworld.get("mapTitle", "Realm of the Shattered Coast"),
-            "subtitle": overworld.get("mapSubtitle", "Grand Strategic Cartography • 1 Hex = 24 Miles"),
+            "id": "map-main" if not is_cos else "map-barovia-regional",
+            "title": overworld.get("mapTitle", default_title),
+            "subtitle": overworld.get("mapSubtitle", default_subtitle),
             "type": "Kingdom",
-            "scale": overworld.get("scale", "1 Hex = 24 Miles"),
-            "scaleMilesPerHex": overworld.get("scaleMilesPerHex", 24),
-            "mapUrl": overworld.get("mapUrl", "/static/images/overworld_default.svg"),
+            "scale": overworld.get("scale", default_scale),
+            "scaleMilesPerHex": overworld.get("scaleMilesPerHex", default_miles),
+            "mapUrl": overworld.get("mapUrl", default_url),
             "partyMarker": overworld.get("partyMarker", {
-                "x": 37.5, "y": 50.0, "label": "Adventuring Party", "visibleToPlayers": True, "terrain": "Forest"
+                "x": 81.0 if is_cos else 37.5, "y": 60.5 if is_cos else 50.0, "label": "Adventuring Party", "visibleToPlayers": True, "terrain": "Settlement" if is_cos else "Forest"
             }),
-            "hexGrid": overworld.get("hexGrid", {"enabled": True, "opacity": 0.25, "size": 36}),
-            "fog": overworld.get("fog", {"enabled": True, "revealedPoints": [{"x": 37.5, "y": 50.0, "radius": 9.0}]}),
+            "hexGrid": overworld.get("hexGrid", {"enabled": True, "opacity": 0.22 if is_cos else 0.25, "size": 32 if is_cos else 36}),
+            "fog": overworld.get("fog", {"enabled": True, "revealedPoints": [{"x": 81.0 if is_cos else 37.5, "y": 60.5 if is_cos else 50.0, "radius": 12.0 if is_cos else 9.0}]}),
             "trail": overworld.get("trail", []),
             "pins": overworld.get("pins", [])
         }
         overworld["maps"] = [main_map]
-        overworld["activeMapId"] = "map-main"
+        overworld["activeMapId"] = main_map["id"]
 
     active_id = overworld.get("activeMapId")
     active_map = next((m for m in overworld["maps"] if m.get("id") == active_id), overworld["maps"][0])

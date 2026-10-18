@@ -2821,4 +2821,539 @@ def get_cos_dungeons() -> List[Dict[str, Any]]:
     ]
 
 
+# -------------------------------------------------------------
+# BAROVIA REGIONAL OVERWORLD CARTOGRAPHY & LOCATION NODES
+# -------------------------------------------------------------
+def get_cos_barovia_overworld() -> Dict[str, Any]:
+    barovia_pins = [
+        {
+            "id": "pin-cos-village-barovia",
+            "locationId": "loc-village-barovia",
+            "dungeonId": "dungeon-death-house",
+            "battlemapId": "cos_death_house_f1",
+            "title": "Village of Barovia",
+            "type": "Settlement",
+            "danger": "Moderate",
+            "population": "450 Souls (Desolate & Shuttered)",
+            "x": 81.0,
+            "y": 60.5,
+            "discovered": True,
+            "icon": "🏚️",
+            "notes": "A dismal, mist-shrouded village in the shadow of Castle Ravenloft. Contains Mad Mary's townhouse, the Blood of the Vine Tavern, the village church with Donavich and his undead son Doru, and the sinister Durst Manor (Death House)."
+        },
+        {
+            "id": "pin-cos-castle-ravenloft",
+            "locationId": "loc-castle-ravenloft",
+            "dungeonId": "dungeon-castle-ravenloft",
+            "battlemapId": "cos_castle_ravenloft_main",
+            "title": "Castle Ravenloft",
+            "type": "Dungeon / Fortress",
+            "danger": "Deadly",
+            "population": "Count Strahd von Zarovich & The Vampire Court",
+            "x": 68.0,
+            "y": 46.0,
+            "discovered": True,
+            "icon": "🏰",
+            "notes": "Perched upon a sheer thousand-foot pillar of stone, the ancient gothic citadel looms over the valley. Contains the Great Hall, Court of the Count, Heart of Sorrow in the spires, and the ancestral catacombs below."
+        },
+        {
+            "id": "pin-cos-tser-pool",
+            "locationId": "loc-tser-pool",
+            "battlemapId": "cos_tser_pool",
+            "title": "Tser Pool Encampment",
+            "type": "Wilderness Encampment",
+            "danger": "Safe",
+            "population": "35 Vistani Travelers",
+            "x": 67.5,
+            "y": 57.0,
+            "discovered": True,
+            "icon": "🎪",
+            "notes": "Brightly painted barrel-topped vardos encircle a roaring campfire beside the falls. Here Madam Eva reads the Tarokka deck to divine the resting places of the Sunsword, Holy Symbol, Tome of Strahd, and the fated ally."
+        },
+        {
+            "id": "pin-cos-tser-falls",
+            "locationId": "",
+            "battlemapId": "",
+            "title": "Tser Falls & High Bridge",
+            "type": "Bridge / Chasm",
+            "danger": "Moderate",
+            "population": "Gargoyles & Mist",
+            "x": 62.0,
+            "y": 53.0,
+            "discovered": True,
+            "icon": "🌉",
+            "notes": "A precarious stone bridge spans a thousand-foot chasm through which the River Ivlis plummets into the mist. Weathered stone gargoyles watch from the parapets."
+        },
+        {
+            "id": "pin-cos-old-bonegrinder",
+            "locationId": "loc-old-bonegrinder",
+            "battlemapId": "cos_old_bonegrinder",
+            "title": "Old Bonegrinder",
+            "type": "Windmill",
+            "danger": "Deadly",
+            "population": "Morgantha & The Night Hag Coven",
+            "x": 57.0,
+            "y": 49.0,
+            "discovered": True,
+            "icon": "🌾",
+            "notes": "A decrepit stone windmill with four rotting vanes. Morgantha and her daughters Bella Sunbane and Offalia Wormwiggle grind children's bones to bake addictive Dream Pastries."
+        },
+        {
+            "id": "pin-cos-vallaki",
+            "locationId": "loc-vallaki",
+            "battlemapId": "cos_vallaki_blue_water",
+            "title": "Town of Vallaki",
+            "type": "Walled Town",
+            "danger": "Moderate",
+            "population": "1,800 Citizens (Fortified)",
+            "x": 47.0,
+            "y": 42.0,
+            "discovered": True,
+            "icon": "🏘️",
+            "notes": "The largest settlement in Barovia, protected by a stout wooden palisade. Baron Vargas Vallakovich stages endless forced festivals ('All Will Be Well!'), while Lady Fiona Wachter leads a secret cult of Strahd sympathizers."
+        },
+        {
+            "id": "pin-cos-lake-zarovich",
+            "locationId": "",
+            "battlemapId": "",
+            "title": "Lake Zarovich & Hill Encampment",
+            "type": "Wilderness Lake / Camp",
+            "danger": "Moderate",
+            "population": "Luvash & Arrigal's Vistani Clan",
+            "x": 48.0,
+            "y": 33.0,
+            "discovered": True,
+            "icon": "⛵",
+            "notes": "A deep, icy glacial lake beneath Mount Baratok. Near the south bank sits the second Vistani encampment and the dusk elf hovels led by Kasimir Velikov."
+        },
+        {
+            "id": "pin-cos-argynvostholt",
+            "locationId": "loc-argynvostholt",
+            "battlemapId": "cos_argynvostholt",
+            "title": "Argynvostholt",
+            "type": "Fortress Ruins",
+            "danger": "Deadly",
+            "population": "Sir Vladimir Horngaard & The Revenant Order",
+            "x": 41.0,
+            "y": 61.0,
+            "discovered": True,
+            "icon": "🐉",
+            "notes": "The crumbling mansion of the Order of the Silver Dragon. A colossal stone dragon statue guards the courtyard. Sir Vladimir Horngaard leads vengeful undead knights."
+        },
+        {
+            "id": "pin-cos-berez",
+            "locationId": "loc-berez",
+            "battlemapId": "cos_berez_hut",
+            "title": "Ruins of Berez",
+            "type": "Swamp Ruins",
+            "danger": "Deadly",
+            "population": "Baba Lysaga & Creeping Hut",
+            "x": 45.0,
+            "y": 78.0,
+            "discovered": False,
+            "icon": "🛖",
+            "notes": "A sunken ghost village drowned by Strahd centuries ago. Baba Lysaga lurks in a giant creeping hut animated by a stolen magic vineyard gem, guarded by swarms of flies and scarecrows."
+        },
+        {
+            "id": "pin-cos-tower",
+            "locationId": "loc-tower",
+            "battlemapId": "cos_van_richtens_tower",
+            "title": "Van Richten's Tower (Khazan's Tower)",
+            "type": "Wizard Tower",
+            "danger": "Moderate",
+            "population": "Rudolph van Richten / Ezmerelda d'Avenir",
+            "x": 34.0,
+            "y": 35.0,
+            "discovered": True,
+            "icon": "🗼",
+            "notes": "A four-story stone tower on the shores of Lake Baratok, protected by an arcane door trap and an anti-magic field. Ezmerelda's booby-trapped Vistani wagon sits outside."
+        },
+        {
+            "id": "pin-cos-winery",
+            "locationId": "loc-winery",
+            "battlemapId": "cos_wizard_of_wines",
+            "title": "The Wizard of Wines",
+            "type": "Vineyard / Winery",
+            "danger": "Moderate",
+            "population": "Davian Martikov & Wereraven Family",
+            "x": 25.0,
+            "y": 68.0,
+            "discovered": True,
+            "icon": "🍇",
+            "notes": "The sole wine producer in Barovia, operated by the wereraven Keepers of the Feather. Overrun by evil druids and twig/needle blights from Yester Hill who stole the magic gems."
+        },
+        {
+            "id": "pin-cos-krezk",
+            "locationId": "loc-krezk",
+            "battlemapId": "cos_krezk_abbey",
+            "title": "Village of Krezk & Abbey of Saint Markovia",
+            "type": "Settlement / Abbey",
+            "danger": "High",
+            "population": "250 Villagers & The Abbot's Mongrelfolk",
+            "x": 18.0,
+            "y": 32.0,
+            "discovered": True,
+            "icon": "⛪",
+            "notes": "A self-sufficient village behind heavy stone walls. In the cliffside abbey above, a mad celestial Deva (The Abbot) stitches together flesh golems and mongrelfolk."
+        },
+        {
+            "id": "pin-cos-werewolf-den",
+            "locationId": "",
+            "battlemapId": "cos_werewolf_den",
+            "title": "Werewolf Den",
+            "type": "Cavern Lair",
+            "danger": "Deadly",
+            "population": "Kiril Stoyanovich's Pack (20+ Lycanthropes)",
+            "x": 15.0,
+            "y": 21.0,
+            "discovered": False,
+            "icon": "🐺",
+            "notes": "A subterranean cave complex behind a waterfall in the northwestern foothills. The savage Svalich pack keeps kidnapped children here to infect and train into killers."
+        },
+        {
+            "id": "pin-cos-amber-temple",
+            "locationId": "loc-amber-temple",
+            "battlemapId": "cos_amber_temple",
+            "title": "The Amber Temple",
+            "type": "Ancient Mountain Vault",
+            "danger": "Deadly",
+            "population": "Exethanter (Lich), Vestiges of Dark Powers",
+            "x": 38.0,
+            "y": 86.0,
+            "discovered": False,
+            "icon": "🏛️",
+            "notes": "Carved inside the glacial peaks of Mount Ghakis. Contains the amber sarcophagi where vestiges of extinct evil deities are entombed, offering corrupt Dark Gifts."
+        },
+        {
+            "id": "pin-cos-yester-hill",
+            "locationId": "loc-yester-hill",
+            "battlemapId": "cos_yester_hill",
+            "title": "Yester Hill",
+            "type": "Wilderness Hill / Ritual Site",
+            "danger": "High",
+            "population": "Berserkers, Blood Druids & Gulthias Tree",
+            "x": 19.0,
+            "y": 84.0,
+            "discovered": False,
+            "icon": "🗿",
+            "notes": "A windswept hill topped by a circle of standing stones and a black Gulthias tree. The druids chant around a massive effigy of Strahd, preparing to summon a colossal tree blight."
+        },
+        {
+            "id": "pin-cos-eastern-gates",
+            "locationId": "",
+            "battlemapId": "",
+            "title": "Gates of Barovia (Eastern Svalich)",
+            "type": "Gateway",
+            "danger": "Moderate",
+            "population": "Silent Gargoyles",
+            "x": 92.0,
+            "y": 61.0,
+            "discovered": True,
+            "icon": "🚪",
+            "notes": "Twin iron gates framed by gargoyles swing open of their own volition. Beyond lies only the suffocating wall of poisonous mists that traps all mortals in Barovia."
+        }
+    ]
+
+    main_barovia_map = {
+        "id": "map-barovia-regional",
+        "title": "The Lands of Barovia",
+        "subtitle": "Curse of Strahd • Domains of Dread • 1 Hex = 1/4 Mile",
+        "type": "Kingdom",
+        "scale": "1 Hex = 1/4 Mile",
+        "scaleMilesPerHex": 0.25,
+        "mapUrl": "/static/images/barovia_map.svg",
+        "partyMarker": {
+            "x": 81.0,
+            "y": 60.5,
+            "label": "Adventurers at Barovia Village",
+            "visibleToPlayers": True,
+            "terrain": "Settlement"
+        },
+        "hexGrid": {
+            "enabled": True,
+            "opacity": 0.22,
+            "size": 32
+        },
+        "fog": {
+            "enabled": True,
+            "revealedPoints": [
+                {"x": 81.0, "y": 60.5, "radius": 12.0},
+                {"x": 68.0, "y": 46.0, "radius": 10.0},
+                {"x": 67.5, "y": 57.0, "radius": 8.0}
+            ]
+        },
+        "trail": [],
+        "pins": barovia_pins
+    }
+
+    return {
+        "activeMapId": "map-barovia-regional",
+        "mapTitle": "The Lands of Barovia",
+        "mapSubtitle": "Curse of Strahd • Domains of Dread • 1 Hex = 1/4 Mile",
+        "mapUrl": "/static/images/barovia_map.svg",
+        "scale": "1 Hex = 1/4 Mile",
+        "scaleMilesPerHex": 0.25,
+        "partyMarker": {
+            "x": 81.0,
+            "y": 60.5,
+            "label": "Adventurers at Barovia Village",
+            "visibleToPlayers": True,
+            "terrain": "Settlement"
+        },
+        "fogUnexplored": True,
+        "maps": [main_barovia_map],
+        "pins": barovia_pins,
+        "tiers": ["Kingdom", "Province", "Settlement", "Dungeon"]
+    }
+
+
+# -------------------------------------------------------------
+# CURSE OF STRAHD CANONICAL BATTLEMAP CATALOG
+# -------------------------------------------------------------
+def get_cos_battlemaps() -> List[Dict[str, Any]]:
+    return [
+        {
+            "id": "cos_death_house_f1",
+            "name": "Death House - Ground Floor",
+            "url": "/static/images/battlemaps/cos/death_house_f1.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Appendix B",
+            "notes": "Entry Hall, Foyer, Den, Dining Room"
+        },
+        {
+            "id": "cos_death_house_f2",
+            "name": "Death House - Upper Floor",
+            "url": "/static/images/battlemaps/cos/death_house_f2.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Appendix B",
+            "notes": "Conservatory, Library, Balcony"
+        },
+        {
+            "id": "cos_death_house_attic",
+            "name": "Death House - Attic & Children's Room",
+            "url": "/static/images/battlemaps/cos/death_house_attic.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Appendix B",
+            "notes": "Rose & Thorn's Bedroom, Secret Spiral Stairs"
+        },
+        {
+            "id": "cos_death_house_dungeon",
+            "name": "Death House - Cult Undercroft & Reliquary",
+            "url": "/static/images/battlemaps/cos/death_house_dungeon.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Appendix B",
+            "notes": "Cult Crypts, Relic Shrine, Lorghoth the Decayer Altar"
+        },
+        {
+            "id": "cos_castle_ravenloft_main",
+            "name": "Castle Ravenloft - Main Floor",
+            "url": "/static/images/battlemaps/cos/castle_ravenloft_main.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 4",
+            "notes": "Great Entry, Chapel, Dining Hall of the Count"
+        },
+        {
+            "id": "cos_castle_ravenloft_spire",
+            "name": "Castle Ravenloft - Spires & Heart of Sorrow",
+            "url": "/static/images/battlemaps/cos/castle_ravenloft_spire.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 4",
+            "notes": "Heart of Sorrow, Belfry, High Tower Peak"
+        },
+        {
+            "id": "cos_castle_ravenloft_catacombs",
+            "name": "Castle Ravenloft - Catacombs & Crypts",
+            "url": "/static/images/battlemaps/cos/castle_ravenloft_catacombs.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 4",
+            "notes": "Tombs of Barovian Royalty, Strahd's Tomb K90"
+        },
+        {
+            "id": "cos_old_bonegrinder",
+            "name": "Old Bonegrinder Windmill",
+            "url": "/static/images/battlemaps/cos/old_bonegrinder.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "ruins",
+            "type": "cos_module",
+            "chapter": "Chapter 6",
+            "notes": "Grinding Floor, Kitchen Oven, Attic Cages"
+        },
+        {
+            "id": "cos_vallaki_blue_water",
+            "name": "Town of Vallaki - Blue Water Inn",
+            "url": "/static/images/battlemaps/cos/vallaki_blue_water.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "tavern",
+            "type": "cos_module",
+            "chapter": "Chapter 5",
+            "notes": "Taproom, Kitchen, Martikov Quarters"
+        },
+        {
+            "id": "cos_vallaki_church",
+            "name": "Town of Vallaki - St. Andral's Church",
+            "url": "/static/images/battlemaps/cos/vallaki_church.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "sanctum",
+            "type": "cos_module",
+            "chapter": "Chapter 5",
+            "notes": "Nave, Father Lucian's Office, Relic Crypt"
+        },
+        {
+            "id": "cos_vallaki_coffin",
+            "name": "Town of Vallaki - Coffin Maker's Shop",
+            "url": "/static/images/battlemaps/cos/vallaki_coffin.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 5",
+            "notes": "Workshop, Henrik's Bedroom, Vampire Spawn Attic"
+        },
+        {
+            "id": "cos_tser_pool",
+            "name": "Tser Pool Encampment",
+            "url": "/static/images/battlemaps/cos/tser_pool.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "forest",
+            "type": "cos_module",
+            "chapter": "Chapter 9",
+            "notes": "Vardo Encampment, Waterfall, Madam Eva's Tent"
+        },
+        {
+            "id": "cos_argynvostholt",
+            "name": "Argynvostholt - Dragon Mansion",
+            "url": "/static/images/battlemaps/cos/argynvostholt.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "ruins",
+            "type": "cos_module",
+            "chapter": "Chapter 10",
+            "notes": "Dragon Statue Foyer, Chapel, Vladimir's Hall"
+        },
+        {
+            "id": "cos_berez_hut",
+            "name": "Ruins of Berez & Baba Lysaga's Hut",
+            "url": "/static/images/battlemaps/cos/berez_hut.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "swamp",
+            "type": "cos_module",
+            "chapter": "Chapter 7",
+            "notes": "Drowned Marsh, Marina's Monument, Creeping Hut"
+        },
+        {
+            "id": "cos_van_richtens_tower",
+            "name": "Van Richten's Tower",
+            "url": "/static/images/battlemaps/cos/van_richtens_tower.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "sanctum",
+            "type": "cos_module",
+            "chapter": "Chapter 11",
+            "notes": "Lake Causeway, 4 Tower Levels, Ezmerelda's Wagon"
+        },
+        {
+            "id": "cos_wizard_of_wines",
+            "name": "The Wizard of Wines Winery",
+            "url": "/static/images/battlemaps/cos/wizard_of_wines.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "tavern",
+            "type": "cos_module",
+            "chapter": "Chapter 12",
+            "notes": "Fermentation Vats, Loading Dock, Wine Cellar"
+        },
+        {
+            "id": "cos_krezk_abbey",
+            "name": "Abbey of Saint Markovia",
+            "url": "/static/images/battlemaps/cos/krezk_abbey.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "sanctum",
+            "type": "cos_module",
+            "chapter": "Chapter 8",
+            "notes": "Courtyard, Madhouse, The Abbot's Operating Room"
+        },
+        {
+            "id": "cos_amber_temple",
+            "name": "The Amber Temple - Vault of Vestiges",
+            "url": "/static/images/battlemaps/cos/amber_temple.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "dungeon",
+            "type": "cos_module",
+            "chapter": "Chapter 13",
+            "notes": "God of Secrets Statue, Amber Vaults, Exethanter's Sanctum"
+        },
+        {
+            "id": "cos_yester_hill",
+            "name": "Yester Hill - Gulthias Tree",
+            "url": "/static/images/battlemaps/cos/yester_hill.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "forest",
+            "type": "cos_module",
+            "chapter": "Chapter 14",
+            "notes": "Stone Circle, Gulthias Tree, Effigy of Strahd"
+        },
+        {
+            "id": "cos_werewolf_den",
+            "name": "Werewolf Den",
+            "url": "/static/images/battlemaps/cos/werewolf_den.jpg",
+            "width": 3840,
+            "height": 2160,
+            "defaultGridSize": 70,
+            "theme": "cavern",
+            "type": "cos_module",
+            "chapter": "Chapter 15",
+            "notes": "Waterfall Entrance, Mother Night Cavern, Pups' Pit"
+        }
+    ]
+
+
+
 
