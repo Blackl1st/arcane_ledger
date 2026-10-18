@@ -49,7 +49,7 @@ let appState = {
         loot: false,
         stats: false
     },
-    activeTab: 'combat',
+    activeTab: 'session',
     diceHistory: [],
     activeAdvantage: 'normal', // 'normal', 'advantage', 'disadvantage'
     diceModifier: 0,
@@ -410,7 +410,9 @@ async function apiDeleteRosterNPC(id) {
 // TAB NAVIGATION & OPTION B SIDEBAR / TOPBAR
 // -----------------------------------------------------------------------------
 const TAB_TITLES = {
+    'session': { icon: '🎯', title: 'Live Session Cockpit' },
     'combat': { icon: '⚔️', title: 'Combat & Party' },
+    'dungeons': { icon: '🗝️', title: 'Dungeon & Pointcrawl Map' },
     'battlemap': { icon: '🗺️', title: 'Tabletop Battlemap' },
     'bestiary': { icon: '🐉', title: '5.5e Bestiary' },
     'encounters': { icon: '⚖️', title: 'Encounter Builder' },
@@ -451,7 +453,13 @@ function switchTab(tab) {
         topTitle.innerHTML = `<span>${TAB_TITLES[tab].icon}</span> <span>${TAB_TITLES[tab].title}</span>`;
     }
 
-    if (tab === 'combat') {
+    if (tab === 'session') {
+        renderSessionCockpit();
+    } else if (tab === 'dungeons') {
+        switchTab('world');
+        switchWorldSubtab('dungeons');
+        return;
+    } else if (tab === 'combat') {
         renderPartyHUD();
         renderCombatTracker();
     } else if (tab === 'npcs') {
@@ -792,6 +800,10 @@ function renderPartyHUD() {
             </div>
         `;
     }).join('');
+
+    if (appState.activeTab === 'session' && typeof renderCockpitTactical === 'function') {
+        renderCockpitTactical();
+    }
 }
 
 async function toggleSpellSlot(pcId, level, slotIndex) {
@@ -1603,6 +1615,10 @@ function renderCombatTracker() {
             </div>
         `;
     }).join('');
+
+    if (appState.activeTab === 'session' && typeof renderCockpitTactical === 'function') {
+        renderCockpitTactical();
+    }
 }
 
 function applyCombatTurnLighting(combatant) {
@@ -2400,6 +2416,9 @@ function rollDie(sides) {
 
     if (appState.diceHistory.length > 20) appState.diceHistory.pop();
     renderDiceHistory();
+    if (typeof addCockpitRollToFeed === 'function') {
+        addCockpitRollToFeed({ label: formulaStr, val: total });
+    }
 
     // Trigger On-Screen Animated Floating HUD Overlay
     showDiceRollOverlay({
@@ -2455,6 +2474,19 @@ function setAdvantage(type) {
         activeBtn.classList.remove('bg-ledger-800', 'text-slate-300');
         activeBtn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold');
     }
+
+    // Keep Cockpit Mini Tray Advantage Buttons in sync
+    ['norm', 'adv', 'dis'].forEach(k => {
+        const el = document.getElementById(`cockpit-adv-${k}`);
+        if (el) {
+            const matches = (k === 'norm' && type === 'normal') || (k === 'adv' && type === 'advantage') || (k === 'dis' && type === 'disadvantage');
+            if (matches) {
+                el.className = 'px-1.5 py-0.5 rounded bg-amber-500 text-ledger-950 font-bold';
+            } else {
+                el.className = 'px-1.5 py-0.5 rounded bg-ledger-950 text-slate-400 hover:text-amber-300 border border-ledger-800';
+            }
+        }
+    });
 }
 
 function renderDiceHistory() {
@@ -10442,9 +10474,11 @@ function setMasterMixerVolume(val) {
     }
     const mixerSlider = document.getElementById('mixer-master-slider');
     const ribbonSlider = document.getElementById('ribbon-master-volume');
+    const cockpitSlider = document.getElementById('cockpit-master-vol');
     const masterVal = document.getElementById('mixer-master-val');
     if (mixerSlider) mixerSlider.value = val;
     if (ribbonSlider) ribbonSlider.value = val;
+    if (cockpitSlider) cockpitSlider.value = val;
     if (masterVal) masterVal.innerText = `${val}%`;
 }
 
@@ -12998,7 +13032,9 @@ window.submitAddAce25c = submitAddAce25c;
 
 const DEFAULT_KEYBINDS = {
     // Navigation
+    nav_session: { label: "Live Session Cockpit", group: "Navigation", default: "Alt+S", scope: "global" },
     nav_combat: { label: "Combat & Party", group: "Navigation", default: "Alt+1", scope: "global" },
+    nav_dungeons: { label: "Dungeon Map & Pointcrawl", group: "Navigation", default: "Alt+D", scope: "global" },
     nav_battlemap: { label: "Tabletop Battlemap", group: "Navigation", default: "Alt+M", scope: "global" },
     nav_bestiary: { label: "5.5e Bestiary (300+)", group: "Navigation", default: "Alt+6", scope: "global" },
     nav_encounters: { label: "Encounter Builder", group: "Navigation", default: "Alt+9", scope: "global" },
@@ -13016,7 +13052,7 @@ const DEFAULT_KEYBINDS = {
     action_next_turn: { label: "Next Turn in Initiative", group: "Combat Tracker", default: "N", scope: "combat" },
     action_prev_turn: { label: "Previous Turn in Initiative", group: "Combat Tracker", default: "P", scope: "combat" },
     action_roll_d20: { label: "Quick Roll d20", group: "Combat Tracker", default: "R", scope: "combat" },
-    action_dice_drawer: { label: "Toggle Quick Dice Drawer", group: "Dice & Tools", default: "Alt+D", scope: "global" },
+    action_dice_drawer: { label: "Toggle Quick Dice Drawer", group: "Dice & Tools", default: "Alt+R", scope: "global" },
 
     // NPC Generator Actions
     action_roll_npc: { label: "Generate / Roll Random NPC", group: "NPC Generator", default: "G", scope: "npcs" },
@@ -13217,7 +13253,9 @@ function updateSidebarKeybindTooltips() {
 
 function executeKeybindAction(actionId) {
     switch (actionId) {
+        case 'nav_session': switchTab('session'); break;
         case 'nav_combat': switchTab('combat'); break;
+        case 'nav_dungeons': switchTab('dungeons'); break;
         case 'nav_battlemap': switchTab('battlemap'); break;
         case 'nav_bestiary': switchTab('bestiary'); break;
         case 'nav_encounters': switchTab('encounters'); break;
@@ -13245,6 +13283,13 @@ function executeKeybindAction(actionId) {
 
 // Global Keydown Listener
 document.addEventListener('keydown', (e) => {
+    // Quick search / Command palette hotkey: Ctrl+K or Cmd+K
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openCommandPalette();
+        return;
+    }
+
     if (activeRebindingAction) {
         e.preventDefault();
         e.stopPropagation();
@@ -19076,6 +19121,10 @@ window.onload = async function() {
     initStreamDeckUI();
     initStreamDeckWebSocket();
     if (window.LightingEngine) window.LightingEngine.init();
+    if (window.DungeonController && typeof window.DungeonController.init === 'function') {
+        await window.DungeonController.init();
+    }
+    renderSessionCockpit();
     initUpdater();
 };
 
@@ -19529,3 +19578,1104 @@ window.exportCampaignPack = exportCampaignPack;
 window.triggerImportCampaignPack = triggerImportCampaignPack;
 window.handleImportCampaignPackFile = handleImportCampaignPackFile;
 window.downloadOfficialCoSPack = downloadOfficialCoSPack;
+
+// =============================================================================
+// GLOBAL COMMAND PALETTE (CTRL+K / CMD+K)
+// =============================================================================
+
+let commandPaletteItems = [];
+let commandPaletteSelectedIndex = 0;
+
+function openCommandPalette() {
+    const modal = document.getElementById('command-palette-modal');
+    const input = document.getElementById('command-palette-input');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 50);
+    }
+    commandPaletteSelectedIndex = 0;
+    filterCommandPalette('');
+}
+
+function closeCommandPalette() {
+    const modal = document.getElementById('command-palette-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function filterCommandPalette(query) {
+    const q = (query || '').trim().toLowerCase();
+    const resultsContainer = document.getElementById('command-palette-results');
+    if (!resultsContainer) return;
+
+    const items = [];
+
+    // 1. Navigation Targets
+    const navItems = [
+        { icon: '🎯', label: 'Live Session Cockpit', category: 'Navigation', shortcut: 'Alt+S', action: () => switchTab('session') },
+        { icon: '⚔️', label: 'Combat Tracker & Party Vitals', category: 'Navigation', shortcut: 'Alt+1', action: () => switchTab('combat') },
+        { icon: '🗝️', label: 'Dungeon & Pointcrawl Map', category: 'Navigation', shortcut: 'Alt+D', action: () => switchTab('dungeons') },
+        { icon: '🗺️', label: 'Tabletop Battlemap', category: 'Navigation', shortcut: 'Alt+M', action: () => switchTab('battlemap') },
+        { icon: '🎒', label: 'Party Inventory & Stash', category: 'Navigation', shortcut: 'Alt+I', action: () => openPartyInventoryModal() },
+        { icon: '🐉', label: '5.5e Bestiary (300+ Monsters)', category: 'Navigation', shortcut: 'Alt+6', action: () => switchTab('bestiary') },
+        { icon: '⚖️', label: 'Encounter Builder', category: 'Navigation', shortcut: 'Alt+9', action: () => switchTab('encounters') },
+        { icon: '👤', label: 'NPC Generator & Roster', category: 'Navigation', shortcut: 'Alt+2', action: () => switchTab('npcs') },
+        { icon: '🌍', label: 'World & Lore Atlas', category: 'Navigation', shortcut: 'Alt+7', action: () => switchTab('world') },
+        { icon: '📜', label: 'Spells Compendium', category: 'Navigation', shortcut: 'Alt+0', action: () => switchTab('spells') },
+        { icon: '🗡️', label: 'Magic Items Compendium', category: 'Navigation', shortcut: 'Alt+I', action: () => switchTab('items') },
+        { icon: '📖', label: '2024 Rules Quick Reference', category: 'Navigation', shortcut: 'Alt+3', action: () => switchTab('rules') },
+        { icon: '💰', label: 'Loot & Merchant Shops', category: 'Navigation', shortcut: 'Alt+4', action: () => switchTab('loot') },
+        { icon: '💡', label: 'Atmosphere & Smart Lights', category: 'Navigation', shortcut: 'Alt+8', action: () => switchTab('atmosphere') },
+        { icon: '📝', label: 'Session Scratchpad', category: 'Navigation', shortcut: 'Alt+5', action: () => switchTab('scratchpad') },
+        { icon: '⚙️', label: 'Campaign Settings & Keybinds', category: 'Navigation', shortcut: '', action: () => switchTab('settings') }
+    ];
+    navItems.forEach(n => items.push(n));
+
+    // 2. Quick Actions
+    const quickActions = [
+        { icon: '🛌', label: 'Short Rest (1 Hour)', category: 'Quick Action', subtitle: 'Spend Hit Dice & reset short rest powers', action: () => openShortRestModal() },
+        { icon: '🏕️', label: 'Long Rest (8 Hours)', category: 'Quick Action', subtitle: 'Restore full HP, half hit dice, and spell slots', action: () => openLongRestModal() },
+        { icon: '🎲', label: 'Roll d20 Check', category: 'Quick Action', subtitle: 'Standard polyhedral d20 roll', action: () => rollDie(20) },
+        { icon: '💡', label: 'Set Atmosphere: Tavern Ambience', category: 'Quick Action', subtitle: 'Warm amber glow & background chatter', action: () => cockpitSetLightingScene('tavern') },
+        { icon: '💡', label: 'Set Atmosphere: Crypt & Dungeon', category: 'Quick Action', subtitle: 'Dim cold blue stone tones', action: () => cockpitSetLightingScene('crypt') },
+        { icon: '💡', label: 'Set Atmosphere: Boss Battle Pulse', category: 'Quick Action', subtitle: 'High intensity blood red backlight', action: () => cockpitSetLightingScene('boss') },
+        { icon: '🎺', label: 'Soundboard: Natural 20 Fanfare', category: 'Quick Action', subtitle: 'Play celebratory crit fanfare', action: () => window.AudioEngine && window.AudioEngine.playNat20() },
+        { icon: '💀', label: 'Soundboard: Natural 1 Fumble', category: 'Quick Action', subtitle: 'Play doom fumble chord', action: () => window.AudioEngine && window.AudioEngine.playNat1() },
+        { icon: '⚔️', label: 'Soundboard: Sword Clash', category: 'Quick Action', subtitle: 'Play melee strike SFX', action: () => window.AudioEngine && window.AudioEngine.playStrike() },
+        { icon: '👤', label: 'Generate Random NPC', category: 'Quick Action', subtitle: 'Instant personality, voice trait & secret', action: () => { switchTab('npcs'); if (typeof generateRandomNPC === 'function') generateRandomNPC(); } },
+        { icon: '➕', label: 'Add New Player Character', category: 'Quick Action', subtitle: 'Create character sheet', action: () => openEditPCModal() }
+    ];
+    quickActions.forEach(qa => items.push(qa));
+
+    // 3. Active Dungeon Chambers
+    const activeDungeon = window.DungeonController?.getActiveDungeon();
+    if (activeDungeon && activeDungeon.nodes) {
+        activeDungeon.nodes.forEach(node => {
+            items.push({
+                icon: '🗝️',
+                label: `${node.code ? node.code + ': ' : ''}${node.name}`,
+                category: 'Dungeon Chambers',
+                subtitle: `${activeDungeon.name} • ${node.state || 'veiled'}`,
+                action: () => {
+                    cockpitSelectChamber(node.id);
+                    switchTab('session');
+                }
+            });
+        });
+    }
+
+    // 4. Party Characters & Roster NPCs
+    (appState.party || []).forEach(pc => {
+        items.push({
+            icon: '🛡️',
+            label: pc.name,
+            category: 'Party Characters',
+            subtitle: `${pc.classRole || 'Adventurer'} • ${pc.currentHp}/${pc.maxHp} HP • AC ${pc.ac}`,
+            action: () => {
+                switchTab('combat');
+                openEditPCModal(pc.id);
+            }
+        });
+    });
+
+    (appState.roster || []).forEach(npc => {
+        items.push({
+            icon: '👤',
+            label: npc.name,
+            category: 'NPC Roster',
+            subtitle: `${npc.occupation || 'NPC'} • ${npc.location || 'Barovia'}`,
+            action: () => {
+                switchTab('npcs');
+                if (typeof displayRosterNPC === 'function') displayRosterNPC(npc.id);
+            }
+        });
+    });
+
+    // 5. Compendium Monsters (Filtered if query present)
+    if (q && appState.monsters && appState.monsters.length) {
+        let count = 0;
+        for (const mon of appState.monsters) {
+            if (count >= 6) break;
+            if (mon.name && mon.name.toLowerCase().includes(q)) {
+                items.push({
+                    icon: '🐉',
+                    label: mon.name,
+                    category: 'Bestiary (5.5e)',
+                    subtitle: `CR ${mon.cr || '1'} ${mon.type || 'creature'} • ${mon.hp || 20} HP • AC ${mon.ac || 12}`,
+                    action: () => {
+                        switchTab('bestiary');
+                        if (typeof selectBestiaryMonster === 'function') selectBestiaryMonster(mon.id);
+                    }
+                });
+                count++;
+            }
+        }
+    }
+
+    // 6. Spells Compendium (Filtered if query present)
+    if (q && appState.spells && appState.spells.length) {
+        let count = 0;
+        for (const spell of appState.spells) {
+            if (count >= 6) break;
+            if (spell.name && spell.name.toLowerCase().includes(q)) {
+                items.push({
+                    icon: '✨',
+                    label: spell.name,
+                    category: 'Spells Compendium',
+                    subtitle: `${spell.level ? 'Level ' + spell.level : 'Cantrip'} ${spell.school || ''}`,
+                    action: () => {
+                        switchTab('spells');
+                        if (typeof openSpellDetailModal === 'function') openSpellDetailModal(spell.id);
+                    }
+                });
+                count++;
+            }
+        }
+    }
+
+    // 7. Magic Items Compendium (Filtered if query present)
+    if (q && appState.items && appState.items.length) {
+        let count = 0;
+        for (const it of appState.items) {
+            if (count >= 6) break;
+            if (it.name && it.name.toLowerCase().includes(q)) {
+                items.push({
+                    icon: '🗡️',
+                    label: it.name,
+                    category: 'Magic Items',
+                    subtitle: `${it.rarity || 'Common'} ${it.type || 'Item'}`,
+                    action: () => {
+                        switchTab('items');
+                        if (typeof showItemDetail === 'function') showItemDetail(it.id);
+                    }
+                });
+                count++;
+            }
+        }
+    }
+
+    let filtered = items;
+    if (q) {
+        filtered = items.filter(it => 
+            (it.label && it.label.toLowerCase().includes(q)) ||
+            (it.category && it.category.toLowerCase().includes(q)) ||
+            (it.subtitle && it.subtitle.toLowerCase().includes(q))
+        );
+    } else {
+        filtered = items.slice(0, 20);
+    }
+
+    commandPaletteItems = filtered;
+    if (commandPaletteSelectedIndex >= filtered.length) {
+        commandPaletteSelectedIndex = 0;
+    }
+
+    if (filtered.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="py-8 text-center text-slate-500 font-mono text-xs">
+                No matching actions, monsters, or chambers found for "${escapeHtml(q)}".
+            </div>
+        `;
+        return;
+    }
+
+    resultsContainer.innerHTML = filtered.map((item, idx) => {
+        const isSelected = idx === commandPaletteSelectedIndex;
+        return `
+            <div id="palette-item-${idx}" onclick="executeCommandPaletteAction(${idx})" class="p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between gap-3 ${isSelected ? 'bg-amber-500/20 border border-amber-500/50 text-amber-200 shadow-sm' : 'bg-ledger-950/60 hover:bg-ledger-800 border border-transparent text-slate-300'}">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="text-base shrink-0">${item.icon}</span>
+                    <div class="min-w-0">
+                        <div class="font-bold text-xs truncate flex items-center gap-2">
+                            <span>${escapeHtml(item.label)}</span>
+                            <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-ledger-800 text-slate-400 border border-ledger-700">${item.category}</span>
+                        </div>
+                        ${item.subtitle ? `<p class="text-[10px] text-slate-400 truncate leading-snug">${escapeHtml(item.subtitle)}</p>` : ''}
+                    </div>
+                </div>
+                ${item.shortcut ? `<kbd class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-700 font-mono text-[10px] text-slate-400 shrink-0">${item.shortcut}</kbd>` : ''}
+            </div>
+        `;
+    }).join('');
+
+    const selEl = document.getElementById(`palette-item-${commandPaletteSelectedIndex}`);
+    if (selEl) {
+        selEl.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function handleCommandPaletteKey(e) {
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (commandPaletteItems.length > 0) {
+            commandPaletteSelectedIndex = (commandPaletteSelectedIndex + 1) % commandPaletteItems.length;
+            filterCommandPalette(document.getElementById('command-palette-input')?.value || '');
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (commandPaletteItems.length > 0) {
+            commandPaletteSelectedIndex = (commandPaletteSelectedIndex - 1 + commandPaletteItems.length) % commandPaletteItems.length;
+            filterCommandPalette(document.getElementById('command-palette-input')?.value || '');
+        }
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        executeCommandPaletteAction(commandPaletteSelectedIndex);
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCommandPalette();
+    }
+}
+
+function executeCommandPaletteAction(idx) {
+    const item = commandPaletteItems[idx];
+    if (item && typeof item.action === 'function') {
+        closeCommandPalette();
+        item.action();
+    }
+}
+
+// =============================================================================
+// LIVE SESSION COCKPIT (HUD) CONTROLLER
+// =============================================================================
+
+function renderSessionCockpit() {
+    populateCockpitDungeonSelectors();
+    renderCockpitChamber();
+    renderCockpitTactical();
+
+    // Sync overhead slider with LightingEngine state if active
+    if (window.LightingEngine && window.LightingEngine.state && window.LightingEngine.state.overhead) {
+        const bri = window.LightingEngine.state.overhead.brightness || 45;
+        const slider = document.getElementById('cockpit-overhead-slider');
+        const valEl = document.getElementById('cockpit-overhead-val');
+        if (slider) slider.value = bri;
+        if (valEl) valEl.textContent = `${bri}%`;
+    }
+
+    // Load persisted scratchpad
+    const scratchpad = document.getElementById('cockpit-scratchpad-input');
+    if (scratchpad && scratchpad.value === '') {
+        scratchpad.value = localStorage.getItem('arcane_cockpit_scratchpad') || '';
+    }
+}
+
+function populateCockpitDungeonSelectors() {
+    const dungeonSelect = document.getElementById('cockpit-dungeon-select');
+    const floorSelect = document.getElementById('cockpit-floor-select');
+    if (!dungeonSelect || !window.DungeonController) return;
+
+    const dungeons = (typeof window.DungeonController.getDungeons === 'function') ? window.DungeonController.getDungeons() : [];
+    const activeDungeon = (typeof window.DungeonController.getActiveDungeon === 'function') ? window.DungeonController.getActiveDungeon() : null;
+
+    if (!dungeons || dungeons.length === 0) {
+        dungeonSelect.innerHTML = '<option value="">No Dungeons Found</option>';
+        if (floorSelect) floorSelect.innerHTML = '<option value="all">All Floors</option>';
+        return;
+    }
+
+    dungeonSelect.innerHTML = dungeons.map(d => `
+        <option value="${d.id}" ${activeDungeon && activeDungeon.id === d.id ? 'selected' : ''}>
+            ${escapeHtml(d.name || d.id)}
+        </option>
+    `).join('');
+
+    if (floorSelect) {
+        if (!activeDungeon || !activeDungeon.levels || activeDungeon.levels.length === 0) {
+            floorSelect.innerHTML = '<option value="all">All Floors</option>';
+        } else {
+            const activeLevel = (typeof window.DungeonController.getActiveLevelId === 'function') ? window.DungeonController.getActiveLevelId() : 'all';
+            floorSelect.innerHTML = `
+                <option value="all" ${activeLevel === 'all' ? 'selected' : ''}>All Floors</option>
+                ${activeDungeon.levels.filter(l => l.id !== 'all' && !l.id.endsWith('-all')).map(l => `
+                    <option value="${l.id}" ${activeLevel === l.id ? 'selected' : ''}>
+                        ${escapeHtml(l.name || l.id)}
+                    </option>
+                `).join('')}
+            `;
+        }
+    }
+}
+
+async function cockpitChangeDungeon(id) {
+    if (!id || !window.DungeonController) return;
+    if (typeof window.DungeonController.onDungeonSelect === 'function') {
+        await window.DungeonController.onDungeonSelect(id);
+    }
+    populateCockpitDungeonSelectors();
+    renderSessionCockpit();
+}
+
+function cockpitChangeFloor(floorId) {
+    if (!window.DungeonController) return;
+    if (typeof window.DungeonController.filterLevel === 'function') {
+        window.DungeonController.filterLevel(floorId);
+    }
+    renderSessionCockpit();
+}
+
+function cockpitSelectChamber(nodeId) {
+    if (!window.DungeonController) return;
+    if (typeof window.DungeonController.selectNode === 'function') {
+        window.DungeonController.selectNode(nodeId);
+    }
+    renderCockpitChamber();
+    renderCockpitTactical();
+}
+
+async function cockpitMovePartyHere(nodeId) {
+    if (!window.DungeonController) return;
+    if (typeof window.DungeonController.movePartyToNode === 'function') {
+        await window.DungeonController.movePartyToNode(nodeId);
+    }
+    renderSessionCockpit();
+}
+
+function renderCockpitChamber() {
+    const container = document.getElementById('cockpit-chamber-container');
+    if (!container) return;
+
+    if (!window.DungeonController) {
+        container.innerHTML = `
+            <div class="bg-ledger-900/80 border border-ledger-800 rounded-2xl p-6 text-center space-y-3">
+                <span class="text-3xl">🗝️</span>
+                <h4 class="font-display font-bold text-sm text-slate-200">Dungeon Navigator Loading</h4>
+                <p class="text-xs text-slate-400">Please wait while the dungeon data initializes.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const activeDungeon = (typeof window.DungeonController.getActiveDungeon === 'function') ? window.DungeonController.getActiveDungeon() : null;
+    if (!activeDungeon || !activeDungeon.nodes || activeDungeon.nodes.length === 0) {
+        container.innerHTML = `
+            <div class="bg-ledger-900/80 border border-ledger-800 rounded-2xl p-6 text-center space-y-3">
+                <span class="text-3xl">🏰</span>
+                <h4 class="font-display font-bold text-sm text-slate-200">No Dungeon Active</h4>
+                <p class="text-xs text-slate-400">Load a dungeon from the map to populate the Chamber Dossier.</p>
+                <button onclick="switchTab('dungeons')" class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow transition">
+                    Open Dungeon Flowchart Map
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const selectedId = (typeof window.DungeonController.getSelectedNodeId === 'function') ? window.DungeonController.getSelectedNodeId() : null;
+    const node = activeDungeon.nodes.find(n => n.id === selectedId) || 
+                 activeDungeon.nodes.find(n => n.id === activeDungeon.activeChamberId) || 
+                 activeDungeon.nodes[0];
+
+    if (!node) {
+        container.innerHTML = `
+            <div class="bg-ledger-900/80 border border-ledger-800 rounded-2xl p-6 text-center text-xs text-slate-400">
+                No chamber selected.
+            </div>
+        `;
+        return;
+    }
+
+    const isPartyHere = (activeDungeon.activeChamberId === node.id);
+    const boxed = node.boxedText || node.readAloud || '';
+    const features = node.features || (node.notes ? [node.notes] : []);
+    const secrets = node.secrets || [];
+    const traps = node.traps || [];
+    const exits = node.exits || [];
+    const loot = node.loot || [];
+
+    const floorObj = (activeDungeon.levels || []).find(l => l.id === node.level);
+    const floorName = floorObj ? floorObj.name : 'Main Level';
+
+    container.innerHTML = `
+        <!-- Chamber Identity Card -->
+        <div class="bg-ledger-900/90 border border-ledger-750 rounded-2xl p-4 shadow-md space-y-3">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">${escapeHtml(node.code || 'Area')}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">• ${escapeHtml(floorName)}</span>
+                        ${isPartyHere ? `
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
+                                📍 PARTY HERE
+                            </span>
+                        ` : ''}
+                    </div>
+                    <h3 class="font-display font-bold text-base sm:text-lg text-slate-100 mt-1 leading-snug">${escapeHtml(node.name)}</h3>
+                </div>
+
+                <!-- State & Action buttons -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <select onchange="window.DungeonController && window.DungeonController.setNodeState('${node.id}', this.value)" class="bg-ledger-950 border border-ledger-700 text-slate-200 text-[11px] rounded-lg px-2 py-1 focus:outline-none focus:border-amber-500">
+                        <option value="veiled" ${node.state === 'veiled' ? 'selected' : ''}>🌫️ Veiled</option>
+                        <option value="explored" ${node.state === 'explored' ? 'selected' : ''}>👁️ Explored</option>
+                        <option value="cleared" ${node.state === 'cleared' ? 'selected' : ''}>⚔️ Cleared</option>
+                    </select>
+
+                    <button onclick="window.DungeonController && window.DungeonController.openEditChamberModal && window.DungeonController.openEditChamberModal(window.DungeonController.getActiveDungeon().nodes.find(n => n.id === '${node.id}'))" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs transition" title="Edit Chamber Details">
+                        ✏️
+                    </button>
+                </div>
+            </div>
+
+            <!-- Party Relocation Button if party not here -->
+            ${!isPartyHere ? `
+                <button onclick="cockpitMovePartyHere('${node.id}')" class="w-full py-1.5 rounded-xl bg-ledger-800 hover:bg-amber-500 hover:text-ledger-950 text-amber-300 border border-amber-500/30 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>📍</span> Move Party Token Here
+                </button>
+            ` : ''}
+
+            <!-- Lighting & Environment Strip -->
+            ${(node.lighting || node.atmosphere) ? `
+                <div class="p-2 rounded-xl bg-ledger-950/70 border border-ledger-800 text-[11px] text-slate-300 flex items-center gap-3 flex-wrap">
+                    ${node.lighting ? `<span class="flex items-center gap-1">💡 <strong class="text-slate-400 font-normal">${escapeHtml(node.lighting)}</strong></span>` : ''}
+                    ${node.atmosphere ? `<span class="flex items-center gap-1">🌫️ <strong class="text-slate-400 font-normal">${escapeHtml(node.atmosphere)}</strong></span>` : ''}
+                </div>
+            ` : ''}
+
+            <!-- Boxed Read-Aloud Narration -->
+            ${boxed ? `
+                <div class="bg-amber-950/20 border border-amber-600/35 rounded-xl p-3 relative space-y-1.5 shadow-inner">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono uppercase font-bold text-amber-400 flex items-center gap-1">
+                            <span>📜</span> Read-Aloud Narration
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="window.DungeonController && window.DungeonController.speakBoxedText && window.DungeonController.speakBoxedText()" class="px-2 py-0.5 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-amber-300 text-[10px] font-mono transition flex items-center gap-1" title="Narrate with Text-to-Speech">
+                                <span>🔊</span> Speak
+                            </button>
+                            <button onclick="window.DungeonController && window.DungeonController.broadcastChamber && window.DungeonController.broadcastChamber('${node.id}')" class="px-2.5 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-ledger-950 text-[10px] font-bold shadow transition flex items-center gap-1" title="Broadcast Boxed Text to Table Screen">
+                                <span>📢</span> Broadcast
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-amber-100/90 italic leading-relaxed font-serif">${escapeHtml(boxed)}</p>
+                </div>
+            ` : `
+                <div class="p-2.5 rounded-xl border border-dashed border-ledger-800 text-slate-500 text-[11px] italic text-center">
+                    No boxed read-aloud text written for this chamber.
+                </div>
+            `}
+
+            <!-- Features & Chamber Elements -->
+            ${features.length > 0 ? `
+                <div class="space-y-1 pt-1">
+                    <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Key Features</span>
+                    <ul class="space-y-1 text-xs text-slate-300">
+                        ${features.map(f => `
+                            <li class="flex items-start gap-1.5">
+                                <span class="text-amber-500 text-[10px] mt-0.5">✦</span>
+                                <span class="leading-snug">${escapeHtml(f)}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+
+            <!-- Secrets & Traps -->
+            ${(secrets.length > 0 || traps.length > 0) ? `
+                <div class="space-y-2 pt-1 border-t border-ledger-800/80">
+                    <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Secrets & Traps</span>
+                    <div class="space-y-1.5">
+                        ${secrets.map(s => `
+                            <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-slate-200 flex items-start gap-2">
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">DC ${s.dc || 15} ${escapeHtml(s.skill || 'Perception')}</span>
+                                <span class="leading-snug flex-1">${escapeHtml(s.text || s.name || '')}</span>
+                            </div>
+                        `).join('')}
+
+                        ${traps.map(t => `
+                            <div class="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-slate-200 flex items-start gap-2">
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">DC ${t.dc || 14} ${escapeHtml(t.skill || t.type || 'Dex Save')}</span>
+                                <div class="leading-snug flex-1">
+                                    ${t.name ? `<strong class="text-rose-300 font-semibold">${escapeHtml(t.name)}: </strong>` : ''}
+                                    <span>${escapeHtml(t.trigger || t.effect || '')}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Exits & Attached Pathways -->
+            <div class="space-y-1.5 pt-1 border-t border-ledger-800/80">
+                <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Attached Exits</span>
+                ${exits.length > 0 ? `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        ${exits.map(ex => {
+                            const targetNode = activeDungeon.nodes.find(n => n.id === ex.target);
+                            const label = ex.label || targetNode?.name || ex.target;
+                            let icon = '➡️';
+                            if (ex.type === 'door') icon = '🚪';
+                            else if (ex.type === 'stairs') icon = '🪜';
+                            else if (ex.type === 'archway') icon = '🏛️';
+                            else if (ex.type === 'secret' || ex.secret) icon = '🕵️';
+
+                            return `
+                                <button onclick="cockpitSelectChamber('${ex.target}')" class="p-2 rounded-xl bg-ledger-950 hover:bg-amber-500/20 border border-ledger-800 hover:border-amber-500/40 text-left transition flex items-center justify-between gap-2 group">
+                                    <div class="min-w-0 flex items-center gap-1.5">
+                                        <span class="text-sm shrink-0">${icon}</span>
+                                        <div class="min-w-0">
+                                            <div class="text-xs font-semibold text-slate-200 group-hover:text-amber-300 truncate">${escapeHtml(label)}</div>
+                                            ${targetNode?.code ? `<div class="text-[10px] text-slate-500 font-mono">${escapeHtml(targetNode.code)}</div>` : ''}
+                                        </div>
+                                    </div>
+                                    <span class="text-slate-500 group-hover:text-amber-400 text-xs">➔</span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : `
+                    <div class="text-[11px] text-slate-500 italic py-1">Dead end. No attached exits.</div>
+                `}
+            </div>
+
+            <!-- Chamber Loot Stash -->
+            ${loot.length > 0 ? `
+                <div class="space-y-2 pt-2 border-t border-ledger-800/80">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                            <span>💰</span> Chamber Loot & Relics
+                        </span>
+                        <button onclick="cockpitAwardChamberLoot('${node.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] shadow transition flex items-center gap-1">
+                            <span>🎒</span> Award to Party Stash
+                        </button>
+                    </div>
+                    <div class="space-y-1">
+                        ${loot.map(it => {
+                            const name = it.name || (typeof it === 'string' ? it : 'Item');
+                            const qty = it.quantity ? `${it.quantity}x ` : '';
+                            const notes = it.notes ? `(${it.notes})` : '';
+                            return `
+                                <div class="px-2.5 py-1 rounded-lg bg-ledger-950/80 border border-ledger-800 text-xs text-slate-200 flex items-center justify-between">
+                                    <span class="font-medium text-amber-200">${escapeHtml(qty + name)}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">${escapeHtml(notes)}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+        </div>
+    `;
+}
+
+function renderCockpitTactical() {
+    const container = document.getElementById('cockpit-tactical-container');
+    if (!container) return;
+
+    const inCombat = appState.combat && appState.combat.inCombat && appState.combat.combatants && appState.combat.combatants.length > 0;
+
+    if (inCombat) {
+        // MODE A: ACTIVE TACTICAL COMBAT
+        const combat = appState.combat;
+        const combatants = combat.combatants || [];
+        const activeIdx = combat.currentTurnIndex || 0;
+        const currentCombatant = combatants[activeIdx] || combatants[0];
+
+        container.innerHTML = `
+            <div class="bg-ledger-900/90 border border-ledger-750 rounded-2xl p-4 shadow-md space-y-3.5">
+                
+                <!-- Initiative Control Banner -->
+                <div class="flex items-center justify-between bg-ledger-950 border border-ledger-800 rounded-xl p-2.5 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-lg bg-amber-500 text-ledger-950 font-mono font-extrabold text-xs">
+                            Round ${combat.round || 1}
+                        </span>
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                            <span class="text-slate-400 font-normal">Active Turn:</span>
+                            <span class="text-amber-300 font-display">${currentCombatant ? escapeHtml(currentCombatant.name) : 'None'}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="prevCombatTurn()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-ledger-700 transition" title="Previous Turn (P)">
+                            ‹ Prev
+                        </button>
+                        <button onclick="nextCombatTurn()" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition" title="Next Turn (N)">
+                            Next Turn ›
+                        </button>
+                        <button onclick="endCombatEncounter()" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 text-xs font-semibold border border-rose-800/60 transition" title="End Combat Encounter">
+                            End
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Combatants Cards Roster -->
+                <div class="space-y-2 max-h-[580px] overflow-y-auto custom-scrollbar pr-1">
+                    ${combatants.map((c, idx) => {
+                        const isActiveTurn = (idx === activeIdx);
+                        const curHp = Number(c.currentHp !== undefined ? c.currentHp : c.hp) || 0;
+                        const maxHp = Number(c.maxHp || c.max_hp || curHp || 1);
+                        const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((curHp / maxHp) * 100))) : 0;
+                        const isBloodied = curHp > 0 && curHp <= Math.floor(maxHp / 2);
+                        const isDown = curHp <= 0;
+
+                        let hpColor = "bg-emerald-500";
+                        if (isDown) hpColor = "bg-rose-700";
+                        else if (isBloodied) hpColor = "bg-amber-500";
+
+                        let typeIcon = '🛡️';
+                        if (c.type === 'monster') typeIcon = '🐉';
+                        else if (c.type === 'boss') typeIcon = '👑';
+                        else if (c.type === 'npc') typeIcon = '👤';
+
+                        return `
+                            <div class="p-3 rounded-xl border transition flex flex-col gap-2 ${isActiveTurn ? 'bg-amber-500/15 border-amber-500/80 shadow-md ring-1 ring-amber-500/40' : (isDown ? 'bg-ledger-950/40 border-ledger-800/60 opacity-60' : 'bg-ledger-950/80 border-ledger-800 hover:border-ledger-700')}">
+                                <div class="flex items-center justify-between gap-2">
+                                    <!-- Name & AC/Init -->
+                                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                                        <span class="text-sm shrink-0">${typeIcon}</span>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="font-bold text-xs ${isActiveTurn ? 'text-amber-200' : 'text-slate-100'} truncate flex items-center gap-1.5">
+                                                <span>${escapeHtml(c.name)}</span>
+                                                ${isActiveTurn ? '<span class="text-[9px] font-mono font-bold bg-amber-500/30 text-amber-300 px-1 rounded">TURN</span>' : ''}
+                                            </div>
+                                            <div class="text-[10px] font-mono text-slate-400 flex items-center gap-2">
+                                                <span>Init: <strong class="text-slate-200">${c.initiative}</strong></span>
+                                                <span>•</span>
+                                                <span>AC: <strong class="text-slate-200">${c.ac || '--'}</strong></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick HP Steppers -->
+                                    <div class="flex items-center gap-1 shrink-0 font-mono text-[10px] font-bold">
+                                        <button onclick="cockpitApplyHpDelta('${c.id}', -5)" class="px-1.5 py-0.5 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 transition" title="Damage -5">-5</button>
+                                        <button onclick="cockpitApplyHpDelta('${c.id}', -1)" class="px-1.5 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/40 transition" title="Damage -1">-1</button>
+                                        <button onclick="cockpitApplyHpDelta('${c.id}', 1)" class="px-1.5 py-0.5 rounded bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/40 transition" title="Heal +1">+1</button>
+                                        <button onclick="cockpitApplyHpDelta('${c.id}', 5)" class="px-1.5 py-0.5 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 transition" title="Heal +5">+5</button>
+                                    </div>
+                                </div>
+
+                                <!-- HP Bar & Conditions -->
+                                <div class="space-y-1">
+                                    <div class="flex items-center justify-between text-[10px] font-mono">
+                                        <span class="${isBloodied ? 'text-amber-400 font-bold' : (isDown ? 'text-rose-400 font-bold' : 'text-slate-400')}">
+                                            ${isDown ? '0 HP (Down)' : (isBloodied ? 'Bloodied' : 'Healthy')}
+                                        </span>
+                                        <span class="text-slate-200 font-bold">${curHp} / ${maxHp} HP</span>
+                                    </div>
+                                    <div class="w-full bg-ledger-900 h-1.5 rounded-full overflow-hidden border border-ledger-800">
+                                        <div class="${hpColor} h-full transition-all duration-300" style="width: ${hpPct}%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Conditions Pills -->
+                                ${c.conditions && c.conditions.length > 0 ? `
+                                    <div class="flex items-center gap-1 flex-wrap pt-0.5">
+                                        ${c.conditions.map(cond => `
+                                            <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                                ${escapeHtml(cond.name || cond)}
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="pt-1 border-t border-ledger-800/80 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400">Total Combatants: <strong class="text-slate-200">${combatants.length}</strong></span>
+                    <button onclick="switchTab('combat')" class="text-amber-400 hover:text-amber-300 font-semibold transition">
+                        Jump to Full Combat Tracker ↗
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        // MODE B: EXPLORATION (PARTY VITALS & CHAMBER STAGED ENCOUNTER)
+        const party = appState.party || [];
+        const activeDungeon = window.DungeonController?.getActiveDungeon();
+        const selectedId = window.DungeonController?.getSelectedNodeId() || activeDungeon?.activeChamberId;
+        const node = (activeDungeon?.nodes || []).find(n => n.id === selectedId);
+
+        const enc = (node?.encounters && node.encounters[0]) || null;
+        const stagedMonsters = (enc && enc.monsters && enc.monsters.length) ? enc.monsters : (node?.monsters || []);
+
+        container.innerHTML = `
+            <!-- Top Section: Party Vitals & Readiness -->
+            <div class="bg-ledger-900/90 border border-ledger-750 rounded-2xl p-4 shadow-md space-y-3">
+                <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">🛡️</span>
+                        <h4 class="font-display font-bold text-xs text-amber-300 uppercase tracking-wider">Party Vitals & Readiness</h4>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-400">${party.length} Adventurers</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    ${party.length > 0 ? party.map(pc => {
+                        const curHp = Number(pc.currentHp !== undefined ? pc.currentHp : pc.hp) || 0;
+                        const maxHp = Number(pc.maxHp || pc.max_hp || curHp || 1);
+                        const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((curHp / maxHp) * 100))) : 0;
+                        const isBloodied = curHp > 0 && curHp <= Math.floor(maxHp / 2);
+                        const isDown = curHp <= 0;
+
+                        let hpColor = "bg-emerald-500";
+                        if (isDown) hpColor = "bg-rose-700";
+                        else if (isBloodied) hpColor = "bg-amber-500";
+
+                        return `
+                            <div class="p-2.5 rounded-xl bg-ledger-950/80 border border-ledger-800 hover:border-ledger-700 transition space-y-1.5">
+                                <div class="flex items-start justify-between gap-1">
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-xs text-slate-100 truncate">${escapeHtml(pc.name)}</div>
+                                        <div class="text-[10px] font-mono text-slate-400 truncate">${escapeHtml(pc.classRole || 'Adventurer')}</div>
+                                    </div>
+                                    <button onclick="toggleHeroicInspiration('${pc.id}')" class="px-1.5 py-0.5 rounded text-[9px] font-bold border transition shrink-0 ${pc.heroicInspiration ? 'bg-amber-500 text-ledger-950 border-amber-300 shadow-sm' : 'bg-ledger-900 text-slate-400 border-ledger-800 hover:text-amber-300'}" title="2024 Heroic Inspiration">
+                                        ⭐ ${pc.heroicInspiration ? 'INSPIRED' : 'Inspire'}
+                                    </button>
+                                </div>
+
+                                <div class="space-y-0.5">
+                                    <div class="flex items-center justify-between text-[10px] font-mono">
+                                        <span class="text-slate-400">AC ${pc.ac || '--'} • PP ${pc.passivePerception || 10}</span>
+                                        <span class="font-bold ${isDown ? 'text-rose-400' : 'text-slate-200'}">${curHp}/${maxHp} HP</span>
+                                    </div>
+                                    <div class="w-full bg-ledger-900 h-1.5 rounded-full overflow-hidden border border-ledger-800">
+                                        <div class="${hpColor} h-full transition-all duration-300" style="width: ${hpPct}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : `
+                        <div class="col-span-full py-4 text-center text-slate-500 text-xs italic">
+                            No party members configured. Click "+ Add Character" to populate roster.
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- Bottom Section: Chamber Staged Encounter & Battle Launcher -->
+            <div class="bg-ledger-900/90 border border-ledger-750 rounded-2xl p-4 shadow-md space-y-3">
+                <div class="flex items-center justify-between border-b border-ledger-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">⚔️</span>
+                        <h4 class="font-display font-bold text-xs text-amber-300 uppercase tracking-wider">Chamber Encounter Staging</h4>
+                    </div>
+                    ${node ? `<span class="text-[10px] font-mono text-slate-400">${escapeHtml(node.code || node.name)}</span>` : ''}
+                </div>
+
+                ${stagedMonsters.length > 0 ? `
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-200">${escapeHtml(enc?.name || 'Hostile Presence')}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">CR ${enc?.cr || '1'}</span>
+                        </div>
+
+                        <!-- Staged Monster List -->
+                        <div class="space-y-1">
+                            ${stagedMonsters.map(m => `
+                                <div class="p-2 rounded-xl bg-ledger-950/80 border border-ledger-800 text-xs text-slate-200 flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-5 h-5 rounded-full bg-rose-950 text-rose-300 border border-rose-800/80 flex items-center justify-center font-bold text-[10px] font-mono">${m.count || 1}</span>
+                                        <span class="font-semibold">${escapeHtml(m.name)}</span>
+                                    </div>
+                                    <span class="text-[10px] font-mono text-slate-400">CR ${m.cr || '1'} • ${m.hp || 20} HP • AC ${m.ac || 12}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Big Prominent 1-Click Launch Button -->
+                        <button onclick="cockpitEngageChamberCombat()" class="w-full mt-2 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 via-rose-500 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-display font-bold text-xs sm:text-sm shadow-lg shadow-rose-950/50 transition flex items-center justify-center gap-2 tap-active">
+                            <span>⚔️</span>
+                            <span>ENGAGE CHAMBER COMBAT</span>
+                        </button>
+                        <p class="text-[10px] text-slate-400 text-center font-mono">Rolls initiative for party & monsters, triggers combat atmosphere, and steps into Round 1</p>
+                    </div>
+                ` : `
+                    <div class="py-5 text-center space-y-2 border border-dashed border-ledger-800 rounded-xl">
+                        <span class="text-2xl">🕊️</span>
+                        <div class="text-xs text-slate-300 font-semibold">Chamber is Peaceful</div>
+                        <p class="text-[11px] text-slate-500 max-w-xs mx-auto">No hostiles or ambush staged in this room. You can stage an encounter in the chamber editor or launch a freeform battle.</p>
+                        <div class="flex items-center justify-center gap-2 pt-1">
+                            ${node ? `
+                                <button onclick="window.DungeonController && window.DungeonController.openEditChamberModal && window.DungeonController.openEditChamberModal(window.DungeonController.getActiveDungeon().nodes.find(n => n.id === '${node.id}'))" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-amber-300 border border-ledger-700 text-[11px] font-semibold transition">
+                                    + Add Hostiles
+                                </button>
+                            ` : ''}
+                            <button onclick="switchTab('combat')" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-[11px] font-semibold transition">
+                                Open Combat Tracker
+                            </button>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+}
+
+async function cockpitEngageChamberCombat() {
+    const activeDungeon = window.DungeonController?.getActiveDungeon();
+    const selectedId = window.DungeonController?.getSelectedNodeId() || activeDungeon?.activeChamberId;
+    const node = (activeDungeon?.nodes || []).find(n => n.id === selectedId);
+
+    if (!node) {
+        showToast("No active chamber selected to engage combat.", "warning");
+        return;
+    }
+
+    const enc = (node.encounters && node.encounters[0]) || null;
+    const encMonsters = (enc && enc.monsters && enc.monsters.length) ? enc.monsters : (node.monsters || []);
+
+    if (!encMonsters || encMonsters.length === 0) {
+        showToast("No monsters staged in this chamber. Opening Combat Tracker...", "info");
+        switchTab('combat');
+        return;
+    }
+
+    // 1. Ensure party members are imported into combatants
+    if (!appState.combat) {
+        appState.combat = { inCombat: false, round: 1, currentTurnIndex: 0, combatants: [] };
+    }
+    if (!Array.isArray(appState.combat.combatants)) {
+        appState.combat.combatants = [];
+    }
+
+    const existingSourceIds = new Set(appState.combat.combatants.map(c => c.sourceId).filter(Boolean));
+    if (appState.party && appState.party.length > 0) {
+        appState.party.forEach(pc => {
+            if (existingSourceIds.has(pc.id)) return;
+            const initRoll = Math.floor(Math.random() * 20) + 1 + (pc.initiativeMod || 0);
+            appState.combat.combatants.push({
+                id: `combat-${pc.id}`,
+                name: pc.name,
+                type: 'pc',
+                sourceId: pc.id,
+                initiative: initRoll,
+                tieBreaker: pc.initiativeMod || 0,
+                ac: pc.ac || 10,
+                currentHp: pc.currentHp !== undefined ? pc.currentHp : (pc.hp || 10),
+                maxHp: pc.maxHp !== undefined ? pc.maxHp : (pc.max_hp || 10),
+                tempHp: pc.tempHp || 0,
+                conditions: [],
+                isConcentrating: false,
+                concentratingSpell: "",
+                notes: pc.classRole || '',
+                statDetails: `Speed: ${pc.speed || 30}ft | PP: ${pc.passivePerception || 10}`
+            });
+        });
+    }
+
+    // 2. Add staged monsters from chamber
+    encMonsters.forEach(m => {
+        const count = m.count || 1;
+        const allMonsters = appState.monsters || [];
+        const baseMonster = allMonsters.find(x => x.id === (m.monsterId || m.id) || (x.name && m.name && x.name.toLowerCase() === m.name.toLowerCase())) || {};
+
+        const maxHp = parseInt(m.hp || baseMonster.hp, 10) || 20;
+        const ac = parseInt(m.ac || baseMonster.ac, 10) || 12;
+        const cr = String(m.cr || baseMonster.cr || '1');
+        const dexMod = Math.floor(((baseMonster.dex || 10) - 10) / 2);
+
+        for (let i = 1; i <= count; i++) {
+            const suffix = count > 1 ? ` #${i}` : '';
+            const initRoll = Math.floor(Math.random() * 20) + 1 + dexMod;
+            appState.combat.combatants.push({
+                id: `combat-mon-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                name: `${m.name}${suffix}`,
+                type: 'monster',
+                initiative: initRoll,
+                tieBreaker: dexMod,
+                ac: ac,
+                currentHp: maxHp,
+                maxHp: maxHp,
+                tempHp: 0,
+                cr: cr,
+                conditions: [],
+                isConcentrating: false,
+                concentratingSpell: "",
+                notes: `CR ${cr} • Chamber ${node.code || node.name}`,
+                monsterId: baseMonster.id || m.monsterId
+            });
+        }
+    });
+
+    // 3. Sort initiative descending
+    appState.combat.combatants.sort((a, b) => (b.initiative || 0) - (a.initiative || 0) || (b.tieBreaker || 0) - (a.tieBreaker || 0));
+
+    // 4. Start combat
+    appState.combat.inCombat = true;
+    appState.combat.round = 1;
+    appState.combat.currentTurnIndex = 0;
+
+    // 5. Shift atmosphere / lighting
+    if (window.LightingEngine && typeof window.LightingEngine.applyPreset === 'function') {
+        window.LightingEngine.applyPreset('boss');
+    }
+    if (window.AudioEngine && typeof window.AudioEngine.playStrike === 'function') {
+        window.AudioEngine.playStrike();
+    }
+
+    // 6. Persist & Render
+    await apiSaveCombat();
+    renderSessionCockpit();
+    showToast(`⚔️ Combat engaged in ${node.name}! Round 1 started.`, "success");
+}
+
+function cockpitApplyHpDelta(combatantId, delta) {
+    const c = (appState.combat?.combatants || []).find(x => x.id === combatantId);
+    if (!c) return;
+
+    const oldHp = c.currentHp;
+    c.currentHp = Math.max(0, Math.min(c.maxHp || 999, (c.currentHp || 0) + delta));
+    
+    // Conditions check: Bloodied and Unconscious
+    const halfHp = Math.floor((c.maxHp || 1) / 2);
+    if (!Array.isArray(c.conditions)) c.conditions = [];
+
+    if (c.currentHp <= 0) {
+        if (!c.conditions.includes('Unconscious')) c.conditions.push('Unconscious');
+        if (c.type === 'pc' && window.LightingEngine && window.LightingEngine.setHeroDownState) {
+            window.LightingEngine.setHeroDownState(true, c.name);
+        }
+    } else {
+        c.conditions = c.conditions.filter(cond => cond !== 'Unconscious');
+        if (c.currentHp <= halfHp) {
+            if (!c.conditions.includes('Bloodied')) c.conditions.push('Bloodied');
+            if (oldHp > halfHp && window.LightingEngine && window.LightingEngine.triggerBloodiedPulse) {
+                window.LightingEngine.triggerBloodiedPulse(c);
+            }
+        } else {
+            c.conditions = c.conditions.filter(cond => cond !== 'Bloodied');
+        }
+    }
+
+    // If it's a party member, sync back to appState.party
+    if (c.type === 'pc' && c.sourceId) {
+        const pc = (appState.party || []).find(p => p.id === c.sourceId);
+        if (pc) {
+            pc.currentHp = c.currentHp;
+            apiSaveParty();
+        }
+    }
+
+    apiSaveCombat();
+    renderCockpitTactical();
+    if (appState.activeTab === 'combat') {
+        renderCombatTracker();
+        renderPartyHUD();
+    }
+}
+
+async function cockpitAwardChamberLoot(nodeId) {
+    const activeDungeon = window.DungeonController?.getActiveDungeon();
+    const node = (activeDungeon?.nodes || []).find(n => n.id === nodeId);
+    if (!node || !node.loot || node.loot.length === 0) {
+        showToast("No loot found in this chamber to award.", "info");
+        return;
+    }
+
+    if (!appState.partyStash) {
+        appState.partyStash = { currency: { pp: 0, gp: 0, sp: 0, cp: 0 }, items: [] };
+    }
+    if (!Array.isArray(appState.partyStash.items)) {
+        appState.partyStash.items = [];
+    }
+
+    const awardedNames = [];
+    node.loot.forEach(item => {
+        const name = item.name || (typeof item === 'string' ? item : 'Mysterious Treasure');
+        const qty = parseInt(item.quantity, 10) || 1;
+        const notes = item.notes || '';
+        appState.partyStash.items.push({
+            id: `stash-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            name: name,
+            quantity: qty,
+            weight: 1,
+            notes: notes ? `${notes} (Found in ${node.name})` : `Found in ${node.name}`,
+            claimedBy: 'party'
+        });
+        awardedNames.push(name);
+    });
+
+    if (typeof savePartyStash === 'function') {
+        await savePartyStash(appState.partyStash);
+    }
+    if (window.AudioEngine && typeof window.AudioEngine.playSecret === 'function') {
+        window.AudioEngine.playSecret();
+    }
+    showToast(`🎒 Deposited into Party Stash: ${awardedNames.join(', ')}`, "success");
+    
+    // Clear loot from node so it can't be repeatedly farmed
+    node.loot = [];
+    renderCockpitChamber();
+}
+
+function cockpitSetOverhead(val) {
+    const valEl = document.getElementById('cockpit-overhead-val');
+    if (valEl) valEl.textContent = `${val}%`;
+    if (window.LightingEngine && typeof window.LightingEngine.setOverheadBrightness === 'function') {
+        window.LightingEngine.setOverheadBrightness(parseInt(val, 10));
+    }
+}
+
+function cockpitSetLightingScene(scene) {
+    if (window.LightingEngine && typeof window.LightingEngine.applyPreset === 'function') {
+        window.LightingEngine.applyPreset(scene);
+        showToast(`Atmosphere set to: ${scene.toUpperCase()}`, "info");
+    }
+}
+
+let cockpitNotesTimeout = null;
+function cockpitSaveNotes(val) {
+    localStorage.setItem('arcane_cockpit_scratchpad', val);
+    const status = document.getElementById('cockpit-notes-status');
+    if (status) {
+        status.textContent = 'Saving...';
+        status.className = 'text-[9px] font-mono text-amber-400';
+    }
+    clearTimeout(cockpitNotesTimeout);
+    cockpitNotesTimeout = setTimeout(() => {
+        if (status) {
+            status.textContent = 'Auto-saved';
+            status.className = 'text-[9px] font-mono text-emerald-400';
+        }
+    }, 600);
+}
+
+function addCockpitRollToFeed(rollData) {
+    const feed = document.getElementById('cockpit-recent-rolls');
+    if (!feed) return;
+    
+    if (feed.querySelector('.italic')) {
+        feed.innerHTML = '';
+    }
+
+    const row = document.createElement('div');
+    row.className = 'flex items-center justify-between py-0.5 border-b border-ledger-800/50 last:border-0';
+    row.innerHTML = `
+        <span class="text-slate-400 truncate max-w-[130px]">${escapeHtml(rollData.label || 'Roll')}</span>
+        <span class="font-bold text-amber-400 font-mono">${rollData.val}</span>
+    `;
+    feed.insertBefore(row, feed.firstChild);
+
+    while (feed.children.length > 6) {
+        feed.removeChild(feed.lastChild);
+    }
+}
+
+// Global exports for Command Palette and Live Session Cockpit
+window.openCommandPalette = openCommandPalette;
+window.closeCommandPalette = closeCommandPalette;
+window.filterCommandPalette = filterCommandPalette;
+window.handleCommandPaletteKey = handleCommandPaletteKey;
+window.executeCommandPaletteAction = executeCommandPaletteAction;
+window.renderSessionCockpit = renderSessionCockpit;
+window.renderCockpitChamber = renderCockpitChamber;
+window.renderCockpitTactical = renderCockpitTactical;
+window.populateCockpitDungeonSelectors = populateCockpitDungeonSelectors;
+window.cockpitChangeDungeon = cockpitChangeDungeon;
+window.cockpitChangeFloor = cockpitChangeFloor;
+window.cockpitSelectChamber = cockpitSelectChamber;
+window.cockpitMovePartyHere = cockpitMovePartyHere;
+window.cockpitEngageChamberCombat = cockpitEngageChamberCombat;
+window.cockpitAwardChamberLoot = cockpitAwardChamberLoot;
+window.cockpitSetOverhead = cockpitSetOverhead;
+window.cockpitSetLightingScene = cockpitSetLightingScene;
+window.cockpitSaveNotes = cockpitSaveNotes;
+window.addCockpitRollToFeed = addCockpitRollToFeed;
+window.cockpitApplyHpDelta = cockpitApplyHpDelta;

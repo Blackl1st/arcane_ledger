@@ -204,6 +204,9 @@ window.DungeonController = (function() {
         selectedNodeId = nodeId;
         renderGraph();
         renderActiveChamberDossier();
+        if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+            window.renderSessionCockpit();
+        }
     }
 
     async function movePartyToNode(nodeId) {
@@ -223,6 +226,9 @@ window.DungeonController = (function() {
 
                 renderGraph();
                 renderActiveChamberDossier();
+                if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+                    window.renderSessionCockpit();
+                }
 
                 if (window.showToast) {
                     const node = (activeDungeon.nodes || []).find(n => n.id === nodeId);
@@ -250,6 +256,9 @@ window.DungeonController = (function() {
                 if (idx >= 0) dungeons[idx] = activeDungeon;
                 renderGraph();
                 renderActiveChamberDossier();
+                if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+                    window.renderSessionCockpit();
+                }
             }
         } catch (err) {
             console.error("Error updating node state:", err);
@@ -1604,6 +1613,10 @@ window.DungeonController = (function() {
         zoomIn,
         zoomOut,
         resetView,
-        centerOnParty
+        centerOnParty,
+        getActiveDungeon: () => activeDungeon,
+        getDungeons: () => dungeons,
+        getSelectedNodeId: () => selectedNodeId,
+        getActiveLevelId: () => activeLevelId
     };
 })();
