@@ -746,8 +746,29 @@
             <span class="text-lg">📜</span>
             <span class="text-[10px] font-mono font-bold">Notes</span>
             <span id="handouts-unread-badge" class="hidden absolute top-1 right-2 w-2.5 h-2.5 rounded-full bg-amber-400 border border-black animate-pulse"></span>
-        </button>
     </nav>
+
+    <!-- MODAL: LIVE TABLETOP / DUNGEON BROADCAST -->
+    <div id="modal-companion-broadcast" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/70 rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4 relative overflow-hidden">
+            <div class="flex items-center justify-between border-b border-ledger-750 pb-2.5">
+                <span id="companion-broadcast-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    🗝️ Chamber Discovery
+                </span>
+                <button onclick="dismissCompanionBroadcast()" class="text-slate-400 hover:text-white font-mono text-base px-1.5 py-0.5 rounded-lg bg-ledger-800 border border-ledger-700">&times;</button>
+            </div>
+            <div class="space-y-1">
+                <h3 id="companion-broadcast-title" class="font-display font-bold text-base text-amber-200">Chamber Title</h3>
+                <p id="companion-broadcast-subtitle" class="text-xs text-slate-400 font-serif italic">Subtitle</p>
+            </div>
+            <div class="bg-ledger-950 p-4 rounded-2xl border border-amber-500/30 max-h-60 overflow-y-auto">
+                <p id="companion-broadcast-content" class="text-xs text-slate-200 font-serif italic leading-relaxed whitespace-pre-line"></p>
+            </div>
+            <button onclick="dismissCompanionBroadcast()" class="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow-md transition tap-active">
+                Dismiss
+            </button>
+        </div>
+    </div>
 
     <!-- MODAL: SPELL UPCAST / SLOT SELECTION -->
     <div id="modal-spell-cast" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
@@ -1136,6 +1157,9 @@
 
                 // Update Battlemap Access
                 renderCompanionMapAccess(Boolean(data.battlemapAccess));
+
+                // Check Chamber & Tabletop Broadcast
+                checkCompanionBroadcast(data.broadcast);
 
             } catch (err) {
                 console.error("Error fetching companion state:", err);
@@ -3343,6 +3367,55 @@
             if (iframe && companionBattlemapLive) {
                 iframe.src = '/map?t=' + Date.now();
             }
+        }
+
+        let localDismissedCompanionBroadcastKey = null;
+
+        function checkCompanionBroadcast(b) {
+            const modal = document.getElementById('modal-companion-broadcast');
+            if (!modal) return;
+            if (!b || !b.active) {
+                localDismissedCompanionBroadcastKey = null;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                return;
+            }
+
+            const bKey = (b.title || '') + (b.subtitle || '') + (b.content || '');
+            if (localDismissedCompanionBroadcastKey === bKey) {
+                return;
+            }
+
+            const titleEl = document.getElementById('companion-broadcast-title');
+            const subEl = document.getElementById('companion-broadcast-subtitle');
+            const contentEl = document.getElementById('companion-broadcast-content');
+            const badge = document.getElementById('companion-broadcast-badge');
+
+            if (titleEl) titleEl.textContent = b.title || 'Tabletop Discovery';
+            if (subEl) subEl.textContent = b.subtitle || '';
+            if (contentEl) contentEl.textContent = b.content || '';
+
+            if (badge) {
+                if (b.type === 'room') badge.textContent = '🗝️ Chamber Discovery';
+                else if (b.type === 'monster') badge.textContent = '🐉 Bestiary Encounter';
+                else if (b.type === 'npc') badge.textContent = '🎭 NPC Encounter';
+                else badge.textContent = '📜 Tabletop Discovery';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function dismissCompanionBroadcast() {
+            const modal = document.getElementById('modal-companion-broadcast');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+            const title = document.getElementById('companion-broadcast-title')?.textContent || '';
+            const sub = document.getElementById('companion-broadcast-subtitle')?.textContent || '';
+            const content = document.getElementById('companion-broadcast-content')?.textContent || '';
+            localDismissedCompanionBroadcastKey = title + sub + content;
         }
 
         function closeModal(id) {

@@ -6263,7 +6263,8 @@ const WORLD_SUBTAB_METADATA = {
     'travel': { icon: '🏕️', title: 'Wilderness Travel & Foraging Calculator', desc: 'Overland pace calculator, 5.5e foraging & navigation DCs, and roadside exploration complications' },
     'secrets': { icon: '🔍', title: 'Secrets & Clues Engine', desc: 'Prepare revelations, lore discoveries, and plot clues to drop during session play' },
     'handouts': { icon: '📜', title: 'In-World Handouts & Letters', desc: 'Forge authentic missives, burned journals, bounties, and decipherable coded notes' },
-    'tarokka': { icon: '🔮', title: 'Madam Eva\'s Tarokka Deck of Fate', desc: 'Interactive 5-card cross reading engine divining holy relics, fated allies, and Strahd\'s sanctuary' }
+    'tarokka': { icon: '🔮', title: 'Madam Eva\'s Tarokka Deck of Fate', desc: 'Interactive 5-card cross reading engine divining holy relics, fated allies, and Strahd\'s sanctuary' },
+    'dungeons': { icon: '🗝️', title: 'Dungeon & Pointcrawl Navigator', desc: 'Room-by-room chamber dossiers, pointcrawl flowcharts, secrets, and encounter launching' }
 };
 
 function toggleWorldSidebarSubmenu(forceOpen = null) {
@@ -6346,6 +6347,7 @@ function switchWorldSubtab(subtab) {
     else if (subtab === 'secrets') renderSecrets();
     else if (subtab === 'handouts') renderHandouts();
     else if (subtab === 'tarokka') { fetchTarokkaState(); renderTarokka(); }
+    else if (subtab === 'dungeons') { if (window.DungeonController) window.DungeonController.init(); }
 }
 
 function renderWorldView() {

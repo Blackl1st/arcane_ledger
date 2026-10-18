@@ -603,6 +603,14 @@
                             <span class="sidebar-text hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">CoS</span>
                             <span class="sidebar-tooltip">Madam Eva's Tarokka Deck of Fate</span>
                         </button>
+                        <button id="world-subtab-dungeons" onclick="switchWorldSubtab('dungeons')" class="world-subtab-btn w-full flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-ledger-900/80 transition relative group/nav">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="text-sm shrink-0 w-5 text-center">🗝️</span>
+                                <span class="sidebar-text hidden truncate">Dungeon Navigator</span>
+                            </div>
+                            <span class="sidebar-text hidden px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Nodes</span>
+                            <span class="sidebar-tooltip">Node-Based Dungeon & Pointcrawl Navigator</span>
+                        </button>
                     </div>
                 </div>
 
@@ -2856,6 +2864,105 @@
 
             </div>
 
+            <!-- SUB-VIEW K: NODE-BASED DUNGEON & POINTCRAWL NAVIGATOR -->
+            <div id="world-panel-dungeons" class="world-panel space-y-4 hidden">
+                
+                <!-- TOP CONTROLS & DUNGEON SELECTOR BAR -->
+                <div class="bg-gradient-to-r from-ledger-900 via-ledger-850 to-ledger-900 border border-ledger-750 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl text-amber-300 shadow-inner shrink-0">
+                            🗝️
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <label for="dungeon-select-dropdown" class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Active Dungeon</label>
+                            </div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <select id="dungeon-select-dropdown" onchange="window.DungeonController.onDungeonSelect(this.value)" class="bg-ledger-950 border border-ledger-700 text-amber-300 rounded-xl px-3 py-1.5 text-xs font-display font-bold shadow-sm focus:outline-none focus:border-amber-500">
+                                    <!-- Populated dynamically -->
+                                </select>
+                                <button onclick="window.DungeonController.openNewDungeonModal()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs font-bold transition flex items-center gap-1 shadow-sm" title="Create a new custom dungeon or pointcrawl">
+                                    <span>+</span> <span>New</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Level Filter Pills -->
+                        <div class="flex items-center gap-1.5 pl-2 lg:border-l border-ledger-750 flex-wrap" id="dungeon-level-pills">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Action Bar -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="window.DungeonController.centerOnParty()" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow-md transition flex items-center gap-1.5 tap-active" title="Center viewport on Party position">
+                            <span>⚔️</span> <span>Center on Party</span>
+                        </button>
+                        <button onclick="window.DungeonController.resetFog()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs font-semibold transition flex items-center gap-1" title="Veil all chambers except active party room">
+                            <span>🌫️</span> <span>Reset Fog</span>
+                        </button>
+                        <button onclick="window.DungeonController.revealAll()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs font-semibold transition flex items-center gap-1" title="Reveal all chambers to explored state">
+                            <span>👁️</span> <span>Reveal All</span>
+                        </button>
+                        <button onclick="window.DungeonController.exportDungeon()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-ledger-700 text-xs font-semibold transition flex items-center gap-1" title="Export dungeon as JSON">
+                            <span>📤</span> <span>Export</span>
+                        </button>
+                        <button onclick="window.DungeonController.triggerImportDungeon()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-ledger-700 text-xs font-semibold transition flex items-center gap-1" title="Import dungeon JSON">
+                            <span>📥</span> <span>Import</span>
+                        </button>
+                        <input type="file" id="dungeon-import-file-input" class="hidden" accept=".json" onchange="window.DungeonController.handleDungeonFileImport(event)">
+                    </div>
+                </div>
+
+                <!-- MAIN SPLIT WORKSPACE: NODE GRAPH (7 COLS) + CHAMBER DOSSIER (5 COLS) -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    
+                    <!-- LEFT: INTERACTIVE SVG FLOWCHART GRAPH (7 cols) -->
+                    <div class="lg:col-span-7 bg-ledger-950 rounded-3xl border border-ledger-750 shadow-2xl relative overflow-hidden flex flex-col" style="height: calc(100vh - 220px); min-height: 560px;">
+                        <!-- Floating Canvas Controls -->
+                        <div class="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-ledger-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-ledger-700 shadow-lg">
+                            <button onclick="window.DungeonController.zoomIn()" class="w-7 h-7 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center transition" title="Zoom In">+</button>
+                            <button onclick="window.DungeonController.zoomOut()" class="w-7 h-7 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center transition" title="Zoom Out">-</button>
+                            <button onclick="window.DungeonController.resetView()" class="px-2 h-7 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 font-mono text-[11px] font-bold flex items-center justify-center transition" title="Reset View">Reset</button>
+                            <span id="dungeon-zoom-readout" class="text-[10px] font-mono text-slate-400 px-1">100%</span>
+                        </div>
+
+                        <div class="absolute top-3 right-3 z-20 flex items-center gap-2 bg-ledger-900/90 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-ledger-700 shadow-lg text-[11px] font-mono text-slate-400">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Party</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span> Explored</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-700"></span> Veiled</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Cleared</span>
+                        </div>
+
+                        <!-- Graph SVG Viewport -->
+                        <svg id="dungeon-graph-viewport" class="w-full h-full select-none" style="cursor: grab;">
+                            <defs>
+                                <pattern id="dungeon-grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.7" opacity="0.35"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#dungeon-grid-pattern)" />
+                            <g id="dungeon-graph-world" transform="translate(40, 40) scale(1)">
+                                <!-- Dynamic edges and room nodes rendered here -->
+                            </g>
+                        </svg>
+
+                        <!-- Bottom Hint Bar -->
+                        <div class="absolute bottom-2 left-3 right-3 pointer-events-none flex items-center justify-between text-[11px] font-mono text-slate-500 bg-ledger-900/70 backdrop-blur-sm px-3 py-1 rounded-xl border border-ledger-800/60">
+                            <span>Click chamber to inspect • Double-click to move party • Drag canvas to pan</span>
+                            <span>SVG Vector Engine</span>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: CHAMBER DOSSIER INSPECTOR (5 cols) -->
+                    <div class="lg:col-span-5 bg-ledger-950/90 rounded-3xl border border-ledger-750 shadow-2xl p-4 overflow-y-auto" style="height: calc(100vh - 220px); min-height: 560px;" id="dungeon-chamber-dossier">
+                        <!-- Populated dynamically via renderActiveChamberDossier() -->
+                    </div>
+
+                </div>
+
+            </div>
+
         </section>
 
         <!-- 8. ATMOSPHERE STUDIO & SCENE LIGHTING VIEW -->
@@ -3799,7 +3906,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.22</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.23</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -8017,6 +8124,88 @@
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- MODAL: EDIT CHAMBER DOSSIER -->
+    <div id="modal-dungeon-edit-chamber" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">✏️</span>
+                    <h3 class="font-display font-bold text-base text-amber-300">Edit Chamber Dossier</h3>
+                </div>
+                <button onclick="closeModal('modal-dungeon-edit-chamber')" class="text-slate-400 hover:text-white font-mono text-base">&times;</button>
+            </div>
+
+            <input type="hidden" id="modal-edit-node-id">
+
+            <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="font-mono text-slate-400 block mb-1">Code</label>
+                        <input id="modal-edit-node-code" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200 font-mono">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="font-mono text-slate-400 block mb-1">Chamber Name</label>
+                        <input id="modal-edit-node-name" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="font-mono text-slate-400 block mb-1">Boxed Text (Read Aloud to Players)</label>
+                    <textarea id="modal-edit-node-boxed" rows="4" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl p-3 text-slate-200 font-serif leading-relaxed"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="font-mono text-slate-400 block mb-1">Lighting</label>
+                        <input id="modal-edit-node-lighting" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                    </div>
+                    <div>
+                        <label class="font-mono text-slate-400 block mb-1">Acoustics & Scent</label>
+                        <input id="modal-edit-node-atmosphere" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-ledger-750">
+                <button onclick="closeModal('modal-dungeon-edit-chamber')" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs">Cancel</button>
+                <button onclick="window.DungeonController.saveChamberModalEdits()" class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow">Save Chamber</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CREATE NEW DUNGEON -->
+    <div id="modal-dungeon-create" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🗝️</span>
+                    <h3 class="font-display font-bold text-base text-amber-300">Create New Dungeon</h3>
+                </div>
+                <button onclick="closeModal('modal-dungeon-create')" class="text-slate-400 hover:text-white font-mono text-base">&times;</button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="font-mono text-slate-400 block mb-1">Dungeon Name</label>
+                    <input id="modal-new-dungeon-name" placeholder="e.g. Amber Temple, Sunless Citadel" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200 font-display">
+                </div>
+                <div>
+                    <label class="font-mono text-slate-400 block mb-1">Subtitle / Level Tier</label>
+                    <input id="modal-new-dungeon-sub" placeholder="e.g. Curse of Strahd • Levels 8-10" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                </div>
+                <div>
+                    <label class="font-mono text-slate-400 block mb-1">Region / Location</label>
+                    <input id="modal-new-dungeon-region" placeholder="e.g. Mount Ghakis, Barovia" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-ledger-750">
+                <button onclick="closeModal('modal-dungeon-create')" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs">Cancel</button>
+                <button onclick="window.DungeonController.saveNewDungeon()" class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow">Create Dungeon</button>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPTS -->
     <script src="/static/js/audio_engine.js?v=2.5"></script>
     <script src="/static/js/lighting_engine.js?v=2.5"></script>
@@ -8024,5 +8213,6 @@
     <script src="/static/js/loot_data.js?v=2.5"></script>
     <script src="/static/js/dashboard.js?v=3.4"></script>
     <script src="/static/js/battlemap_controller.js?v=2.7"></script>
+    <script src="/static/js/dungeon_controller.js?v=1.0"></script>
 </body>
 </html>

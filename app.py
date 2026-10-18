@@ -3387,7 +3387,8 @@ async def download_curse_of_strahd_official_pack():
             ],
             "world.json": {"customFactions": [], "customLocations": [], "useOnlyCustomFactions": False, "useOnlyCustomLocations": False},
             "party_stash.json": {"currency": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}, "items": []},
-            "battlemap.json": get_default_battlemap_state()
+            "battlemap.json": get_default_battlemap_state(),
+            "dungeons.json": cos_module_pack.get_cos_dungeons()
         }
         for fname, dval in cos_data.items():
             zf.writestr(fname, json.dumps(dval, indent=2, ensure_ascii=False))
@@ -6781,6 +6782,164 @@ async def dismiss_broadcast():
     return {"status": "success", "broadcast": b_dict}
 
 # -------------------------------------------------------------
+# DUNGEON & POINTCRAWL NAVIGATOR ENGINE
+# -------------------------------------------------------------
+@app.get("/api/dungeons")
+async def get_dungeons():
+    dungeons = read_json("dungeons.json", None)
+    if dungeons is None or not isinstance(dungeons, list) or len(dungeons) == 0:
+        dungeons = cos_module_pack.get_cos_dungeons()
+        write_json("dungeons.json", dungeons)
+    
+    meta = read_json("dungeons_meta.json", {"activeDungeonId": dungeons[0]["id"] if dungeons else None})
+    active_id = meta.get("activeDungeonId")
+    if not any(d.get("id") == active_id for d in dungeons) and dungeons:
+        active_id = dungeons[0]["id"]
+        meta["activeDungeonId"] = active_id
+        write_json("dungeons_meta.json", meta)
+    
+    return {
+        "status": "success",
+        "dungeons": dungeons,
+        "activeDungeonId": active_id
+    }
+
+@app.post("/api/dungeons/active")
+async def set_active_dungeon(payload: Dict[str, Any]):
+    dungeon_id = payload.get("dungeonId")
+    meta = read_json("dungeons_meta.json", {})
+    meta["activeDungeonId"] = dungeon_id
+    write_json("dungeons_meta.json", meta)
+    return {"status": "success", "activeDungeonId": dungeon_id}
+
+@app.post("/api/dungeons")
+async def save_or_update_dungeon(dungeon: Dict[str, Any]):
+    if not dungeon.get("id"):
+        dungeon["id"] = f"dungeon-{int(time.time()*1000)}"
+    dungeons = read_json("dungeons.json", [])
+    idx = next((i for i, d in enumerate(dungeons) if d.get("id") == dungeon["id"]), -1)
+    if idx >= 0:
+        dungeons[idx] = dungeon
+    else:
+        dungeons.append(dungeon)
+    write_json("dungeons.json", dungeons)
+    return {"status": "success", "dungeon": dungeon, "dungeons": dungeons}
+
+@app.delete("/api/dungeons/{dungeon_id}")
+async def delete_dungeon(dungeon_id: str):
+    dungeons = read_json("dungeons.json", [])
+    dungeons = [d for d in dungeons if d.get("id") != dungeon_id]
+    write_json("dungeons.json", dungeons)
+    return {"status": "success", "dungeons": dungeons}
+
+@app.post("/api/dungeons/move-party")
+async def dungeon_move_party(payload: Dict[str, Any]):
+    dungeon_id = payload.get("dungeonId")
+    node_id = payload.get("nodeId")
+    dungeons = read_json("dungeons.json", [])
+    dungeon = next((d for d in dungeons if d.get("id") == dungeon_id), None)
+    if not dungeon:
+        raise HTTPException(status_code=404, detail="Dungeon not found")
+    
+    dungeon["activeChamberId"] = node_id
+    target_node = None
+    for n in dungeon.get("nodes", []):
+        if n.get("id") == node_id:
+            n["state"] = "active"
+            target_node = n
+        elif n.get("state") == "active":
+            n["state"] = "explored"
+    
+    write_json("dungeons.json", dungeons)
+    return {"status": "success", "dungeon": dungeon, "activeNode": target_node}
+
+@app.post("/api/dungeons/node-state")
+async def set_dungeon_node_state(payload: Dict[str, Any]):
+    dungeon_id = payload.get("dungeonId")
+    node_id = payload.get("nodeId")
+    new_state = payload.get("state", "unexplored")
+    dungeons = read_json("dungeons.json", [])
+    dungeon = next((d for d in dungeons if d.get("id") == dungeon_id), None)
+    if not dungeon:
+        raise HTTPException(status_code=404, detail="Dungeon not found")
+    
+    target_node = None
+    for n in dungeon.get("nodes", []):
+        if n.get("id") == node_id:
+            n["state"] = new_state
+            target_node = n
+            break
+            
+    write_json("dungeons.json", dungeons)
+    return {"status": "success", "dungeon": dungeon, "node": target_node}
+
+@app.post("/api/dungeons/reset-fog")
+async def reset_dungeon_fog(payload: Dict[str, Any]):
+    dungeon_id = payload.get("dungeonId")
+    dungeons = read_json("dungeons.json", [])
+    dungeon = next((d for d in dungeons if d.get("id") == dungeon_id), None)
+    if not dungeon:
+        raise HTTPException(status_code=404, detail="Dungeon not found")
+    
+    active_id = dungeon.get("activeChamberId")
+    for n in dungeon.get("nodes", []):
+        if n.get("id") == active_id:
+            n["state"] = "active"
+        else:
+            n["state"] = "unexplored"
+            
+    write_json("dungeons.json", dungeons)
+    return {"status": "success", "dungeon": dungeon}
+
+@app.post("/api/dungeons/reveal-all")
+async def reveal_all_dungeon_fog(payload: Dict[str, Any]):
+    dungeon_id = payload.get("dungeonId")
+    dungeons = read_json("dungeons.json", [])
+    dungeon = next((d for d in dungeons if d.get("id") == dungeon_id), None)
+    if not dungeon:
+        raise HTTPException(status_code=404, detail="Dungeon not found")
+    
+    for n in dungeon.get("nodes", []):
+        if n.get("state") == "unexplored":
+            n["state"] = "explored"
+            
+    write_json("dungeons.json", dungeons)
+    return {"status": "success", "dungeon": dungeon}
+
+@app.post("/api/dungeons/broadcast-room")
+async def broadcast_dungeon_room(payload: Dict[str, Any]):
+    dungeon_id = payload.get("dungeonId")
+    node_id = payload.get("nodeId")
+    dungeons = read_json("dungeons.json", [])
+    dungeon = next((d for d in dungeons if d.get("id") == dungeon_id), None)
+    if not dungeon:
+        raise HTTPException(status_code=404, detail="Dungeon not found")
+    
+    node = next((n for n in dungeon.get("nodes", []) if n.get("id") == node_id), None)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    
+    level_id = node.get("level")
+    lvl = next((l for l in dungeon.get("levels", []) if l.get("id") == level_id), None)
+    level_name = lvl.get("name") if lvl else ""
+    
+    code = node.get("code", "")
+    name = node.get("name", "")
+    title = f"{code}: {name}".strip(": ") if code else name
+    
+    b_dict = {
+        "active": True,
+        "title": title or "Chamber Discovery",
+        "subtitle": f"{dungeon.get('name', 'Dungeon')} • {level_name}".strip(" •"),
+        "content": node.get("boxedText", ""),
+        "type": "room",
+        "imageUrl": "",
+        "timestamp": time.time()
+    }
+    write_json("broadcast.json", b_dict)
+    return {"status": "success", "broadcast": b_dict}
+
+# -------------------------------------------------------------
 # PHASE 4: OBSIDIAN MARKDOWN EXPORT & SNAPSHOT BACKUPS
 # -------------------------------------------------------------
 @app.get("/api/export/markdown")
@@ -6986,6 +7145,7 @@ async def create_snapshot(payload: SnapshotCreate = None):
         "encounters": read_json("encounters.json", []),
         "secrets": read_json("secrets.json", []),
         "handouts": read_json("handouts.json", []),
+        "dungeons": read_json("dungeons.json", []),
         "lighting": read_json("lighting.json", {})
     }
 
@@ -7021,6 +7181,7 @@ async def restore_snapshot(payload: Dict[str, Any]):
     if "quests" in data: write_json("quests.json", data["quests"])
     if "secrets" in data: write_json("secrets.json", data["secrets"])
     if "handouts" in data: write_json("handouts.json", data["handouts"])
+    if "dungeons" in data: write_json("dungeons.json", data["dungeons"])
     if "broadcast" in data: write_json("broadcast.json", data["broadcast"])
     if "audioLibrary" in data: write_json("audio_library.json", data["audioLibrary"])
     if "audioPresets" in data: write_json("audio_presets.json", data["audioPresets"])
