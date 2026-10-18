@@ -4091,6 +4091,19 @@ function closeModal(id) {
     m.classList.remove('flex');
 }
 
+// Global ESC key dismiss listener for all modals
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const openModals = Array.from(document.querySelectorAll('.fixed.inset-0:not(.hidden)'));
+        if (openModals.length > 0) {
+            const topModal = openModals[openModals.length - 1];
+            if (topModal && topModal.id) {
+                closeModal(topModal.id);
+            }
+        }
+    }
+});
+
 function escapeHTML(str) {
     if (!str) return "";
     return String(str)
@@ -18590,44 +18603,156 @@ async function savePCCurrencyAPI(pcId, currency) {
     }
 }
 
+let stagedGiveItem = null;
+
 function giveItemToParty(itemIdOrObj) {
     let item = typeof itemIdOrObj === 'string' ? (appState.items || []).find(x => x.id === itemIdOrObj) : itemIdOrObj;
     if (!item) {
         showToast("Item not found.", "warning");
         return;
     }
+    stagedGiveItem = item;
+
+    const nameEl = document.getElementById('give-item-name');
+    const rarityEl = document.getElementById('give-item-rarity');
+    const typeEl = document.getElementById('give-item-type');
+    const qtyEl = document.getElementById('give-item-qty');
+    const iconEl = document.getElementById('give-item-icon');
+
+    if (nameEl) nameEl.textContent = item.name;
+    if (rarityEl) rarityEl.textContent = item.rarity || 'Common';
+    if (typeEl) typeEl.textContent = item.type || item.category || 'Equipment';
+    if (qtyEl) qtyEl.value = 1;
+
+    if (iconEl) {
+        const t = ((item.type || item.category || '') + ' ' + (item.name || '')).toLowerCase();
+        if (t.includes('potion')) iconEl.textContent = '🧪';
+        else if (t.includes('scroll')) iconEl.textContent = '📜';
+        else if (t.includes('sword') || t.includes('blade') || t.includes('bow') || t.includes('axe') || t.includes('weapon')) iconEl.textContent = '⚔️';
+        else if (t.includes('armor') || t.includes('shield') || t.includes('chain') || t.includes('plate')) iconEl.textContent = '🛡️';
+        else if (t.includes('ring') || t.includes('amulet') || t.includes('cloak') || t.includes('boots') || t.includes('wand') || t.includes('staff')) iconEl.textContent = '✨';
+        else iconEl.textContent = '📦';
+    }
+
+    renderGiveItemTargets();
+
+    const modal = document.getElementById('modal-give-item-target');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function adjustGiveItemQty(delta) {
+    const qtyEl = document.getElementById('give-item-qty');
+    if (!qtyEl) return;
+    let val = parseInt(qtyEl.value, 10) || 1;
+    val = Math.max(1, Math.min(99, val + delta));
+    qtyEl.value = val;
+}
+
+function renderGiveItemTargets() {
+    const list = document.getElementById('give-item-targets-list');
+    if (!list) return;
+
+    let html = `
+        <!-- Option 1: Shared Party Stash (Bag of Holding) -->
+        <button onclick="executeGiveItem('stash')" class="w-full text-left p-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 hover:border-amber-500 transition group flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition">
+                    🎒
+                </div>
+                <div>
+                    <div class="font-bold text-amber-300 text-sm group-hover:text-amber-200">Shared Party Stash</div>
+                    <div class="text-[10px] text-slate-400">Bag of Holding & communal inventory</div>
+                </div>
+            </div>
+            <span class="text-xs font-bold text-amber-400 group-hover:translate-x-0.5 transition shrink-0">Give &rarr;</span>
+        </button>
+    `;
 
     const party = appState.party || [];
-    const options = ["0: Shared Party Stash / Bag of Holding"].concat(party.map((p, i) => `${i + 1}: ${p.name}`));
-    const choice = prompt(`Give '${item.name}' to:\n\n${options.join('\n')}\n\nEnter number (0 for Stash):`, "0");
-    if (choice === null) return;
-    const num = parseInt(choice.trim(), 10);
+    if (party.length === 0) {
+        html += `
+            <div class="p-3 text-center text-slate-500 text-xs italic border border-dashed border-ledger-750 rounded-xl">
+                No active player characters in party roster.
+            </div>
+        `;
+    } else {
+        party.forEach(pc => {
+            const avatarHtml = pc.avatar ? `<img src="${escapeHTML(pc.avatar)}" class="w-10 h-10 rounded-xl object-cover border border-ledger-700 shrink-0">` : `
+                <div class="w-10 h-10 rounded-xl bg-ledger-800 text-slate-300 border border-ledger-700 flex items-center justify-center font-bold text-sm shrink-0">
+                    ${escapeHTML((pc.name || 'PC').charAt(0))}
+                </div>`;
+            const subtitle = [pc.race, pc.class, pc.level ? `Lvl ${pc.level}` : ''].filter(Boolean).join(' • ') || 'Party Member';
+
+            html += `
+                <button onclick="executeGiveItem('${pc.id}')" class="w-full text-left p-3 rounded-2xl bg-ledger-950 hover:bg-slate-800/80 border border-ledger-750 hover:border-ledger-600 transition group flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        ${avatarHtml}
+                        <div class="min-w-0">
+                            <div class="font-bold text-slate-100 text-sm truncate group-hover:text-amber-300 transition">${escapeHTML(pc.name)}</div>
+                            <div class="text-[10px] text-slate-400 truncate">${escapeHTML(subtitle)}</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-400 group-hover:text-amber-300 group-hover:translate-x-0.5 transition shrink-0">Give &rarr;</span>
+                </button>
+            `;
+        });
+    }
+
+    list.innerHTML = html;
+}
+
+async function executeGiveItem(targetId) {
+    if (!stagedGiveItem) return;
+    const qtyEl = document.getElementById('give-item-qty');
+    const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
 
     const newItem = {
-        id: `inv-${Date.now().toString(36)}`,
-        name: item.name,
-        quantity: 1,
-        weight: parseFloat(item.weight) || 1,
-        category: item.type || "Equipment",
-        rarity: item.rarity || "Common",
+        id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+        name: stagedGiveItem.name,
+        quantity: qty,
+        weight: parseFloat(stagedGiveItem.weight) || 1,
+        category: stagedGiveItem.type || stagedGiveItem.category || "Equipment",
+        rarity: stagedGiveItem.rarity || "Common",
         equipped: false,
         attuned: false,
-        notes: item.description ? item.description.slice(0, 150) : ""
+        notes: stagedGiveItem.description ? stagedGiveItem.description.slice(0, 150) : ""
     };
 
-    if (isNaN(num) || num <= 0 || num > party.length) {
+    closeModal('modal-give-item-target');
+
+    if (targetId === 'stash') {
         const stash = appState.partyStash || { coins: {}, items: [] };
         if (!stash.items) stash.items = [];
-        stash.items.push(newItem);
-        savePartyStashAPI(stash);
-        showToast(`Added '${item.name}' to Shared Party Stash!`, "success");
+        const existing = stash.items.find(x => x.name.toLowerCase() === newItem.name.toLowerCase());
+        if (existing) {
+            existing.quantity = (existing.quantity || 1) + qty;
+        } else {
+            stash.items.push(newItem);
+        }
+        await savePartyStashAPI(stash);
+        showToast(`Added ${qty}x '${stagedGiveItem.name}' to Shared Party Stash!`, "success");
     } else {
-        const targetPC = party[num - 1];
-        if (!targetPC.inventory) targetPC.inventory = [];
-        targetPC.inventory.push(newItem);
-        savePCInventoryAPI(targetPC.id, targetPC.inventory);
-        showToast(`Given '${item.name}' to ${targetPC.name}!`, "success");
+        const targetPC = (appState.party || []).find(p => p.id === targetId);
+        if (targetPC) {
+            if (!targetPC.inventory) targetPC.inventory = [];
+            const existing = targetPC.inventory.find(x => x.name.toLowerCase() === newItem.name.toLowerCase());
+            if (existing) {
+                existing.quantity = (existing.quantity || 1) + qty;
+            } else {
+                targetPC.inventory.push(newItem);
+            }
+            await savePCInventoryAPI(targetPC.id, targetPC.inventory);
+            showToast(`Gave ${qty}x '${stagedGiveItem.name}' to ${targetPC.name}!`, "success");
+        }
     }
+
+    if (typeof renderPartyInventoryModal === 'function') {
+        renderPartyInventoryModal();
+    }
+    stagedGiveItem = null;
 }
 
 // -------------------------------------------------------------

@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-CURRENT_VERSION = "1.1.6-beta.24"
+CURRENT_VERSION = "1.1.6-beta.25"
 REPO_OWNER = "Blackl1st"
 REPO_NAME = "arcane_ledger"
 
@@ -653,12 +653,9 @@ set EXE_NAME=ArcaneLedger.exe
 :: 1. Allow 2 seconds for parent process to exit cleanly, then force-terminate OLD_PID if still holding locks
 timeout /t 2 /nobreak > nul
 taskkill /F /PID %OLD_PID% > nul 2>&1
-
-:: 2. Terminate any browser window displaying Arcane Ledger so the relaunch opens fresh
-taskkill /F /FI "WINDOWTITLE eq Arcane Ledger*" > nul 2>&1
 timeout /t 1 /nobreak > nul
 
-:: 3. Overwrite binaries and app assets, explicitly preserving user data
+:: 2. Overwrite binaries and app assets, explicitly preserving user data
 robocopy "%STAGED%" "%TARGET%" /E /IS /IT /XD "%STAGED%\\data" /R:2 /W:1 > nul
 if exist "%STAGED%\\%EXE_NAME%" (
     copy /y "%STAGED%\\%EXE_NAME%" "%TARGET%\\%EXE_NAME%" > nul

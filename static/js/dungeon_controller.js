@@ -735,7 +735,7 @@ window.DungeonController = (function() {
                                         <div class="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-slate-400">
                                             <span>CR ${enc.cr || '1'}</span>
                                             <span>•</span>
-                                            <span>${(enc.monsters || []).map(m => `${m.name} (${m.hp} HP)`).join(', ')}</span>
+                                            <span>${(enc.monsters || []).map(m => `${m.count && m.count > 1 ? `${m.count}x ` : ''}${m.name} (${m.hp || 20} HP)`).join(', ')}</span>
                                         </div>
                                     </div>
                                     <button onclick="window.DungeonController.launchChamberEncounter('${enc.id}')"
@@ -1049,11 +1049,27 @@ window.DungeonController = (function() {
 
         const encNameEl = document.getElementById('modal-edit-enc-name');
         const encCrEl = document.getElementById('modal-edit-enc-cr');
-        const encMonEl = document.getElementById('modal-edit-enc-monsters');
-        const firstEnc = modalChamberData.encounters[0] || {};
+        const firstEnc = (modalChamberData.encounters && modalChamberData.encounters[0]) || {};
         if (encNameEl) encNameEl.value = firstEnc.name || '';
         if (encCrEl) encCrEl.value = firstEnc.cr || '';
-        if (encMonEl) encMonEl.value = (firstEnc.monsters || []).map(m => `${m.name || ''} (${m.hp || 10} HP)`).join(', ');
+
+        // Initialize chamber encounter monsters array from existing data or bestiary match
+        modalChamberData.encounterMonsters = (firstEnc.monsters || []).map(m => {
+            const mon = (window.appState && window.appState.monsters || []).find(x => x.id === (m.monsterId || m.id) || (x.name && m.name && x.name.toLowerCase() === m.name.toLowerCase()));
+            return {
+                id: mon ? mon.id : (m.monsterId || m.id || `m-${Date.now()}`),
+                monsterId: mon ? mon.id : (m.monsterId || m.id || ''),
+                name: mon ? mon.name : (m.name || 'Monster'),
+                cr: mon ? mon.cr : (m.cr || '1'),
+                hp: mon ? (parseInt(mon.hp) || 20) : (parseInt(m.hp) || 20),
+                ac: mon ? (parseInt(mon.ac) || 12) : (parseInt(m.ac) || 12),
+                type: mon ? (mon.type || 'creature') : 'creature',
+                count: m.count || 1
+            };
+        });
+
+        populateChamberMonsterPicker();
+        renderChamberMonstersRoster();
 
         renderModalExitsList();
         renderModalSecretsList();
@@ -1065,6 +1081,155 @@ window.DungeonController = (function() {
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
+    }
+
+    function populateChamberMonsterPicker(filterText = '') {
+        const select = document.getElementById('modal-enc-monster-select');
+        if (!select) return;
+
+        let monsters = (window.appState && window.appState.monsters) || [];
+        if (filterText) {
+            const q = filterText.toLowerCase().trim();
+            monsters = monsters.filter(m => {
+                const nameMatch = (m.name || '').toLowerCase().includes(q);
+                const typeMatch = (m.type || '').toLowerCase().includes(q);
+                const crMatch = String(m.cr || '').toLowerCase().includes(q) || `cr ${m.cr}`.toLowerCase().includes(q);
+                return nameMatch || typeMatch || crMatch;
+            });
+        }
+
+        if (monsters.length === 0) {
+            select.innerHTML = '<option value="">-- No matching monsters --</option>';
+            return;
+        }
+
+        select.innerHTML = monsters.map(m => {
+            const crLabel = m.cr !== undefined ? `CR ${m.cr}` : 'CR 1';
+            const hpLabel = m.hp ? `${m.hp} HP` : '';
+            const typeLabel = m.type ? m.type : 'creature';
+            return `<option value="${m.id}">[${crLabel}] ${m.name} (${typeLabel}${hpLabel ? `, ${hpLabel}` : ''})</option>`;
+        }).join('');
+    }
+
+    function filterChamberMonsterPicker(filterText) {
+        populateChamberMonsterPicker(filterText);
+    }
+
+    function renderChamberMonstersRoster() {
+        const roster = document.getElementById('modal-enc-roster');
+        const badge = document.getElementById('modal-enc-summary-badge');
+        if (!roster || !modalChamberData) return;
+
+        const monsters = modalChamberData.encounterMonsters || [];
+        if (monsters.length === 0) {
+            roster.innerHTML = '<div class="text-slate-500 text-xs italic py-1">No monsters staged for this encounter yet. Select from the SRD bestiary below.</div>';
+            if (badge) {
+                badge.className = "px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono text-[9px] border border-slate-700 font-semibold";
+                badge.textContent = "No Combatants";
+            }
+            return;
+        }
+
+        let totalMonsters = 0;
+        let totalHp = 0;
+        roster.innerHTML = monsters.map((m, idx) => {
+            const count = m.count || 1;
+            totalMonsters += count;
+            totalHp += (m.hp || 20) * count;
+
+            return `
+                <div class="p-2 rounded-xl bg-ledger-900 border border-ledger-750 flex items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-rose-500/30">
+                            ${count}x
+                        </span>
+                        <div class="min-w-0">
+                            <span class="font-bold text-slate-200 truncate block">${m.name}</span>
+                            <div class="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                                <span>CR ${m.cr || '1'}</span>
+                                <span>•</span>
+                                <span>${m.hp || 20} HP</span>
+                                ${m.type ? `<span>•</span><span class="capitalize">${m.type}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <div class="flex items-center gap-1 bg-ledger-950 border border-ledger-750 rounded-lg p-0.5 font-mono text-[10px]">
+                            <button type="button" onclick="window.DungeonController.adjustChamberMonsterCount(${idx}, -1)" class="w-5 h-5 rounded hover:bg-ledger-800 text-slate-400 hover:text-white flex items-center justify-center font-bold">-</button>
+                            <span class="w-4 text-center font-bold text-slate-200">${count}</span>
+                            <button type="button" onclick="window.DungeonController.adjustChamberMonsterCount(${idx}, 1)" class="w-5 h-5 rounded hover:bg-ledger-800 text-slate-400 hover:text-white flex items-center justify-center font-bold">+</button>
+                        </div>
+                        <button type="button" onclick="window.DungeonController.removeChamberMonster(${idx})" class="p-1 text-slate-400 hover:text-rose-400 font-mono font-bold text-sm" title="Remove">&times;</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (badge) {
+            badge.className = "px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono text-[9px] border border-rose-500/30 font-semibold";
+            badge.textContent = `${totalMonsters} Combatant${totalMonsters > 1 ? 's' : ''} (${totalHp} Total HP)`;
+        }
+
+        // Auto-suggest name or CR if empty
+        const nameInput = document.getElementById('modal-edit-enc-name');
+        if (nameInput && !nameInput.value.trim() && monsters.length > 0) {
+            nameInput.value = monsters.length === 1 ? `${monsters[0].name} Encounter` : `${monsters[0].name} Ambush`;
+        }
+        const crInput = document.getElementById('modal-edit-enc-cr');
+        if (crInput && !crInput.value.trim() && monsters.length > 0) {
+            crInput.value = monsters[0].cr || '1';
+        }
+    }
+
+    function addChamberMonster() {
+        if (!modalChamberData) return;
+        const select = document.getElementById('modal-enc-monster-select');
+        const countInput = document.getElementById('modal-enc-monster-count');
+        if (!select || !select.value) return;
+
+        const count = Math.max(1, parseInt(countInput?.value, 10) || 1);
+        const monId = select.value;
+        const allMonsters = (window.appState && window.appState.monsters) || [];
+        const mon = allMonsters.find(m => m.id === monId);
+        if (!mon) return;
+
+        if (!modalChamberData.encounterMonsters) modalChamberData.encounterMonsters = [];
+
+        const existing = modalChamberData.encounterMonsters.find(m => m.monsterId === monId || m.name.toLowerCase() === mon.name.toLowerCase());
+        if (existing) {
+            existing.count = (existing.count || 1) + count;
+        } else {
+            modalChamberData.encounterMonsters.push({
+                id: mon.id,
+                monsterId: mon.id,
+                name: mon.name,
+                cr: mon.cr || '1',
+                hp: parseInt(mon.hp) || 20,
+                ac: parseInt(mon.ac) || 12,
+                type: mon.type || 'creature',
+                count
+            });
+        }
+
+        renderChamberMonstersRoster();
+        if (countInput) countInput.value = 1;
+    }
+
+    function removeChamberMonster(index) {
+        if (!modalChamberData || !modalChamberData.encounterMonsters) return;
+        modalChamberData.encounterMonsters.splice(index, 1);
+        renderChamberMonstersRoster();
+    }
+
+    function adjustChamberMonsterCount(index, delta) {
+        if (!modalChamberData || !modalChamberData.encounterMonsters) return;
+        const m = modalChamberData.encounterMonsters[index];
+        if (!m) return;
+        m.count = (m.count || 1) + delta;
+        if (m.count <= 0) {
+            modalChamberData.encounterMonsters.splice(index, 1);
+        }
+        renderChamberMonstersRoster();
     }
 
     function populateModalTargetChambersDropdown() {
@@ -1276,20 +1441,22 @@ window.DungeonController = (function() {
 
         const encName = document.getElementById('modal-edit-enc-name')?.value.trim();
         const encCr = document.getElementById('modal-edit-enc-cr')?.value.trim();
-        const encMonText = document.getElementById('modal-edit-enc-monsters')?.value.trim();
-        if (encName) {
-            const monsters = encMonText ? encMonText.split(',').map(m => {
-                const trimmed = m.trim();
-                const hpMatch = trimmed.match(/\((\d+)\s*HP\)/i);
-                const hp = hpMatch ? parseInt(hpMatch[1]) : 20;
-                const name = trimmed.replace(/\s*\(\d+\s*HP\)/i, '').trim();
-                return { name, hp };
-            }) : [{ name: encName, hp: 25 }];
+        const monsters = modalChamberData.encounterMonsters || [];
+
+        if (monsters.length > 0 || encName) {
             node.encounters = [{
-                id: `enc-${node.id}`,
-                name: encName,
-                cr: encCr || '1',
-                monsters
+                id: (node.encounters && node.encounters[0] && node.encounters[0].id) || `enc-${node.id}`,
+                name: encName || (monsters.length > 0 ? `${monsters[0].name} Encounter` : 'Chamber Encounter'),
+                cr: encCr || (monsters.length > 0 ? String(monsters[0].cr || '1') : '1'),
+                monsters: monsters.map(m => ({
+                    id: m.id || m.monsterId,
+                    monsterId: m.monsterId || m.id,
+                    name: m.name,
+                    cr: m.cr || '1',
+                    hp: m.hp || 20,
+                    ac: m.ac || 12,
+                    count: m.count || 1
+                }))
             }];
         } else {
             node.encounters = [];
@@ -1426,6 +1593,12 @@ window.DungeonController = (function() {
         removeChamberSecret,
         addChamberTrap,
         removeChamberTrap,
+        populateChamberMonsterPicker,
+        filterChamberMonsterPicker,
+        renderChamberMonstersRoster,
+        addChamberMonster,
+        removeChamberMonster,
+        adjustChamberMonsterCount,
         openNewDungeonModal,
         saveNewDungeon,
         zoomIn,

@@ -3912,7 +3912,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.24</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.25</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -5763,9 +5763,10 @@
     </div>
 
     <!-- 19. AMARAN & STUDIO LIGHTING CONTROLLER MODAL (DUAL-CHANNEL) -->
-    <div id="lighting-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="bg-ledger-900 border border-amber-500/60 rounded-2xl max-w-xl w-full p-5 shadow-2xl space-y-4 text-xs max-h-[92vh] overflow-y-auto">
-            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+    <div id="lighting-modal" onclick="if(event.target === this) closeModal('lighting-modal')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-2xl max-w-xl w-full shadow-2xl text-xs max-h-[85vh] flex flex-col overflow-hidden">
+            <!-- Sticky Modal Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 px-5 py-3.5 shrink-0 bg-ledger-900">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">💡</span>
                     <div>
@@ -5773,8 +5774,11 @@
                         <p class="text-[10px] text-slate-400">Independent Dual-Channel Hardware Mesh Controller</p>
                     </div>
                 </div>
-                <button onclick="closeModal('lighting-modal')" class="text-slate-400 hover:text-white">✕</button>
+                <button onclick="closeModal('lighting-modal')" class="text-slate-400 hover:text-white p-1 text-xl font-mono rounded hover:bg-ledger-800 transition">&times;</button>
             </div>
+
+            <!-- Scrollable Modal Body -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-4">
 
             <!-- Connection Status & Hardware Indicator -->
             <div class="flex items-center justify-between bg-ledger-950 p-2.5 rounded-xl border border-ledger-800">
@@ -6014,14 +6018,17 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-2 pt-2 border-t border-ledger-800">
-                <button onclick="closeModal('lighting-modal')" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold">Done</button>
+            </div>
+
+            <!-- Sticky Modal Footer -->
+            <div class="flex justify-end gap-2 px-5 py-3 border-t border-ledger-800 shrink-0 bg-ledger-950/80">
+                <button onclick="closeModal('lighting-modal')" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold transition">Done</button>
             </div>
         </div>
     </div>
 
     <!-- 19b. ADD AMARAN ACE 25C FIXTURE MODAL -->
-    <div id="add-ace-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div id="add-ace-modal" onclick="if(event.target === this) closeModal('add-ace-modal')" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-indigo-500/60 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 text-xs">
             <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
                 <div class="flex items-center gap-2">
@@ -6055,6 +6062,61 @@
             <div class="flex justify-end gap-2 pt-2 border-t border-ledger-800">
                 <button onclick="closeModal('add-ace-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold">Cancel</button>
                 <button onclick="submitAddAce25c()" class="px-5 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-bold">Add to Group</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 19c. GIVE ITEM TO PARTY OR STASH MODAL -->
+    <div id="modal-give-item-target" onclick="if(event.target === this) closeModal('modal-give-item-target')" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-md w-full shadow-2xl max-h-[85vh] flex flex-col overflow-hidden text-xs">
+            <!-- Sticky Modal Header -->
+            <div class="flex items-center justify-between border-b border-ledger-750 px-5 py-3.5 shrink-0 bg-ledger-900">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎁</span>
+                    <div>
+                        <h3 class="font-display font-bold text-sm text-amber-300">Give Item to Party / Stash</h3>
+                        <p class="text-[10px] text-slate-400">Choose destination recipient</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-give-item-target')" class="text-slate-400 hover:text-white font-mono text-xl p-1 rounded hover:bg-ledger-800 transition">&times;</button>
+            </div>
+
+            <!-- Scrollable Modal Body -->
+            <div class="flex-1 overflow-y-auto p-5 space-y-4">
+                <!-- Selected Item Summary & Quantity Stepper -->
+                <div class="bg-ledger-950 p-3 rounded-2xl border border-ledger-750 flex items-center justify-between gap-3 shadow-inner">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div id="give-item-icon" class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">
+                            📦
+                        </div>
+                        <div class="min-w-0">
+                            <h4 id="give-item-name" class="font-bold text-slate-100 text-sm truncate">Item Name</h4>
+                            <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-0.5">
+                                <span id="give-item-rarity" class="px-1.5 py-0.2 rounded bg-ledger-900 border border-ledger-700 text-amber-300">Common</span>
+                                <span id="give-item-type">Equipment</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 bg-ledger-900 border border-ledger-700 rounded-xl px-2 py-1">
+                        <span class="text-[10px] text-slate-400 font-mono">Qty:</span>
+                        <button type="button" onclick="adjustGiveItemQty(-1)" class="w-5 h-5 rounded bg-ledger-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center justify-center">-</button>
+                        <input id="give-item-qty" type="number" min="1" max="99" value="1" class="w-8 bg-transparent text-center font-mono font-bold text-white focus:outline-none">
+                        <button type="button" onclick="adjustGiveItemQty(1)" class="w-5 h-5 rounded bg-ledger-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center justify-center">+</button>
+                    </div>
+                </div>
+
+                <!-- Recipient Options -->
+                <div class="space-y-2">
+                    <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 block">Select Destination:</span>
+                    <div id="give-item-targets-list" class="space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky Modal Footer -->
+            <div class="flex items-center justify-end px-5 py-3 border-t border-ledger-750 shrink-0 bg-ledger-950/80">
+                <button type="button" onclick="closeModal('modal-give-item-target')" class="px-4 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs hover:bg-ledger-700 transition">Cancel</button>
             </div>
         </div>
     </div>
@@ -8131,19 +8193,21 @@
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- MODAL: EDIT CHAMBER DOSSIER -->
-    <div id="modal-dungeon-edit-chamber" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
+    <div id="modal-dungeon-edit-chamber" onclick="if(event.target === this) closeModal('modal-dungeon-edit-chamber')" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-2xl w-full shadow-2xl max-h-[85vh] flex flex-col overflow-hidden text-xs">
+            <!-- Sticky Modal Header -->
+            <div class="flex items-center justify-between border-b border-ledger-750 px-6 py-4 shrink-0 bg-ledger-900">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">✏️</span>
                     <h3 class="font-display font-bold text-base text-amber-300">Edit Chamber Dossier & Room Attachments</h3>
                 </div>
-                <button onclick="closeModal('modal-dungeon-edit-chamber')" class="text-slate-400 hover:text-white font-mono text-base">&times;</button>
+                <button onclick="closeModal('modal-dungeon-edit-chamber')" class="text-slate-400 hover:text-white font-mono text-xl p-1 rounded hover:bg-ledger-800 transition">&times;</button>
             </div>
 
             <input type="hidden" id="modal-edit-node-id">
 
-            <div class="space-y-4 text-xs">
+            <!-- Scrollable Modal Body -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-4">
                 <!-- Row 1: Code, Name, Floor & State -->
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <div>
@@ -8291,16 +8355,47 @@
 
                 <!-- SECTION: ENCOUNTER & LOOT -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <!-- Encounter -->
-                    <div class="p-3 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2">
-                        <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1">
-                            <span>⚔️</span> <span>Chamber Encounter</span>
-                        </label>
-                        <div class="grid grid-cols-3 gap-1">
-                            <input id="modal-edit-enc-name" placeholder="Encounter Name" class="col-span-2 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
-                            <input id="modal-edit-enc-cr" placeholder="CR (e.g. 3)" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-xs">
+                    <!-- Chamber Encounter -->
+                    <div class="p-3.5 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1">
+                                <span>⚔️</span> <span>Chamber Encounter</span>
+                            </label>
+                            <span id="modal-enc-summary-badge" class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono text-[9px] border border-rose-500/30 font-semibold">No Combatants</span>
                         </div>
-                        <input id="modal-edit-enc-monsters" placeholder="Monsters (e.g. 2x Ghoul (22 HP), 1x Specter (22 HP))" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <input id="modal-edit-enc-name" placeholder="Encounter Name" class="col-span-2 bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1.5 text-slate-200 text-xs">
+                            <input id="modal-edit-enc-cr" placeholder="CR" class="bg-ledger-900 border border-ledger-700 rounded-xl px-2 py-1.5 text-slate-200 font-mono text-xs">
+                        </div>
+
+                        <!-- Staged Chamber Monsters Roster -->
+                        <div id="modal-enc-roster" class="space-y-1.5 max-h-28 overflow-y-auto pr-0.5">
+                            <!-- Rendered dynamically -->
+                        </div>
+
+                        <!-- SRD Bestiary Monster Picker Form -->
+                        <div class="pt-2 border-t border-ledger-800 space-y-1.5">
+                            <span class="text-[9px] font-mono font-bold text-slate-400 uppercase block">+ Add 5.5e SRD Monster</span>
+                            <div class="flex gap-1.5">
+                                <input id="modal-enc-monster-search" oninput="window.DungeonController.filterChamberMonsterPicker(this.value)" placeholder="Filter Bestiary (e.g. Zombie, Ghoul, CR 2)..." class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:border-rose-500 focus:outline-none">
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
+                                <div class="sm:col-span-7">
+                                    <select id="modal-enc-monster-select" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs truncate">
+                                        <!-- Populated from window.appState.monsters -->
+                                    </select>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <input id="modal-enc-monster-count" type="number" min="1" max="99" value="1" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-1.5 py-1 text-slate-200 font-mono text-xs text-center" title="Quantity">
+                                </div>
+                                <div class="sm:col-span-3">
+                                    <button type="button" onclick="window.DungeonController.addChamberMonster()" class="w-full py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold text-xs border border-rose-700 shrink-0 transition flex items-center justify-center gap-1">
+                                        <span>+</span> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Loot -->
@@ -8308,18 +8403,19 @@
                         <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
                             <span>🪙</span> <span>Loot & Curiosities</span>
                         </label>
-                        <textarea id="modal-edit-node-loot" rows="2" placeholder="Comma-separated items: Fine Silver Tableware (50 gp), Potion of Healing, Jeweled Dagger" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-slate-200 text-xs"></textarea>
+                        <textarea id="modal-edit-node-loot" rows="6" placeholder="Comma-separated items: Fine Silver Tableware (50 gp), Potion of Healing, Jeweled Dagger" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2.5 text-slate-200 text-xs"></textarea>
                     </div>
                 </div>
             </div>
 
-            <div class="flex items-center justify-between gap-2 pt-3 border-t border-ledger-750">
+            <!-- Sticky Modal Footer -->
+            <div class="flex items-center justify-between gap-2 px-6 py-3.5 border-t border-ledger-750 shrink-0 bg-ledger-950/90">
                 <button type="button" onclick="window.DungeonController.deleteChamber()" class="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700/60 font-semibold text-xs transition flex items-center gap-1">
                     <span>🗑️</span> <span>Delete Chamber</span>
                 </button>
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="closeModal('modal-dungeon-edit-chamber')" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs">Cancel</button>
-                    <button type="button" onclick="window.DungeonController.saveChamberModalEdits()" class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow">Save Chamber</button>
+                    <button type="button" onclick="closeModal('modal-dungeon-edit-chamber')" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs hover:bg-ledger-700 transition">Cancel</button>
+                    <button type="button" onclick="window.DungeonController.saveChamberModalEdits()" class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow transition">Save Chamber</button>
                 </div>
             </div>
         </div>
