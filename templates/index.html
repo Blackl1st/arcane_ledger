@@ -3793,7 +3793,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.19</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.20</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -6025,6 +6025,91 @@
             <div class="flex justify-end gap-2 pt-2 border-t border-ledger-800">
                 <button onclick="closeModal('save-encounter-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
                 <button onclick="submitSaveEncounterPreset()" class="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold shadow">Save Preset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 21b. DIRECT LAUNCH ENCOUNTER & PARTY PARTICIPATION MODAL -->
+    <div id="direct-launch-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs max-h-[90vh] flex flex-col">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <h3 class="font-display font-bold text-base text-amber-400 flex items-center gap-2">
+                    <span>⚔️</span> <span>Launch Encounter into Combat</span>
+                </h3>
+                <button onclick="closeModal('direct-launch-modal')" class="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <!-- Scrollable Body -->
+            <div class="space-y-4 overflow-y-auto pr-1 flex-1">
+                <!-- Encounter Card Header -->
+                <div class="p-3.5 rounded-xl bg-ledger-950 border border-ledger-800 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h4 id="direct-launch-title" class="font-bold text-sm text-slate-100">Encounter Name</h4>
+                            <p id="direct-launch-desc" class="text-[11px] text-slate-400 font-serif line-clamp-2 mt-0.5"></p>
+                        </div>
+                        <span id="direct-launch-diff" class="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border border-amber-500/40 text-amber-300 bg-amber-500/10">Deadly</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-ledger-800">
+                        <span id="direct-launch-xp" class="font-mono text-amber-300 font-bold">1,800 XP</span>
+                        <span id="direct-launch-location" class="text-slate-400">📍 Barovia</span>
+                    </div>
+                    <div class="bg-ledger-900/60 p-2 rounded-lg border border-ledger-800/80">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Encounter Monsters:</span>
+                        <div id="direct-launch-monsters-list" class="font-mono text-slate-200 text-xs flex flex-wrap gap-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- Party Selection -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h5 class="font-bold text-slate-200 text-xs flex items-center gap-1.5">
+                                <span>🛡️</span> <span>Participating Party Members</span>
+                            </h5>
+                            <p class="text-[10px] text-slate-400">Uncheck characters split from the party or absent from this battle.</p>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="toggleAllLaunchParty(true)" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-ledger-800 hover:bg-ledger-700 text-slate-300 border border-ledger-700 transition">All</button>
+                            <button type="button" onclick="toggleAllLaunchParty(false)" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-ledger-800 hover:bg-ledger-700 text-slate-400 border border-ledger-700 transition">None</button>
+                        </div>
+                    </div>
+
+                    <!-- List of PC cards with checkboxes -->
+                    <div id="direct-launch-party-container" class="space-y-1.5">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Tactical Options -->
+                <div class="p-3 rounded-xl bg-ledger-950/80 border border-ledger-800 space-y-2 text-[11px]">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Launch Options:</span>
+                    <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                        <input id="direct-launch-opt-init-monsters" type="checkbox" checked class="rounded border-ledger-700 text-amber-500 focus:ring-amber-500 bg-ledger-900">
+                        <span>Auto-roll monster initiative (+ Dex mod)</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                        <input id="direct-launch-opt-init-party" type="checkbox" checked class="rounded border-ledger-700 text-amber-500 focus:ring-amber-500 bg-ledger-900">
+                        <span>Auto-roll participating party initiative (+ Init mod)</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                        <input id="direct-launch-opt-tokens" type="checkbox" checked class="rounded border-ledger-700 text-amber-500 focus:ring-amber-500 bg-ledger-900">
+                        <span>Place monster tokens on Tabletop Battlemap (hidden from players)</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                        <input id="direct-launch-opt-clear-combat" type="checkbox" class="rounded border-ledger-700 text-amber-500 focus:ring-amber-500 bg-ledger-900">
+                        <span>Clear existing combatants before launching (start fresh)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-3 border-t border-ledger-800">
+                <button type="button" onclick="closeModal('direct-launch-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-slate-300 font-semibold transition">Cancel</button>
+                <button type="button" onclick="confirmExecuteDirectLaunch()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow-lg transition flex items-center gap-2">
+                    <span>⚔️</span> <span>Launch Into Combat</span>
+                </button>
             </div>
         </div>
     </div>

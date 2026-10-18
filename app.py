@@ -503,7 +503,7 @@ def check_and_upgrade_cos_campaign(camp_dir: Path, camp_obj: Dict[str, Any]):
                 try:
                     with open(enc_path, "r", encoding="utf-8") as f:
                         curr_encs = json.load(f)
-                    if len(curr_encs) < 15 or any("monsterId" not in m for e in curr_encs for m in e.get("monsters", [])[:1]):
+                    if len(curr_encs) < 30 or any("monsterId" not in m for e in curr_encs for m in e.get("monsters", [])[:1]):
                         with open(enc_path, "w", encoding="utf-8") as f:
                             json.dump(cos_module_pack.get_cos_encounters(), f, indent=2, ensure_ascii=False)
                 except Exception:
@@ -6966,7 +6966,22 @@ async def delete_item(item_id: str):
 # -----------------------------------------------------------------------------
 @app.get("/api/encounters")
 async def get_encounters():
-    return read_json("encounters.json", [])
+    encs = read_json("encounters.json", [])
+    try:
+        camp_id = get_active_campaign_id()
+        enriched = get_enriched_campaigns()
+        camp_obj = next((c for c in enriched if c.get("id") == camp_id), {})
+        is_cos = (
+            camp_obj.get("template") == "curse_of_strahd" or
+            "strahd" in camp_obj.get("name", "").lower() or
+            "strahd" in camp_obj.get("description", "").lower()
+        )
+        if is_cos and (len(encs) < 30 or any("monsterId" not in m for e in encs for m in e.get("monsters", [])[:1])):
+            encs = cos_module_pack.get_cos_encounters()
+            write_json("encounters.json", encs)
+    except Exception:
+        pass
+    return encs
 
 @app.post("/api/encounters")
 async def save_encounter(enc: Dict[str, Any]):
@@ -7001,18 +7016,37 @@ def get_monster_size_squares(size_str: str) -> float:
     return 1.0
 
 @app.post("/api/encounters/{enc_id}/launch")
-async def launch_encounter(enc_id: str):
+async def launch_encounter(enc_id: str, request_data: Optional[Dict[str, Any]] = None):
     encounters = read_json("encounters.json", [])
     enc = next((e for e in encounters if e.get("id") == enc_id), None)
     if not enc:
-        raise HTTPException(status_code=404, detail="Encounter not found")
+        cos_encs = cos_module_pack.get_cos_encounters()
+        enc = next((e for e in cos_encs if e.get("id") == enc_id), None)
+        if not enc:
+            raise HTTPException(status_code=404, detail="Encounter not found")
 
     monsters_lib = read_json("monsters.json", [])
-    combat = read_json("combat.json", {"inCombat": True, "round": 1, "currentTurnIndex": 0, "combatants": []})
-    combat["inCombat"] = True
+    cos_monsters = getattr(cos_module_pack, "MONSTERS", [])
+    existing_lib_ids = {x.get("id") for x in monsters_lib}
+    all_monsters = monsters_lib + [m for m in cos_monsters if m.get("id") not in existing_lib_ids]
+
+    opts = request_data or {}
+    clear_combat = opts.get("clearCombat", False)
+    participating_party_ids = opts.get("participatingPartyIds", [])
+    auto_roll_party_init = opts.get("autoRollPartyInit", True)
+    auto_roll_monster_init = opts.get("autoRollMonsterInit", True)
+    spawn_tokens = opts.get("spawnTokens", True)
+
+    if clear_combat:
+        combat = {"inCombat": True, "round": 1, "currentTurnIndex": 0, "combatants": []}
+    else:
+        combat = read_json("combat.json", {"inCombat": True, "round": 1, "currentTurnIndex": 0, "combatants": []})
+        combat["inCombat"] = True
 
     bstate = read_json("battlemap.json", get_default_battlemap_state())
     existing_tokens = bstate.get("tokens", [])
+    if clear_combat:
+        existing_tokens = [t for t in existing_tokens if not t.get("monsterId")]
 
     spawned_names = []
     new_combatants = []
@@ -7021,28 +7055,70 @@ async def launch_encounter(enc_id: str):
     base_x = 900.0
     base_y = 650.0
 
+    # 1. Add Participating Party Members
+    if participating_party_ids:
+        party = read_json("party.json", [])
+        existing_sources = {c.get("sourceId") or c.get("id") for c in combat.get("combatants", [])}
+        for pid in participating_party_ids:
+            pc = next((p for p in party if p.get("id") == pid), None)
+            if pc and f"combat-{pc.get('id')}" not in existing_sources and pc.get("id") not in existing_sources:
+                dex_mod = int(pc.get("initiativeMod") or 0)
+                init_val = float(random.randint(1, 20) + dex_mod) if auto_roll_party_init else 0.0
+                pc_combatant = {
+                    "id": f"combat-{pc.get('id')}",
+                    "name": pc.get("name", "Hero"),
+                    "type": "pc",
+                    "initiative": init_val,
+                    "tieBreaker": round(dex_mod + random.uniform(0.01, 0.99), 2),
+                    "ac": int(pc.get("ac", 10)),
+                    "currentHp": int(pc.get("currentHp", 20)),
+                    "maxHp": int(pc.get("maxHp", 20)),
+                    "tempHp": int(pc.get("tempHp", 0)),
+                    "conditions": [],
+                    "isConcentrating": False,
+                    "concentratingSpell": "",
+                    "notes": pc.get("classRole", ""),
+                    "statDetails": f"Speed: {pc.get('speed', 30)}ft | PP: {pc.get('passivePerception', 10)}",
+                    "sourceId": pc.get("id"),
+                    "hidden": False,
+                    "visibleToPlayers": True
+                }
+                new_combatants.append(pc_combatant)
+                spawned_names.append(f"{pc.get('name')} (PC)")
+
+    # 2. Add Encounter Monsters
     for item in enc.get("monsters", []):
         m_id = item.get("monsterId") or item.get("id")
         count = int(item.get("count", 1))
-        monster = next((m for m in monsters_lib if m.get("id") == m_id or (m.get("name") and item.get("name") and m.get("name").lower() == item.get("name").lower())), None)
+        monster = next((m for m in all_monsters if m.get("id") == m_id or (m.get("name") and item.get("name") and m.get("name").lower() == item.get("name").lower())), None)
         if not monster:
-            continue
+            monster = {"id": m_id, "name": item.get("name") or m_id or "Creature", "hp": 20, "ac": 12, "cr": item.get("cr", "1")}
 
-        dex = monster.get("stats", {}).get("dex", 10)
+        stats_obj = monster.get("stats") or monster.get("abilities") or {}
+        dex = stats_obj.get("dex", 10) if isinstance(stats_obj, dict) else 10
         dex_mod = (dex - 10) // 2
 
-        cr_val = float(monster.get("cr", 0) or 0)
-        is_boss = cr_val >= 10 or ("dragon" in monster.get("name", "").lower() or "boss" in monster.get("name", "").lower())
+        cr_str = str(monster.get("cr", item.get("cr", 1)))
+        try:
+            cr_val = float(cr_str)
+        except Exception:
+            cr_val = 1.0
+
+        is_boss = cr_val >= 10 or any(k in monster.get("name", "").lower() for k in ["dragon", "strahd", "boss", "lych", "lich", "neferon", "vladimir"])
         color = "#a855f7" if is_boss else "#ef4444"
         size_squares = get_monster_size_squares(monster.get("size", "Medium"))
 
         for i in range(count):
-            init_val = float(random.randint(1, 20) + dex_mod)
+            init_val = float(random.randint(1, 20) + dex_mod) if auto_roll_monster_init else 0.0
             num_suffix = f" {i + 1}" if count > 1 else ""
-            c_name = f"{monster.get('name', 'Monster')}{num_suffix}"
+            c_name = f"{item.get('name') or monster.get('name', 'Monster')}{num_suffix}"
             c_id = f"mob-{m_id}-{int(time.time()*1000)}-{token_index}"
             img_url = monster.get("imageUrl") or f"/static/images/monsters/{m_id}.webp"
-            hp = int(monster.get("hp", 10))
+            hp = int(monster.get("hp", 15))
+
+            action_name = "Standard Attack"
+            if monster.get("actions") and len(monster["actions"]) > 0:
+                action_name = monster["actions"][0].get("name", "Standard Attack")
 
             new_combatant = {
                 "id": c_id,
@@ -7057,48 +7133,50 @@ async def launch_encounter(enc_id: str):
                 "tempHp": 0,
                 "ac": int(monster.get("ac", 10)),
                 "conditions": [],
-                "concentrating": False,
+                "isConcentrating": False,
+                "concentratingSpell": "",
                 "hidden": True,
                 "visibleToPlayers": False,
                 "imageUrl": img_url,
-                "notes": f"CR {monster.get('cr', '?')} | {monster.get('type', '')} | Spd: {monster.get('speed', '30 ft.')}"
+                "notes": f"CR {monster.get('cr', item.get('cr', '?'))} | {monster.get('type', '')} | Spd: {monster.get('speed', '30 ft.')}",
+                "statDetails": action_name
             }
             new_combatants.append(new_combatant)
             spawned_names.append(c_name)
 
-            # Corresponding battlemap token (hidden from player view!)
-            col = token_index % 5
-            row = token_index // 5
-            token_x = base_x + col * 75.0
-            token_y = base_y + row * 75.0
+            if spawn_tokens:
+                col = token_index % 5
+                row = token_index // 5
+                token_x = base_x + col * 75.0
+                token_y = base_y + row * 75.0
 
-            new_token = {
-                "id": f"token_{uuid.uuid4().hex[:8]}",
-                "name": c_name,
-                "monsterId": m_id,
-                "combatantId": c_id,
-                "size": monster.get("size", "Medium"),
-                "sizeSquares": size_squares,
-                "x": token_x,
-                "y": token_y,
-                "imageUrl": img_url,
-                "currentHp": hp,
-                "maxHp": hp,
-                "color": color,
-                "visibleToPlayers": False
-            }
-            new_tokens.append(new_token)
+                new_token = {
+                    "id": f"token_{uuid.uuid4().hex[:8]}",
+                    "name": c_name,
+                    "monsterId": m_id,
+                    "combatantId": c_id,
+                    "size": monster.get("size", "Medium"),
+                    "sizeSquares": size_squares,
+                    "x": token_x,
+                    "y": token_y,
+                    "imageUrl": img_url,
+                    "currentHp": hp,
+                    "maxHp": hp,
+                    "color": color,
+                    "visibleToPlayers": False
+                }
+                new_tokens.append(new_token)
             token_index += 1
 
     combat["combatants"].extend(new_combatants)
     combat["combatants"].sort(key=lambda c: (c.get("initiative", 0), c.get("tieBreaker", 0)), reverse=True)
     write_json("combat.json", combat)
 
-    # Save battlemap tokens
-    existing_tokens.extend(new_tokens)
-    bstate["tokens"] = existing_tokens
-    bstate["updatedAt"] = time.time()
-    write_json("battlemap.json", bstate)
+    if new_tokens:
+        existing_tokens.extend(new_tokens)
+        bstate["tokens"] = existing_tokens
+        bstate["updatedAt"] = time.time()
+        write_json("battlemap.json", bstate)
 
     return {
         "status": "success",

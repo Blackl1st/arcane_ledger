@@ -1482,6 +1482,178 @@ ENCOUNTERS = [
             {"monsterId": "vampire-spawn", "id": "vampire-spawn", "name": "Vampire Brides of Ravenloft", "count": 4, "cr": "5", "xp": 1800},
             {"monsterId": "swarm-of-bats", "id": "swarm-of-bats", "name": "Swarm of Bats", "count": 2, "cr": "1/4", "xp": 50}
         ]
+    },
+    {
+        "id": "enc-cos-death-house-armor",
+        "name": "19. Death House: The Animated Armor of the Balcony",
+        "description": "As the heroes ascend the grand mahogany staircase toward the third-floor nursery, two imposing suits of blackened iron armor draw their steel blades and strike.",
+        "location": "Village of Barovia (Death House)",
+        "difficulty": "Moderate",
+        "totalXp": 300,
+        "monsters": [
+            {"monsterId": "animated-armor", "id": "animated-armor", "name": "Animated Armor", "count": 1, "cr": "1", "xp": 200},
+            {"monsterId": "animated-flying-sword", "id": "animated-flying-sword", "name": "Animated Flying Sword", "count": 2, "cr": "1/4", "xp": 50}
+        ]
+    },
+    {
+        "id": "enc-cos-death-house-shadows",
+        "name": "20. Death House: Shadows in the Dark Shrine",
+        "description": "Four shadowy apparitions detach from the damp stone walls of the relic shrine, whispering ancient praises to the Dark Powers as they reach for living strength.",
+        "location": "Village of Barovia (Death House)",
+        "difficulty": "High",
+        "totalXp": 400,
+        "monsters": [
+            {"monsterId": "shadow", "id": "shadow", "name": "Relic Shrine Shadow", "count": 4, "cr": "1/2", "xp": 100}
+        ]
+    },
+    {
+        "id": "enc-cos-svalich-gallows",
+        "name": "21. Old Svalich Road: The Corpse at the Crossroads",
+        "description": "Beside the creaking wooden gallows, the hanging corpse turns to reveal the face of a party member! Skeletal claws burst from the muddy ditch as dead riders surround the road.",
+        "location": "Old Svalich Road",
+        "difficulty": "Moderate",
+        "totalXp": 400,
+        "monsters": [
+            {"monsterId": "skeleton", "id": "skeleton", "name": "Barovian Skeleton", "count": 4, "cr": "1/4", "xp": 50},
+            {"monsterId": "warhorse-skeleton", "id": "warhorse-skeleton", "name": "Skeletal Warhorse", "count": 1, "cr": "1/2", "xp": 100},
+            {"monsterId": "zombie", "id": "zombie", "name": "Gallows Zombie", "count": 2, "cr": "1/4", "xp": 50}
+        ]
+    },
+    {
+        "id": "enc-cos-vallaki-town-guard",
+        "name": "22. Town of Vallaki: Izek's Iron Enforcers",
+        "description": "Baron Vallakovich's brutal enforcer Izek Strazni ignites his fiendish claw with blazing fire, cornering the party in the muddy town square for insolence.",
+        "location": "Town of Vallaki",
+        "difficulty": "Moderate",
+        "totalXp": 800,
+        "monsters": [
+            {"monsterId": "warrior-veteran", "id": "warrior-veteran", "name": "Izek Strazni (Guard Captain)", "count": 1, "cr": "3", "xp": 700},
+            {"monsterId": "guard", "id": "guard", "name": "Vallaki Town Guard", "count": 4, "cr": "1/8", "xp": 25}
+        ]
+    },
+    {
+        "id": "enc-cos-vallaki-arasek-vistani",
+        "name": "23. Vallaki Outskirts: The Vistani Encampment",
+        "description": "Distraught over the disappearance of young Arabelle, the Vistani brothers draw scimitars around their painted wagons, demanding answers from passing outlanders.",
+        "location": "Town of Vallaki",
+        "difficulty": "Moderate",
+        "totalXp": 750,
+        "monsters": [
+            {"monsterId": "bandit-captain", "id": "bandit-captain", "name": "Luvash (Vistani Captain)", "count": 1, "cr": "2", "xp": 450},
+            {"monsterId": "bandit", "id": "bandit", "name": "Vistani Scout", "count": 4, "cr": "1/8", "xp": 25},
+            {"monsterId": "dire-wolf", "id": "dire-wolf", "name": "Camp War Wolf", "count": 1, "cr": "1", "xp": 200}
+        ]
+    },
+    {
+        "id": "enc-cos-lake-zarovich-bluto",
+        "name": "24. Lake Zarovich: Sacrificial Waters",
+        "description": "In a rowboat in the cold middle of Lake Zarovich, Bluto holds a burlap sack containing little Arabelle over the churning water, while drowned dead rise from the lake weeds.",
+        "location": "Lake Zarovich",
+        "difficulty": "Moderate",
+        "totalXp": 525,
+        "monsters": [
+            {"monsterId": "bandit", "id": "bandit", "name": "Bluto Krogarov", "count": 1, "cr": "1/8", "xp": 25},
+            {"monsterId": "ghoul", "id": "ghoul", "name": "Drowned Ghoul", "count": 2, "cr": "1", "xp": 200},
+            {"monsterId": "giant-bat", "id": "giant-bat", "name": "Mist Strangler Bat", "count": 2, "cr": "1/4", "xp": 50}
+        ]
+    },
+    {
+        "id": "enc-cos-wagon-dragon-trap",
+        "name": "25. Van Richten's Tower: The Wagon Trap & Gargoyles",
+        "description": "Touching Ezmerelda's trapped vardo without disarming the door triggers a thunderous lightning detonation, awakening four ancient stone gargoyles perched on the tower turrets.",
+        "location": "Van Richten's Tower",
+        "difficulty": "High",
+        "totalXp": 1800,
+        "monsters": [
+            {"monsterId": "gargoyle", "id": "gargoyle", "name": "Stone Gargoyle Guardian", "count": 4, "cr": "2", "xp": 450}
+        ]
+    },
+    {
+        "id": "enc-cos-wine-blight-siege",
+        "name": "26. Wizard of Wines: Siege of the Needle Blights",
+        "description": "Hundreds of thorns rattle against the cellar doors as the poisoned vineyards disgorge waves of bramble horrors commanded by howling mountain berserkers.",
+        "location": "The Wizard of Wines",
+        "difficulty": "High",
+        "totalXp": 1650,
+        "monsters": [
+            {"monsterId": "berserker", "id": "berserker", "name": "Wild Vine Berserker", "count": 2, "cr": "2", "xp": 450},
+            {"monsterId": "awakened-tree", "id": "awakened-tree", "name": "Corrupted Vine Blight", "count": 1, "cr": "2", "xp": 450},
+            {"monsterId": "zombie", "id": "zombie", "name": "Rotting Vine Zombie", "count": 6, "cr": "1/4", "xp": 50}
+        ]
+    },
+    {
+        "id": "enc-cos-berez-scarecrow-ambush",
+        "name": "27. Ruins of Berez: The Murmuring Scarecrows",
+        "description": "Sackcloth heads stuffed with dead crows burst open with paralytic shrieks as Baba Lysaga's soul-bound scarecrows lunge from the murky swamp fog.",
+        "location": "Ruins of Berez",
+        "difficulty": "High",
+        "totalXp": 2000,
+        "monsters": [
+            {"monsterId": "wight", "id": "wight", "name": "Baba Lysaga's Soul Scarecrow", "count": 2, "cr": "3", "xp": 700},
+            {"monsterId": "specter", "id": "specter", "name": "Drowned Villager Specter", "count": 3, "cr": "1", "xp": 200}
+        ]
+    },
+    {
+        "id": "enc-cos-argynvost-vladimir",
+        "name": "28. Argynvostholt: Vladimir Horngaard's Hall of Hatred",
+        "description": "Seated upon his ruined throne with his greatsword across his knees, Sir Vladimir refuses to let Strahd die, commanding his revenant brotherhood to crush anyone who seeks peace.",
+        "location": "Argynvostholt",
+        "difficulty": "Deadly",
+        "totalXp": 3300,
+        "monsters": [
+            {"monsterId": "knight", "id": "knight", "name": "Sir Vladimir Horngaard", "count": 1, "cr": "5", "xp": 1800},
+            {"monsterId": "knight", "id": "knight", "name": "Revenant Knight of the Silver Dragon", "count": 2, "cr": "3", "xp": 700},
+            {"monsterId": "animated-flying-sword", "id": "animated-flying-sword", "name": "Spectral Dragonblade", "count": 2, "cr": "1/4", "xp": 50}
+        ]
+    },
+    {
+        "id": "enc-cos-tsolenka-roc",
+        "name": "29. Mount Ghakis: The Roc of the High Crags",
+        "description": "Diving through howling blizzards over the 2,000-foot precipice of Tsolenka Pass, the monstrous two-hundred-foot wingspan terror descends to smash the guard tower and seize pack horses.",
+        "location": "Tsolenka Pass",
+        "difficulty": "Deadly",
+        "totalXp": 7200,
+        "monsters": [
+            {"monsterId": "roc", "id": "roc", "name": "The Roc of Mount Ghakis", "count": 1, "cr": "11", "xp": 7200}
+        ]
+    },
+    {
+        "id": "enc-cos-amber-temple-neferon",
+        "name": "30. The Amber Temple: Neferon's Watchtower",
+        "description": "Sniping with Chain Lightning and Cone of Cold from the hollow head of the seventy-foot god statue, the jackal-headed fiend rains spells upon anyone crossing the temple floor.",
+        "location": "The Amber Temple",
+        "difficulty": "Deadly",
+        "totalXp": 3500,
+        "monsters": [
+            {"monsterId": "mage", "id": "mage", "name": "Neferon the Arcanaloth", "count": 1, "cr": "9", "xp": 2300},
+            {"monsterId": "specter", "id": "specter", "name": "Amber Vault Specter", "count": 4, "cr": "1", "xp": 200},
+            {"monsterId": "shadow", "id": "shadow", "name": "Dark Vestige Shadow", "count": 4, "cr": "1/2", "xp": 100}
+        ]
+    },
+    {
+        "id": "enc-cos-ravenloft-heart",
+        "name": "31. Castle Ravenloft: The Heart of Sorrow",
+        "description": "Suspended in the high tower, a giant crystal heart pulses with crimson luminescence, protected by swirling halberds and Strahd's animated plate armor.",
+        "location": "Castle Ravenloft",
+        "difficulty": "Deadly",
+        "totalXp": 2700,
+        "monsters": [
+            {"monsterId": "animated-armor", "id": "animated-armor", "name": "Strahd's Animated Plate Armor", "count": 1, "cr": "3", "xp": 700},
+            {"monsterId": "animated-flying-sword", "id": "animated-flying-sword", "name": "Floating Halberd Guardian", "count": 4, "cr": "1/4", "xp": 50},
+            {"monsterId": "vampire-spawn", "id": "vampire-spawn", "name": "Tower Vampire Guard", "count": 1, "cr": "5", "xp": 1800}
+        ]
+    },
+    {
+        "id": "enc-cos-ravenloft-rahadin",
+        "name": "32. Castle Ravenloft: Rahadin's Execution Chamber",
+        "description": "Strahd's ruthless dusk elf chamberlain draws his curved scimitar as the psychic screams of thousands of slaughtered innocents assault the minds of everyone in the room.",
+        "location": "Castle Ravenloft",
+        "difficulty": "Deadly",
+        "totalXp": 6300,
+        "monsters": [
+            {"monsterId": "assassin", "id": "assassin", "name": "Rahadin (Chamberlain of Ravenloft)", "count": 1, "cr": "10", "xp": 5900},
+            {"monsterId": "shadow", "id": "shadow", "name": "Soul Choir Shadow", "count": 4, "cr": "1/2", "xp": 100}
+        ]
     }
 ]
 

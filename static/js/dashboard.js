@@ -11516,7 +11516,7 @@ function renderEncounterTemplates() {
                     <button onclick="loadEncounterTemplate('${enc.id}')" class="px-2.5 py-1 rounded bg-ledger-800 hover:bg-ledger-700 text-slate-300 hover:text-white text-xs font-semibold border border-ledger-700 transition">
                         Load
                     </button>
-                    <button onclick="launchEncounterDirect('${enc.id}')" class="px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-ledger-950 text-xs font-bold border border-amber-500/40 transition">
+                    <button onclick="openDirectLaunchModal('${enc.id}')" class="px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-ledger-950 text-xs font-bold border border-amber-500/40 transition">
                         ⚔️ Direct Launch
                     </button>
                     <button onclick="deleteEncounterTemplate('${enc.id}')" title="Delete Template" class="p-1 rounded text-slate-500 hover:text-rose-400 opacity-50 group-hover:opacity-100 transition">✕</button>
@@ -11732,9 +11732,126 @@ async function launchCurrentEncounterToCombat() {
     showToast(`⚔️ Encounter launched! ${newTokens.length} monster tokens placed on Battlemap (hidden from players). Drag them to position and reveal when ready!`, "success");
 }
 
-async function launchEncounterDirect(encId) {
+let pendingLaunchEncounter = null;
+
+function openDirectLaunchModal(encId) {
+    const enc = (appState.encounters || []).find(e => e.id === encId);
+    if (!enc) {
+        showToast("Encounter preset not found", "error");
+        return;
+    }
+    pendingLaunchEncounter = enc;
+
+    // Header info
+    const titleEl = document.getElementById('direct-launch-title');
+    const descEl = document.getElementById('direct-launch-desc');
+    const diffEl = document.getElementById('direct-launch-diff');
+    const xpEl = document.getElementById('direct-launch-xp');
+    const locEl = document.getElementById('direct-launch-location');
+    const monstersListEl = document.getElementById('direct-launch-monsters-list');
+    const partyContainer = document.getElementById('direct-launch-party-container');
+
+    if (titleEl) titleEl.textContent = enc.name || "Encounter";
+    if (descEl) descEl.textContent = enc.description || "";
+    if (diffEl) {
+        diffEl.textContent = enc.difficulty || "Moderate";
+        let diffColor = 'border-amber-500/40 text-amber-300 bg-amber-500/10';
+        if (enc.difficulty === 'Deadly') diffColor = 'border-rose-500/40 text-rose-300 bg-rose-500/10';
+        else if (enc.difficulty === 'High') diffColor = 'border-orange-500/40 text-orange-300 bg-orange-500/10';
+        else if (enc.difficulty === 'Low') diffColor = 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10';
+        diffEl.className = `px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${diffColor}`;
+    }
+    if (xpEl) xpEl.textContent = `${(enc.totalXp || 0).toLocaleString()} XP`;
+    if (locEl) locEl.textContent = `📍 ${enc.location || "Curse of Strahd"}`;
+
+    if (monstersListEl) {
+        monstersListEl.innerHTML = (enc.monsters || []).map(m => {
+            const mDef = (appState.monsters || []).find(x => x.id === (m.monsterId || m.id) || (x.name && m.name && x.name.toLowerCase() === m.name.toLowerCase()));
+            const displayName = m.name || (mDef ? mDef.name : (m.monsterId || m.id));
+            const cr = m.cr || (mDef ? mDef.cr : '?');
+            return `<span class="px-2 py-0.5 rounded bg-ledger-800 border border-ledger-700 text-slate-200 text-[11px] font-semibold">${m.count || 1}x ${escapeHTML(displayName)} (CR ${cr})</span>`;
+        }).join('');
+    }
+
+    // Party List with individual checkboxes
+    if (partyContainer) {
+        const party = appState.party || [];
+        if (party.length === 0) {
+            partyContainer.innerHTML = `
+                <div class="p-4 rounded-xl bg-ledger-950/60 border border-dashed border-ledger-800 text-center text-slate-400 text-xs">
+                    No party members created yet. The encounter will launch with monsters only.
+                </div>
+            `;
+        } else {
+            partyContainer.innerHTML = party.map(pc => {
+                const img = pc.imageUrl || '/static/images/pcs/fighter.webp';
+                const initMod = pc.initiativeMod !== undefined ? (pc.initiativeMod >= 0 ? `+${pc.initiativeMod}` : `${pc.initiativeMod}`) : '+0';
+
+                return `
+                    <label class="flex items-center justify-between p-2.5 rounded-xl bg-ledger-950/70 border border-ledger-800 hover:border-amber-500/40 cursor-pointer transition select-none">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <input type="checkbox" value="${pc.id}" checked class="direct-launch-pc-chk w-4 h-4 rounded border-ledger-700 text-amber-500 focus:ring-amber-500 bg-ledger-900 cursor-pointer">
+                            <img src="${img}" class="w-8 h-8 rounded-lg object-cover border border-ledger-700 shrink-0" onerror="this.src='/static/images/pcs/fighter.webp'">
+                            <div class="min-w-0">
+                                <h6 class="font-bold text-xs text-slate-200 truncate">${escapeHTML(pc.name)}</h6>
+                                <p class="text-[10px] text-slate-400 font-mono truncate">${escapeHTML(pc.classRole || 'Adventurer')} • Lvl ${pc.level || 1}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0 font-mono text-[11px]">
+                            <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-750 text-slate-300" title="Armor Class">🛡️ ${pc.ac || 10}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-750 text-amber-300" title="Initiative Modifier">🎲 ${initMod}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-750 text-slate-200" title="Current / Max HP">❤️ ${pc.currentHp}/${pc.maxHp}</span>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+        }
+    }
+
+    openModal('direct-launch-modal');
+}
+
+function launchEncounterDirect(encId) {
+    openDirectLaunchModal(encId);
+}
+
+function toggleAllLaunchParty(select) {
+    document.querySelectorAll('.direct-launch-pc-chk').forEach(chk => {
+        chk.checked = Boolean(select);
+    });
+}
+
+async function confirmExecuteDirectLaunch() {
+    if (!pendingLaunchEncounter) {
+        closeModal('direct-launch-modal');
+        return;
+    }
+    const enc = pendingLaunchEncounter;
+
+    // Selected party member IDs
+    const checkedPcs = Array.from(document.querySelectorAll('.direct-launch-pc-chk:checked')).map(el => el.value);
+
+    // Options
+    const optInitMonsters = document.getElementById('direct-launch-opt-init-monsters')?.checked !== false;
+    const optInitParty = document.getElementById('direct-launch-opt-init-party')?.checked !== false;
+    const optTokens = document.getElementById('direct-launch-opt-tokens')?.checked !== false;
+    const optClearCombat = Boolean(document.getElementById('direct-launch-opt-clear-combat')?.checked);
+
     try {
-        const res = await fetch(`/api/encounters/${encId}/launch`, { method: 'POST' });
+        const payload = {
+            participatingPartyIds: checkedPcs,
+            clearCombat: optClearCombat,
+            autoRollPartyInit: optInitParty,
+            autoRollMonsterInit: optInitMonsters,
+            spawnTokens: optTokens
+        };
+
+        const res = await fetch(`/api/encounters/${enc.id}/launch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
         if (res.ok) {
             const data = await res.json();
             if (data.combat) {
@@ -11743,12 +11860,158 @@ async function launchEncounterDirect(encId) {
             if (data.tokens && window.BattlemapController && typeof window.BattlemapController.addTokens === 'function') {
                 window.BattlemapController.addTokens(data.tokens);
             }
+            closeModal('direct-launch-modal');
             switchTab('combat');
-            showToast(`⚔️ Encounter launched! ${data.spawned || 0} monster tokens placed on Battlemap (hidden from players).`, "success");
+            renderCombatTracker();
+            renderPartyHUD();
+            showToast(`⚔️ Encounter "${enc.name}" launched into combat! (${checkedPcs.length} heroes, ${data.spawned || 0} monsters)`, "success");
+        } else {
+            await executeLocalDirectLaunch(enc, checkedPcs, optClearCombat, optInitMonsters, optInitParty, optTokens);
         }
-    } catch (e) {
-        showToast("Error launching encounter", "error");
+    } catch (err) {
+        console.error("Direct launch network error, falling back to local launch:", err);
+        await executeLocalDirectLaunch(enc, checkedPcs, optClearCombat, optInitMonsters, optInitParty, optTokens);
     }
+}
+
+async function executeLocalDirectLaunch(enc, participatingPcIds, clearCombat, rollMonsterInit, rollPartyInit, spawnTokens) {
+    if (clearCombat) {
+        appState.combat = { inCombat: true, round: 1, currentTurnIndex: 0, combatants: [] };
+    } else {
+        appState.combat.inCombat = true;
+    }
+
+    const existingSources = new Set(appState.combat.combatants.map(c => c.sourceId || c.id));
+    const party = appState.party || [];
+    let addedPcs = 0;
+
+    participatingPcIds.forEach(pid => {
+        const pc = party.find(p => p.id === pid);
+        if (pc && !existingSources.has(pc.id) && !existingSources.has(`combat-${pc.id}`)) {
+            const initMod = pc.initiativeMod || 0;
+            const initVal = rollPartyInit ? (Math.floor(Math.random() * 20) + 1 + initMod) : 0;
+            appState.combat.combatants.push({
+                id: `combat-${pc.id}`,
+                name: pc.name,
+                type: 'pc',
+                initiative: initVal,
+                tieBreaker: initMod,
+                ac: pc.ac || 10,
+                currentHp: pc.currentHp,
+                maxHp: pc.maxHp,
+                tempHp: pc.tempHp || 0,
+                conditions: [],
+                isConcentrating: false,
+                concentratingSpell: "",
+                notes: pc.classRole || '',
+                statDetails: `Speed: ${pc.speed || 30}ft | PP: ${pc.passivePerception || 10}`,
+                sourceId: pc.id
+            });
+            addedPcs++;
+        }
+    });
+
+    // Staging monsters
+    const newTokens = [];
+    let tokenIndex = 0;
+    const baseX = 900;
+    const baseY = 650;
+    const spacing = 75;
+
+    (enc.monsters || []).forEach(item => {
+        const mId = item.monsterId || item.id;
+        const m = (appState.monsters || []).find(x => x.id === mId || (x.name && item.name && x.name.toLowerCase() === item.name.toLowerCase()));
+        const count = item.count || 1;
+        const mName = item.name || (m ? m.name : (mId || 'Monster'));
+        const dexMod = m ? Math.floor(((m.abilities?.dex || m.stats?.dex || 10) - 10) / 2) : 0;
+
+        let squares = 1.0;
+        const s = (m?.size || '').toLowerCase();
+        if (s.includes('gargantuan')) squares = 4.0;
+        else if (s.includes('huge')) squares = 3.0;
+        else if (s.includes('large')) squares = 2.0;
+        else if (s.includes('tiny')) squares = 0.8;
+
+        const crVal = parseFloat(item.cr || m?.cr || 1) || 1;
+        const isBoss = crVal >= 10 || mName.toLowerCase().includes('dragon') || mName.toLowerCase().includes('strahd');
+        const color = isBoss ? '#a855f7' : '#ef4444';
+        const tokenUrl = m?.imageUrl || `/static/images/monsters/${mId}.webp`;
+
+        for (let i = 1; i <= count; i++) {
+            const cName = count > 1 ? `${mName} ${i}` : mName;
+            const initRoll = rollMonsterInit ? (Math.floor(Math.random() * 20) + 1 + dexMod) : 0;
+            const combatantId = `comb-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+            const tokenId = `token_${Math.random().toString(36).substr(2, 8)}`;
+            const hp = m?.hp || 15;
+
+            const combatant = {
+                id: combatantId,
+                name: cName,
+                type: 'monster',
+                monsterId: mId,
+                imageUrl: tokenUrl,
+                initiative: initRoll,
+                tieBreaker: dexMod,
+                ac: m?.ac || 12,
+                currentHp: hp,
+                maxHp: hp,
+                tempHp: 0,
+                conditions: [],
+                isConcentrating: false,
+                concentratingSpell: "",
+                hidden: true,
+                visibleToPlayers: false,
+                notes: `CR ${item.cr || m?.cr || '?'} • ${m?.size || 'Medium'} ${m?.type || ''}`,
+                statDetails: (m?.actions && m.actions.length > 0) ? m.actions[0].name : "Standard Attack"
+            };
+            appState.combat.combatants.push(combatant);
+
+            if (spawnTokens) {
+                const col = tokenIndex % 5;
+                const row = Math.floor(tokenIndex / 5);
+                newTokens.push({
+                    id: tokenId,
+                    name: cName,
+                    monsterId: mId,
+                    combatantId: combatantId,
+                    size: m?.size || 'Medium',
+                    sizeSquares: squares,
+                    x: baseX + col * spacing,
+                    y: baseY + row * spacing,
+                    imageUrl: tokenUrl,
+                    currentHp: hp,
+                    maxHp: hp,
+                    color: color,
+                    visibleToPlayers: false
+                });
+                tokenIndex++;
+            }
+        }
+    });
+
+    sortCombatantsByInitiative();
+    await apiSaveCombat();
+
+    if (newTokens.length > 0) {
+        try {
+            await fetch('/api/battlemap/tokens/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tokens: newTokens })
+            });
+            if (window.BattlemapController && typeof window.BattlemapController.addTokens === 'function') {
+                window.BattlemapController.addTokens(newTokens);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    closeModal('direct-launch-modal');
+    switchTab('combat');
+    renderCombatTracker();
+    renderPartyHUD();
+    showToast(`⚔️ Encounter "${enc.name}" launched! (${addedPcs} heroes, ${tokenIndex} monsters)`, "success");
 }
 
 function filterEncounterMonsters() {
