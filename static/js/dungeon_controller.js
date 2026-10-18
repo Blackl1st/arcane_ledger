@@ -52,15 +52,25 @@ window.DungeonController = (function() {
     }
 
     function setupGraphInteraction() {
-        const svgContainer = document.getElementById('dungeon-graph-viewport');
-        if (!svgContainer) return;
+        ['dungeon-graph-viewport', 'cockpit-flowchart-viewport'].forEach(id => {
+            const svgContainer = document.getElementById(id);
+            if (!svgContainer) return;
 
-        svgContainer.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.dungeon-node-g')) return; // handled by node click
-            isPanning = true;
-            panStartX = e.clientX - panX;
-            panStartY = e.clientY - panY;
-            svgContainer.style.cursor = 'grabbing';
+            svgContainer.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.dungeon-node-g')) return; // handled by node click
+                isPanning = true;
+                panStartX = e.clientX - panX;
+                panStartY = e.clientY - panY;
+                svgContainer.style.cursor = 'grabbing';
+            });
+
+            svgContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+                zoomLevel = Math.max(0.35, Math.min(2.5, zoomLevel * zoomFactor));
+                applyTransform();
+                updateZoomReadout();
+            }, { passive: false });
         });
 
         window.addEventListener('mousemove', (e) => {
@@ -73,24 +83,28 @@ window.DungeonController = (function() {
         window.addEventListener('mouseup', () => {
             if (isPanning) {
                 isPanning = false;
-                if (svgContainer) svgContainer.style.cursor = 'grab';
+                ['dungeon-graph-viewport', 'cockpit-flowchart-viewport'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.cursor = 'grab';
+                });
             }
         });
-
-        svgContainer.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
-            zoomLevel = Math.max(0.35, Math.min(2.5, zoomLevel * zoomFactor));
-            applyTransform();
-            updateZoomReadout();
-        }, { passive: false });
     }
 
     function applyTransform() {
-        const g = document.getElementById('dungeon-graph-world');
-        if (g) {
-            g.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoomLevel})`);
-        }
+        ['dungeon-graph-world', 'cockpit-flowchart-world'].forEach(id => {
+            const g = document.getElementById(id);
+            if (g) {
+                g.setAttribute('transform', `translate(${panX}, ${panY}) scale(${zoomLevel})`);
+            }
+        });
+    }
+
+    function updateZoomReadout() {
+        ['dungeon-zoom-readout', 'cockpit-flyaway-zoom-readout'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = `${Math.round(zoomLevel * 100)}%`;
+        });
     }
 
     function zoomIn() {
@@ -134,13 +148,15 @@ window.DungeonController = (function() {
     }
 
     function renderDungeonDropdown() {
-        const select = document.getElementById('dungeon-select-dropdown');
-        if (!select) return;
-        select.innerHTML = dungeons.map(d => `
-            <option value="${d.id}" ${activeDungeon && activeDungeon.id === d.id ? 'selected' : ''}>
-                ${d.name} (${d.nodes ? d.nodes.length : 0} Chambers)
-            </option>
-        `).join('');
+        ['dungeon-select-dropdown', 'cockpit-flyaway-dungeon-select'].forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            select.innerHTML = dungeons.map(d => `
+                <option value="${d.id}" ${activeDungeon && activeDungeon.id === d.id ? 'selected' : ''}>
+                    ${d.name} (${d.nodes ? d.nodes.length : 0} Chambers)
+                </option>
+            `).join('');
+        });
     }
 
     async function onDungeonSelect(dungeonId) {
@@ -158,10 +174,14 @@ window.DungeonController = (function() {
                     activeLevelId = (partyNode && partyNode.level) ? partyNode.level : (realLevel ? realLevel.id : 'all');
                     selectedNodeId = activeDungeon.activeChamberId || (activeDungeon.nodes && activeDungeon.nodes[0] ? activeDungeon.nodes[0].id : null);
                 }
+                renderDungeonDropdown();
                 renderLevelPills();
                 resetView();
                 renderGraph();
                 renderActiveChamberDossier();
+                if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+                    window.renderSessionCockpit();
+                }
             }
         } catch (err) {
             console.error("Error setting active dungeon:", err);
@@ -169,11 +189,14 @@ window.DungeonController = (function() {
     }
 
     function renderLevelPills() {
-        const container = document.getElementById('dungeon-level-pills');
-        if (!container || !activeDungeon) return;
+        const containers = [
+            document.getElementById('dungeon-level-pills'),
+            document.getElementById('cockpit-flyaway-level-pills')
+        ].filter(Boolean);
+        if (containers.length === 0 || !activeDungeon) return;
 
         const levels = activeDungeon.levels || [];
-        container.innerHTML = levels.map(lvl => {
+        const pillsHtml = levels.map(lvl => {
             const isActive = lvl.id === activeLevelId;
             return `
                 <button onclick="window.DungeonController.filterLevel('${lvl.id}')"
@@ -185,19 +208,47 @@ window.DungeonController = (function() {
                     <span>${lvl.name}</span>
                 </button>
             `;
-        }).join('') + `
+        }).join('');
+
+        const addFloorBtn = `
             <button onclick="window.DungeonController.openAddFloorModal()"
                 class="px-2.5 py-1 rounded-xl text-xs font-mono font-bold bg-ledger-800 hover:bg-slate-700 text-amber-400 border border-ledger-700 transition flex items-center gap-1 shadow-sm"
                 title="Add a new floor/level to this dungeon">
                 <span>+ Floor</span>
             </button>
         `;
+
+        containers.forEach(c => {
+            c.innerHTML = pillsHtml + addFloorBtn;
+        });
+
+        // Also sync cockpit topbar floor select if present
+        const cockpitFloorSel = document.getElementById('cockpit-floor-select');
+        if (cockpitFloorSel) {
+            cockpitFloorSel.value = activeLevelId;
+        }
     }
 
     function filterLevel(levelId) {
         activeLevelId = levelId;
         renderLevelPills();
+
+        // Auto-select the first chamber or party chamber on this floor so Column 1 reveals that floor's rooms!
+        if (activeDungeon && activeDungeon.nodes) {
+            const isAll = !levelId || levelId === 'all' || levelId.includes('-all');
+            const floorNodes = isAll ? activeDungeon.nodes : activeDungeon.nodes.filter(n => n.level === levelId);
+            if (floorNodes.length > 0) {
+                const partyNode = floorNodes.find(n => n.id === activeDungeon.activeChamberId);
+                const targetNode = partyNode || floorNodes[0];
+                selectedNodeId = targetNode.id;
+            }
+        }
+
         renderGraph();
+        renderActiveChamberDossier();
+        if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+            window.renderSessionCockpit();
+        }
     }
 
     function selectNode(nodeId) {
@@ -373,8 +424,11 @@ window.DungeonController = (function() {
     }
 
     function renderGraph() {
-        const svgWorld = document.getElementById('dungeon-graph-world');
-        if (!svgWorld || !activeDungeon) return;
+        const targets = [
+            document.getElementById('dungeon-graph-world'),
+            document.getElementById('cockpit-flowchart-world')
+        ].filter(Boolean);
+        if (targets.length === 0 || !activeDungeon) return;
 
         const allNodes = activeDungeon.nodes || [];
         const isAll = !activeLevelId || activeLevelId === 'all' || activeLevelId.includes('-all');
@@ -553,11 +607,14 @@ window.DungeonController = (function() {
             `;
         }).join('');
 
-        svgWorld.innerHTML = `
+        const fullContent = `
             ${floorHeadersSVG.join('')}
             ${edgesSVG.join('')}
             ${nodesSVG}
         `;
+        targets.forEach(t => {
+            t.innerHTML = fullContent;
+        });
     }
 
     function renderActiveChamberDossier() {
@@ -1614,6 +1671,10 @@ window.DungeonController = (function() {
         zoomOut,
         resetView,
         centerOnParty,
+        renderGraph,
+        renderLevelPills,
+        setupGraphInteraction,
+        applyTransform,
         getActiveDungeon: () => activeDungeon,
         getDungeons: () => dungeons,
         getSelectedNodeId: () => selectedNodeId,

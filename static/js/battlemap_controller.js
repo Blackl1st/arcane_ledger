@@ -3262,7 +3262,10 @@ window.BattlemapController = (function() {
         saveGeneratedMapToCatalog,
         fetchCatalogAndRender,
         renderCatalogGrid,
-        deployMapFromCatalog,
-        deleteMapFromCatalog
+        deleteMapFromCatalog,
+        getMaps: () => state.maps,
+        getActiveMapId: () => state.activeMapId,
+        getActiveMapName: () => state.activeMapName,
+        getState: () => state
     };
 })();

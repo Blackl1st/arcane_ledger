@@ -10536,6 +10536,9 @@ async function triggerQuickPreset(presetId) {
     const topPresetLabel = document.getElementById('topbar-audio-preset');
     if (topPresetLabel) topPresetLabel.textContent = preset.name || 'Active';
     renderAudioMixer();
+    if (typeof renderCockpitAtmospherePresets === 'function') {
+        renderCockpitAtmospherePresets();
+    }
     showToast(`Atmosphere & Lighting: "${preset.name}" Active!`, "info");
 }
 
@@ -12866,6 +12869,9 @@ function openLightingModal() {
     openModal('lighting-modal');
     if (window.LightingEngine) {
         window.LightingEngine.updateUI();
+    }
+    if (typeof renderCockpitAtmospherePresets === 'function') {
+        renderCockpitAtmospherePresets();
     }
 }
 
@@ -19844,6 +19850,9 @@ function renderSessionCockpit() {
     populateCockpitDungeonSelectors();
     renderCockpitChamber();
     renderCockpitTactical();
+    renderCockpitAtmospherePresets();
+    renderCockpitBattlemap();
+    renderCockpitNotesFeed();
 
     // Sync overhead slider with LightingEngine state if active
     if (window.LightingEngine && window.LightingEngine.state && window.LightingEngine.state.overhead) {
@@ -19859,6 +19868,35 @@ function renderSessionCockpit() {
     if (scratchpad && scratchpad.value === '') {
         scratchpad.value = localStorage.getItem('arcane_cockpit_scratchpad') || '';
     }
+}
+
+function openCockpitFlowchartFlyaway() {
+    const modal = document.getElementById('cockpit-flowchart-flyaway');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    if (window.DungeonController) {
+        if (typeof window.DungeonController.setupGraphInteraction === 'function') {
+            window.DungeonController.setupGraphInteraction();
+        }
+        if (typeof window.DungeonController.renderLevelPills === 'function') {
+            window.DungeonController.renderLevelPills();
+        }
+        if (typeof window.DungeonController.renderGraph === 'function') {
+            window.DungeonController.renderGraph();
+        }
+        if (typeof window.DungeonController.applyTransform === 'function') {
+            window.DungeonController.applyTransform();
+        }
+    }
+}
+
+function closeCockpitFlowchartFlyaway() {
+    const modal = document.getElementById('cockpit-flowchart-flyaway');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 }
 
 function populateCockpitDungeonSelectors() {
@@ -20012,10 +20050,31 @@ function renderCockpitChamber() {
                         <option value="cleared" ${node.state === 'cleared' ? 'selected' : ''}>⚔️ Cleared</option>
                     </select>
 
+                    <button onclick="openCockpitFlowchartFlyaway()" class="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs transition" title="Open Flowchart Map Flyaway">
+                        🗺️
+                    </button>
+
                     <button onclick="window.DungeonController && window.DungeonController.openEditChamberModal && window.DungeonController.openEditChamberModal(window.DungeonController.getActiveDungeon().nodes.find(n => n.id === '${node.id}'))" class="p-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs transition" title="Edit Chamber Details">
                         ✏️
                     </button>
                 </div>
+            </div>
+
+            <!-- Chamber Quick Dropdown Switcher -->
+            <div class="flex items-center justify-between gap-2 p-1.5 rounded-xl bg-ledger-950/80 border border-ledger-800">
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span class="text-xs shrink-0">🚪</span>
+                    <select onchange="cockpitSelectChamber(this.value)" class="bg-transparent text-amber-300 text-xs font-semibold focus:outline-none w-full truncate cursor-pointer">
+                        ${activeDungeon.nodes.map(n => `
+                            <option value="${n.id}" ${n.id === node.id ? 'selected' : ''}>
+                                ${escapeHtml(n.code ? `${n.code}: ${n.name}` : n.name)}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <button onclick="openCockpitFlowchartFlyaway()" class="text-[10px] text-slate-400 hover:text-amber-300 font-mono transition shrink-0 px-1.5 py-0.5 rounded bg-ledger-900 border border-ledger-750">
+                    Flowchart ↗
+                </button>
             </div>
 
             <!-- Party Relocation Button if party not here -->
@@ -20221,6 +20280,11 @@ function renderCockpitTactical() {
                         else if (c.type === 'boss') typeIcon = '👑';
                         else if (c.type === 'npc') typeIcon = '👤';
 
+                        const isMonsterOrBoss = c.type === 'monster' || c.type === 'boss';
+                        const monsterData = isMonsterOrBoss ? (typeof getMonsterDataForCombatant === 'function' ? getMonsterDataForCombatant(c) : null) : null;
+                        window.cockpitOpenDrawers = window.cockpitOpenDrawers || {};
+                        const isDrawerOpen = monsterData && (window.cockpitOpenDrawers[c.id] !== undefined ? window.cockpitOpenDrawers[c.id] : isActiveTurn);
+
                         return `
                             <div class="p-3 rounded-xl border transition flex flex-col gap-2 ${isActiveTurn ? 'bg-amber-500/15 border-amber-500/80 shadow-md ring-1 ring-amber-500/40' : (isDown ? 'bg-ledger-950/40 border-ledger-800/60 opacity-60' : 'bg-ledger-950/80 border-ledger-800 hover:border-ledger-700')}">
                                 <div class="flex items-center justify-between gap-2">
@@ -20270,6 +20334,52 @@ function renderCockpitTactical() {
                                                 ${escapeHtml(cond.name || cond)}
                                             </span>
                                         `).join('')}
+                                    </div>
+                                ` : ''}
+
+                                <!-- Monster Actions Drawer & 1-Click Rolls -->
+                                ${monsterData ? `
+                                    <div class="pt-1.5 border-t border-ledger-800/80 space-y-1.5">
+                                        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                                            <button onclick="toggleCockpitMonsterDrawer('${c.id}')" class="font-display text-amber-400 hover:text-amber-300 text-[10px] uppercase tracking-wider flex items-center gap-1.5 transition">
+                                                <span>⚔️ Actions (${(monsterData.actions || []).length})</span>
+                                                <span class="text-[9px] font-mono text-slate-400 font-normal">(${escapeHtml(monsterData.name)})</span>
+                                                <span class="text-[9px] text-amber-500 font-mono">${isDrawerOpen ? '▲ Hide' : '▼ Show'}</span>
+                                            </button>
+                                            <button onclick="openCombatMonsterStatblockModal('${c.id}')" class="text-[10px] text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 font-mono">
+                                                <span>Statblock</span> <span>➔</span>
+                                            </button>
+                                        </div>
+
+                                        ${isDrawerOpen ? `
+                                            <div class="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar pr-0.5">
+                                                ${(monsterData.actions || []).map(a => renderMonsterActionInteractive(c.name, a, c.id)).join('')}
+                                                ${(monsterData.bonusActions && monsterData.bonusActions.length > 0) ? `
+                                                    <div class="pt-1">
+                                                        <span class="text-[9px] font-bold uppercase tracking-wider text-sky-400 font-mono">Bonus Actions</span>
+                                                        <div class="space-y-1 mt-1">
+                                                            ${monsterData.bonusActions.map(ba => renderMonsterActionInteractive(c.name, ba, c.id)).join('')}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
+                                                ${(monsterData.reactions && monsterData.reactions.length > 0) ? `
+                                                    <div class="pt-1">
+                                                        <span class="text-[9px] font-bold uppercase tracking-wider text-emerald-400 font-mono">Reactions</span>
+                                                        <div class="space-y-1 mt-1">
+                                                            ${monsterData.reactions.map(r => renderMonsterActionInteractive(c.name, r, c.id)).join('')}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
+                                                ${(monsterData.legendaryActions && monsterData.legendaryActions.length > 0) ? `
+                                                    <div class="pt-1">
+                                                        <span class="text-[9px] font-bold uppercase tracking-wider text-amber-400 font-mono">Legendary Actions</span>
+                                                        <div class="space-y-1 mt-1">
+                                                            ${monsterData.legendaryActions.map(la => renderMonsterActionInteractive(c.name, la, c.id)).join('')}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 ` : ''}
                             </div>
@@ -20658,6 +20768,190 @@ function addCockpitRollToFeed(rollData) {
     }
 }
 
+function toggleCockpitMonsterDrawer(id) {
+    window.cockpitOpenDrawers = window.cockpitOpenDrawers || {};
+    const activeCombatant = appState.combat?.combatants?.[appState.combat?.currentTurnIndex];
+    const currentlyActive = activeCombatant && activeCombatant.id === id;
+    const currentState = window.cockpitOpenDrawers[id] !== undefined ? window.cockpitOpenDrawers[id] : currentlyActive;
+    window.cockpitOpenDrawers[id] = !currentState;
+    renderCockpitTactical();
+}
+
+function renderCockpitAtmospherePresets() {
+    const cockpitGrid = document.getElementById('cockpit-atmosphere-presets-grid');
+    const modalGrid = document.getElementById('lighting-modal-scene-presets-grid');
+    if (!cockpitGrid && !modalGrid) return;
+
+    const presets = (appState.audioPresets && appState.audioPresets.length > 0)
+        ? appState.audioPresets
+        : (typeof DEFAULT_BUILTIN_PRESETS !== 'undefined' ? DEFAULT_BUILTIN_PRESETS : []);
+
+    const activeId = appState.activeAudioPresetId;
+
+    const html = presets.map(p => {
+        const isActive = (activeId === p.id);
+        const icon = p.icon || '✨';
+        const name = p.name || 'Preset';
+        const color = p.lighting?.atmosphere?.color || '#FFA03C';
+
+        return `
+            <button onclick="triggerQuickPreset('${p.id}'); renderCockpitAtmospherePresets();" 
+                class="py-1 px-1.5 rounded-lg border text-left transition flex items-center gap-1.5 truncate ${isActive ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-1 ring-amber-400/50 shadow' : 'bg-ledger-950 hover:bg-ledger-800 text-slate-300 border-ledger-800'}" 
+                title="${escapeHtml(name)} - ${escapeHtml(p.description || '')}">
+                <span class="text-xs shrink-0">${icon}</span>
+                <span class="text-[10px] font-semibold truncate leading-tight flex-1">${escapeHtml(name)}</span>
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: ${color}"></span>
+            </button>
+        `;
+    }).join('');
+
+    if (cockpitGrid) cockpitGrid.innerHTML = html;
+    if (modalGrid) modalGrid.innerHTML = html;
+}
+
+function renderCockpitBattlemap() {
+    const sel = document.getElementById('cockpit-battlemap-select');
+    const nameEl = document.getElementById('cockpit-battlemap-active-name');
+    if (!sel || !window.BattlemapController) return;
+
+    const maps = (typeof window.BattlemapController.getMaps === 'function') ? window.BattlemapController.getMaps() : [];
+    const activeMapId = (typeof window.BattlemapController.getActiveMapId === 'function') ? window.BattlemapController.getActiveMapId() : null;
+    const activeMapName = (typeof window.BattlemapController.getActiveMapName === 'function') ? window.BattlemapController.getActiveMapName() : 'Dungeon Map';
+
+    if (nameEl) nameEl.textContent = activeMapName;
+
+    if (!maps || maps.length === 0) {
+        sel.innerHTML = '<option value="">No Battlemaps Found</option>';
+        return;
+    }
+
+    sel.innerHTML = maps.map(m => `
+        <option value="${m.id}" ${activeMapId === m.id ? 'selected' : ''}>
+            ${escapeHtml(m.name || m.id)}
+        </option>
+    `).join('');
+}
+
+async function cockpitBattlemapChange(mapId) {
+    if (!mapId || !window.BattlemapController) return;
+    if (typeof window.BattlemapController.onMapSelect === 'function') {
+        await window.BattlemapController.onMapSelect(mapId);
+    }
+    renderCockpitBattlemap();
+}
+
+let cockpitActiveNoteTag = 'quest';
+function cockpitSetActiveNoteTag(tag) {
+    cockpitActiveNoteTag = tag;
+    appState.activeNoteTag = tag;
+    const tagColors = {
+        quest: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        clue: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+        loot: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        npc: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+        combat: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+        general: 'bg-slate-700/40 text-slate-200 border-slate-600'
+    };
+
+    ['quest', 'clue', 'loot', 'npc', 'combat', 'general'].forEach(t => {
+        const btn = document.getElementById(`cockpit-tag-${t}`);
+        if (!btn) return;
+        if (t === tag) {
+            btn.className = `cockpit-tag-btn px-2 py-0.5 rounded-full font-bold border transition ${tagColors[t] || 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`;
+        } else {
+            btn.className = `cockpit-tag-btn px-2 py-0.5 rounded-full bg-ledger-950 text-slate-400 hover:text-slate-200 border border-ledger-800 transition`;
+        }
+    });
+}
+
+async function cockpitAddTaggedNote() {
+    const input = document.getElementById('cockpit-note-input');
+    if (!input || !input.value.trim()) return;
+
+    const tw = appState.timeWeather || {};
+    const hh = String(tw.hour || 9).padStart(2, '0');
+    const mm = String(tw.minute || 0).padStart(2, '0');
+    const timestampStr = `Day ${tw.day || 1}, ${hh}:${mm}`;
+
+    if (!Array.isArray(appState.notes)) {
+        appState.notes = [];
+    }
+
+    const newNote = {
+        id: `note-${Date.now()}`,
+        timestamp: timestampStr,
+        text: input.value.trim(),
+        tag: cockpitActiveNoteTag || 'general'
+    };
+
+    appState.notes.unshift(newNote);
+    input.value = "";
+    renderCockpitNotesFeed();
+    if (typeof renderSessionNotes === 'function') {
+        renderSessionNotes();
+    }
+
+    try {
+        await fetch('/api/notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newNote)
+        });
+    } catch (e) {
+        console.error("Error saving note:", e);
+    }
+
+    showToast(`Added #${newNote.tag} note`, "success");
+}
+
+function renderCockpitNotesFeed() {
+    const feed = document.getElementById('cockpit-notes-feed');
+    if (!feed) return;
+
+    const notes = (appState.notes || []).slice(0, 6);
+    if (notes.length === 0) {
+        feed.innerHTML = `<div class="text-[10px] text-slate-500 italic py-1 text-center">No notes recorded this session yet.</div>`;
+        return;
+    }
+
+    const tagColors = {
+        quest: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        clue: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+        loot: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        npc: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+        combat: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+        general: 'bg-slate-700/30 text-slate-400 border-slate-700'
+    };
+
+    feed.innerHTML = notes.map(n => {
+        const tagClass = tagColors[n.tag] || tagColors.general;
+        return `
+            <div class="p-1.5 rounded-lg bg-ledger-950 border border-ledger-800/80 flex items-start justify-between gap-2 group text-xs">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border ${tagClass}">#${escapeHtml(n.tag || 'general')}</span>
+                        <span class="text-[9px] font-mono text-slate-500">${escapeHtml(n.timestamp || '')}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-200 leading-snug break-words">${escapeHtml(n.text)}</p>
+                </div>
+                <button onclick="cockpitDeleteNote('${n.id}')" class="text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition text-[10px] font-mono px-1">✕</button>
+            </div>
+        `;
+    }).join('');
+}
+
+async function cockpitDeleteNote(id) {
+    if (typeof deleteSessionNote === 'function') {
+        await deleteSessionNote(id);
+    } else {
+        appState.notes = (appState.notes || []).filter(n => n.id !== id);
+        try {
+            await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+        } catch (e) {}
+    }
+    renderCockpitNotesFeed();
+}
+
 // Global exports for Command Palette and Live Session Cockpit
 window.openCommandPalette = openCommandPalette;
 window.closeCommandPalette = closeCommandPalette;
@@ -20665,8 +20959,11 @@ window.filterCommandPalette = filterCommandPalette;
 window.handleCommandPaletteKey = handleCommandPaletteKey;
 window.executeCommandPaletteAction = executeCommandPaletteAction;
 window.renderSessionCockpit = renderSessionCockpit;
+window.openCockpitFlowchartFlyaway = openCockpitFlowchartFlyaway;
+window.closeCockpitFlowchartFlyaway = closeCockpitFlowchartFlyaway;
 window.renderCockpitChamber = renderCockpitChamber;
 window.renderCockpitTactical = renderCockpitTactical;
+window.toggleCockpitMonsterDrawer = toggleCockpitMonsterDrawer;
 window.populateCockpitDungeonSelectors = populateCockpitDungeonSelectors;
 window.cockpitChangeDungeon = cockpitChangeDungeon;
 window.cockpitChangeFloor = cockpitChangeFloor;
@@ -20679,3 +20976,10 @@ window.cockpitSetLightingScene = cockpitSetLightingScene;
 window.cockpitSaveNotes = cockpitSaveNotes;
 window.addCockpitRollToFeed = addCockpitRollToFeed;
 window.cockpitApplyHpDelta = cockpitApplyHpDelta;
+window.renderCockpitAtmospherePresets = renderCockpitAtmospherePresets;
+window.renderCockpitBattlemap = renderCockpitBattlemap;
+window.cockpitBattlemapChange = cockpitBattlemapChange;
+window.cockpitSetActiveNoteTag = cockpitSetActiveNoteTag;
+window.cockpitAddTaggedNote = cockpitAddTaggedNote;
+window.renderCockpitNotesFeed = renderCockpitNotesFeed;
+window.cockpitDeleteNote = cockpitDeleteNote;
