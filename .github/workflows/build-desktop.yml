@@ -86,6 +86,7 @@ jobs:
         with:
           name: ArcaneLedger-Windows-x64
           path: ArcaneLedger-Windows-x64.zip
+          retention-days: 1
 
   build-macos:
     name: Build macOS Standalone App
@@ -158,6 +159,7 @@ jobs:
         with:
           name: ArcaneLedger-macOS
           path: ArcaneLedger-macOS.zip
+          retention-days: 1
 
   publish-release:
     name: Publish Release Packages
