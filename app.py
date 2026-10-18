@@ -990,6 +990,7 @@ class BattlemapStateUpdate(BaseModel):
     locked: Optional[bool] = None
     templates: Optional[List[Dict[str, Any]]] = None
     activeRuler: Optional[Dict[str, Any]] = None
+    companionAccessEnabled: Optional[bool] = None
 
 class BattlemapRuler(BaseModel):
     startX: float
@@ -1295,6 +1296,9 @@ async def get_companion_state(heroId: Optional[str] = None):
     tarokka_data = read_json("tarokka.json", None)
     revealed_tarokka = tarokka_data if (tarokka_data and (tarokka_data.get("broadcasted") is True or tarokka_data.get("isDelivered") is True)) else None
 
+    b_state = read_json("battlemap.json", get_default_battlemap_state())
+    has_map_access = bool(b_state.get("companionAccessEnabled", False))
+
     return {
         "status": "success",
         "campaignName": camp_name,
@@ -1304,6 +1308,7 @@ async def get_companion_state(heroId: Optional[str] = None):
         "handouts": delivered_handouts,
         "lastRest": last_rest,
         "tarokka": revealed_tarokka,
+        "battlemapAccess": has_map_access,
         "recentRolls": sorted([r for r in RECENT_TABLE_ROLLS if not r.get("isDM", False)], key=lambda r: r.get("timestamp", 0), reverse=True)[:15]
     }
 
@@ -2987,6 +2992,7 @@ def get_default_battlemap_state():
         "tokens": [],
         "templates": [],
         "activeRuler": None,
+        "companionAccessEnabled": False,
         "maps": catalog,
         "updatedAt": time.time()
     }
@@ -7727,6 +7733,18 @@ async def update_battlemap_state(update: BattlemapStateUpdate):
     state["updatedAt"] = time.time()
     write_json("battlemap.json", state)
     return {"status": "success", "state": state}
+
+@app.post("/api/battlemap/toggle-companion-access")
+async def toggle_companion_battlemap_access(payload: Optional[Dict[str, Any]] = None):
+    state = read_json("battlemap.json", get_default_battlemap_state())
+    data = payload or {}
+    if "enabled" in data:
+        state["companionAccessEnabled"] = bool(data["enabled"])
+    else:
+        state["companionAccessEnabled"] = not bool(state.get("companionAccessEnabled", False))
+    state["updatedAt"] = time.time()
+    write_json("battlemap.json", state)
+    return {"status": "success", "companionAccessEnabled": state["companionAccessEnabled"]}
 
 @app.post("/api/battlemap/fog")
 async def update_battlemap_fog(update: BattlemapFogUpdate):

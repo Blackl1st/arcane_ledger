@@ -299,6 +299,12 @@ window.BattlemapController = (function() {
                     }
                 }
 
+                // Sync companion battlemap access toggle
+                if (newState.companionAccessEnabled !== undefined && newState.companionAccessEnabled !== state.companionAccessEnabled) {
+                    state.companionAccessEnabled = newState.companionAccessEnabled;
+                    updateCompanionAccessUI();
+                }
+
                 if (needsPreviewRerender) {
                     renderPreview();
                 }
@@ -1156,10 +1162,12 @@ window.BattlemapController = (function() {
         tokenStartWorldX = token.x;
         tokenStartWorldY = token.y;
 
+        const startPos = screenToWorld(dragStartX, dragStartY);
         function onTokenMove(ev) {
             if (!draggedToken) return;
-            const deltaWorldX = (ev.clientX - dragStartX) / dmZoom;
-            const deltaWorldY = (ev.clientY - dragStartY) / dmZoom;
+            const currentPos = screenToWorld(ev.clientX, ev.clientY);
+            const deltaWorldX = currentPos.x - startPos.x;
+            const deltaWorldY = currentPos.y - startPos.y;
 
             draggedToken.x = Math.max(0, Math.min(mapWidth, Math.round(tokenStartWorldX + deltaWorldX)));
             draggedToken.y = Math.max(0, Math.min(mapHeight, Math.round(tokenStartWorldY + deltaWorldY)));
@@ -1751,9 +1759,13 @@ window.BattlemapController = (function() {
     }
 
     function screenToWorld(clientX, clientY) {
+        if (!viewportEl) return { x: 0, y: 0 };
         const rect = viewportEl.getBoundingClientRect();
-        const worldX = (clientX - rect.left) / dmZoom;
-        const worldY = (clientY - rect.top) / dmZoom;
+        if (!rect || rect.width === 0 || rect.height === 0) {
+            return { x: 0, y: 0 };
+        }
+        const worldX = ((clientX - rect.left) / rect.width) * mapWidth;
+        const worldY = ((clientY - rect.top) / rect.height) * mapHeight;
         return {
             x: Math.max(0, Math.min(mapWidth, Math.round(worldX))),
             y: Math.max(0, Math.min(mapHeight, Math.round(worldY)))
@@ -2592,6 +2604,51 @@ window.BattlemapController = (function() {
         });
     }
 
+    function updateCompanionAccessUI() {
+        const btn = document.getElementById('dm-companion-map-toggle-btn');
+        const textEl = document.getElementById('dm-companion-map-text');
+        const iconEl = document.getElementById('dm-companion-map-icon');
+        if (!btn) return;
+        const isLive = Boolean(state.companionAccessEnabled);
+        if (isLive) {
+            btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition bg-emerald-950/80 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900/80 shadow-sm";
+            btn.title = "Player mobile battlemap access is LIVE (Click to veil map from players)";
+            if (textEl) textEl.textContent = "Mobile: Live";
+            if (iconEl) iconEl.textContent = "🗺️";
+        } else {
+            btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition bg-ledger-800 text-slate-400 border-ledger-700 hover:text-slate-200";
+            btn.title = "Player mobile battlemap access is OFF (Click to broadcast map to mobile)";
+            if (textEl) textEl.textContent = "Mobile: Off";
+            if (iconEl) iconEl.textContent = "📱";
+        }
+    }
+
+    async function toggleCompanionAccess(explicitState) {
+        try {
+            const payload = explicitState !== undefined ? { enabled: Boolean(explicitState) } : {};
+            const res = await fetch('/api/battlemap/toggle-companion-access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                const data = await res.json();
+                state.companionAccessEnabled = data.companionAccessEnabled;
+                updateCompanionAccessUI();
+                if (window.showToast) {
+                    if (state.companionAccessEnabled) {
+                        window.showToast("Tactical Battlemap is now LIVE on player companion screens!", "success");
+                    } else {
+                        window.showToast("Tactical Battlemap is now VEILED on player companion screens.", "info");
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Error toggling companion map access:", err);
+            if (window.showToast) window.showToast("Failed to toggle mobile battlemap access", "error");
+        }
+    }
+
     function updateUIControls() {
         const gridInput = document.getElementById('dm-grid-size-slider');
         const gridLabel = document.getElementById('dm-grid-size-label');
@@ -2603,6 +2660,7 @@ window.BattlemapController = (function() {
 
         setRotation(state.rotation || 0);
         updateLockBtn();
+        updateCompanionAccessUI();
     }
 
     // -------------------------------------------------------------------------
@@ -3151,6 +3209,8 @@ window.BattlemapController = (function() {
         toggleGrid,
         setRotation,
         toggleLock,
+        toggleCompanionAccess,
+        updateCompanionAccessUI,
         toggleTableSettingsModal,
         syncViewportToTable,
         fitMapToWorkspace,

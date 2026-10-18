@@ -664,32 +664,85 @@
             </div>
         </section>
 
+        <!-- ============================================================== -->
+        <!-- TAB 6: TACTICAL BATTLEMAP VIEWER                               -->
+        <!-- ============================================================== -->
+        <section id="tab-map" class="tab-pane hidden space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="font-display font-bold text-base text-amber-300 flex items-center gap-2">
+                        <span>Tactical Battlemap</span>
+                        <span id="companion-map-badge-status" class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Veiled</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 font-mono">Live fog of war, tokens & table pings</p>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="refreshCompanionMap()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs font-mono font-bold flex items-center gap-1 tap-active" title="Refresh Battlemap View">
+                        <span>🔄</span>
+                    </button>
+                    <a href="/map" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-amber-300 border border-ledger-700 text-xs font-mono font-bold flex items-center gap-1 tap-active" title="Open Fullscreen in New Tab">
+                        <span>↗️</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Active Battlemap Frame Container -->
+            <div id="companion-map-active-container" class="hidden relative w-full rounded-2xl overflow-hidden border border-ledger-700 shadow-2xl bg-black" style="height: calc(100vh - 210px); min-height: 480px;">
+                <iframe id="companion-battlemap-iframe" src="about:blank" class="w-full h-full border-0" allow="fullscreen"></iframe>
+            </div>
+
+            <!-- Veiled Notice Card (When DM has companion access turned OFF) -->
+            <div id="companion-map-veiled-card" class="p-8 rounded-3xl bg-ledger-900 border border-ledger-750 text-center space-y-4 shadow-xl">
+                <div class="w-16 h-16 mx-auto rounded-3xl bg-ledger-800 border border-ledger-700 flex items-center justify-center text-3xl shadow-inner text-slate-500">
+                    🌫️
+                </div>
+                <div class="space-y-1.5">
+                    <h4 class="font-display font-bold text-base text-slate-200">The Map is Veiled</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                        Your Dungeon Master has not revealed the tactical battlemap to player devices for this scene.
+                    </p>
+                </div>
+                <div class="pt-2">
+                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ledger-800/80 border border-ledger-700/60 text-[11px] font-mono text-slate-400">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        Awaiting DM Revelation
+                    </span>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- FIXED BOTTOM TAB BAR (Thumb-friendly mobile navigation) -->
     <nav class="fixed bottom-0 left-0 right-0 z-40 bg-ledger-900/95 backdrop-blur-md border-t border-ledger-750 px-2 py-2 flex items-center justify-around shadow-2xl max-w-lg mx-auto">
-        <button onclick="switchTab('vitals')" id="nav-btn-vitals" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-amber-300 tap-active">
+        <button onclick="switchTab('vitals')" id="nav-btn-vitals" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-amber-300 tap-active">
             <span class="text-lg">🛡️</span>
             <span class="text-[10px] font-mono font-bold">Vitals</span>
         </button>
 
-        <button onclick="switchTab('spells')" id="nav-btn-spells" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
+        <button onclick="switchTab('spells')" id="nav-btn-spells" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
             <span class="text-lg">🔮</span>
             <span class="text-[10px] font-mono font-bold">Spells</span>
         </button>
 
-        <button onclick="switchTab('roller')" id="nav-btn-roller" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
+        <button onclick="switchTab('roller')" id="nav-btn-roller" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
             <span class="text-lg">🎲</span>
             <span class="text-[10px] font-mono font-bold">Roller</span>
             <span id="nav-turn-ping" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
         </button>
 
-        <button onclick="switchTab('inventory')" id="nav-btn-inventory" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
+        <button onclick="switchTab('map')" id="nav-btn-map" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
+            <span class="text-lg">🗺️</span>
+            <span class="text-[10px] font-mono font-bold">Map</span>
+            <span id="nav-map-live-dot" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </button>
+
+        <button onclick="switchTab('inventory')" id="nav-btn-inventory" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-slate-400 hover:text-slate-200 tap-active">
             <span class="text-lg">🎒</span>
             <span class="text-[10px] font-mono font-bold">Gear</span>
         </button>
 
-        <button onclick="switchTab('handouts')" id="nav-btn-handouts" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
+        <button onclick="switchTab('handouts')" id="nav-btn-handouts" class="nav-tab-btn flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-slate-400 hover:text-slate-200 tap-active relative">
             <span class="text-lg">📜</span>
             <span class="text-[10px] font-mono font-bold">Notes</span>
             <span id="handouts-unread-badge" class="hidden absolute top-1 right-2 w-2.5 h-2.5 rounded-full bg-amber-400 border border-black animate-pulse"></span>
@@ -1080,6 +1133,9 @@
 
                 // Update Combat Banner
                 updateCombatStatusBanner();
+
+                // Update Battlemap Access
+                renderCompanionMapAccess(Boolean(data.battlemapAccess));
 
             } catch (err) {
                 console.error("Error fetching companion state:", err);
@@ -3236,6 +3292,56 @@
             if (modal) {
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
+            }
+        }
+
+        let companionBattlemapLive = false;
+
+        function renderCompanionMapAccess(hasAccess) {
+            companionBattlemapLive = Boolean(hasAccess);
+            const liveDot = document.getElementById('nav-map-live-dot');
+            const statusBadge = document.getElementById('companion-map-badge-status');
+            const activeCont = document.getElementById('companion-map-active-container');
+            const veiledCard = document.getElementById('companion-map-veiled-card');
+            const iframe = document.getElementById('companion-battlemap-iframe');
+
+            if (liveDot) {
+                if (companionBattlemapLive) liveDot.classList.remove('hidden');
+                else liveDot.classList.add('hidden');
+            }
+
+            if (statusBadge) {
+                if (companionBattlemapLive) {
+                    statusBadge.textContent = "Live";
+                    statusBadge.className = "text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/50";
+                } else {
+                    statusBadge.textContent = "Veiled";
+                    statusBadge.className = "text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700";
+                }
+            }
+
+            if (companionBattlemapLive) {
+                if (activeCont) activeCont.classList.remove('hidden');
+                if (veiledCard) veiledCard.classList.add('hidden');
+                if (iframe) {
+                    const curSrc = iframe.getAttribute('src');
+                    if (!curSrc || curSrc === 'about:blank') {
+                        iframe.src = '/map';
+                    }
+                }
+            } else {
+                if (activeCont) activeCont.classList.add('hidden');
+                if (veiledCard) veiledCard.classList.remove('hidden');
+                if (iframe && iframe.getAttribute('src') !== 'about:blank') {
+                    iframe.src = 'about:blank';
+                }
+            }
+        }
+
+        function refreshCompanionMap() {
+            const iframe = document.getElementById('companion-battlemap-iframe');
+            if (iframe && companionBattlemapLive) {
+                iframe.src = '/map?t=' + Date.now();
             }
         }
 
