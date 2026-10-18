@@ -2895,7 +2895,13 @@
 
                     <!-- Action Bar -->
                     <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="window.DungeonController.centerOnParty()" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow-md transition flex items-center gap-1.5 tap-active" title="Center viewport on Party position">
+                        <button onclick="window.DungeonController.addNewChamber()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow-md transition flex items-center gap-1.5 tap-active" title="Create a new chamber on this floor">
+                            <span>+</span> <span>Add Chamber</span>
+                        </button>
+                        <button onclick="window.DungeonController.openAddFloorModal()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-amber-300 border border-ledger-700 text-xs font-bold transition flex items-center gap-1 shadow-sm" title="Add a new floor/level to this dungeon">
+                            <span>+</span> <span>Add Floor</span>
+                        </button>
+                        <button onclick="window.DungeonController.centerOnParty()" class="px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-200 border border-ledger-700 font-bold text-xs shadow transition flex items-center gap-1.5 tap-active" title="Center viewport on Party position">
                             <span>⚔️</span> <span>Center on Party</span>
                         </button>
                         <button onclick="window.DungeonController.resetFog()" class="px-2.5 py-1.5 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-300 border border-ledger-700 text-xs font-semibold transition flex items-center gap-1" title="Veil all chambers except active party room">
@@ -3906,7 +3912,7 @@
                         <div class="flex items-center gap-3">
                             <div class="text-right">
                                 <span class="text-[10px] text-slate-400 block uppercase font-mono">Current Version</span>
-                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.23</span>
+                                <span id="updater-installed-version-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">v1.1.6-beta.24</span>
                             </div>
                             <button id="updater-check-btn" onclick="checkForUpdates(true)" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                                 <span id="updater-check-spinner" class="hidden animate-spin">🔄</span>
@@ -8126,49 +8132,195 @@
 
     <!-- MODAL: EDIT CHAMBER DOSSIER -->
     <div id="modal-dungeon-edit-chamber" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div class="bg-ledger-900 border-2 border-amber-500/60 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-ledger-750 pb-3">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">✏️</span>
-                    <h3 class="font-display font-bold text-base text-amber-300">Edit Chamber Dossier</h3>
+                    <h3 class="font-display font-bold text-base text-amber-300">Edit Chamber Dossier & Room Attachments</h3>
                 </div>
                 <button onclick="closeModal('modal-dungeon-edit-chamber')" class="text-slate-400 hover:text-white font-mono text-base">&times;</button>
             </div>
 
             <input type="hidden" id="modal-edit-node-id">
 
-            <div class="space-y-3 text-xs">
-                <div class="grid grid-cols-3 gap-2">
+            <div class="space-y-4 text-xs">
+                <!-- Row 1: Code, Name, Floor & State -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <div>
-                        <label class="font-mono text-slate-400 block mb-1">Code</label>
-                        <input id="modal-edit-node-code" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200 font-mono">
+                        <label class="font-mono text-slate-400 block mb-1">Room Code</label>
+                        <input id="modal-edit-node-code" placeholder="e.g. Area 1" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200 font-mono">
                     </div>
-                    <div class="col-span-2">
+                    <div class="sm:col-span-2">
                         <label class="font-mono text-slate-400 block mb-1">Chamber Name</label>
-                        <input id="modal-edit-node-name" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                        <input id="modal-edit-node-name" placeholder="e.g. Grand Entrance Hall" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                    </div>
+                    <div>
+                        <label class="font-mono text-slate-400 block mb-1">Floor / Level</label>
+                        <select id="modal-edit-node-level" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-2 py-1.5 text-slate-200">
+                            <!-- Populated dynamically -->
+                        </select>
                     </div>
                 </div>
 
-                <div>
-                    <label class="font-mono text-slate-400 block mb-1">Boxed Text (Read Aloud to Players)</label>
-                    <textarea id="modal-edit-node-boxed" rows="4" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl p-3 text-slate-200 font-serif leading-relaxed"></textarea>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                        <label class="font-mono text-slate-400 block mb-1">Fog / Discovery State</label>
+                        <select id="modal-edit-node-state" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-2 py-1.5 text-slate-200 font-mono">
+                            <option value="unexplored">🌫️ Unexplored (Veiled)</option>
+                            <option value="explored">👁️ Explored</option>
+                            <option value="active">⚔️ Active (Party Chamber)</option>
+                            <option value="cleared">🛡️ Cleared & Secured</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="font-mono text-slate-400 block mb-1">Lighting</label>
-                        <input id="modal-edit-node-lighting" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                        <input id="modal-edit-node-lighting" placeholder="e.g. Dim torchlight, Darkness" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
                     </div>
                     <div>
                         <label class="font-mono text-slate-400 block mb-1">Acoustics & Scent</label>
-                        <input id="modal-edit-node-atmosphere" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                        <input id="modal-edit-node-atmosphere" placeholder="e.g. Sound of dripping water" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl px-3 py-1.5 text-slate-200">
+                    </div>
+                </div>
+
+                <!-- Boxed Text -->
+                <div>
+                    <label class="font-mono text-slate-400 block mb-1">Boxed Text (Read-Aloud Narration Broadcast)</label>
+                    <textarea id="modal-edit-node-boxed" rows="3" placeholder="Flavortext read to players when entering this chamber..." class="w-full bg-ledger-950 border border-ledger-700 rounded-xl p-3 text-slate-200 font-serif leading-relaxed"></textarea>
+                </div>
+
+                <!-- SECTION: NAVIGABLE EXITS & ATTACHMENTS -->
+                <div class="p-3.5 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label class="font-mono text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                            <span>🚪</span> <span>Attached Chambers & Navigable Exits</span>
+                        </label>
+                        <span class="text-[10px] text-slate-500 font-mono">Connects chambers on flowchart</span>
+                    </div>
+
+                    <!-- Current Exits List -->
+                    <div id="modal-edit-exits-list" class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                        <!-- Populated dynamically via renderModalExitsList() -->
+                    </div>
+
+                    <!-- Add Exit Form -->
+                    <div class="pt-2 border-t border-ledger-800 space-y-2">
+                        <span class="text-[10px] font-mono font-bold text-slate-400 uppercase">+ Connect to Another Chamber</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                            <div class="sm:col-span-5">
+                                <select id="modal-new-exit-target" class="w-full bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1.5 text-slate-200 text-xs">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="sm:col-span-4">
+                                <select id="modal-new-exit-type" class="w-full bg-ledger-900 border border-ledger-700 rounded-xl px-2.5 py-1.5 text-slate-200 text-xs">
+                                    <option value="door">🚪 Standard Door</option>
+                                    <option value="archway">🏛️ Open Archway / Passage</option>
+                                    <option value="stairs">🪜 Stairs / Stairwell</option>
+                                    <option value="ladder">🪜 Ladder / Shaft</option>
+                                    <option value="secret">👁️ Secret / Concealed Door</option>
+                                    <option value="locked">🔒 Locked Heavy Door</option>
+                                    <option value="portcullis">⛓️ Iron Portcullis</option>
+                                    <option value="trapdoor">🕳️ Trapdoor</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-3 flex items-center justify-end gap-2">
+                                <button type="button" onclick="window.DungeonController.addChamberExit()" class="w-full px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs transition">
+                                    + Attach
+                                </button>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer pt-0.5">
+                            <input type="checkbox" id="modal-new-exit-twoway" checked class="rounded border-ledger-700 bg-ledger-900 text-amber-500">
+                            <span>Two-Way Connection (automatically link reverse path back from target chamber)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- SECTION: CHAMBER FEATURES & DETAILS -->
+                <div>
+                    <label class="font-mono text-slate-400 block mb-1">Chamber Features (Architectural & Sensory details, one per line)</label>
+                    <textarea id="modal-edit-node-features" rows="2" placeholder="e.g. Carved dragon mantelpiece&#10;Resplendent crystal chandelier&#10;Iron-banded chest by the east wall" class="w-full bg-ledger-950 border border-ledger-700 rounded-xl p-2.5 text-slate-200 font-sans"></textarea>
+                </div>
+
+                <!-- SECTION: SECRETS & TRAPS -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Secrets -->
+                    <div class="p-3 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2">
+                        <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                            <span>👁️</span> <span>Hidden Secrets (DC Checks)</span>
+                        </label>
+                        <div id="modal-edit-secrets-list" class="space-y-1.5 max-h-28 overflow-y-auto"></div>
+                        <div class="space-y-1 pt-1.5 border-t border-ledger-800">
+                            <div class="grid grid-cols-4 gap-1">
+                                <input id="modal-new-secret-dc" type="number" value="15" placeholder="DC" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-xs">
+                                <select id="modal-new-secret-skill" class="col-span-3 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                                    <option value="Perception">Perception</option>
+                                    <option value="Investigation">Investigation</option>
+                                    <option value="Arcana">Arcana</option>
+                                    <option value="History">History</option>
+                                    <option value="Religion">Religion</option>
+                                    <option value="Thieves' Tools">Thieves' Tools</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-1">
+                                <input id="modal-new-secret-text" placeholder="Secret detail or clue..." class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                                <button type="button" onclick="window.DungeonController.addChamberSecret()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-ledger-700 shrink-0">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Traps & Hazards -->
+                    <div class="p-3 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2">
+                        <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1">
+                            <span>⚡</span> <span>Traps & Hazards</span>
+                        </label>
+                        <div id="modal-edit-traps-list" class="space-y-1.5 max-h-28 overflow-y-auto"></div>
+                        <div class="space-y-1 pt-1.5 border-t border-ledger-800">
+                            <div class="grid grid-cols-3 gap-1">
+                                <input id="modal-new-trap-name" placeholder="Trap Name" class="col-span-2 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                                <input id="modal-new-trap-dc" type="number" value="15" placeholder="DC" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-xs">
+                            </div>
+                            <input id="modal-new-trap-trigger" placeholder="Trigger: Pressure plate, opening chest..." class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                            <div class="flex gap-1">
+                                <input id="modal-new-trap-effect" placeholder="Effect: 3d6 poison darts, DC 14 Dex save..." class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                                <button type="button" onclick="window.DungeonController.addChamberTrap()" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 font-bold text-xs border border-rose-700 shrink-0">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: ENCOUNTER & LOOT -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Encounter -->
+                    <div class="p-3 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2">
+                        <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1">
+                            <span>⚔️</span> <span>Chamber Encounter</span>
+                        </label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <input id="modal-edit-enc-name" placeholder="Encounter Name" class="col-span-2 bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                            <input id="modal-edit-enc-cr" placeholder="CR (e.g. 3)" class="bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-xs">
+                        </div>
+                        <input id="modal-edit-enc-monsters" placeholder="Monsters (e.g. 2x Ghoul (22 HP), 1x Specter (22 HP))" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg px-2 py-1 text-slate-200 text-xs">
+                    </div>
+
+                    <!-- Loot -->
+                    <div class="p-3 rounded-2xl bg-ledger-950/80 border border-ledger-750 space-y-2">
+                        <label class="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                            <span>🪙</span> <span>Loot & Curiosities</span>
+                        </label>
+                        <textarea id="modal-edit-node-loot" rows="2" placeholder="Comma-separated items: Fine Silver Tableware (50 gp), Potion of Healing, Jeweled Dagger" class="w-full bg-ledger-900 border border-ledger-700 rounded-lg p-2 text-slate-200 text-xs"></textarea>
                     </div>
                 </div>
             </div>
 
-            <div class="flex items-center justify-end gap-2 pt-2 border-t border-ledger-750">
-                <button onclick="closeModal('modal-dungeon-edit-chamber')" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs">Cancel</button>
-                <button onclick="window.DungeonController.saveChamberModalEdits()" class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow">Save Chamber</button>
+            <div class="flex items-center justify-between gap-2 pt-3 border-t border-ledger-750">
+                <button type="button" onclick="window.DungeonController.deleteChamber()" class="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700/60 font-semibold text-xs transition flex items-center gap-1">
+                    <span>🗑️</span> <span>Delete Chamber</span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeModal('modal-dungeon-edit-chamber')" class="px-3.5 py-1.5 rounded-xl bg-ledger-800 text-slate-300 font-semibold text-xs">Cancel</button>
+                    <button type="button" onclick="window.DungeonController.saveChamberModalEdits()" class="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs shadow">Save Chamber</button>
+                </div>
             </div>
         </div>
     </div>
