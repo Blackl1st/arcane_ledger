@@ -1493,7 +1493,7 @@
                     <div id="dm-map-viewport-container" class="w-full h-[680px] bg-ledger-950 border border-ledger-700/80 rounded-2xl relative overflow-hidden select-none shadow-2xl cursor-crosshair">
                         
                         <!-- Inner Transform Viewport -->
-                        <div id="dm-map-viewport" class="absolute inset-0 origin-center">
+                        <div id="dm-map-viewport" class="absolute top-0 left-0 origin-top-left">
                             <!-- Layer 1: Base Map Image -->
                             <img id="dm-map-base-img" class="absolute top-0 left-0 pointer-events-none select-none max-w-none max-h-none" alt="DM Battlemap">
                             
@@ -5842,23 +5842,26 @@
     <div id="add-track-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-ledger-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs">
             <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
-                <h3 class="font-display font-bold text-sm text-sky-400">➕ Add Audio Track to Library</h3>
+                <div class="flex items-center gap-2">
+                    <span class="text-base">🎵</span>
+                    <h3 class="font-display font-bold text-sm text-sky-400">Add Sound Layer or Spotify Music</h3>
+                </div>
                 <button onclick="closeModal('add-track-modal')" class="text-slate-400 hover:text-white">✕</button>
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Track Name</label>
-                    <input id="custom-track-name" type="text" placeholder="e.g. Creaking Ship Rigging, Elven Harp..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Track or Playlist Name</label>
+                    <input id="custom-track-name" type="text" placeholder="e.g. Curse of Strahd Ambiance, Elven Harp..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-300 mb-1">Category</label>
                         <select id="custom-track-category" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
                             <option value="Ambiance">Ambiance</option>
+                            <option value="Music">Music (Spotify / BGM)</option>
                             <option value="Weather">Weather</option>
                             <option value="Dungeon">Dungeon</option>
                             <option value="Combat">Combat</option>
-                            <option value="Music">Music</option>
                             <option value="Tension">Tension</option>
                             <option value="Custom">Custom</option>
                         </select>
@@ -5869,8 +5872,15 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Audio URL or Local Path (.mp3, .ogg, .wav)</label>
-                    <input id="custom-track-url" type="text" placeholder="/static/audio/my_track.mp3 or https://..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Audio URL (.mp3, .wav) or Spotify Link</label>
+                    <input id="custom-track-url" type="text" oninput="handleTrackUrlInput(this.value)" placeholder="e.g. https://open.spotify.com/playlist/... or /static/audio/..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white">
+                </div>
+                <!-- Spotify Helper Banner -->
+                <div class="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-[11px] text-emerald-300 flex items-start gap-2 shadow-inner">
+                    <span class="text-sm">🟢</span>
+                    <div class="leading-relaxed">
+                        <span class="font-bold text-emerald-200">Spotify Integration:</span> Paste any Spotify song, album, or playlist link to embed an interactive music player directly in the <strong class="text-white">Music</strong> category!
+                    </div>
                 </div>
             </div>
             <div class="flex justify-end gap-2 pt-2">

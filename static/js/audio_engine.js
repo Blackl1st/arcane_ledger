@@ -34,7 +34,15 @@ class AudioLayerEngine {
         }
     }
 
+    _isSpotify(url) {
+        if (!url || typeof url !== 'string') return false;
+        return url.includes('spotify.com') || url.startsWith('spotify:');
+    }
+
     _getAudioElement(track) {
+        if (!track || !track.url || this._isSpotify(track.url)) {
+            return null;
+        }
         if (!this.audioElements.has(track.id)) {
             const el = new Audio();
             el.src = track.url;
@@ -51,7 +59,6 @@ class AudioLayerEngine {
         const track = this.tracks.find(t => t.id === id);
         if (!track) return false;
 
-        const el = this._getAudioElement(track);
         if (track.active) {
             this.pauseTrack(id);
         } else {
@@ -65,7 +72,11 @@ class AudioLayerEngine {
         if (!track) return;
 
         track.active = true;
+        if (this._isSpotify(track.url)) {
+            return;
+        }
         const el = this._getAudioElement(track);
+        if (!el) return;
         el.volume = this.isMuted ? 0 : Math.max(0, Math.min(1, track.volume * this.masterVolume));
         
         // Handle browser autoplay policy gracefully
@@ -82,9 +93,12 @@ class AudioLayerEngine {
         if (!track) return;
 
         track.active = false;
+        if (this._isSpotify(track.url)) {
+            return;
+        }
         if (this.audioElements.has(id)) {
             const el = this.audioElements.get(id);
-            el.pause();
+            if (el) el.pause();
         }
     }
 

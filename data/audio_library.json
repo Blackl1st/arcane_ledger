@@ -106,5 +106,45 @@
     "url": "/static/audio/heartbeat_suspense.wav",
     "volume": 0.7,
     "active": false
+  },
+  {
+    "id": "spotify-strahd",
+    "name": "Curse of Strahd - Gothic Horror",
+    "category": "Music",
+    "icon": "🧛",
+    "url": "https://open.spotify.com/playlist/7b58Uo5n30T0U1W8s1v5Gq",
+    "type": "spotify",
+    "volume": 0.7,
+    "active": false
+  },
+  {
+    "id": "spotify-tavern",
+    "name": "Tavern & Medieval Folk",
+    "category": "Music",
+    "icon": "🍻",
+    "url": "https://open.spotify.com/playlist/37i9dQZF1DX2pSTOxoPbx9",
+    "type": "spotify",
+    "volume": 0.7,
+    "active": false
+  },
+  {
+    "id": "spotify-combat",
+    "name": "Epic Boss Battle & Combat",
+    "category": "Music",
+    "icon": "⚔️",
+    "url": "https://open.spotify.com/playlist/37i9dQZF1DWYcDQ1hSjOpY",
+    "type": "spotify",
+    "volume": 0.7,
+    "active": false
+  },
+  {
+    "id": "spotify-wilds",
+    "name": "Enchanted Wilds & Exploration",
+    "category": "Music",
+    "icon": "🌲",
+    "url": "https://open.spotify.com/playlist/37i9dQZF1DXbUhu2sqqQfT",
+    "type": "spotify",
+    "volume": 0.7,
+    "active": false
   }
 ]

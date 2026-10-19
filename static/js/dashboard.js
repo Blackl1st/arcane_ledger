@@ -10358,6 +10358,31 @@ function renderAudioPresets() {
     }).join('');
 }
 
+function isSpotifyUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    return url.includes('spotify.com') || url.startsWith('spotify:');
+}
+
+function getSpotifyEmbedUrl(rawUrl) {
+    if (!rawUrl) return '';
+    let url = rawUrl.trim();
+    if (url.includes('/embed/')) return url;
+
+    // Handle spotify:type:id
+    const uriMatch = url.match(/^spotify:(track|playlist|album|artist|episode|show):([a-zA-Z0-9]+)/);
+    if (uriMatch) {
+        return `https://open.spotify.com/embed/${uriMatch[1]}/${uriMatch[2]}?utm_source=generator&theme=0`;
+    }
+
+    // Handle open.spotify.com/type/id
+    const webMatch = url.match(/open\.spotify\.com\/(track|playlist|album|artist|episode|show)\/([a-zA-Z0-9]+)/);
+    if (webMatch) {
+        return `https://open.spotify.com/embed/${webMatch[1]}/${webMatch[2]}?utm_source=generator&theme=0`;
+    }
+
+    return url;
+}
+
 function renderAudioTracks() {
     const grid = document.getElementById('audio-mixer-grid');
     if (!grid) return;
@@ -10368,11 +10393,54 @@ function renderAudioTracks() {
         return;
     }
     grid.innerHTML = tracks.map(t => {
+        const isSpotify = isSpotifyUrl(t.url);
+        const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
+
+        if (isSpotify) {
+            const embedUrl = getSpotifyEmbedUrl(t.url);
+            return `
+                <div id="track-card-${t.id}" class="col-span-1 md:col-span-2 bg-ledger-900 border border-emerald-500/50 hover:border-emerald-400 rounded-2xl p-4 flex flex-col justify-between shadow-xl shadow-emerald-950/20 transition">
+                    <div>
+                        <!-- Header -->
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-2xl">${escapeHTML(t.icon || '🟢')}</span>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <h4 class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
+                                        <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono font-bold">Spotify Music</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <a href="${escapeHTML(t.url)}" target="_blank" rel="noopener noreferrer" title="Open in Spotify Web/App" class="px-2 py-1 rounded-lg bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[10px] font-semibold flex items-center gap-1 transition">
+                                    <span>Spotify</span>
+                                    <span>↗</span>
+                                </a>
+                                ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs">✕</button>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Embedded Player -->
+                        <div class="mt-2.5 rounded-xl overflow-hidden border border-emerald-900/60 shadow-inner bg-black/80">
+                            <iframe 
+                                style="border-radius:12px; width:100%; border:0; display:block;" 
+                                src="${embedUrl}" 
+                                height="152" 
+                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                loading="lazy">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
         const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
         const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
         const volPercent = Math.round(volume * 100);
-        const isCustom = t.category === 'Custom' || t.id.startsWith('track-');
 
         return `
             <div id="track-card-${t.id}" class="bg-ledger-900 border ${isPlaying ? 'border-emerald-500/70 shadow-lg shadow-emerald-950/40' : 'border-ledger-800 hover:border-ledger-700'} rounded-2xl p-4 flex flex-col justify-between transition">
@@ -11125,24 +11193,49 @@ async function handleAudioFileUpload(input) {
     }
 }
 
+function handleTrackUrlInput(val) {
+    if (!val) return;
+    const isSpotify = isSpotifyUrl(val);
+    const catSelect = document.getElementById('custom-track-category');
+    const iconInput = document.getElementById('custom-track-icon');
+    const nameInput = document.getElementById('custom-track-name');
+    if (isSpotify) {
+        if (catSelect) catSelect.value = 'Music';
+        if (iconInput && (iconInput.value === '🎵' || !iconInput.value)) iconInput.value = '🟢';
+        if (nameInput && !nameInput.value) {
+            if (val.includes('/playlist/')) nameInput.placeholder = 'e.g. Curse of Strahd Ambient Playlist';
+            else if (val.includes('/track/')) nameInput.placeholder = 'e.g. Atmospheric Song Title';
+        }
+    }
+}
+
 async function submitCustomAudioTrack() {
     const name = (document.getElementById('custom-track-name').value || '').trim();
-    const cat = document.getElementById('custom-track-category').value;
-    const icon = (document.getElementById('custom-track-icon').value || '').trim() || '🎵';
+    let cat = document.getElementById('custom-track-category').value;
+    let icon = (document.getElementById('custom-track-icon').value || '').trim() || '🎵';
     const url = (document.getElementById('custom-track-url').value || '').trim();
 
-    if (!name || !url) {
-        showToast("Please enter a track name and audio URL.", "error");
+    if (!url) {
+        showToast("Please enter an audio URL or Spotify link.", "error");
         return;
     }
 
+    const isSpotify = isSpotifyUrl(url);
+    if (isSpotify) {
+        cat = 'Music';
+        if (icon === '🎵') icon = '🟢';
+    }
+
+    const finalName = name || (isSpotify ? 'Spotify Music' : 'Custom Sound Layer');
+
     const newTrack = {
-        id: 'track-' + Date.now(),
-        name: name,
+        id: (isSpotify ? 'spotify-' : 'track-') + Date.now(),
+        name: finalName,
         category: cat,
         icon: icon,
         url: url,
-        defaultVolume: 0.5
+        type: isSpotify ? 'spotify' : 'audio',
+        defaultVolume: 0.7
     };
 
     try {
@@ -11161,7 +11254,7 @@ async function submitCustomAudioTrack() {
             document.getElementById('custom-track-name').value = '';
             document.getElementById('custom-track-url').value = '';
             renderAudioTracks();
-            showToast(`Track "${name}" added to library!`, "success");
+            showToast(`${isSpotify ? 'Spotify Music' : 'Track'} "${finalName}" added to library!`, "success");
         } else {
             showToast("Failed to add track.", "error");
         }

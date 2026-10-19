@@ -489,16 +489,16 @@ window.BattlemapController = (function() {
         const scaleX = (cWidth - 60) / (visualW || 2000);
         const scaleY = (cHeight - 60) / (visualH || 1500);
         dmZoom = Math.min(scaleX, scaleY, 0.85);
-        dmPanX = Math.round(cWidth / 2 - mapWidth / 2);
-        dmPanY = Math.round(cHeight / 2 - mapHeight / 2);
+        dmPanX = Math.round(cWidth / 2);
+        dmPanY = Math.round(cHeight / 2);
         applyDMTransform();
     }
 
     function applyDMTransform() {
         if (!viewportEl) return;
         const rot = (state.rotation || 0) % 360;
-        viewportEl.style.transformOrigin = 'center center';
-        viewportEl.style.transform = `translate(${dmPanX}px, ${dmPanY}px) scale(${dmZoom}) rotate(${rot}deg)`;
+        viewportEl.style.transformOrigin = '0 0';
+        viewportEl.style.transform = `translate(${dmPanX}px, ${dmPanY}px) rotate(${rot}deg) scale(${dmZoom}) translate(${-mapWidth / 2}px, ${-mapHeight / 2}px)`;
         const zoomLabel = document.getElementById('dm-zoom-display');
         if (zoomLabel) zoomLabel.textContent = `${Math.round(dmZoom * 100)}%`;
         const rotLabel = document.getElementById('dm-rotation-display');
@@ -1490,8 +1490,8 @@ window.BattlemapController = (function() {
         const x1 = x0 * cos - y0 * sin;
         const y1 = x0 * sin + y0 * cos;
 
-        dmPanX = Math.round(cWidth / 2 - cx - x1 * dmZoom);
-        dmPanY = Math.round(cHeight / 2 - cy - y1 * dmZoom);
+        dmPanX = Math.round(cWidth / 2 - x1 * dmZoom);
+        dmPanY = Math.round(cHeight / 2 - y1 * dmZoom);
         applyDMTransform();
     }
 
@@ -1680,8 +1680,10 @@ window.BattlemapController = (function() {
         // Calculate spawn position at the center of the current DM viewport
         const cWidth = containerEl ? containerEl.clientWidth : 1000;
         const cHeight = containerEl ? containerEl.clientHeight : 650;
-        const spawnX = Math.round((-dmPanX + cWidth / 2) / dmZoom);
-        const spawnY = Math.round((-dmPanY + cHeight / 2) / dmZoom);
+        const rect = containerEl ? containerEl.getBoundingClientRect() : { left: 0, top: 0 };
+        const centerPos = screenToWorld(rect.left + cWidth / 2, rect.top + cHeight / 2);
+        const spawnX = centerPos.x;
+        const spawnY = centerPos.y;
 
         // Check if spawn location is shrouded in Fog of War!
         const inFog = isPointInFog(spawnX, spawnY);
@@ -1791,20 +1793,15 @@ window.BattlemapController = (function() {
         const localX = clientX - rect.left;
         const localY = clientY - rect.top;
 
-        const cx = mapWidth / 2;
-        const cy = mapHeight / 2;
+        const dx = localX - dmPanX;
+        const dy = localY - dmPanY;
         const rotDeg = (state.rotation || 0) % 360;
-        const rad = rotDeg * Math.PI / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
+        const rad = -rotDeg * Math.PI / 180;
+        const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+        const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
 
-        const x2 = localX - (cx + dmPanX);
-        const y2 = localY - (cy + dmPanY);
-        const x1 = x2 / (dmZoom || 1.0);
-        const y1 = y2 / (dmZoom || 1.0);
-
-        const worldX = cx + (x1 * cos + y1 * sin);
-        const worldY = cy + (-x1 * sin + y1 * cos);
+        const worldX = mapWidth / 2 + rx / (dmZoom || 1.0);
+        const worldY = mapHeight / 2 + ry / (dmZoom || 1.0);
 
         return {
             x: Math.max(0, Math.min(mapWidth, Math.round(worldX))),
@@ -2048,11 +2045,8 @@ window.BattlemapController = (function() {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        const cx = mapWidth / 2;
-        const cy = mapHeight / 2;
-
-        dmPanX = Math.round(mouseX - cx - (mouseX - cx - dmPanX) * (newZoom / dmZoom));
-        dmPanY = Math.round(mouseY - cy - (mouseY - cy - dmPanY) * (newZoom / dmZoom));
+        dmPanX = Math.round(mouseX + (dmPanX - mouseX) * (newZoom / dmZoom));
+        dmPanY = Math.round(mouseY + (dmPanY - mouseY) * (newZoom / dmZoom));
         dmZoom = newZoom;
 
         applyDMTransform();
