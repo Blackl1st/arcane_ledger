@@ -10363,6 +10363,17 @@ function isSpotifyUrl(url) {
     return url.includes('spotify.com') || url.startsWith('spotify:');
 }
 
+function getSpotifyUri(rawUrl) {
+    if (!rawUrl) return '';
+    let url = rawUrl.trim();
+    if (url.startsWith('spotify:')) return url;
+    const match = url.match(/open\.spotify\.com\/(track|playlist|album|artist|episode|show)\/([a-zA-Z0-9]+)/);
+    if (match) {
+        return `spotify:${match[1]}:${match[2]}`;
+    }
+    return '';
+}
+
 function getSpotifyEmbedUrl(rawUrl) {
     if (!rawUrl) return '';
     let url = rawUrl.trim();
@@ -10383,121 +10394,444 @@ function getSpotifyEmbedUrl(rawUrl) {
     return url;
 }
 
+// Global Spotify Embed & Playback Controller Manager
+window.SpotifyEmbedManager = {
+    api: null,
+    controllers: new Map(), // trackId -> IFrameController
+    pendingInits: new Map(), // trackId -> { elementId, uri, rawUrl }
+    activePlayingIds: new Set(),
+    _queuedPlays: new Set(),
+
+    init(IFrameAPI) {
+        this.api = IFrameAPI;
+        for (const [trackId, data] of this.pendingInits.entries()) {
+            this.mount(trackId, data.elementId, data.rawUrl);
+        }
+        this.pendingInits.clear();
+    },
+
+    mount(trackId, elementId, rawUrl) {
+        const uri = getSpotifyUri(rawUrl);
+        const container = document.getElementById(elementId);
+        if (!container) return;
+
+        if (this.controllers.has(trackId)) {
+            return;
+        }
+
+        if (this.api && uri) {
+            try {
+                this.api.createController(container, {
+                    width: '100%',
+                    height: '152',
+                    uri: uri
+                }, (controller) => {
+                    this.controllers.set(trackId, controller);
+                    
+                    controller.addListener('playback_update', e => {
+                        const isPlaying = !e.data.isPaused;
+                        if (isPlaying) {
+                            this.activePlayingIds.add(trackId);
+                        } else {
+                            this.activePlayingIds.delete(trackId);
+                        }
+                        this.updateCardUI(trackId);
+                        if (window.AudioEngine) {
+                            const tr = (window.AudioEngine.tracks || []).find(t => t.id === trackId);
+                            if (tr) tr.active = isPlaying;
+                        }
+                        if (typeof updateActiveLayersSummary === 'function') {
+                            updateActiveLayersSummary();
+                        }
+                    });
+
+                    // Check if queued to play
+                    if (this._queuedPlays && this._queuedPlays.has(trackId)) {
+                        this._queuedPlays.delete(trackId);
+                        try {
+                            controller.play();
+                            this.activePlayingIds.add(trackId);
+                            this.updateCardUI(trackId);
+                        } catch (err) {
+                            console.warn('Spotify play failed:', err);
+                        }
+                    }
+                });
+                return;
+            } catch (err) {
+                console.warn('Error creating Spotify controller, using fallback iframe:', err);
+            }
+        }
+
+        // Fallback: If Spotify IFrame API not yet loaded or uri missing, queue it & render standard embed
+        if (!this.api && uri) {
+            this.pendingInits.set(trackId, { elementId, uri, rawUrl });
+        }
+        const embedUrl = getSpotifyEmbedUrl(rawUrl);
+        container.innerHTML = `
+            <iframe 
+                id="spotify-iframe-${trackId}"
+                style="border-radius:12px; width:100%; border:0; display:block;" 
+                src="${embedUrl}" 
+                height="152" 
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                loading="lazy">
+            </iframe>
+        `;
+    },
+
+    play(trackId) {
+        this.activePlayingIds.add(trackId);
+        const ctrl = this.controllers.get(trackId);
+        if (ctrl) {
+            try {
+                ctrl.play();
+            } catch (e) {
+                console.warn(`Spotify play call failed for ${trackId}:`, e);
+            }
+        } else {
+            this._queuedPlays.add(trackId);
+        }
+        this.updateCardUI(trackId);
+        if (window.AudioEngine) {
+            const tr = (window.AudioEngine.tracks || []).find(t => t.id === trackId);
+            if (tr) tr.active = true;
+        }
+        if (typeof updateActiveLayersSummary === 'function') {
+            updateActiveLayersSummary();
+        }
+    },
+
+    pause(trackId) {
+        this.activePlayingIds.delete(trackId);
+        this._queuedPlays.delete(trackId);
+        const ctrl = this.controllers.get(trackId);
+        if (ctrl) {
+            try {
+                ctrl.pause();
+            } catch (e) {
+                console.warn(`Spotify pause call failed for ${trackId}:`, e);
+            }
+        }
+        this.updateCardUI(trackId);
+        if (window.AudioEngine) {
+            const tr = (window.AudioEngine.tracks || []).find(t => t.id === trackId);
+            if (tr) tr.active = false;
+        }
+        if (typeof updateActiveLayersSummary === 'function') {
+            updateActiveLayersSummary();
+        }
+    },
+
+    pauseAll() {
+        for (const trackId of Array.from(this.activePlayingIds)) {
+            this.pause(trackId);
+        }
+        for (const [id, ctrl] of this.controllers.entries()) {
+            try { ctrl.pause(); } catch (e) {}
+        }
+        this.activePlayingIds.clear();
+        this._queuedPlays.clear();
+        if (typeof updateActiveLayersSummary === 'function') {
+            updateActiveLayersSummary();
+        }
+    },
+
+    toggle(trackId) {
+        const ctrl = this.controllers.get(trackId);
+        if (ctrl) {
+            try {
+                ctrl.togglePlay();
+            } catch (err) {
+                if (this.isPlaying(trackId)) this.pause(trackId);
+                else this.play(trackId);
+            }
+        } else {
+            if (this.isPlaying(trackId)) this.pause(trackId);
+            else this.play(trackId);
+        }
+    },
+
+    isPlaying(trackId) {
+        return this.activePlayingIds.has(trackId);
+    },
+
+    destroy(trackId) {
+        this.controllers.delete(trackId);
+        this.pendingInits.delete(trackId);
+        this.activePlayingIds.delete(trackId);
+        this._queuedPlays.delete(trackId);
+    },
+
+    updateCardUI(trackId) {
+        const card = document.getElementById(`track-card-${trackId}`);
+        const isPlaying = this.isPlaying(trackId);
+        if (card) {
+            if (isPlaying) {
+                card.classList.add('border-emerald-400', 'shadow-emerald-950/40');
+                card.classList.remove('border-emerald-500/50');
+            } else {
+                card.classList.remove('border-emerald-400', 'shadow-emerald-950/40');
+                card.classList.add('border-emerald-500/50');
+            }
+        }
+        const btnIcon = document.getElementById(`spotify-btn-icon-${trackId}`);
+        const btnText = document.getElementById(`spotify-btn-text-${trackId}`);
+        const btn = document.getElementById(`spotify-btn-${trackId}`);
+        if (btnIcon && btnText) {
+            btnIcon.textContent = isPlaying ? '⏸️' : '▶️';
+            btnText.textContent = isPlaying ? 'Pause' : 'Play';
+        }
+        if (btn) {
+            if (isPlaying) {
+                btn.className = "px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm transition ring-2 ring-emerald-400/50";
+            } else {
+                btn.className = "px-2.5 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-slate-200 text-[10px] font-bold flex items-center gap-1 shadow-sm transition";
+            }
+        }
+    }
+};
+
+window.onSpotifyIframeApiReady = (IFrameAPI) => {
+    window.SpotifyEmbedManager.init(IFrameAPI);
+};
+
+function toggleSpotifyTrack(trackId) {
+    if (!window.SpotifyEmbedManager) return;
+    window.SpotifyEmbedManager.toggle(trackId);
+}
+
+function createSpotifyCardElement(t) {
+    const card = document.createElement('div');
+    card.id = `track-card-${t.id}`;
+    card.className = "col-span-1 md:col-span-2 bg-ledger-900 border border-emerald-500/50 hover:border-emerald-400 rounded-2xl p-4 flex flex-col justify-between shadow-xl shadow-emerald-950/20 transition";
+    
+    const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
+
+    card.innerHTML = `
+        <div>
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-2xl">${escapeHTML(t.icon || '🟢')}</span>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h4 class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
+                            <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono font-bold">Spotify Music</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button id="spotify-btn-${t.id}" type="button" onclick="toggleSpotifyTrack('${t.id}')" title="Play or Pause Spotify Track" class="px-2.5 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-slate-200 text-[10px] font-bold flex items-center gap-1 shadow-sm transition">
+                        <span id="spotify-btn-icon-${t.id}">▶️</span>
+                        <span id="spotify-btn-text-${t.id}">Play</span>
+                    </button>
+                    <a href="${escapeHTML(t.url)}" target="_blank" rel="noopener noreferrer" title="Open in Spotify Web/App" class="px-2 py-1 rounded-lg bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[10px] font-semibold flex items-center gap-1 transition">
+                        <span>Spotify</span>
+                        <span>↗</span>
+                    </a>
+                    ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs">✕</button>` : ''}
+                </div>
+            </div>
+
+            <!-- Embedded Player Placeholder -->
+            <div id="spotify-slot-${t.id}" class="mt-2.5 rounded-xl overflow-hidden border border-emerald-900/60 shadow-inner bg-black/80 min-h-[152px]">
+                <div id="spotify-embed-${t.id}"></div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+function updateSpotifyCardUI(t, card) {
+    if (window.SpotifyEmbedManager) {
+        window.SpotifyEmbedManager.updateCardUI(t.id);
+    }
+}
+
+function createAudioCardElement(t) {
+    const card = document.createElement('div');
+    card.id = `track-card-${t.id}`;
+    
+    const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
+    const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
+    const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
+    const volPercent = Math.round(volume * 100);
+    const isCustom = t.category === 'Custom' || t.id.startsWith('track-');
+
+    card.className = `bg-ledger-900 border ${isPlaying ? 'border-emerald-500/70 shadow-lg shadow-emerald-950/40' : 'border-ledger-800 hover:border-ledger-700'} rounded-2xl p-4 flex flex-col justify-between transition`;
+
+    card.innerHTML = `
+        <div>
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-2xl">${escapeHTML(t.icon || '🎵')}</span>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-xs text-slate-200 truncate">${escapeHTML(t.name)}</h4>
+                        <span class="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ledger-950 text-slate-400 border border-ledger-800 font-mono">${escapeHTML(t.category)}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1">
+                    <span id="track-ping-${t.id}" class="${isPlaying ? 'flex' : 'hidden'} h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs">✕</button>` : ''}
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="space-y-3 mt-2 pt-2 border-t border-ledger-800/80">
+            <!-- Volume Slider -->
+            <div>
+                <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1 font-mono">
+                    <span>Layer Volume</span>
+                    <span id="track-vol-text-${t.id}" class="font-bold text-slate-200">${volPercent}%</span>
+                </div>
+                <input id="track-vol-slider-${t.id}" type="range" min="0" max="100" value="${volPercent}" oninput="setAudioTrackVolume('${t.id}', this.value)" class="w-full h-1.5 bg-ledger-950 rounded-lg accent-amber-500 cursor-pointer">
+            </div>
+
+            <!-- Play / Pause Button -->
+            <button id="track-btn-${t.id}" onclick="toggleAudioTrack('${t.id}')" class="w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm ${isPlaying ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700'}">
+                <span>${isPlaying ? '⏸️ Pause Layer' : '▶️ Play Layer'}</span>
+            </button>
+        </div>
+    `;
+    return card;
+}
+
+function updateAudioCardUI(t, card) {
+    const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
+    const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
+    const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
+    const volPercent = Math.round(volume * 100);
+
+    if (isPlaying) {
+        card.classList.add('border-emerald-500/70', 'shadow-lg', 'shadow-emerald-950/40');
+        card.classList.remove('border-ledger-800', 'hover:border-ledger-700');
+    } else {
+        card.classList.remove('border-emerald-500/70', 'shadow-lg', 'shadow-emerald-950/40');
+        card.classList.add('border-ledger-800', 'hover:border-ledger-700');
+    }
+
+    const ping = document.getElementById(`track-ping-${t.id}`);
+    if (ping) {
+        if (isPlaying) ping.classList.remove('hidden');
+        else ping.classList.add('hidden');
+    }
+
+    const volText = document.getElementById(`track-vol-text-${t.id}`);
+    if (volText) volText.innerText = `${volPercent}%`;
+
+    const volSlider = document.getElementById(`track-vol-slider-${t.id}`);
+    if (volSlider && document.activeElement !== volSlider) {
+        volSlider.value = volPercent;
+    }
+
+    const btn = document.getElementById(`track-btn-${t.id}`);
+    if (btn) {
+        if (isPlaying) {
+            btn.className = "w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white";
+            btn.innerHTML = "<span>⏸️ Pause Layer</span>";
+        } else {
+            btn.className = "w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700";
+            btn.innerHTML = "<span>▶️ Play Layer</span>";
+        }
+    }
+}
+
 function renderAudioTracks() {
     const grid = document.getElementById('audio-mixer-grid');
     if (!grid) return;
     const cat = appState.audioActiveCategory || 'all';
-    const tracks = (appState.audioLibrary || []).filter(t => cat === 'all' || t.category === cat);
-    if (tracks.length === 0) {
-        grid.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 text-xs italic">No tracks found in category "${cat}".</div>`;
-        return;
-    }
-    grid.innerHTML = tracks.map(t => {
-        const isSpotify = isSpotifyUrl(t.url);
-        const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
+    const allLibraryTracks = appState.audioLibrary || [];
+    const filteredTracks = allLibraryTracks.filter(t => cat === 'all' || t.category === cat);
 
-        if (isSpotify) {
-            const embedUrl = getSpotifyEmbedUrl(t.url);
-            return `
-                <div id="track-card-${t.id}" class="col-span-1 md:col-span-2 bg-ledger-900 border border-emerald-500/50 hover:border-emerald-400 rounded-2xl p-4 flex flex-col justify-between shadow-xl shadow-emerald-950/20 transition">
-                    <div>
-                        <!-- Header -->
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <span class="text-2xl">${escapeHTML(t.icon || '🟢')}</span>
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-1.5 flex-wrap">
-                                        <h4 class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
-                                        <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono font-bold">Spotify Music</span>
-                                    </div>
-                                    <p class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <a href="${escapeHTML(t.url)}" target="_blank" rel="noopener noreferrer" title="Open in Spotify Web/App" class="px-2 py-1 rounded-lg bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[10px] font-semibold flex items-center gap-1 transition">
-                                    <span>Spotify</span>
-                                    <span>↗</span>
-                                </a>
-                                ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs">✕</button>` : ''}
-                            </div>
-                        </div>
+    // Empty state container
+    let emptyEl = document.getElementById('audio-mixer-empty-msg');
 
-                        <!-- Embedded Player -->
-                        <div class="mt-2.5 rounded-xl overflow-hidden border border-emerald-900/60 shadow-inner bg-black/80">
-                            <iframe 
-                                style="border-radius:12px; width:100%; border:0; display:block;" 
-                                src="${embedUrl}" 
-                                height="152" 
-                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                                loading="lazy">
-                            </iframe>
-                        </div>
-                    </div>
-                </div>
-            `;
+    if (filteredTracks.length === 0) {
+        if (!emptyEl) {
+            emptyEl = document.createElement('div');
+            emptyEl.id = 'audio-mixer-empty-msg';
+            emptyEl.className = 'col-span-full text-center py-8 text-slate-500 text-xs italic';
+            grid.appendChild(emptyEl);
         }
+        emptyEl.textContent = `No tracks found in category "${cat}".`;
+        emptyEl.style.display = '';
+        Array.from(grid.children).forEach(child => {
+            if (child.id && child.id.startsWith('track-card-')) {
+                child.style.display = 'none';
+            }
+        });
+        return;
+    } else if (emptyEl) {
+        emptyEl.style.display = 'none';
+    }
 
-        const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
-        const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
-        const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
-        const volPercent = Math.round(volume * 100);
+    const filteredTrackIds = new Set(filteredTracks.map(t => t.id));
 
-        return `
-            <div id="track-card-${t.id}" class="bg-ledger-900 border ${isPlaying ? 'border-emerald-500/70 shadow-lg shadow-emerald-950/40' : 'border-ledger-800 hover:border-ledger-700'} rounded-2xl p-4 flex flex-col justify-between transition">
-                <div>
-                    <!-- Header -->
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="text-2xl">${escapeHTML(t.icon || '🎵')}</span>
-                            <div class="min-w-0">
-                                <h4 class="font-bold text-xs text-slate-200 truncate">${escapeHTML(t.name)}</h4>
-                                <span class="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ledger-950 text-slate-400 border border-ledger-800 font-mono">${escapeHTML(t.category)}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            ${isPlaying ? '<span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>' : ''}
-                            ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs">✕</button>` : ''}
-                        </div>
-                    </div>
-                </div>
+    // Hide any cards currently in grid that do not match the current category filter
+    Array.from(grid.children).forEach(child => {
+        if (child.id && child.id.startsWith('track-card-')) {
+            const tid = child.id.replace('track-card-', '');
+            if (!filteredTrackIds.has(tid)) {
+                child.style.display = 'none';
+            }
+        }
+    });
 
-                <!-- Controls -->
-                <div class="space-y-3 mt-2 pt-2 border-t border-ledger-800/80">
-                    <!-- Volume Slider -->
-                    <div>
-                        <div class="flex justify-between items-center text-[10px] text-slate-400 mb-1 font-mono">
-                            <span>Layer Volume</span>
-                            <span id="track-vol-text-${t.id}" class="font-bold text-slate-200">${volPercent}%</span>
-                        </div>
-                        <input type="range" min="0" max="100" value="${volPercent}" oninput="setAudioTrackVolume('${t.id}', this.value)" class="w-full h-1.5 bg-ledger-950 rounded-lg accent-amber-500 cursor-pointer">
-                    </div>
+    // Render new cards or update existing cards in-place without destroying DOM / iframes
+    filteredTracks.forEach(t => {
+        const cardId = `track-card-${t.id}`;
+        let card = document.getElementById(cardId);
 
-                    <!-- Play / Pause Button -->
-                    <button onclick="toggleAudioTrack('${t.id}')" class="w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm ${isPlaying ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700'}">
-                        <span>${isPlaying ? '⏸️ Pause Layer' : '▶️ Play Layer'}</span>
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
+        if (isSpotifyUrl(t.url)) {
+            if (!card) {
+                card = createSpotifyCardElement(t);
+                grid.appendChild(card);
+                if (window.SpotifyEmbedManager) {
+                    window.SpotifyEmbedManager.mount(t.id, `spotify-embed-${t.id}`, t.url);
+                }
+            } else {
+                card.style.display = '';
+                updateSpotifyCardUI(t, card);
+            }
+        } else {
+            if (!card) {
+                card = createAudioCardElement(t);
+                grid.appendChild(card);
+            } else {
+                card.style.display = '';
+                updateAudioCardUI(t, card);
+            }
+        }
+    });
 }
 
 function updateActiveLayersSummary() {
     const summaryEl = document.getElementById('active-layers-summary');
     if (!summaryEl) return;
-    if (!window.AudioEngine) {
-        summaryEl.innerText = "None (Silence)";
-        return;
-    }
     const active = [];
     if (window.AudioEngine && window.AudioEngine.tracks) {
         const trackList = Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : Object.values(window.AudioEngine.tracks);
         trackList.forEach(t => {
-            if ((t.active || t.isPlaying) && t.volume > 0) {
+            if ((t.active || t.isPlaying) && t.volume > 0 && !isSpotifyUrl(t.url)) {
                 const trackDef = (appState.audioLibrary || []).find(l => l.id === t.id) || t;
                 active.push(`${trackDef.name || t.id} (${Math.round(t.volume * 100)}%)`);
             }
         });
+    }
+    if (window.SpotifyEmbedManager) {
+        for (const trackId of window.SpotifyEmbedManager.activePlayingIds) {
+            const trackDef = (appState.audioLibrary || []).find(l => l.id === trackId);
+            if (trackDef) {
+                active.push(`${trackDef.name} (Spotify)`);
+            }
+        }
     }
     if (active.length === 0) {
         summaryEl.innerText = "None (Silence)";
@@ -10557,6 +10891,9 @@ function stopAllAudio() {
     if (window.AudioEngine) {
         window.AudioEngine.stopAll();
     }
+    if (window.SpotifyEmbedManager) {
+        window.SpotifyEmbedManager.pauseAll();
+    }
     appState.activeAudioPresetId = null;
     const topPresetLabel = document.getElementById('topbar-audio-preset');
     if (topPresetLabel) topPresetLabel.textContent = 'Silence';
@@ -10568,11 +10905,16 @@ function fadeAllAudio() {
     if (window.AudioEngine) {
         showToast("Fading out audio layers...", "info");
         window.AudioEngine.fadeAll(() => {
+            if (window.SpotifyEmbedManager) {
+                window.SpotifyEmbedManager.pauseAll();
+            }
             appState.activeAudioPresetId = null;
             const topPresetLabel = document.getElementById('topbar-audio-preset');
             if (topPresetLabel) topPresetLabel.textContent = 'Silence';
             renderAudioMixer();
         });
+    } else if (window.SpotifyEmbedManager) {
+        window.SpotifyEmbedManager.pauseAll();
     }
 }
 
@@ -10585,7 +10927,23 @@ async function triggerQuickPreset(presetId) {
         window.AudioEngine.applyPreset(preset);
     }
 
-    // 2. Lighting configuration (Sequentialized dual-channel dispatch)
+    // 2. Spotify layers (Play Spotify tracks in this preset, pause others)
+    if (window.SpotifyEmbedManager && preset.layers) {
+        const library = appState.audioLibrary || [];
+        for (const [trackId, vol] of Object.entries(preset.layers)) {
+            const trackDef = library.find(l => l.id === trackId);
+            if (trackDef && isSpotifyUrl(trackDef.url)) {
+                window.SpotifyEmbedManager.play(trackId);
+            }
+        }
+        for (const track of library) {
+            if (isSpotifyUrl(track.url) && preset.layers[track.id] === undefined) {
+                window.SpotifyEmbedManager.pause(track.id);
+            }
+        }
+    }
+
+    // 3. Lighting configuration (Sequentialized dual-channel dispatch)
     if (window.LightingEngine) {
         if (preset.lighting) {
             // Channel 1: Overhead 60d S
@@ -10851,11 +11209,17 @@ function captureLiveAudioForPreset() {
     if (window.AudioEngine && window.AudioEngine.tracks) {
         const trackList = Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : Object.values(window.AudioEngine.tracks);
         trackList.forEach(t => {
-            if ((t.active || t.isPlaying) && t.volume > 0) {
+            if ((t.active || t.isPlaying) && t.volume > 0 && !isSpotifyUrl(t.url)) {
                 captured[t.id] = Math.round(t.volume * 100) / 100;
                 count++;
             }
         });
+    }
+    if (window.SpotifyEmbedManager) {
+        for (const trackId of window.SpotifyEmbedManager.activePlayingIds) {
+            captured[trackId] = 0.7;
+            count++;
+        }
     }
     _editingPresetLayers = captured;
     renderPresetEditorAudioLayers();
