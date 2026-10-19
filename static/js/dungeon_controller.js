@@ -20,6 +20,7 @@ window.DungeonController = (function() {
     let isPanning = false;
     let panStartX = 0;
     let panStartY = 0;
+    let graphInteractionInitialized = false;
 
     async function init() {
         await loadDungeons();
@@ -40,6 +41,9 @@ window.DungeonController = (function() {
                 const partyNode = (activeDungeon.nodes || []).find(n => n.id === activeDungeon.activeChamberId);
                 activeLevelId = (partyNode && partyNode.level) ? partyNode.level : (realLevel ? realLevel.id : 'all');
                 selectedNodeId = activeDungeon.activeChamberId || (activeDungeon.nodes && activeDungeon.nodes[0] ? activeDungeon.nodes[0].id : null);
+            } else {
+                activeLevelId = 'all';
+                selectedNodeId = null;
             }
 
             renderDungeonDropdown();
@@ -52,6 +56,8 @@ window.DungeonController = (function() {
     }
 
     function setupGraphInteraction() {
+        if (graphInteractionInitialized) return;
+        graphInteractionInitialized = true;
         ['dungeon-graph-viewport', 'cockpit-flowchart-viewport'].forEach(id => {
             const svgContainer = document.getElementById(id);
             if (!svgContainer) return;
@@ -151,6 +157,10 @@ window.DungeonController = (function() {
         ['dungeon-select-dropdown', 'cockpit-flyaway-dungeon-select'].forEach(id => {
             const select = document.getElementById(id);
             if (!select) return;
+            if (!dungeons || dungeons.length === 0) {
+                select.innerHTML = '<option value="">(No Dungeons Created)</option>';
+                return;
+            }
             select.innerHTML = dungeons.map(d => `
                 <option value="${d.id}" ${activeDungeon && activeDungeon.id === d.id ? 'selected' : ''}>
                     ${d.name} (${d.nodes ? d.nodes.length : 0} Chambers)
@@ -193,7 +203,11 @@ window.DungeonController = (function() {
             document.getElementById('dungeon-level-pills'),
             document.getElementById('cockpit-flyaway-level-pills')
         ].filter(Boolean);
-        if (containers.length === 0 || !activeDungeon) return;
+        if (containers.length === 0) return;
+        if (!activeDungeon) {
+            containers.forEach(c => { c.innerHTML = ''; });
+            return;
+        }
 
         const levels = activeDungeon.levels || [];
         const pillsHtml = levels.map(lvl => {
@@ -428,7 +442,11 @@ window.DungeonController = (function() {
             document.getElementById('dungeon-graph-world'),
             document.getElementById('cockpit-flowchart-world')
         ].filter(Boolean);
-        if (targets.length === 0 || !activeDungeon) return;
+        if (targets.length === 0) return;
+        if (!activeDungeon) {
+            targets.forEach(t => t.innerHTML = '');
+            return;
+        }
 
         const allNodes = activeDungeon.nodes || [];
         const isAll = !activeLevelId || activeLevelId === 'all' || activeLevelId.includes('-all');
@@ -619,7 +637,20 @@ window.DungeonController = (function() {
 
     function renderActiveChamberDossier() {
         const container = document.getElementById('dungeon-chamber-dossier');
-        if (!container || !activeDungeon) return;
+        if (!container) return;
+        if (!activeDungeon) {
+            container.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center p-8 text-center text-slate-500 space-y-3">
+                    <span class="text-3xl opacity-40">🏰</span>
+                    <p class="font-display font-medium text-slate-400">No dungeon selected</p>
+                    <p class="text-xs max-w-xs text-slate-500">Create a new dungeon or select one to explore rooms and navigate chambers.</p>
+                    <button onclick="window.DungeonController.openNewDungeonModal()" class="mt-2 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ledger-950 text-xs font-bold shadow transition">
+                        + Create Dungeon
+                    </button>
+                </div>
+            `;
+            return;
+        }
 
         const nodes = activeDungeon.nodes || [];
         const node = nodes.find(n => n.id === selectedNodeId) || nodes[0];
@@ -1635,6 +1666,28 @@ window.DungeonController = (function() {
         }
     }
 
+    async function deleteCurrentDungeon() {
+        if (!activeDungeon) {
+            if (window.showToast) window.showToast("No active dungeon to delete.", "info");
+            return;
+        }
+        if (!confirm(`Are you sure you want to delete dungeon "${activeDungeon.name}"? This action cannot be undone.`)) {
+            return;
+        }
+        try {
+            const res = await fetch(`/api/dungeons/${activeDungeon.id}`, { method: 'DELETE' });
+            if (res.ok) {
+                if (window.showToast) window.showToast(`Dungeon "${activeDungeon.name}" deleted.`, "info");
+                await loadDungeons();
+                if (typeof window.renderSessionCockpit === 'function' && window.appState && window.appState.activeTab === 'session') {
+                    window.renderSessionCockpit();
+                }
+            }
+        } catch (err) {
+            console.error("Error deleting dungeon:", err);
+        }
+    }
+
     return {
         init,
         loadDungeons,
@@ -1671,6 +1724,7 @@ window.DungeonController = (function() {
         adjustChamberMonsterCount,
         openNewDungeonModal,
         saveNewDungeon,
+        deleteCurrentDungeon,
         zoomIn,
         zoomOut,
         resetView,

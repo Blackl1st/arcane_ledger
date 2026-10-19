@@ -355,6 +355,7 @@ CAMPAIGN_SCOPED_FILES = {
     "travel.json",
     "tarokka.json",
     "dungeons.json",
+    "dungeons_meta.json",
 }
 
 DEFAULT_MODULES = {
@@ -548,10 +549,14 @@ def check_and_upgrade_cos_campaign(camp_dir: Path, camp_obj: Dict[str, Any]):
 
             # Upgrade Dungeons if missing
             dung_path = camp_dir / "dungeons.json"
+            dung_meta_path = camp_dir / "dungeons_meta.json"
             try:
                 if not dung_path.exists() or dung_path.stat().st_size < 100:
                     with open(dung_path, "w", encoding="utf-8") as f:
                         json.dump(cos_module_pack.get_cos_dungeons(), f, indent=2, ensure_ascii=False)
+                if not dung_meta_path.exists():
+                    with open(dung_meta_path, "w", encoding="utf-8") as f:
+                        json.dump({"activeDungeonId": "dungeon-ravenloft"}, f, indent=2, ensure_ascii=False)
             except Exception as e:
                 print(f"Error upgrading CoS dungeons: {e}")
 
@@ -639,6 +644,38 @@ def ensure_campaigns_system():
                         json.dump(initial_tl, f, indent=2, ensure_ascii=False)
     except Exception as e:
         print(f"Error ensuring timeline isolation: {e}")
+
+    # Ensure all campaign profiles have isolated dungeons.json and dungeons_meta.json
+    try:
+        manifest_data = get_campaigns_manifest() if CAMPAIGNS_MANIFEST_FILE.exists() else {}
+        campaign_list = manifest_data.get("campaigns", [])
+        for c_dir in CAMPAIGNS_DIR.iterdir():
+            if c_dir.is_dir():
+                c_id = c_dir.name
+                c_obj = next((c for c in campaign_list if c.get("id") == c_id), None)
+                is_cos_camp = False
+                if c_obj:
+                    mods = c_obj.get("modules", {})
+                    is_cos_camp = (
+                        c_obj.get("template") == "curse_of_strahd" or
+                        mods.get("curse_of_strahd") is True or
+                        mods.get("cos") is True or
+                        "strahd" in c_obj.get("name", "").lower() or
+                        "strahd" in c_obj.get("description", "").lower() or
+                        c_obj.get("preset") == "curse_of_strahd"
+                    )
+                dung_file = c_dir / "dungeons.json"
+                dung_meta_file = c_dir / "dungeons_meta.json"
+                if not dung_file.exists():
+                    init_dungeons = cos_module_pack.get_cos_dungeons() if is_cos_camp else []
+                    with open(dung_file, "w", encoding="utf-8") as f:
+                        json.dump(init_dungeons, f, indent=2, ensure_ascii=False)
+                if not dung_meta_file.exists():
+                    init_meta = {"activeDungeonId": "dungeon-ravenloft"} if is_cos_camp else {"activeDungeonId": None}
+                    with open(dung_meta_file, "w", encoding="utf-8") as f:
+                        json.dump(init_meta, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Error ensuring dungeons isolation in campaigns: {e}")
 
     # Ensure manifest exists
     if not CAMPAIGNS_MANIFEST_FILE.exists():
@@ -3206,6 +3243,7 @@ async def create_campaign(payload: CampaignCreate):
             "battlemap.json": get_default_battlemap_state(),
             "overworld.json": cos_module_pack.get_cos_barovia_overworld(),
             "dungeons.json": cos_module_pack.get_cos_dungeons(),
+            "dungeons_meta.json": {"activeDungeonId": "dungeon-ravenloft"},
             "faction_relations.json": {"relations": [], "turnHistory": []},
             "pantheon.json": [
                 {"id": "ptn-morninglord", "name": "The Morninglord", "domain": "Light, Life", "description": "The patron god of Barovia before the mists fell. Worshiped at the village church and St. Andral's in Vallaki."},
@@ -3256,6 +3294,8 @@ async def create_campaign(payload: CampaignCreate):
             "timeline.json": {"eras": [dict(e) for e in DEFAULT_TIMELINE_ERAS], "events": []},
             "party_stash.json": {"currency": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}, "items": []},
             "travel.json": get_default_travel_state(),
+            "dungeons.json": [],
+            "dungeons_meta.json": {"activeDungeonId": None},
         }
         for fname, dval in defaults.items():
             with open(camp_dir / fname, "w", encoding="utf-8") as f:
@@ -3543,7 +3583,8 @@ async def download_curse_of_strahd_official_pack():
             "world.json": {"customFactions": [], "customLocations": [], "useOnlyCustomFactions": False, "useOnlyCustomLocations": False},
             "party_stash.json": {"currency": {"pp": 0, "gp": 0, "sp": 0, "cp": 0}, "items": []},
             "battlemap.json": get_default_battlemap_state(),
-            "dungeons.json": cos_module_pack.get_cos_dungeons()
+            "dungeons.json": cos_module_pack.get_cos_dungeons(),
+            "dungeons_meta.json": {"activeDungeonId": "dungeon-ravenloft"}
         }
         for fname, dval in cos_data.items():
             zf.writestr(fname, json.dumps(dval, indent=2, ensure_ascii=False))
@@ -6952,14 +6993,20 @@ async def dismiss_broadcast():
 @app.get("/api/dungeons")
 async def get_dungeons():
     dungeons = read_json("dungeons.json", None)
-    if dungeons is None or not isinstance(dungeons, list) or len(dungeons) == 0:
-        dungeons = cos_module_pack.get_cos_dungeons()
+    if dungeons is None:
+        if is_active_campaign_cos():
+            dungeons = cos_module_pack.get_cos_dungeons()
+        else:
+            dungeons = []
+        write_json("dungeons.json", dungeons)
+    elif not isinstance(dungeons, list):
+        dungeons = []
         write_json("dungeons.json", dungeons)
     
-    meta = read_json("dungeons_meta.json", {"activeDungeonId": dungeons[0]["id"] if dungeons else None})
+    meta = read_json("dungeons_meta.json", {})
     active_id = meta.get("activeDungeonId")
-    if not any(d.get("id") == active_id for d in dungeons) and dungeons:
-        active_id = dungeons[0]["id"]
+    if not any(d.get("id") == active_id for d in dungeons):
+        active_id = dungeons[0]["id"] if dungeons else None
         meta["activeDungeonId"] = active_id
         write_json("dungeons_meta.json", meta)
     
@@ -6988,14 +7035,24 @@ async def save_or_update_dungeon(dungeon: Dict[str, Any]):
     else:
         dungeons.append(dungeon)
     write_json("dungeons.json", dungeons)
-    return {"status": "success", "dungeon": dungeon, "dungeons": dungeons}
+
+    meta = read_json("dungeons_meta.json", {})
+    if not meta.get("activeDungeonId") or not any(d.get("id") == meta.get("activeDungeonId") for d in dungeons):
+        meta["activeDungeonId"] = dungeon["id"]
+        write_json("dungeons_meta.json", meta)
+
+    return {"status": "success", "dungeon": dungeon, "dungeons": dungeons, "activeDungeonId": meta.get("activeDungeonId")}
 
 @app.delete("/api/dungeons/{dungeon_id}")
 async def delete_dungeon(dungeon_id: str):
     dungeons = read_json("dungeons.json", [])
     dungeons = [d for d in dungeons if d.get("id") != dungeon_id]
     write_json("dungeons.json", dungeons)
-    return {"status": "success", "dungeons": dungeons}
+    meta = read_json("dungeons_meta.json", {})
+    if meta.get("activeDungeonId") == dungeon_id:
+        meta["activeDungeonId"] = dungeons[0]["id"] if dungeons else None
+        write_json("dungeons_meta.json", meta)
+    return {"status": "success", "dungeons": dungeons, "activeDungeonId": meta.get("activeDungeonId")}
 
 @app.post("/api/dungeons/move-party")
 async def dungeon_move_party(payload: Dict[str, Any]):
@@ -7311,6 +7368,7 @@ async def create_snapshot(payload: SnapshotCreate = None):
         "secrets": read_json("secrets.json", []),
         "handouts": read_json("handouts.json", []),
         "dungeons": read_json("dungeons.json", []),
+        "dungeonsMeta": read_json("dungeons_meta.json", {}),
         "lighting": read_json("lighting.json", {})
     }
 
@@ -7347,6 +7405,7 @@ async def restore_snapshot(payload: Dict[str, Any]):
     if "secrets" in data: write_json("secrets.json", data["secrets"])
     if "handouts" in data: write_json("handouts.json", data["handouts"])
     if "dungeons" in data: write_json("dungeons.json", data["dungeons"])
+    if "dungeonsMeta" in data: write_json("dungeons_meta.json", data["dungeonsMeta"])
     if "broadcast" in data: write_json("broadcast.json", data["broadcast"])
     if "audioLibrary" in data: write_json("audio_library.json", data["audioLibrary"])
     if "audioPresets" in data: write_json("audio_presets.json", data["audioPresets"])

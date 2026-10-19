@@ -14195,6 +14195,12 @@ async function switchCampaign(campaignId) {
             if (window.BattlemapController) {
                 window.BattlemapController.init();
             }
+            if (window.DungeonController && typeof window.DungeonController.loadDungeons === 'function') {
+                await window.DungeonController.loadDungeons();
+            }
+            if (typeof renderSessionCockpit === 'function') {
+                renderSessionCockpit();
+            }
             showToast(`Switched to campaign: ${data.campaign?.name || campaignId}`, 'success');
         } else {
             showToast('Failed to switch campaign.', 'error');
