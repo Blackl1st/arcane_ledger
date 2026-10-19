@@ -10928,16 +10928,17 @@ async function triggerQuickPreset(presetId) {
     }
 
     // 2. Spotify layers (Play Spotify tracks in this preset, pause others)
-    if (window.SpotifyEmbedManager && preset.layers) {
+    if (window.SpotifyEmbedManager) {
+        const layers = preset.layers || {};
         const library = appState.audioLibrary || [];
-        for (const [trackId, vol] of Object.entries(preset.layers)) {
+        for (const [trackId, vol] of Object.entries(layers)) {
             const trackDef = library.find(l => l.id === trackId);
             if (trackDef && isSpotifyUrl(trackDef.url)) {
                 window.SpotifyEmbedManager.play(trackId);
             }
         }
         for (const track of library) {
-            if (isSpotifyUrl(track.url) && preset.layers[track.id] === undefined) {
+            if (isSpotifyUrl(track.url) && layers[track.id] === undefined) {
                 window.SpotifyEmbedManager.pause(track.id);
             }
         }
@@ -11192,8 +11193,18 @@ function addSelectedTrackToPresetEditor() {
 
 function removeTrackFromPresetEditor(trackId) {
     delete _editingPresetLayers[trackId];
+    if (window.AudioEngine) {
+        window.AudioEngine.pauseTrack(trackId);
+    }
+    if (window.SpotifyEmbedManager) {
+        window.SpotifyEmbedManager.pause(trackId);
+    }
     renderPresetEditorAudioLayers();
     populatePresetAddTrackSelect();
+    if (typeof updateActiveLayersSummary === 'function') {
+        updateActiveLayersSummary();
+    }
+    renderAudioTracks();
 }
 
 function setPresetTrackVolume(trackId, val) {
@@ -11419,9 +11430,31 @@ async function savePresetFromModal() {
             closeModal('save-preset-modal');
             renderAudioPresets();
 
+            // Halt playback of any tracks removed from this preset if they are still playing
+            if (window.AudioEngine && window.AudioEngine.tracks) {
+                const trackList = Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : Object.values(window.AudioEngine.tracks);
+                trackList.forEach(tr => {
+                    if (targetPreset.layers[tr.id] === undefined && tr.active) {
+                        window.AudioEngine.pauseTrack(tr.id);
+                    }
+                });
+            }
+            if (window.SpotifyEmbedManager) {
+                for (const playingId of Array.from(window.SpotifyEmbedManager.activePlayingIds)) {
+                    if (targetPreset.layers[playingId] === undefined) {
+                        window.SpotifyEmbedManager.pause(playingId);
+                    }
+                }
+            }
+
             // If the preset being edited is currently active, re-apply it live
             if (appState.activeAudioPresetId === targetPreset.id) {
                 await triggerQuickPreset(targetPreset.id);
+            }
+
+            renderAudioTracks();
+            if (typeof updateActiveLayersSummary === 'function') {
+                updateActiveLayersSummary();
             }
 
             showToast(isNew ? `Scene Preset "${name}" created!` : `Scene Preset "${name}" updated!`, "success");
@@ -11465,9 +11498,31 @@ async function resetPresetToDefault() {
             closeModal('save-preset-modal');
             renderAudioPresets();
 
+            // Clean up any tracks not in defaultPreset.layers
+            if (window.AudioEngine && window.AudioEngine.tracks) {
+                const trackList = Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks : Object.values(window.AudioEngine.tracks);
+                trackList.forEach(tr => {
+                    if (defaultPreset.layers && defaultPreset.layers[tr.id] === undefined && tr.active) {
+                        window.AudioEngine.pauseTrack(tr.id);
+                    }
+                });
+            }
+            if (window.SpotifyEmbedManager) {
+                for (const playingId of Array.from(window.SpotifyEmbedManager.activePlayingIds)) {
+                    if (!defaultPreset.layers || defaultPreset.layers[playingId] === undefined) {
+                        window.SpotifyEmbedManager.pause(playingId);
+                    }
+                }
+            }
+
             // If currently active, re-trigger with restored defaults
             if (appState.activeAudioPresetId === presetId) {
                 await triggerQuickPreset(presetId);
+            }
+
+            renderAudioTracks();
+            if (typeof updateActiveLayersSummary === 'function') {
+                updateActiveLayersSummary();
             }
 
             showToast(`Preset "${defaultPreset.name}" restored to factory defaults!`, "success");
@@ -11487,6 +11542,7 @@ function saveCurrentMixAsPreset() {
 
 async function deleteAudioPreset(presetId) {
     if (!confirm("Are you sure you want to remove this preset?")) return;
+    const wasActive = appState.activeAudioPresetId === presetId;
     appState.audioPresets = appState.audioPresets.filter(p => p.id !== presetId);
     try {
         const res = await fetch('/api/audio/presets', {
@@ -11495,7 +11551,11 @@ async function deleteAudioPreset(presetId) {
             body: JSON.stringify(appState.audioPresets)
         });
         if (res.ok) {
-            renderAudioPresets();
+            if (wasActive) {
+                stopAllAudio();
+            } else {
+                renderAudioPresets();
+            }
             showToast("Preset removed.", "info");
         }
     } catch (e) {

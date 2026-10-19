@@ -68,7 +68,7 @@ class AudioLayerEngine {
     }
 
     playTrack(id) {
-        const track = this.tracks.find(t => t.id === id);
+        const track = Array.isArray(this.tracks) ? this.tracks.find(t => t.id === id) : null;
         if (!track) return;
 
         track.active = true;
@@ -82,23 +82,37 @@ class AudioLayerEngine {
         // Handle browser autoplay policy gracefully
         const playPromise = el.play();
         if (playPromise !== undefined) {
-            playPromise.catch(err => {
+            playPromise.then(() => {
+                if (!track.active) {
+                    try {
+                        el.pause();
+                        el.currentTime = 0;
+                    } catch (e) {}
+                }
+            }).catch(err => {
                 console.warn(`Autoplay blocked for track ${track.name}, will play on user gesture:`, err);
             });
         }
     }
 
     pauseTrack(id) {
-        const track = this.tracks.find(t => t.id === id);
-        if (!track) return;
-
-        track.active = false;
-        if (this._isSpotify(track.url)) {
+        const track = Array.isArray(this.tracks) ? this.tracks.find(t => t.id === id) : null;
+        if (track) {
+            track.active = false;
+        }
+        if (track && this._isSpotify(track.url)) {
             return;
         }
         if (this.audioElements.has(id)) {
             const el = this.audioElements.get(id);
-            if (el) el.pause();
+            if (el) {
+                try {
+                    el.pause();
+                    el.currentTime = 0;
+                } catch (e) {
+                    console.warn(`Error pausing audio track ${id}:`, e);
+                }
+            }
         }
     }
 
@@ -137,8 +151,14 @@ class AudioLayerEngine {
     // Stop all active tracks immediately
     stopAll() {
         this.activePresetId = null;
+        for (const [id, el] of this.audioElements.entries()) {
+            try {
+                el.pause();
+                el.currentTime = 0;
+            } catch (e) {}
+        }
         for (const track of this.tracks) {
-            this.pauseTrack(track.id);
+            track.active = false;
         }
     }
 
@@ -182,6 +202,16 @@ class AudioLayerEngine {
         if (!preset || !preset.layers) return;
         this.activePresetId = preset.id;
         const layerMap = preset.layers; // { trackId: volume }
+
+        // Explicitly halt all audio elements not in the preset layers
+        for (const [id, el] of this.audioElements.entries()) {
+            if (layerMap[id] === undefined) {
+                try {
+                    el.pause();
+                    el.currentTime = 0;
+                } catch (e) {}
+            }
+        }
 
         for (const track of this.tracks) {
             if (layerMap[track.id] !== undefined) {
