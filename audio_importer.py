@@ -237,7 +237,7 @@ class AudioDownloadWorker:
         if "error" in preview:
             return {"error": preview["error"]}
 
-        cat = category if category in ATMOSPHERE_CATEGORIES else (preview.get("suggested_category") or "Ambiance")
+        cat = (category or "").strip() or (preview.get("suggested_category") or "Ambiance")
         all_tags = list(tags or [])
         if cat not in all_tags:
             all_tags.insert(0, cat)

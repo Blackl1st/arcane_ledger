@@ -3727,26 +3727,17 @@
                     </div>
                 </div>
 
-                <!-- Bottom Filter Bar: Category Filter Pills with Live Track Counts -->
-                <div class="flex items-center justify-between gap-2 px-1">
-                    <div id="audio-category-filters" class="flex items-center gap-1.5 flex-wrap text-xs">
-                        <button onclick="filterAudioCategory('all')" id="cat-filter-all" class="cat-pill px-3 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold text-[11px] transition shadow-sm">
-                            All <span id="cat-count-all" class="ml-1 text-[10px] opacity-80">(0)</span>
-                        </button>
-                        <button onclick="filterAudioCategory('Weather')" id="cat-filter-Weather" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
-                            🌧️ Weather <span id="cat-count-Weather" class="ml-1 text-[10px] opacity-75">(0)</span>
-                        </button>
-                        <button onclick="filterAudioCategory('Ambiance')" id="cat-filter-Ambiance" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
-                            🌲 Ambiance <span id="cat-count-Ambiance" class="ml-1 text-[10px] opacity-75">(0)</span>
-                        </button>
-                        <button onclick="filterAudioCategory('Dungeon')" id="cat-filter-Dungeon" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
-                            💀 Dungeon <span id="cat-count-Dungeon" class="ml-1 text-[10px] opacity-75">(0)</span>
-                        </button>
-                        <button onclick="filterAudioCategory('Combat')" id="cat-filter-Combat" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
-                            ⚔️ Combat <span id="cat-count-Combat" class="ml-1 text-[10px] opacity-75">(0)</span>
-                        </button>
-                        <button onclick="filterAudioCategory('Music')" id="cat-filter-Music" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
-                            🎵 Music <span id="cat-count-Music" class="ml-1 text-[10px] opacity-75">(0)</span>
+                <!-- Bottom Filter Bar: Category Filter Pills with Live Track Counts & Manage Types -->
+                <div class="flex items-center justify-between gap-2 px-1 flex-wrap">
+                    <div class="flex items-center gap-1.5 flex-wrap text-xs">
+                        <div id="audio-category-filters" class="flex items-center gap-1.5 flex-wrap">
+                            <button onclick="filterAudioCategory('all')" id="cat-filter-all" class="cat-pill px-3 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold text-[11px] transition shadow-sm">
+                                All <span id="cat-count-all" class="ml-1 text-[10px] opacity-80">(0)</span>
+                            </button>
+                        </div>
+                        <button type="button" onclick="openManageSoundTypesModal()" title="Add, edit, or customize sound types & categories" class="px-2.5 py-1 rounded-lg bg-ledger-900 hover:bg-ledger-850 text-slate-400 hover:text-amber-400 border border-ledger-800 text-[11px] font-semibold transition flex items-center gap-1 shrink-0 shadow-sm">
+                            <span>🏷️</span>
+                            <span>Manage Types</span>
                         </button>
                     </div>
                     <span id="audio-tracks-count-label" class="text-[11px] font-mono text-slate-500 hidden sm:inline-block">Showing sounds</span>
@@ -6143,28 +6134,9 @@
                     </div>
                     <input type="hidden" id="import-audio-category" value="Ambiance">
                     
-                    <!-- 5 Primary Category Pills -->
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                        <button type="button" onclick="selectImportCategory('Weather')" id="import-tag-Weather" class="import-tag-btn p-2 rounded-xl bg-ledger-950 border border-ledger-750 hover:border-sky-500/80 text-slate-300 hover:text-sky-300 font-bold text-[11px] flex flex-col items-center gap-1 transition">
-                            <span class="text-base">🌧️</span>
-                            <span>Weather</span>
-                        </button>
-                        <button type="button" onclick="selectImportCategory('Ambiance')" id="import-tag-Ambiance" class="import-tag-btn p-2 rounded-xl bg-purple-950/80 border-2 border-purple-400 text-purple-200 font-bold text-[11px] flex flex-col items-center gap-1 shadow transition">
-                            <span class="text-base">🌲</span>
-                            <span>Ambiance</span>
-                        </button>
-                        <button type="button" onclick="selectImportCategory('Dungeon')" id="import-tag-Dungeon" class="import-tag-btn p-2 rounded-xl bg-ledger-950 border border-ledger-750 hover:border-rose-500/80 text-slate-300 hover:text-rose-300 font-bold text-[11px] flex flex-col items-center gap-1 transition">
-                            <span class="text-base">💀</span>
-                            <span>Dungeon</span>
-                        </button>
-                        <button type="button" onclick="selectImportCategory('Combat')" id="import-tag-Combat" class="import-tag-btn p-2 rounded-xl bg-ledger-950 border border-ledger-750 hover:border-amber-500/80 text-slate-300 hover:text-amber-300 font-bold text-[11px] flex flex-col items-center gap-1 transition">
-                            <span class="text-base">⚔️</span>
-                            <span>Combat</span>
-                        </button>
-                        <button type="button" onclick="selectImportCategory('Music')" id="import-tag-Music" class="import-tag-btn p-2 rounded-xl bg-ledger-950 border border-ledger-750 hover:border-emerald-500/80 text-slate-300 hover:text-emerald-300 font-bold text-[11px] flex flex-col items-center gap-1 transition col-span-2 sm:col-span-1">
-                            <span class="text-base">🎵</span>
-                            <span>Music</span>
-                        </button>
+                    <!-- Dynamic Primary Category Pills -->
+                    <div id="import-audio-categories-container" class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                        <!-- Populated dynamically via renderImportCategoryButtons() -->
                     </div>
                 </div>
 
@@ -6219,6 +6191,164 @@
                 </button>
                 <button type="button" id="import-audio-submit-btn" onclick="startAudioDownloadAndImport()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 flex items-center gap-1.5 transition">
                     <span>📥</span> <span>Start Download & Import</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Sound Types & Categories Modal -->
+    <div id="manage-sound-types-modal" onclick="if(event.target === this) closeModal('manage-sound-types-modal')" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-2xl p-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300">🏷️</span>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-100">Sound Types & Categories</h3>
+                        <p class="text-[11px] text-slate-400">Add, edit, or customize atmosphere categories</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('manage-sound-types-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+
+            <!-- Add New Type Bar -->
+            <div class="bg-ledger-950 p-3.5 rounded-xl border border-ledger-800 space-y-2">
+                <div class="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                    <span>Add New Sound Type</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="new-sound-type-icon" type="text" maxlength="4" value="🎵" title="Emoji Icon" class="w-12 text-center bg-ledger-900 border border-ledger-750 focus:border-amber-500 rounded-lg py-1.5 text-base focus:outline-none">
+                    <input id="new-sound-type-name" type="text" placeholder="Type name (e.g. Tavern, City, Horror, Spells)..." class="flex-1 bg-ledger-900 border border-ledger-750 focus:border-amber-500 rounded-lg px-3 py-1.5 text-slate-200 text-xs focus:outline-none" onkeydown="if(event.key==='Enter')addNewSoundType()">
+                    <button type="button" onclick="addNewSoundType()" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ledger-950 font-bold text-xs transition shadow-sm shrink-0">
+                        + Add Type
+                    </button>
+                </div>
+                <!-- Quick Emoji Suggestions -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span class="text-[10px] text-slate-500">Quick icons:</span>
+                    <button type="button" onclick="setNewTypeIcon('🍺')" class="hover:scale-125 transition text-xs">🍺</button>
+                    <button type="button" onclick="setNewTypeIcon('🏙️')" class="hover:scale-125 transition text-xs">🏙️</button>
+                    <button type="button" onclick="setNewTypeIcon('🕯️')" class="hover:scale-125 transition text-xs">🕯️</button>
+                    <button type="button" onclick="setNewTypeIcon('🔮')" class="hover:scale-125 transition text-xs">🔮</button>
+                    <button type="button" onclick="setNewTypeIcon('🐉')" class="hover:scale-125 transition text-xs">🐉</button>
+                    <button type="button" onclick="setNewTypeIcon('🌊')" class="hover:scale-125 transition text-xs">🌊</button>
+                    <button type="button" onclick="setNewTypeIcon('🐎')" class="hover:scale-125 transition text-xs">🐎</button>
+                    <button type="button" onclick="setNewTypeIcon('🔔')" class="hover:scale-125 transition text-xs">🔔</button>
+                    <button type="button" onclick="setNewTypeIcon('🎭')" class="hover:scale-125 transition text-xs">🎭</button>
+                    <button type="button" onclick="setNewTypeIcon('🌧️')" class="hover:scale-125 transition text-xs">🌧️</button>
+                    <button type="button" onclick="setNewTypeIcon('🌲')" class="hover:scale-125 transition text-xs">🌲</button>
+                    <button type="button" onclick="setNewTypeIcon('💀')" class="hover:scale-125 transition text-xs">💀</button>
+                    <button type="button" onclick="setNewTypeIcon('⚔️')" class="hover:scale-125 transition text-xs">⚔️</button>
+                    <button type="button" onclick="setNewTypeIcon('🎵')" class="hover:scale-125 transition text-xs">🎵</button>
+                </div>
+            </div>
+
+            <!-- Current Types List -->
+            <div>
+                <label class="block text-[11px] font-semibold text-slate-300 mb-2">Active Sound Types in Library</label>
+                <div id="sound-types-manage-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <!-- Populated dynamically via renderSoundTypesManageList() -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-between pt-3 border-t border-ledger-700">
+                <button type="button" onclick="resetDefaultSoundTypes()" class="text-[11px] text-slate-500 hover:text-amber-400 underline transition">
+                    Restore Defaults (Weather, Ambiance, Dungeon, Combat, Music)
+                </button>
+                <button type="button" onclick="closeModal('manage-sound-types-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Sound & Tags Modal -->
+    <div id="edit-sound-tags-modal" onclick="if(event.target === this) closeModal('edit-sound-tags-modal')" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-amber-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <span id="edit-track-modal-icon-badge" class="text-2xl p-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300">🎵</span>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-100">Edit Sound & Tags</h3>
+                        <p id="edit-track-modal-subtitle" class="text-[11px] text-slate-400">Modify title, sound type, and secondary tags</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('edit-sound-tags-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+
+            <input type="hidden" id="edit-track-id">
+
+            <div class="space-y-3.5">
+                <!-- Sound Title -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Sound Name / Title</label>
+                    <div class="flex items-center gap-2">
+                        <input id="edit-track-icon" type="text" maxlength="4" class="w-12 text-center bg-ledger-950 border border-ledger-750 focus:border-amber-500 rounded-xl py-2 text-base focus:outline-none" title="Sound Icon Emoji">
+                        <input id="edit-track-name" type="text" placeholder="Sound name..." class="flex-1 bg-ledger-950 border border-ledger-750 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Primary Sound Type (Category) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[11px] font-semibold text-slate-300">Sound Type (Primary Category)</label>
+                        <button type="button" onclick="openManageSoundTypesModal()" class="text-[10px] text-amber-400 hover:underline">+ New Type</button>
+                    </div>
+                    <select id="edit-track-category" class="w-full bg-ledger-950 text-slate-200 border border-ledger-750 focus:border-amber-500 rounded-xl px-3 py-2 text-xs focus:outline-none">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Secondary Tags Editor -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Secondary Tags (Searchable)</label>
+                    <div class="bg-ledger-950 border border-ledger-750 focus-within:border-amber-500 rounded-xl p-2.5 transition space-y-2">
+                        <!-- Tag Chips List -->
+                        <div id="edit-track-tags-chips" class="flex items-center gap-1.5 flex-wrap min-h-[28px]">
+                            <!-- Chips rendered dynamically -->
+                        </div>
+                        <!-- Tag Input Field -->
+                        <div class="flex items-center gap-2 pt-1 border-t border-ledger-800">
+                            <span class="text-slate-500 text-xs">🏷️</span>
+                            <input id="edit-track-new-tag-input" type="text" placeholder="Type a tag and press Enter or comma..." class="flex-1 bg-transparent text-slate-200 placeholder-slate-500 text-xs focus:outline-none" onkeydown="handleTrackTagInputKeyDown(event)">
+                            <button type="button" onclick="addTrackTagFromInput()" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-amber-300 text-[10px] font-semibold transition">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Quick Tag Suggestions -->
+                    <div class="flex items-center gap-1.5 flex-wrap mt-2">
+                        <span class="text-[10px] text-slate-500">Suggestions:</span>
+                        <button type="button" onclick="quickAddSuggestedTag('Tavern')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Tavern</button>
+                        <button type="button" onclick="quickAddSuggestedTag('City')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ City</button>
+                        <button type="button" onclick="quickAddSuggestedTag('Rain')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Rain</button>
+                        <button type="button" onclick="quickAddSuggestedTag('Night')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Night</button>
+                        <button type="button" onclick="quickAddSuggestedTag('Day')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Day</button>
+                        <button type="button" onclick="quickAddSuggestedTag('Boss')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Boss</button>
+                        <button type="button" onclick="quickAddSuggestedTag('Stealth')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Stealth</button>
+                        <button type="button" onclick="quickAddSuggestedTag('Acoustic')" class="px-2 py-0.5 rounded-full bg-ledger-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-ledger-750 text-[10px] transition">+ Acoustic</button>
+                    </div>
+                </div>
+
+                <!-- Default Volume Slider -->
+                <div>
+                    <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1 font-mono">
+                        <span class="font-semibold text-slate-300">Default Layer Volume</span>
+                        <span id="edit-track-vol-text" class="font-bold text-amber-400">70%</span>
+                    </div>
+                    <input id="edit-track-vol-slider" type="range" min="0" max="100" value="70" oninput="document.getElementById('edit-track-vol-text').innerText = this.value + '%'" class="w-full h-1.5 bg-ledger-950 rounded-lg accent-amber-500 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-between pt-3 border-t border-ledger-700">
+                <button type="button" onclick="closeModal('edit-sound-tags-modal')" class="px-4 py-2 rounded-xl bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+                    Cancel
+                </button>
+                <button type="button" onclick="saveSoundTrackEdit()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ledger-950 font-bold text-xs shadow-md shadow-amber-950/40 flex items-center gap-1.5 transition">
+                    <span>💾</span> <span>Save Changes</span>
                 </button>
             </div>
         </div>
@@ -9154,7 +9284,7 @@
     <script src="/static/js/lighting_engine.js?v=2.5"></script>
     <script src="/static/js/npc_data.js?v=2.5"></script>
     <script src="/static/js/loot_data.js?v=2.5"></script>
-    <script src="/static/js/dashboard.js?v=4.0"></script>
+    <script src="/static/js/dashboard.js?v=4.1"></script>
     <script src="/static/js/battlemap_controller.js?v=2.7"></script>
     <script src="/static/js/dungeon_controller.js?v=1.1"></script>
 </body>

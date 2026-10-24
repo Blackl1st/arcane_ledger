@@ -2877,6 +2877,39 @@ def ensure_party_inventory_defaults(party: List[Dict[str, Any]]) -> List[Dict[st
         write_json("party.json", party)
     return party
 
+DEFAULT_AUDIO_CATEGORIES = [
+    {"id": "Weather", "name": "Weather", "icon": "🌧️"},
+    {"id": "Ambiance", "name": "Ambiance", "icon": "🌲"},
+    {"id": "Dungeon", "name": "Dungeon", "icon": "💀"},
+    {"id": "Combat", "name": "Combat", "icon": "⚔️"},
+    {"id": "Music", "name": "Music", "icon": "🎵"},
+    {"id": "Tension", "name": "Tension", "icon": "🕯️"}
+]
+
+def get_audio_categories_list() -> List[Dict[str, Any]]:
+    cats = read_json("audio_categories.json", [])
+    if not cats:
+        cats = [dict(c) for c in DEFAULT_AUDIO_CATEGORIES]
+        write_json("audio_categories.json", cats)
+    
+    # Auto-register any categories that exist on tracks in audio_library.json
+    library = read_json("audio_library.json", [])
+    existing_cat_names = set(c.get("name") for c in cats if isinstance(c, dict) and c.get("name"))
+    added = False
+    for t in library:
+        c_name = t.get("category")
+        if c_name and c_name not in existing_cat_names:
+            cats.append({
+                "id": c_name,
+                "name": c_name,
+                "icon": t.get("icon") or "🔊"
+            })
+            existing_cat_names.add(c_name)
+            added = True
+    if added:
+        write_json("audio_categories.json", cats)
+    return cats
+
 @app.get("/api/state")
 async def get_full_state():
     party = read_json("party.json", [])
@@ -2972,6 +3005,7 @@ async def get_full_state():
         "broadcast": broadcast,
         "audioLibrary": audio_library,
         "audioPresets": audio_presets,
+        "audioCategories": get_audio_categories_list(),
         "spells": spells,
         "items": items,
         "encounters": encounters,
@@ -7425,6 +7459,99 @@ async def restore_snapshot(payload: Dict[str, Any]):
 async def get_audio_library():
     return read_json("audio_library.json", [])
 
+# Audio Categories Management
+@app.get("/api/audio/categories")
+async def get_audio_categories():
+    return get_audio_categories_list()
+
+class AudioCategoryRequest(BaseModel):
+    name: str
+    icon: Optional[str] = "🎵"
+
+@app.post("/api/audio/categories")
+async def save_audio_categories(categories: List[Dict[str, Any]]):
+    write_json("audio_categories.json", categories)
+    return {"status": "success", "categories": categories}
+
+@app.post("/api/audio/category")
+async def add_or_update_audio_category(req: AudioCategoryRequest):
+    cats = get_audio_categories_list()
+    clean_name = req.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Category name cannot be empty.")
+    
+    existing = next((c for c in cats if c.get("name", "").lower() == clean_name.lower()), None)
+    if existing:
+        if req.icon:
+            existing["icon"] = req.icon
+    else:
+        cats.append({
+            "id": clean_name,
+            "name": clean_name,
+            "icon": req.icon or "🎵"
+        })
+    write_json("audio_categories.json", cats)
+    return {"status": "success", "categories": cats}
+
+class UpdateAudioCategoryRequest(BaseModel):
+    name: str
+    icon: Optional[str] = "🎵"
+
+@app.put("/api/audio/category/{old_name}")
+async def rename_audio_category(old_name: str, req: UpdateAudioCategoryRequest):
+    cats = get_audio_categories_list()
+    new_name = req.name.strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="New category name cannot be empty.")
+    
+    cat = next((c for c in cats if c.get("name") == old_name), None)
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    
+    cat["name"] = new_name
+    cat["id"] = new_name
+    if req.icon:
+        cat["icon"] = req.icon
+    
+    write_json("audio_categories.json", cats)
+    
+    # Update audio library tracks if category was renamed
+    library = read_json("audio_library.json", [])
+    if old_name != new_name:
+        for t in library:
+            if t.get("category") == old_name:
+                t["category"] = new_name
+                if req.icon and (not t.get("icon") or t.get("icon") == cat.get("icon")):
+                    t["icon"] = req.icon
+            if isinstance(t.get("tags"), list):
+                t["tags"] = [new_name if tag == old_name else tag for tag in t["tags"]]
+        write_json("audio_library.json", library)
+    
+    return {"status": "success", "categories": cats, "library": library}
+
+@app.delete("/api/audio/category/{cat_name}")
+async def delete_audio_category(cat_name: str, reassign_to: Optional[str] = "Ambiance"):
+    cats = get_audio_categories_list()
+    cats = [c for c in cats if c.get("name") != cat_name]
+    if not cats:
+        cats = [dict(c) for c in DEFAULT_AUDIO_CATEGORIES]
+    write_json("audio_categories.json", cats)
+
+    target_cat = reassign_to or "Ambiance"
+    library = read_json("audio_library.json", [])
+    for t in library:
+        if t.get("category") == cat_name:
+            t["category"] = target_cat
+    write_json("audio_library.json", library)
+
+    return {"status": "success", "categories": cats, "library": library}
+
+@app.post("/api/audio/categories/reset")
+async def reset_audio_categories():
+    cats = [dict(c) for c in DEFAULT_AUDIO_CATEGORIES]
+    write_json("audio_categories.json", cats)
+    return {"status": "success", "categories": cats}
+
 @app.post("/api/audio/track")
 async def save_audio_track(track: Dict[str, Any]):
     library = read_json("audio_library.json", [])
@@ -7495,6 +7622,15 @@ class AudioImportStartRequest(BaseModel):
 class AudioTrackTagRequest(BaseModel):
     category: str
     tags: Optional[List[str]] = None
+    name: Optional[str] = None
+    icon: Optional[str] = None
+
+class AudioTrackEditRequest(BaseModel):
+    name: Optional[str] = None
+    category: str
+    tags: Optional[List[str]] = None
+    icon: Optional[str] = None
+    volume: Optional[float] = None
 
 @app.post("/api/audio/import/preview")
 async def preview_audio_import(req: AudioImportPreviewRequest):
@@ -7538,11 +7674,37 @@ async def quick_tag_audio_track(track_id: str, req: AudioTrackTagRequest):
     track["category"] = req.category
     if req.tags is not None:
         track["tags"] = req.tags
+    if req.name is not None and req.name.strip():
+        track["name"] = req.name.strip()
+    if req.icon is not None and req.icon.strip():
+        track["icon"] = req.icon.strip()
     
-    # Auto-adjust icon if still using default
-    cat_icons = audio_importer.DEFAULT_CATEGORY_ICONS
-    if track.get("category") in cat_icons:
-        track["icon"] = cat_icons[track["category"]]
+    # Auto-adjust icon if still using default or empty
+    if not track.get("icon"):
+        cat_icons = audio_importer.DEFAULT_CATEGORY_ICONS
+        if track.get("category") in cat_icons:
+            track["icon"] = cat_icons[track["category"]]
+
+    write_json("audio_library.json", library)
+    return {"status": "success", "track": track, "library": library}
+
+@app.post("/api/audio/track/{track_id}/edit")
+async def edit_audio_track(track_id: str, req: AudioTrackEditRequest):
+    library = read_json("audio_library.json", [])
+    track = next((t for t in library if t.get("id") == track_id), None)
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found.")
+
+    if req.name is not None and req.name.strip():
+        track["name"] = req.name.strip()
+    track["category"] = req.category
+    if req.tags is not None:
+        track["tags"] = req.tags
+    if req.icon is not None and req.icon.strip():
+        track["icon"] = req.icon.strip()
+    if req.volume is not None:
+        track["volume"] = req.volume
+        track["defaultVolume"] = req.volume
 
     write_json("audio_library.json", library)
     return {"status": "success", "track": track, "library": library}

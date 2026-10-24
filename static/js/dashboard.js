@@ -102,6 +102,14 @@ let appState = {
     broadcast: null,
     audioLibrary: [],
     audioPresets: [],
+    audioCategories: [
+        { id: "Weather", name: "Weather", icon: "🌧️" },
+        { id: "Ambiance", name: "Ambiance", icon: "🌲" },
+        { id: "Dungeon", name: "Dungeon", icon: "💀" },
+        { id: "Combat", name: "Combat", icon: "⚔️" },
+        { id: "Music", name: "Music", icon: "🎵" },
+        { id: "Tension", name: "Tension", icon: "🕯️" }
+    ],
     audioActiveCategory: 'all',
     audioViewMode: (function() { try { return localStorage.getItem('arcane_audio_view_mode') || 'compact'; } catch(e) { return 'compact'; } })(),
     audioSearchQuery: '',
@@ -266,6 +274,9 @@ async function fetchFullState() {
             }
             if (Array.isArray(data.audioPresets)) {
                 appState.audioPresets = data.audioPresets;
+            }
+            if (Array.isArray(data.audioCategories) && data.audioCategories.length > 0) {
+                appState.audioCategories = data.audioCategories;
             }
             if (Array.isArray(data.spells) && data.spells.length > 0) {
                 appState.spells = data.spells;
@@ -10305,6 +10316,7 @@ function saveMonsterArtCustom() {
 // -----------------------------------------------------------------------------
 function renderAudioMixer() {
     updateAudioViewModeButtons();
+    renderAudioCategoryPills();
     renderAudioPresets();
     renderAudioTracks();
     updateActiveLayersSummary();
@@ -10646,6 +10658,28 @@ function toggleSpotifyTrack(trackId) {
     window.SpotifyEmbedManager.toggle(trackId);
 }
 
+function renderCategorySelectOptions(selectedCat) {
+    const defaultCats = [
+        { name: 'Weather', icon: '🌧️' },
+        { name: 'Ambiance', icon: '🌲' },
+        { name: 'Dungeon', icon: '💀' },
+        { name: 'Combat', icon: '⚔️' },
+        { name: 'Music', icon: '🎵' }
+    ];
+    const categories = (appState.audioCategories && appState.audioCategories.length > 0)
+        ? appState.audioCategories
+        : defaultCats;
+
+    let html = categories.map(c => `
+        <option value="${escapeHTML(c.name)}" ${c.name === selectedCat ? 'selected' : ''}>${escapeHTML(c.icon || '🎵')} ${escapeHTML(c.name)}</option>
+    `).join('');
+
+    if (selectedCat && !categories.some(c => c.name === selectedCat)) {
+        html += `<option value="${escapeHTML(selectedCat)}" selected>🎵 ${escapeHTML(selectedCat)}</option>`;
+    }
+    return html;
+}
+
 function createCompactSpotifyCardElement(t) {
     const card = document.createElement('div');
     card.id = `track-card-${t.id}`;
@@ -10654,29 +10688,34 @@ function createCompactSpotifyCardElement(t) {
     
     const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
     const height = parseInt(t.height) || 80;
+    const secTags = Array.isArray(t.tags) ? t.tags.filter(tag => tag && tag.toLowerCase() !== (t.category || '').toLowerCase()) : [];
 
     card.innerHTML = `
         <div class="flex items-center justify-between gap-2">
-            <!-- Left: Play Button, Icon, Title & Category Select -->
+            <!-- Left: Play Button, Icon, Title, Category Select & Tag Pills -->
             <div class="flex items-center gap-2 min-w-0 flex-1">
                 <button id="spotify-btn-${t.id}" type="button" onclick="toggleSpotifyTrack('${t.id}')" title="Play or Pause Spotify Track" class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm bg-emerald-700/80 hover:bg-emerald-600 text-white">
                     <span id="spotify-btn-icon-${t.id}" class="text-xs">▶️</span>
                 </button>
                 <span id="spotify-icon-${t.id}" class="text-xl shrink-0">${escapeHTML(t.icon || '🟢')}</span>
-                <div class="min-w-0 flex-1 flex items-center gap-2">
+                <div class="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap">
                     <h4 id="spotify-title-${t.id}" class="font-bold text-xs text-emerald-300 truncate" title="${escapeHTML(t.name)}">${escapeHTML(t.name)}</h4>
-                    <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition shrink-0">
-                        <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
-                        <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
-                        <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
-                        <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
-                        <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
+                    <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere type" class="bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition shrink-0">
+                        ${renderCategorySelectOptions(t.category)}
                     </select>
+                    ${secTags.length > 0 ? `
+                        <div class="flex items-center gap-1 flex-wrap">
+                            ${secTags.map(st => `<button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit tag '${escapeHTML(st)}'" class="px-1.5 py-0.2 rounded bg-emerald-950/90 text-emerald-400 hover:text-white border border-emerald-700/60 text-[9px] font-mono hover:scale-105 transition">${escapeHTML(st)}</button>`).join('')}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
 
             <!-- Right: Action Buttons -->
             <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit Sound & Tags" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-ledger-700 text-[10px] transition">
+                    <span>✏️</span>
+                </button>
                 <button type="button" onclick="openAdjustSpotifyModal('${t.id}')" title="Adjust Channel (Change Playlist, Name, Icon, Player Size)" class="px-2 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 border border-ledger-700 text-[10px] font-semibold flex items-center gap-1 transition shadow-sm">
                     <span>⚙️</span>
                     <span class="hidden sm:inline">Adjust</span>
@@ -10707,6 +10746,7 @@ function createSpotifyCardElement(t) {
     
     const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
     const height = parseInt(t.height) || 152;
+    const secTags = Array.isArray(t.tags) ? t.tags.filter(tag => tag && tag.toLowerCase() !== (t.category || '').toLowerCase()) : [];
 
     card.innerHTML = `
         <div>
@@ -10717,13 +10757,14 @@ function createSpotifyCardElement(t) {
                     <div class="min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <h4 id="spotify-title-${t.id}" class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
-                            <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 rounded-lg px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition">
-                                <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
-                                <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
-                                <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
-                                <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
-                                <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
+                            <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere type" class="bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 rounded-lg px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition">
+                                ${renderCategorySelectOptions(t.category)}
                             </select>
+                            ${secTags.length > 0 ? `
+                                <div class="flex items-center gap-1 flex-wrap">
+                                    ${secTags.map(st => `<button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit tag '${escapeHTML(st)}'" class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[9px] font-mono transition">${escapeHTML(st)}</button>`).join('')}
+                                </div>
+                            ` : ''}
                         </div>
                         <p id="spotify-sub-${t.id}" class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
                     </div>
@@ -10732,6 +10773,9 @@ function createSpotifyCardElement(t) {
                     <button id="spotify-btn-${t.id}" type="button" onclick="toggleSpotifyTrack('${t.id}')" title="Play or Pause Spotify Track" class="px-2.5 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-slate-200 text-[10px] font-bold flex items-center gap-1 shadow-sm transition">
                         <span id="spotify-btn-icon-${t.id}">▶️</span>
                         <span id="spotify-btn-text-${t.id}">Play</span>
+                    </button>
+                    <button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit Sound & Tags" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-ledger-700 text-[10px] transition">
+                        <span>✏️</span>
                     </button>
                     <button type="button" onclick="openAdjustSpotifyModal('${t.id}')" title="Adjust Channel (Change Playlist, Name, Icon, Player Size)" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 hover:text-emerald-300 border border-ledger-700 hover:border-emerald-500/50 text-[10px] font-semibold flex items-center gap-1 transition shadow-sm">
                         <span>⚙️</span>
@@ -10781,32 +10825,32 @@ function createCompactAudioCardElement(t) {
     const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
     const volPercent = Math.round(volume * 100);
     const isCustom = t.category === 'Custom' || t.id.startsWith('track-');
+    const secTags = Array.isArray(t.tags) ? t.tags.filter(tag => tag && tag.toLowerCase() !== (t.category || '').toLowerCase()) : [];
 
     card.className = `flex items-center justify-between gap-2.5 p-2 px-3 rounded-xl border ${isPlaying ? 'bg-emerald-950/30 border-emerald-500/70 shadow-sm' : 'bg-ledger-900/90 border-ledger-800 hover:border-ledger-700'} transition group`;
 
     card.innerHTML = `
-        <!-- Left: Play/Pause, Icon, Title, and Category Tag -->
+        <!-- Left: Play/Pause, Icon, Title, Category Tag, & Secondary Tags -->
         <div class="flex items-center gap-2 min-w-0 flex-1">
             <button id="track-btn-${t.id}" onclick="toggleAudioTrack('${t.id}')" title="${isPlaying ? 'Pause Layer' : 'Play Layer'}" class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm ${isPlaying ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50' : 'bg-ledger-800 hover:bg-ledger-700 text-slate-300 border border-ledger-700 hover:border-slate-500'}">
                 <span class="text-xs">${isPlaying ? '⏸️' : '▶️'}</span>
             </button>
             <span class="text-lg shrink-0 select-none">${escapeHTML(t.icon || '🎵')}</span>
-            <div class="min-w-0 flex-1 flex items-center gap-2">
+            <div class="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap">
                 <h4 class="font-bold text-xs text-slate-200 truncate" title="${escapeHTML(t.name)}">${escapeHTML(t.name)}</h4>
-                <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-ledger-950 text-amber-300 hover:text-amber-200 border border-ledger-750 hover:border-amber-500/50 rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition shrink-0">
-                    <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
-                    <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
-                    <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
-                    <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
-                    <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
-                    ${t.category && !['Weather', 'Ambiance', 'Dungeon', 'Combat', 'Music'].includes(t.category) ? `<option value="${escapeHTML(t.category)}" selected>${escapeHTML(t.category)}</option>` : ''}
+                <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere type" class="bg-ledger-950 text-amber-300 hover:text-amber-200 border border-ledger-750 hover:border-amber-500/50 rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition shrink-0">
+                    ${renderCategorySelectOptions(t.category)}
                 </select>
-                ${t.tags && Array.isArray(t.tags) && t.tags.length > 1 ? `<span class="text-[8px] text-slate-500 font-mono truncate max-w-[90px] hidden md:inline" title="${escapeHTML(t.tags.join(', '))}">${escapeHTML(t.tags.slice(1, 3).join(', '))}</span>` : ''}
+                ${secTags.length > 0 ? `
+                    <div class="flex items-center gap-1 flex-wrap">
+                        ${secTags.map(st => `<button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit tag '${escapeHTML(st)}'" class="px-1.5 py-0.2 rounded bg-ledger-800 hover:bg-ledger-750 text-amber-300/90 hover:text-amber-200 border border-ledger-700 hover:border-amber-500/40 text-[9px] font-mono hover:scale-105 transition">${escapeHTML(st)}</button>`).join('')}
+                    </div>
+                ` : ''}
             </div>
         </div>
 
-        <!-- Right: Active Ping, Volume Slider & Delete -->
-        <div class="flex items-center gap-2.5 shrink-0">
+        <!-- Right: Active Ping, Volume Slider, Edit & Delete -->
+        <div class="flex items-center gap-2 shrink-0">
             <span id="track-ping-${t.id}" class="${isPlaying ? 'flex' : 'hidden'} h-2 w-2 relative shrink-0">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -10817,6 +10861,11 @@ function createCompactAudioCardElement(t) {
                 <span id="track-vol-text-${t.id}" class="text-[10px] font-mono font-bold text-slate-300 w-7 text-right">${volPercent}%</span>
                 <input id="track-vol-slider-${t.id}" type="range" min="0" max="100" value="${volPercent}" oninput="setAudioTrackVolume('${t.id}', this.value)" class="w-full h-1.5 bg-ledger-950 rounded-lg accent-amber-500 cursor-pointer">
             </div>
+
+            <!-- Edit Sound & Tags Button -->
+            <button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit Sound & Tags" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-ledger-700 text-[10px] transition">
+                <span>✏️</span>
+            </button>
 
             ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs shrink-0 transition">✕</button>` : ''}
         </div>
@@ -10834,6 +10883,7 @@ function createAudioCardElement(t) {
     const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
     const volPercent = Math.round(volume * 100);
     const isCustom = t.category === 'Custom' || t.id.startsWith('track-');
+    const secTags = Array.isArray(t.tags) ? t.tags.filter(tag => tag && tag.toLowerCase() !== (t.category || '').toLowerCase()) : [];
 
     card.className = `bg-ledger-900 border ${isPlaying ? 'border-emerald-500/70 shadow-lg shadow-emerald-950/40' : 'border-ledger-800 hover:border-ledger-700'} rounded-2xl p-4 flex flex-col justify-between transition`;
 
@@ -10846,15 +10896,14 @@ function createAudioCardElement(t) {
                     <div class="min-w-0">
                         <h4 class="font-bold text-xs text-slate-200 truncate">${escapeHTML(t.name)}</h4>
                         <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-ledger-950 text-amber-300 hover:text-amber-200 border border-ledger-750 hover:border-amber-500/50 rounded-lg px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition">
-                                <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
-                                <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
-                                <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
-                                <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
-                                <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
-                                ${t.category && !['Weather', 'Ambiance', 'Dungeon', 'Combat', 'Music'].includes(t.category) ? `<option value="${escapeHTML(t.category)}" selected>${escapeHTML(t.category)}</option>` : ''}
+                            <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere type" class="bg-ledger-950 text-amber-300 hover:text-amber-200 border border-ledger-750 hover:border-amber-500/50 rounded-lg px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition">
+                                ${renderCategorySelectOptions(t.category)}
                             </select>
-                            ${t.tags && Array.isArray(t.tags) && t.tags.length > 1 ? `<span class="text-[8px] text-slate-500 font-mono truncate max-w-[80px]" title="${escapeHTML(t.tags.join(', '))}">${escapeHTML(t.tags.slice(1, 3).join(', '))}</span>` : ''}
+                            ${secTags.length > 0 ? `
+                                <div class="flex items-center gap-1 flex-wrap">
+                                    ${secTags.map(st => `<button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit tag '${escapeHTML(st)}'" class="px-1.5 py-0.5 rounded bg-ledger-800 hover:bg-ledger-750 text-amber-300 border border-ledger-700 text-[9px] font-mono transition">${escapeHTML(st)}</button>`).join('')}
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -10863,6 +10912,9 @@ function createAudioCardElement(t) {
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
+                    <button type="button" onclick="openEditTrackModal('${t.id}')" title="Edit Sound & Tags" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-ledger-700 text-[10px] transition">
+                        <span>✏️</span>
+                    </button>
                     ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs">✕</button>` : ''}
                 </div>
             </div>
@@ -11167,16 +11219,69 @@ function updateAudioViewModeButtons() {
     }
 }
 
-function updateCategoryCounts(allTracks) {
-    if (!Array.isArray(allTracks)) return;
-    const counts = { all: allTracks.length, Weather: 0, Ambiance: 0, Dungeon: 0, Combat: 0, Music: 0 };
+function renderAudioCategoryPills() {
+    const container = document.getElementById('audio-category-filters');
+    if (!container) return;
+
+    const defaultCats = [
+        { name: 'Weather', icon: '🌧️' },
+        { name: 'Ambiance', icon: '🌲' },
+        { name: 'Dungeon', icon: '💀' },
+        { name: 'Combat', icon: '⚔️' },
+        { name: 'Music', icon: '🎵' }
+    ];
+    const categories = (appState.audioCategories && appState.audioCategories.length > 0)
+        ? appState.audioCategories
+        : defaultCats;
+
+    const activeCat = appState.audioActiveCategory || 'all';
+    const allTracks = appState.audioLibrary || [];
+
+    const counts = { all: allTracks.length };
+    categories.forEach(c => { counts[c.name] = 0; });
     allTracks.forEach(t => {
-        if (t.category && counts[t.category] !== undefined) {
-            counts[t.category]++;
+        if (t.category) {
+            counts[t.category] = (counts[t.category] || 0) + 1;
         }
     });
-    for (const [cat, count] of Object.entries(counts)) {
-        const el = document.getElementById(`cat-count-${cat}`);
+
+    const isAllActive = activeCat === 'all';
+    let html = `
+        <button onclick="filterAudioCategory('all')" id="cat-filter-all" class="cat-pill px-3 py-1 rounded-lg ${isAllActive ? 'bg-amber-500 text-ledger-950 font-bold shadow-sm' : 'bg-ledger-950 text-slate-400 border border-ledger-800 hover:border-slate-600'} text-[11px] transition">
+            All <span id="cat-count-all" class="ml-1 text-[10px] opacity-80">(${counts.all})</span>
+        </button>
+    `;
+
+    categories.forEach(cat => {
+        const isActive = activeCat === cat.name;
+        const count = counts[cat.name] || 0;
+        html += `
+            <button onclick="filterAudioCategory('${escapeHTML(cat.name)}')" id="cat-filter-${escapeHTML(cat.name)}" class="cat-pill px-3 py-1 rounded-lg ${isActive ? 'bg-amber-500 text-ledger-950 font-bold shadow-sm' : 'bg-ledger-950 text-slate-400 border border-ledger-800 hover:border-slate-600'} text-[11px] transition">
+                <span>${escapeHTML(cat.icon || '🎵')}</span> <span class="capitalize">${escapeHTML(cat.name)}</span> <span id="cat-count-${escapeHTML(cat.name)}" class="ml-1 text-[10px] opacity-80">(${count})</span>
+            </button>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function updateCategoryCounts(allTracks) {
+    if (!Array.isArray(allTracks)) return;
+    const counts = { all: allTracks.length };
+    const categories = appState.audioCategories || [];
+    categories.forEach(c => { counts[c.name] = 0; });
+
+    allTracks.forEach(t => {
+        if (t.category) {
+            counts[t.category] = (counts[t.category] || 0) + 1;
+        }
+    });
+
+    const allCountEl = document.getElementById('cat-count-all');
+    if (allCountEl) allCountEl.textContent = `(${counts.all})`;
+
+    for (const [catName, count] of Object.entries(counts)) {
+        const el = document.getElementById(`cat-count-${catName}`);
         if (el) el.textContent = `(${count})`;
     }
 }
@@ -11229,14 +11334,379 @@ function filterAudioCategory(cat) {
     appState.audioActiveCategory = cat;
     document.querySelectorAll('.cat-pill').forEach(btn => {
         if (btn.id === `cat-filter-${cat}`) {
-            btn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold', 'shadow-sm');
-            btn.classList.remove('bg-ledger-950', 'bg-ledger-900', 'text-slate-400', 'border');
+            btn.className = 'cat-pill px-3 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold shadow-sm text-[11px] transition';
         } else {
-            btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold', 'shadow-sm');
-            btn.classList.add('bg-ledger-950', 'text-slate-400', 'border');
+            btn.className = 'cat-pill px-3 py-1 rounded-lg bg-ledger-950 text-slate-400 border border-ledger-800 hover:border-slate-600 text-[11px] transition';
         }
     });
     renderAudioTracks();
+}
+
+// =============================================================================
+// SOUND TYPES & CATEGORIES MANAGEMENT MODAL
+// =============================================================================
+function openManageSoundTypesModal() {
+    const nameInput = document.getElementById('new-sound-type-name');
+    const iconInput = document.getElementById('new-sound-type-icon');
+    if (nameInput) nameInput.value = '';
+    if (iconInput) iconInput.value = '🎵';
+    renderSoundTypesManageList();
+    openModal('manage-sound-types-modal');
+}
+
+function setNewTypeIcon(icon) {
+    const iconInput = document.getElementById('new-sound-type-icon');
+    if (iconInput) iconInput.value = icon;
+}
+
+function renderSoundTypesManageList() {
+    const listEl = document.getElementById('sound-types-manage-list');
+    if (!listEl) return;
+
+    const defaultCats = [
+        { name: 'Weather', icon: '🌧️', is_default: true },
+        { name: 'Ambiance', icon: '🌲', is_default: true },
+        { name: 'Dungeon', icon: '💀', is_default: true },
+        { name: 'Combat', icon: '⚔️', is_default: true },
+        { name: 'Music', icon: '🎵', is_default: true }
+    ];
+    const categories = (appState.audioCategories && appState.audioCategories.length > 0)
+        ? appState.audioCategories
+        : defaultCats;
+
+    const allTracks = appState.audioLibrary || [];
+    const counts = {};
+    allTracks.forEach(t => {
+        if (t.category) counts[t.category] = (counts[t.category] || 0) + 1;
+    });
+
+    listEl.innerHTML = categories.map(cat => {
+        const count = counts[cat.name] || 0;
+        const isProtected = cat.is_default && cat.name === 'Ambiance';
+        return `
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 hover:border-ledger-700 transition">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="text-lg shrink-0">${escapeHTML(cat.icon || '🎵')}</span>
+                    <div class="min-w-0">
+                        <span class="font-bold text-slate-200 text-xs">${escapeHTML(cat.name)}</span>
+                        <span class="text-[10px] text-slate-500 font-mono ml-1.5">(${count} ${count === 1 ? 'sound' : 'sounds'})</span>
+                        ${cat.is_default ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-ledger-800 text-slate-400 font-mono ml-1">default</span>' : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" onclick="editSoundType('${escapeHTML(cat.name)}')" title="Rename Category & Change Icon" class="px-2 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-ledger-700 text-[10px] font-semibold flex items-center gap-1 transition">
+                        <span>✏️</span>
+                        <span>Rename</span>
+                    </button>
+                    ${!isProtected ? `
+                        <button type="button" onclick="deleteSoundType('${escapeHTML(cat.name)}')" title="Delete Category" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border border-ledger-700 text-[10px] transition">
+                            ✕
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function addNewSoundType() {
+    const nameInput = document.getElementById('new-sound-type-name');
+    const iconInput = document.getElementById('new-sound-type-icon');
+    const name = (nameInput?.value || '').trim();
+    const icon = (iconInput?.value || '🎵').trim();
+
+    if (!name) {
+        showToast("Please enter a category name.", "error");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/audio/category', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, icon })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.categories) appState.audioCategories = data.categories;
+            if (nameInput) nameInput.value = '';
+            renderSoundTypesManageList();
+            renderAudioCategoryPills();
+            renderAudioTracks();
+            showToast(`Added sound type "${name}"!`, "success");
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Failed to add category.", "error");
+        }
+    } catch (e) {
+        console.error("Error adding category:", e);
+        showToast("Network error adding category.", "error");
+    }
+}
+
+async function editSoundType(oldName) {
+    const cat = (appState.audioCategories || []).find(c => c.name === oldName);
+    const currentIcon = cat ? cat.icon : '🎵';
+    const newName = prompt(`Enter new name for category "${oldName}":`, oldName);
+    if (!newName || newName.trim() === '') return;
+    const cleanName = newName.trim();
+    const newIcon = prompt(`Enter emoji icon for "${cleanName}":`, currentIcon) || currentIcon;
+
+    try {
+        const res = await fetch(`/api/audio/category/${encodeURIComponent(oldName)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: cleanName, icon: newIcon.trim() })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.categories) appState.audioCategories = data.categories;
+            
+            const libRes = await fetch('/api/audio/library');
+            if (libRes.ok) appState.audioLibrary = await libRes.json();
+
+            if (appState.audioActiveCategory === oldName) {
+                appState.audioActiveCategory = cleanName;
+            }
+
+            renderSoundTypesManageList();
+            renderAudioCategoryPills();
+            renderAudioTracks();
+            showToast(`Renamed category to "${cleanName}"!`, "success");
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Failed to rename category.", "error");
+        }
+    } catch (e) {
+        console.error("Error editing category:", e);
+        showToast("Network error editing category.", "error");
+    }
+}
+
+async function deleteSoundType(catName) {
+    if (!confirm(`Are you sure you want to delete category "${catName}"? Any tracks using it will be moved to "Ambiance".`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/audio/category/${encodeURIComponent(catName)}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.categories) appState.audioCategories = data.categories;
+
+            const libRes = await fetch('/api/audio/library');
+            if (libRes.ok) appState.audioLibrary = await libRes.json();
+
+            if (appState.audioActiveCategory === catName) {
+                appState.audioActiveCategory = 'all';
+            }
+
+            renderSoundTypesManageList();
+            renderAudioCategoryPills();
+            renderAudioTracks();
+            showToast(`Deleted category "${catName}".`, "info");
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Failed to delete category.", "error");
+        }
+    } catch (e) {
+        console.error("Error deleting category:", e);
+        showToast("Network error deleting category.", "error");
+    }
+}
+
+async function resetDefaultSoundTypes() {
+    if (!confirm("Reset sound categories back to defaults (Weather, Ambiance, Dungeon, Combat, Music)?")) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/audio/categories/reset', { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.categories) appState.audioCategories = data.categories;
+
+            const libRes = await fetch('/api/audio/library');
+            if (libRes.ok) appState.audioLibrary = await libRes.json();
+
+            renderSoundTypesManageList();
+            renderAudioCategoryPills();
+            renderAudioTracks();
+            showToast("Sound types restored to defaults.", "info");
+        } else {
+            showToast("Failed to restore default categories.", "error");
+        }
+    } catch (e) {
+        console.error("Error resetting categories:", e);
+        showToast("Network error resetting categories.", "error");
+    }
+}
+
+// =============================================================================
+// SOUND TRACK & SECONDARY TAGS EDITOR MODAL
+// =============================================================================
+let _editingTrackTags = [];
+
+function openEditTrackModal(trackId) {
+    const track = (appState.audioLibrary || []).find(t => t.id === trackId);
+    if (!track) {
+        showToast("Sound track not found.", "error");
+        return;
+    }
+
+    const idInput = document.getElementById('edit-track-id');
+    const nameInput = document.getElementById('edit-track-name');
+    const iconInput = document.getElementById('edit-track-icon');
+    const iconBadge = document.getElementById('edit-track-modal-icon-badge');
+    const subtitle = document.getElementById('edit-track-modal-subtitle');
+    const catSelect = document.getElementById('edit-track-category');
+    const newTagInput = document.getElementById('edit-track-new-tag-input');
+    const volSlider = document.getElementById('edit-track-vol-slider');
+    const volText = document.getElementById('edit-track-vol-text');
+
+    if (idInput) idInput.value = track.id;
+    if (nameInput) nameInput.value = track.name || '';
+    if (iconInput) iconInput.value = track.icon || '🎵';
+    if (iconBadge) iconBadge.textContent = track.icon || '🎵';
+    if (subtitle) subtitle.textContent = `Modify title, sound type, and secondary tags for "${track.name}"`;
+
+    if (catSelect) {
+        catSelect.innerHTML = renderCategorySelectOptions(track.category);
+        catSelect.value = track.category || 'Ambiance';
+    }
+
+    _editingTrackTags = Array.isArray(track.tags)
+        ? track.tags.filter(tg => tg && tg.toLowerCase() !== (track.category || '').toLowerCase())
+        : [];
+    renderTrackTagChips();
+
+    const vol = track.defaultVolume !== undefined ? track.defaultVolume : 0.7;
+    const volPct = Math.round(vol * 100);
+    if (volSlider) volSlider.value = volPct;
+    if (volText) volText.textContent = `${volPct}%`;
+
+    if (newTagInput) newTagInput.value = '';
+
+    openModal('edit-sound-tags-modal');
+}
+
+function renderTrackTagChips() {
+    const container = document.getElementById('edit-track-tags-chips');
+    if (!container) return;
+
+    if (!_editingTrackTags || _editingTrackTags.length === 0) {
+        container.innerHTML = `<span class="text-slate-500 text-[11px] italic">No secondary tags yet. Type below or pick suggestions.</span>`;
+        return;
+    }
+
+    container.innerHTML = _editingTrackTags.map((tag, idx) => `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-medium">
+            <span>🏷️ ${escapeHTML(tag)}</span>
+            <button type="button" onclick="removeTrackTagChip(${idx})" title="Remove tag" class="text-amber-400 hover:text-white font-bold ml-0.5 transition">✕</button>
+        </span>
+    `).join('');
+}
+
+function addTrackTagChip(tag) {
+    const clean = (tag || '').trim().replace(/^,+|,+$/g, '');
+    if (!clean) return;
+
+    const exists = _editingTrackTags.some(t => t.toLowerCase() === clean.toLowerCase());
+    if (exists) return;
+
+    _editingTrackTags.push(clean);
+    renderTrackTagChips();
+}
+
+function removeTrackTagChip(idx) {
+    if (idx >= 0 && idx < _editingTrackTags.length) {
+        _editingTrackTags.splice(idx, 1);
+        renderTrackTagChips();
+    }
+}
+
+function handleTrackTagInputKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        addTrackTagFromInput();
+    }
+}
+
+function addTrackTagFromInput() {
+    const input = document.getElementById('edit-track-new-tag-input');
+    if (!input) return;
+    const val = input.value;
+    if (!val) return;
+
+    const parts = val.split(',').map(s => s.trim()).filter(Boolean);
+    parts.forEach(p => addTrackTagChip(p));
+    input.value = '';
+}
+
+function quickAddSuggestedTag(tag) {
+    addTrackTagChip(tag);
+}
+
+async function saveSoundTrackEdit() {
+    const trackId = document.getElementById('edit-track-id')?.value;
+    const name = (document.getElementById('edit-track-name')?.value || '').trim();
+    const icon = (document.getElementById('edit-track-icon')?.value || '🎵').trim();
+    const category = document.getElementById('edit-track-category')?.value || 'Ambiance';
+    const volVal = parseInt(document.getElementById('edit-track-vol-slider')?.value || '70') || 70;
+    const defaultVolume = volVal / 100;
+
+    if (!trackId) return;
+    if (!name) {
+        showToast("Please provide a name for the sound.", "error");
+        return;
+    }
+
+    const tags = [category, ..._editingTrackTags.filter(t => t.toLowerCase() !== category.toLowerCase())];
+
+    try {
+        const res = await fetch(`/api/audio/track/${encodeURIComponent(trackId)}/edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                icon,
+                category,
+                tags,
+                defaultVolume
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const track = (appState.audioLibrary || []).find(t => t.id === trackId);
+            if (track) {
+                track.name = name;
+                track.icon = icon;
+                track.category = category;
+                track.tags = tags;
+                track.defaultVolume = defaultVolume;
+            }
+
+            closeModal('edit-sound-tags-modal');
+            renderAudioCategoryPills();
+            renderAudioTracks();
+            if (typeof updateActiveLayersSummary === 'function') {
+                updateActiveLayersSummary();
+            }
+            showToast(`Updated "${name}" successfully!`, "success");
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Failed to save changes.", "error");
+        }
+    } catch (e) {
+        console.error("Error saving sound track edit:", e);
+        showToast("Network error saving sound track.", "error");
+    }
 }
 
 function toggleAudioTrack(trackId) {
@@ -12407,12 +12877,40 @@ function openImportAudioModal() {
             _audioImportPollTimer = null;
         }
 
+        renderImportCategoryButtons();
         selectImportCategory('Ambiance');
         onImportAudioUrlChange('');
     } catch (err) {
         console.warn("Pre-modal setup warning:", err);
     }
     openModal('import-audio-modal');
+}
+
+function renderImportCategoryButtons() {
+    const container = document.getElementById('import-audio-categories-container');
+    if (!container) return;
+
+    const currentCat = document.getElementById('import-audio-category')?.value || 'Ambiance';
+    const defaultCats = [
+        { name: 'Weather', icon: '🌧️' },
+        { name: 'Ambiance', icon: '🌲' },
+        { name: 'Dungeon', icon: '💀' },
+        { name: 'Combat', icon: '⚔️' },
+        { name: 'Music', icon: '🎵' }
+    ];
+    const categories = (appState.audioCategories && appState.audioCategories.length > 0)
+        ? appState.audioCategories
+        : defaultCats;
+
+    container.innerHTML = categories.map(cat => {
+        const isSel = cat.name === currentCat;
+        return `
+            <button type="button" id="import-tag-${escapeHTML(cat.name)}" onclick="selectImportCategory('${escapeHTML(cat.name)}')" class="import-tag-btn p-2 rounded-xl ${isSel ? 'bg-purple-950/90 border-2 border-purple-400 text-purple-100 font-bold shadow-lg shadow-purple-950/50 scale-105' : 'bg-ledger-950 border border-ledger-750 hover:border-slate-600 text-slate-400 hover:text-slate-200 font-medium'} text-[11px] flex flex-col items-center gap-1 transition-all">
+                <span class="text-base">${escapeHTML(cat.icon || '🎵')}</span>
+                <span class="truncate">${escapeHTML(cat.name)}</span>
+            </button>
+        `;
+    }).join('');
 }
 
 function onImportAudioUrlChange(val) {
@@ -12446,11 +12944,9 @@ function selectImportCategory(cat) {
     const hidden = document.getElementById('import-audio-category');
     if (hidden) hidden.value = cat;
 
-    const cats = ['Weather', 'Ambiance', 'Dungeon', 'Combat', 'Music'];
-    cats.forEach(c => {
-        const btn = document.getElementById(`import-tag-${c}`);
-        if (!btn) return;
-        if (c === cat) {
+    document.querySelectorAll('.import-tag-btn').forEach(btn => {
+        const btnCat = btn.id.replace('import-tag-', '');
+        if (btnCat === cat) {
             btn.className = "import-tag-btn p-2 rounded-xl bg-purple-950/90 border-2 border-purple-400 text-purple-100 font-bold text-[11px] flex flex-col items-center gap-1 shadow-lg shadow-purple-950/50 scale-105 transition-all";
         } else {
             btn.className = "import-tag-btn p-2 rounded-xl bg-ledger-950 border border-ledger-750 hover:border-slate-600 text-slate-400 hover:text-slate-200 font-medium text-[11px] flex flex-col items-center gap-1 transition-all";
@@ -12686,11 +13182,12 @@ async function quickSetTrackTag(trackId, newCategory) {
     }
 }
 
-// Export Atmosphere Audio Importer functions to global window scope
+// Export Atmosphere Audio Importer & Category Management functions to global window scope
 window.openImportAudioModal = openImportAudioModal;
 window.onImportAudioUrlChange = onImportAudioUrlChange;
 window.previewAudioImport = previewAudioImport;
 window.selectImportCategory = selectImportCategory;
+window.renderImportCategoryButtons = renderImportCategoryButtons;
 window.startAudioDownloadAndImport = startAudioDownloadAndImport;
 window.cancelAudioImport = cancelAudioImport;
 window.quickSetTrackTag = quickSetTrackTag;
@@ -12700,6 +13197,23 @@ window.toggleActiveOnlyAudioFilter = toggleActiveOnlyAudioFilter;
 window.setAudioViewMode = setAudioViewMode;
 window.clearAudioFilters = clearAudioFilters;
 window.filterAudioCategory = filterAudioCategory;
+window.renderAudioCategoryPills = renderAudioCategoryPills;
+window.renderCategorySelectOptions = renderCategorySelectOptions;
+window.openManageSoundTypesModal = openManageSoundTypesModal;
+window.setNewTypeIcon = setNewTypeIcon;
+window.renderSoundTypesManageList = renderSoundTypesManageList;
+window.addNewSoundType = addNewSoundType;
+window.editSoundType = editSoundType;
+window.deleteSoundType = deleteSoundType;
+window.resetDefaultSoundTypes = resetDefaultSoundTypes;
+window.openEditTrackModal = openEditTrackModal;
+window.renderTrackTagChips = renderTrackTagChips;
+window.addTrackTagChip = addTrackTagChip;
+window.removeTrackTagChip = removeTrackTagChip;
+window.handleTrackTagInputKeyDown = handleTrackTagInputKeyDown;
+window.addTrackTagFromInput = addTrackTagFromInput;
+window.quickAddSuggestedTag = quickAddSuggestedTag;
+window.saveSoundTrackEdit = saveSoundTrackEdit;
 
 async function restoreSrdCompendiums() {
     if (!confirm("This will restore all default 5.5e SRD Bestiary monsters (330+), Spells (340+), Items (128+), and 2024 Core Rules from the app installation bundle. Continue?")) {
