@@ -3483,7 +3483,7 @@
                     <button onclick="openNewSpotifyChannelModal()" class="px-3 py-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-bold flex items-center gap-1.5 shadow transition">
                         <span>🟢 + Spotify Channel</span>
                     </button>
-                    <button onclick="openImportAudioModal()" class="px-3.5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-950/40 transition">
+                    <button id="btn-import-audio" type="button" onclick="openImportAudioModal()" class="px-3.5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-950/40 transition">
                         <span>📥 Download from YT / Spotify</span>
                     </button>
                     <button onclick="triggerAudioUpload()" class="px-3.5 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-950/40 transition">
@@ -6046,7 +6046,7 @@
     </div>
 
     <!-- 15B. DOWNLOAD / IMPORT AUDIO MODAL (YouTube & Spotify) -->
-    <div id="import-audio-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div id="import-audio-modal" onclick="if(event.target === this) closeModal('import-audio-modal')" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
         <div class="bg-ledger-900 border border-purple-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
             <!-- Modal Header -->
             <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
@@ -9108,7 +9108,7 @@
     <script src="/static/js/lighting_engine.js?v=2.5"></script>
     <script src="/static/js/npc_data.js?v=2.5"></script>
     <script src="/static/js/loot_data.js?v=2.5"></script>
-    <script src="/static/js/dashboard.js?v=3.8"></script>
+    <script src="/static/js/dashboard.js?v=3.9"></script>
     <script src="/static/js/battlemap_controller.js?v=2.7"></script>
     <script src="/static/js/dungeon_controller.js?v=1.1"></script>
 </body>

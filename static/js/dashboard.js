@@ -4117,6 +4117,7 @@ function openModal(id) {
     if (!m) return;
     m.classList.remove('hidden');
     m.classList.add('flex');
+    m.style.display = 'flex';
 }
 
 function closeModal(id) {
@@ -4124,6 +4125,7 @@ function closeModal(id) {
     if (!m) return;
     m.classList.add('hidden');
     m.classList.remove('flex');
+    m.style.display = 'none';
 }
 
 // Global ESC key dismiss listener for all modals
@@ -12049,34 +12051,44 @@ let _audioImportPollTimer = null;
 let _audioImportDebounceTimer = null;
 
 function openImportAudioModal() {
-    const urlInput = document.getElementById('import-audio-url');
-    const nameInput = document.getElementById('import-audio-custom-name');
-    const tagsInput = document.getElementById('import-audio-secondary-tags');
-    const previewBox = document.getElementById('import-audio-preview-box');
-    const progressBox = document.getElementById('import-audio-progress-container');
-    const submitBtn = document.getElementById('import-audio-submit-btn');
+    try {
+        const urlInput = document.getElementById('import-audio-url');
+        const nameInput = document.getElementById('import-audio-custom-name');
+        const tagsInput = document.getElementById('import-audio-secondary-tags');
+        const previewBox = document.getElementById('import-audio-preview-box');
+        const progressBox = document.getElementById('import-audio-progress-container');
+        const submitBtn = document.getElementById('import-audio-submit-btn');
 
-    if (urlInput) urlInput.value = '';
-    if (nameInput) nameInput.value = '';
-    if (tagsInput) tagsInput.value = '';
-    if (previewBox) previewBox.classList.add('hidden');
-    if (progressBox) progressBox.classList.add('hidden');
+        if (urlInput) urlInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (tagsInput) tagsInput.value = '';
+        if (previewBox) {
+            previewBox.classList.add('hidden');
+            previewBox.style.display = 'none';
+        }
+        if (progressBox) {
+            progressBox.classList.add('hidden');
+            progressBox.style.display = 'none';
+        }
 
-    if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.className = "px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 flex items-center gap-1.5 transition";
-        submitBtn.innerHTML = '<span>📥</span> <span>Start Download & Import</span>';
-        submitBtn.onclick = startAudioDownloadAndImport;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.className = "px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 flex items-center gap-1.5 transition";
+            submitBtn.innerHTML = '<span>📥</span> <span>Start Download & Import</span>';
+            submitBtn.onclick = startAudioDownloadAndImport;
+        }
+
+        _activeAudioImportJobId = null;
+        if (_audioImportPollTimer) {
+            clearInterval(_audioImportPollTimer);
+            _audioImportPollTimer = null;
+        }
+
+        selectImportCategory('Ambiance');
+        onImportAudioUrlChange('');
+    } catch (err) {
+        console.warn("Pre-modal setup warning:", err);
     }
-
-    _activeAudioImportJobId = null;
-    if (_audioImportPollTimer) {
-        clearInterval(_audioImportPollTimer);
-        _audioImportPollTimer = null;
-    }
-
-    selectImportCategory('Ambiance');
-    onImportAudioUrlChange('');
     openModal('import-audio-modal');
 }
 
@@ -12350,6 +12362,15 @@ async function quickSetTrackTag(trackId, newCategory) {
         showToast("Network error updating track tag.", "error");
     }
 }
+
+// Export Atmosphere Audio Importer functions to global window scope
+window.openImportAudioModal = openImportAudioModal;
+window.onImportAudioUrlChange = onImportAudioUrlChange;
+window.previewAudioImport = previewAudioImport;
+window.selectImportCategory = selectImportCategory;
+window.startAudioDownloadAndImport = startAudioDownloadAndImport;
+window.cancelAudioImport = cancelAudioImport;
+window.quickSetTrackTag = quickSetTrackTag;
 
 async function restoreSrdCompendiums() {
     if (!confirm("This will restore all default 5.5e SRD Bestiary monsters (330+), Spells (340+), Items (128+), and 2024 Core Rules from the app installation bundle. Continue?")) {
