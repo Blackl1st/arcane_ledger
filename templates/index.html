@@ -3480,6 +3480,9 @@
                     <button onclick="openModal('add-track-modal')" class="px-3 py-2 rounded-lg bg-ledger-800 hover:bg-ledger-700 text-sky-300 border border-ledger-700 text-xs font-semibold flex items-center gap-1 transition">
                         <span>➕ Add Track</span>
                     </button>
+                    <button onclick="openNewSpotifyChannelModal()" class="px-3 py-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 text-xs font-bold flex items-center gap-1.5 shadow transition">
+                        <span>🟢 + Spotify Channel</span>
+                    </button>
                     <button onclick="triggerAudioUpload()" class="px-3.5 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-950/40 transition">
                         <span>📤 Upload Audio</span>
                     </button>
@@ -5889,6 +5892,152 @@
             <div class="flex justify-end gap-2 pt-2">
                 <button onclick="closeModal('add-track-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 text-slate-300">Cancel</button>
                 <button onclick="submitCustomAudioTrack()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold">Add Track</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 15B. ADJUST SPOTIFY CHANNEL MODAL -->
+    <div id="adjust-spotify-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-ledger-900 border border-emerald-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-ledger-700 pb-3">
+                <div class="flex items-center gap-2">
+                    <span id="adjust-spotify-header-icon" class="text-xl">⚙️</span>
+                    <div>
+                        <h3 class="font-display font-bold text-sm text-emerald-300">Adjust Spotify Music Channel</h3>
+                        <p class="text-[10px] text-slate-400">Configure channel name, playlist/song link, icon, and player size</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('adjust-spotify-modal')" class="text-slate-400 hover:text-white text-base">✕</button>
+            </div>
+
+            <input type="hidden" id="adjust-spotify-track-id">
+
+            <div class="space-y-3.5">
+                <!-- Channel Name & Icon -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div class="sm:col-span-3">
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Channel Name</label>
+                        <input id="adjust-spotify-name" type="text" placeholder="e.g. Tavern & Folk, Boss Battle, Gothic Horror..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Icon / Emoji</label>
+                        <input id="adjust-spotify-icon" type="text" value="🟢" class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white text-center text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Quick Emoji Picker -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] text-slate-400 font-medium">Quick Icons:</span>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🟢')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🟢</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🎵')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🎵</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🍺')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🍺</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🎻')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🎻</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('⚔️')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">⚔️</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🏰')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🏰</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🌲')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🌲</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🩸')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🩸</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🔮')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🔮</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('💀')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">💀</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🕯️')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🕯️</button>
+                    <button type="button" onclick="setAdjustSpotifyIcon('🌊')" class="p-1 rounded bg-ledger-950 hover:bg-emerald-900/50 border border-ledger-800 text-xs">🌊</button>
+                </div>
+
+                <!-- Spotify URL / Link Input -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[11px] font-bold text-slate-300">Spotify Link or URI (Song, Album, or Playlist)</label>
+                        <span id="adjust-spotify-link-badge" class="text-[9px] font-mono text-emerald-400 font-semibold">Valid Link</span>
+                    </div>
+                    <input id="adjust-spotify-url" type="text" oninput="onAdjustSpotifyUrlInput(this.value)" placeholder="https://open.spotify.com/playlist/... or spotify:playlist:..." class="w-full bg-ledger-950 border border-ledger-700 rounded-lg p-2 text-white text-xs font-mono focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <!-- Curated D&D Playlists Quick Selector -->
+                <div class="space-y-1.5 bg-ledger-950 p-3 rounded-xl border border-ledger-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono">Curated D&D Playlists (1-Click Presets)</span>
+                        <span class="text-[9px] text-slate-500">Click to fill link & name</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px]">
+                        <button type="button" onclick="applyCuratedSpotifyPreset('gothic')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            🏰 Gothic Horror
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('tavern')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            🍺 Medieval Tavern
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('combat')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            ⚔️ Epic Boss Battle
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('wilds')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            🌲 Enchanted Wilds
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('dungeon')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            💀 Dark Dungeon
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('city')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            🏘️ Fantasy City
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('stealth')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            🗡️ Stealth & Heist
+                        </button>
+                        <button type="button" onclick="applyCuratedSpotifyPreset('mystery')" class="p-1.5 rounded-lg bg-ledger-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-ledger-750 hover:border-emerald-700/60 transition text-left truncate">
+                            🕯️ Ominous Mystery
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Player Size / Display Mode Selection -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Player Display Style</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex flex-col p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 hover:border-emerald-500/50 cursor-pointer transition">
+                            <div class="flex items-center gap-1.5">
+                                <input type="radio" name="adjust-spotify-height" value="80" class="accent-emerald-500">
+                                <span class="font-bold text-slate-200 text-xs">Compact Bar</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1">80px height • Minimal single-line</span>
+                        </label>
+                        <label class="flex flex-col p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 hover:border-emerald-500/50 cursor-pointer transition">
+                            <div class="flex items-center gap-1.5">
+                                <input type="radio" name="adjust-spotify-height" value="152" checked class="accent-emerald-500">
+                                <span class="font-bold text-slate-200 text-xs">Standard Card</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1">152px height • Balanced player</span>
+                        </label>
+                        <label class="flex flex-col p-2.5 rounded-xl bg-ledger-950 border border-ledger-800 hover:border-emerald-500/50 cursor-pointer transition">
+                            <div class="flex items-center gap-1.5">
+                                <input type="radio" name="adjust-spotify-height" value="352" class="accent-emerald-500">
+                                <span class="font-bold text-slate-200 text-xs">Full Tracklist</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1">352px height • Scrollable playlist</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Preset Default Volume Level -->
+                <div class="space-y-1 bg-ledger-950 p-3 rounded-xl border border-ledger-800">
+                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                        <span>Preset Capture Level (Volume Indicator)</span>
+                        <span id="adjust-spotify-vol-label" class="font-mono text-emerald-400">70%</span>
+                    </div>
+                    <input id="adjust-spotify-volume" type="range" min="0" max="100" value="70" oninput="document.getElementById('adjust-spotify-vol-label').textContent = this.value + '%'" class="w-full h-1.5 bg-ledger-800 rounded-lg accent-emerald-500 cursor-pointer">
+                    <p class="text-[10px] text-slate-400">Recorded when capturing this soundscape into Scene Presets.</p>
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="flex items-center justify-between pt-3 border-t border-ledger-800">
+                <button type="button" id="adjust-spotify-delete-btn" onclick="deleteCurrentAdjustSpotifyTrack()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/80 text-xs font-semibold transition">
+                    🗑️ Remove Channel
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeModal('adjust-spotify-modal')" class="px-4 py-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 text-xs transition">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="saveAdjustSpotifyChannel()" class="px-5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-950/40 transition">
+                        Save Adjustments
+                    </button>
+                </div>
             </div>
         </div>
     </div>

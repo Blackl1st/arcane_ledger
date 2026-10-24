@@ -10405,12 +10405,12 @@ window.SpotifyEmbedManager = {
     init(IFrameAPI) {
         this.api = IFrameAPI;
         for (const [trackId, data] of this.pendingInits.entries()) {
-            this.mount(trackId, data.elementId, data.rawUrl);
+            this.mount(trackId, data.elementId, data.rawUrl, data.height);
         }
         this.pendingInits.clear();
     },
 
-    mount(trackId, elementId, rawUrl) {
+    mount(trackId, elementId, rawUrl, customHeight = 152) {
         const uri = getSpotifyUri(rawUrl);
         const container = document.getElementById(elementId);
         if (!container) return;
@@ -10419,11 +10419,13 @@ window.SpotifyEmbedManager = {
             return;
         }
 
+        const h = String(customHeight || 152);
+
         if (this.api && uri) {
             try {
                 this.api.createController(container, {
                     width: '100%',
-                    height: '152',
+                    height: h,
                     uri: uri
                 }, (controller) => {
                     this.controllers.set(trackId, controller);
@@ -10465,7 +10467,7 @@ window.SpotifyEmbedManager = {
 
         // Fallback: If Spotify IFrame API not yet loaded or uri missing, queue it & render standard embed
         if (!this.api && uri) {
-            this.pendingInits.set(trackId, { elementId, uri, rawUrl });
+            this.pendingInits.set(trackId, { elementId, uri, rawUrl, height: h });
         }
         const embedUrl = getSpotifyEmbedUrl(rawUrl);
         container.innerHTML = `
@@ -10473,11 +10475,37 @@ window.SpotifyEmbedManager = {
                 id="spotify-iframe-${trackId}"
                 style="border-radius:12px; width:100%; border:0; display:block;" 
                 src="${embedUrl}" 
-                height="152" 
+                height="${h}" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
                 loading="lazy">
             </iframe>
         `;
+    },
+
+    updateTrack(trackId, newUrl, newHeight) {
+        const h = String(newHeight || 152);
+        const newUri = getSpotifyUri(newUrl);
+        const container = document.getElementById(`spotify-embed-${trackId}`);
+        const slot = document.getElementById(`spotify-slot-${trackId}`);
+        if (slot) slot.style.minHeight = `${h}px`;
+
+        const ctrl = this.controllers.get(trackId);
+        const currentIframe = container ? container.querySelector('iframe') : null;
+
+        if (ctrl && newUri && currentIframe && currentIframe.getAttribute('height') === h) {
+            try {
+                ctrl.loadUri(newUri);
+                return;
+            } catch (e) {
+                console.warn('loadUri failed in controller, remounting:', e);
+            }
+        }
+
+        this.destroy(trackId);
+        if (container) {
+            container.innerHTML = '';
+        }
+        this.mount(trackId, `spotify-embed-${trackId}`, newUrl, h);
     },
 
     play(trackId) {
@@ -10607,27 +10635,35 @@ function createSpotifyCardElement(t) {
     card.className = "col-span-1 md:col-span-2 bg-ledger-900 border border-emerald-500/50 hover:border-emerald-400 rounded-2xl p-4 flex flex-col justify-between shadow-xl shadow-emerald-950/20 transition";
     
     const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
+    const height = parseInt(t.height) || 152;
 
     card.innerHTML = `
         <div>
             <!-- Header -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2 min-w-0">
-                    <span class="text-2xl">${escapeHTML(t.icon || '🟢')}</span>
+                    <span id="spotify-icon-${t.id}" class="text-2xl">${escapeHTML(t.icon || '🟢')}</span>
                     <div class="min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <h4 class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
+                            <h4 id="spotify-title-${t.id}" class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
                             <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono font-bold">Spotify Music</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
+                        <p id="spotify-sub-${t.id}" class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-1.5 flex-wrap">
                     <button id="spotify-btn-${t.id}" type="button" onclick="toggleSpotifyTrack('${t.id}')" title="Play or Pause Spotify Track" class="px-2.5 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-slate-200 text-[10px] font-bold flex items-center gap-1 shadow-sm transition">
                         <span id="spotify-btn-icon-${t.id}">▶️</span>
                         <span id="spotify-btn-text-${t.id}">Play</span>
                     </button>
-                    <a href="${escapeHTML(t.url)}" target="_blank" rel="noopener noreferrer" title="Open in Spotify Web/App" class="px-2 py-1 rounded-lg bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[10px] font-semibold flex items-center gap-1 transition">
+                    <button type="button" onclick="openAdjustSpotifyModal('${t.id}')" title="Adjust Channel (Change Playlist, Name, Icon, Player Size)" class="px-2.5 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-200 hover:text-emerald-300 border border-ledger-700 hover:border-emerald-500/50 text-[10px] font-semibold flex items-center gap-1 transition shadow-sm">
+                        <span>⚙️</span>
+                        <span>Adjust</span>
+                    </button>
+                    <button type="button" onclick="toggleSpotifyCardHeight('${t.id}')" title="Toggle Player Size (Compact 80px / Standard 152px / Full Playlist 352px)" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-ledger-700 text-[10px] font-mono transition">
+                        <span id="spotify-height-badge-${t.id}">↕️ ${height}px</span>
+                    </button>
+                    <a id="spotify-link-${t.id}" href="${escapeHTML(t.url)}" target="_blank" rel="noopener noreferrer" title="Open in Spotify Web/App" class="px-2 py-1 rounded-lg bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[10px] font-semibold flex items-center gap-1 transition">
                         <span>Spotify</span>
                         <span>↗</span>
                     </a>
@@ -10636,7 +10672,7 @@ function createSpotifyCardElement(t) {
             </div>
 
             <!-- Embedded Player Placeholder -->
-            <div id="spotify-slot-${t.id}" class="mt-2.5 rounded-xl overflow-hidden border border-emerald-900/60 shadow-inner bg-black/80 min-h-[152px]">
+            <div id="spotify-slot-${t.id}" class="mt-2.5 rounded-xl overflow-hidden border border-emerald-900/60 shadow-inner bg-black/80" style="min-height:${height}px;">
                 <div id="spotify-embed-${t.id}"></div>
             </div>
         </div>
@@ -10648,6 +10684,14 @@ function updateSpotifyCardUI(t, card) {
     if (window.SpotifyEmbedManager) {
         window.SpotifyEmbedManager.updateCardUI(t.id);
     }
+    const titleEl = document.getElementById(`spotify-title-${t.id}`);
+    const iconEl = document.getElementById(`spotify-icon-${t.id}`);
+    const linkEl = document.getElementById(`spotify-link-${t.id}`);
+    const badgeEl = document.getElementById(`spotify-height-badge-${t.id}`);
+    if (titleEl && t.name) titleEl.textContent = t.name;
+    if (iconEl && t.icon) iconEl.textContent = t.icon;
+    if (linkEl && t.url) linkEl.href = t.url;
+    if (badgeEl && t.height) badgeEl.textContent = `↕️ ${t.height}px`;
 }
 
 function createAudioCardElement(t) {
@@ -10794,7 +10838,7 @@ function renderAudioTracks() {
                 card = createSpotifyCardElement(t);
                 grid.appendChild(card);
                 if (window.SpotifyEmbedManager) {
-                    window.SpotifyEmbedManager.mount(t.id, `spotify-embed-${t.id}`, t.url);
+                    window.SpotifyEmbedManager.mount(t.id, `spotify-embed-${t.id}`, t.url, t.height || 152);
                 }
             } else {
                 card.style.display = '';
@@ -11712,6 +11756,273 @@ async function deleteAudioTrack(trackId) {
         console.error(e);
         showToast("Error deleting track.", "error");
     }
+}
+
+const CURATED_SPOTIFY_PRESETS = {
+    gothic: {
+        name: "Curse of Strahd - Gothic Horror",
+        icon: "🏰",
+        url: "https://open.spotify.com/playlist/7b58Uo5n30T0U1W8s1v5Gq",
+        height: 152
+    },
+    tavern: {
+        name: "Tavern & Medieval Folk",
+        icon: "🍺",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DX2pSTOxoPbx9",
+        height: 152
+    },
+    combat: {
+        name: "Epic Boss Battle & Combat",
+        icon: "⚔️",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DWYcDQ1hSjOpY",
+        height: 152
+    },
+    wilds: {
+        name: "Enchanted Wilds & Exploration",
+        icon: "🌲",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DXbUhu2sqqQfT",
+        height: 152
+    },
+    dungeon: {
+        name: "Dark Dungeon & Catacombs",
+        icon: "💀",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DX1s9knjP51Oa",
+        height: 152
+    },
+    city: {
+        name: "Bustling Fantasy City & Market",
+        icon: "🏘️",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO",
+        height: 152
+    },
+    stealth: {
+        name: "Stealth, Infiltration & Heist",
+        icon: "🗡️",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DX8gNWkfb84gC",
+        height: 152
+    },
+    mystery: {
+        name: "Ominous Suspense & Mystery",
+        icon: "🕯️",
+        url: "https://open.spotify.com/playlist/37i9dQZF1DWV5hL39c8gqC",
+        height: 152
+    }
+};
+
+function applyCuratedSpotifyPreset(key) {
+    const p = CURATED_SPOTIFY_PRESETS[key];
+    if (!p) return;
+    const nameInput = document.getElementById('adjust-spotify-name');
+    const iconInput = document.getElementById('adjust-spotify-icon');
+    const urlInput = document.getElementById('adjust-spotify-url');
+    if (nameInput) nameInput.value = p.name;
+    if (iconInput) iconInput.value = p.icon;
+    if (urlInput) urlInput.value = p.url;
+    onAdjustSpotifyUrlInput(p.url);
+}
+
+function setAdjustSpotifyIcon(emoji) {
+    const iconInput = document.getElementById('adjust-spotify-icon');
+    if (iconInput) iconInput.value = emoji;
+}
+
+function onAdjustSpotifyUrlInput(val) {
+    const badge = document.getElementById('adjust-spotify-link-badge');
+    if (!badge) return;
+    if (!val) {
+        badge.textContent = 'Paste Link';
+        badge.className = 'text-[9px] font-mono text-slate-500';
+    } else if (isSpotifyUrl(val)) {
+        if (val.includes('/playlist/')) badge.textContent = 'Spotify Playlist detected';
+        else if (val.includes('/album/')) badge.textContent = 'Spotify Album detected';
+        else if (val.includes('/track/')) badge.textContent = 'Spotify Song detected';
+        else if (val.includes('/artist/')) badge.textContent = 'Spotify Artist detected';
+        else badge.textContent = 'Valid Spotify Link';
+        badge.className = 'text-[9px] font-mono text-emerald-400 font-bold';
+    } else {
+        badge.textContent = 'Must be open.spotify.com link or spotify: URI';
+        badge.className = 'text-[9px] font-mono text-amber-400 font-semibold';
+    }
+}
+
+function openAdjustSpotifyModal(trackId) {
+    const track = (appState.audioLibrary || []).find(t => t.id === trackId);
+    if (!track) return;
+
+    document.getElementById('adjust-spotify-track-id').value = track.id;
+    document.getElementById('adjust-spotify-name').value = track.name || '';
+    document.getElementById('adjust-spotify-icon').value = track.icon || '🟢';
+    document.getElementById('adjust-spotify-url').value = track.url || '';
+    
+    const h = String(track.height || 152);
+    const radio = document.querySelector(`input[name="adjust-spotify-height"][value="${h}"]`);
+    if (radio) radio.checked = true;
+    else {
+        const def = document.querySelector(`input[name="adjust-spotify-height"][value="152"]`);
+        if (def) def.checked = true;
+    }
+
+    const vol = Math.round((track.defaultVolume !== undefined ? track.defaultVolume : (track.volume !== undefined ? track.volume : 0.7)) * 100);
+    const volInput = document.getElementById('adjust-spotify-volume');
+    const volLabel = document.getElementById('adjust-spotify-vol-label');
+    if (volInput) volInput.value = vol;
+    if (volLabel) volLabel.textContent = `${vol}%`;
+
+    const delBtn = document.getElementById('adjust-spotify-delete-btn');
+    if (delBtn) delBtn.style.display = '';
+
+    onAdjustSpotifyUrlInput(track.url || '');
+    openModal('adjust-spotify-modal');
+}
+
+function openNewSpotifyChannelModal() {
+    document.getElementById('adjust-spotify-track-id').value = '';
+    document.getElementById('adjust-spotify-name').value = '';
+    document.getElementById('adjust-spotify-icon').value = '🟢';
+    document.getElementById('adjust-spotify-url').value = '';
+    
+    const def = document.querySelector(`input[name="adjust-spotify-height"][value="152"]`);
+    if (def) def.checked = true;
+
+    const volInput = document.getElementById('adjust-spotify-volume');
+    const volLabel = document.getElementById('adjust-spotify-vol-label');
+    if (volInput) volInput.value = 70;
+    if (volLabel) volLabel.textContent = '70%';
+
+    const delBtn = document.getElementById('adjust-spotify-delete-btn');
+    if (delBtn) delBtn.style.display = 'none';
+
+    onAdjustSpotifyUrlInput('');
+    openModal('adjust-spotify-modal');
+}
+
+async function toggleSpotifyCardHeight(trackId) {
+    const track = (appState.audioLibrary || []).find(t => t.id === trackId);
+    if (!track) return;
+    const currentH = parseInt(track.height) || 152;
+    let nextH = 152;
+    if (currentH === 80) nextH = 152;
+    else if (currentH === 152) nextH = 352;
+    else nextH = 80;
+
+    track.height = nextH;
+
+    const badge = document.getElementById(`spotify-height-badge-${trackId}`);
+    if (badge) badge.textContent = `↕️ ${nextH}px`;
+    
+    if (window.SpotifyEmbedManager) {
+        window.SpotifyEmbedManager.updateTrack(trackId, track.url, nextH);
+    }
+
+    try {
+        await fetch('/api/audio/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(track)
+        });
+        showToast(`Spotify channel view set to ${nextH === 80 ? 'Compact (80px)' : (nextH === 352 ? 'Full Playlist (352px)' : 'Standard (152px)')}`, 'info');
+    } catch (e) {
+        console.error("Failed to save height preference:", e);
+    }
+}
+
+async function saveAdjustSpotifyChannel() {
+    let trackId = (document.getElementById('adjust-spotify-track-id').value || '').trim();
+    const name = (document.getElementById('adjust-spotify-name').value || '').trim();
+    const icon = (document.getElementById('adjust-spotify-icon').value || '').trim() || '🟢';
+    const url = (document.getElementById('adjust-spotify-url').value || '').trim();
+    const heightVal = parseInt(document.querySelector('input[name="adjust-spotify-height"]:checked')?.value || '152') || 152;
+    const volVal = (parseInt(document.getElementById('adjust-spotify-volume').value) || 70) / 100;
+
+    if (!url) {
+        showToast("Please enter a Spotify playlist, album, or song link.", "error");
+        return;
+    }
+    if (!isSpotifyUrl(url)) {
+        showToast("Please enter a valid Spotify link (e.g. https://open.spotify.com/playlist/...)", "error");
+        return;
+    }
+
+    const isNew = !trackId;
+    if (isNew) {
+        trackId = 'spotify-' + Date.now();
+    }
+
+    const existingTrack = (appState.audioLibrary || []).find(t => t.id === trackId);
+    const finalName = name || (existingTrack ? existingTrack.name : 'Spotify Music');
+
+    const updatedTrack = {
+        id: trackId,
+        name: finalName,
+        category: 'Music',
+        icon: icon,
+        url: url,
+        type: 'spotify',
+        height: heightVal,
+        defaultVolume: volVal,
+        volume: volVal,
+        active: existingTrack ? existingTrack.active : false
+    };
+
+    try {
+        const res = await fetch('/api/audio/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedTrack)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.library && Array.isArray(data.library)) {
+                appState.audioLibrary = data.library;
+            } else {
+                const idx = (appState.audioLibrary || []).findIndex(t => t.id === trackId);
+                if (idx >= 0) appState.audioLibrary[idx] = updatedTrack;
+                else appState.audioLibrary.push(updatedTrack);
+            }
+
+            // Update card UI in-place if present
+            const titleEl = document.getElementById(`spotify-title-${trackId}`);
+            const iconEl = document.getElementById(`spotify-icon-${trackId}`);
+            const linkEl = document.getElementById(`spotify-link-${trackId}`);
+            const badgeEl = document.getElementById(`spotify-height-badge-${trackId}`);
+
+            if (titleEl) titleEl.textContent = updatedTrack.name;
+            if (iconEl) iconEl.textContent = updatedTrack.icon;
+            if (linkEl) linkEl.href = updatedTrack.url;
+            if (badgeEl) badgeEl.textContent = `↕️ ${updatedTrack.height}px`;
+
+            if (window.SpotifyEmbedManager) {
+                window.SpotifyEmbedManager.updateTrack(trackId, updatedTrack.url, updatedTrack.height);
+            }
+
+            closeModal('adjust-spotify-modal');
+            renderAudioTracks();
+            if (typeof updateActiveLayersSummary === 'function') {
+                updateActiveLayersSummary();
+            }
+            showToast(isNew ? `Spotify channel "${finalName}" added!` : `Spotify channel "${finalName}" adjusted!`, "success");
+        } else {
+            showToast("Failed to save Spotify channel adjustments.", "error");
+        }
+    } catch (e) {
+        console.error("Error saving Spotify channel:", e);
+        showToast("Network error while adjusting Spotify channel.", "error");
+    }
+}
+
+async function deleteCurrentAdjustSpotifyTrack() {
+    const trackId = document.getElementById('adjust-spotify-track-id').value;
+    if (!trackId) {
+        closeModal('adjust-spotify-modal');
+        return;
+    }
+    const track = (appState.audioLibrary || []).find(t => t.id === trackId);
+    const trackName = track ? track.name : 'channel';
+    if (!confirm(`Are you sure you want to remove Spotify channel "${trackName}"?`)) return;
+
+    closeModal('adjust-spotify-modal');
+    await deleteAudioTrack(trackId);
 }
 
 async function restoreSrdCompendiums() {
