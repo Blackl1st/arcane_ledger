@@ -10646,7 +10646,13 @@ function createSpotifyCardElement(t) {
                     <div class="min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <h4 id="spotify-title-${t.id}" class="font-bold text-xs text-emerald-300 truncate">${escapeHTML(t.name)}</h4>
-                            <span class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 font-mono font-bold">Spotify Music</span>
+                            <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 rounded-lg px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition">
+                                <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
+                                <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
+                                <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
+                                <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
+                                <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
+                            </select>
                         </div>
                         <p id="spotify-sub-${t.id}" class="text-[10px] text-slate-400 truncate">Embedded Spotify Player (Song / Playlist)</p>
                     </div>
@@ -10714,7 +10720,17 @@ function createAudioCardElement(t) {
                     <span class="text-2xl">${escapeHTML(t.icon || '🎵')}</span>
                     <div class="min-w-0">
                         <h4 class="font-bold text-xs text-slate-200 truncate">${escapeHTML(t.name)}</h4>
-                        <span class="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-ledger-950 text-slate-400 border border-ledger-800 font-mono">${escapeHTML(t.category)}</span>
+                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-ledger-950 text-amber-300 hover:text-amber-200 border border-ledger-750 hover:border-amber-500/50 rounded-lg px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition">
+                                <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
+                                <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
+                                <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
+                                <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
+                                <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
+                                ${t.category && !['Weather', 'Ambiance', 'Dungeon', 'Combat', 'Music'].includes(t.category) ? `<option value="${escapeHTML(t.category)}" selected>${escapeHTML(t.category)}</option>` : ''}
+                            </select>
+                            ${t.tags && Array.isArray(t.tags) && t.tags.length > 1 ? `<span class="text-[8px] text-slate-500 font-mono truncate max-w-[80px]" title="${escapeHTML(t.tags.join(', '))}">${escapeHTML(t.tags.slice(1, 3).join(', '))}</span>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-1">
@@ -12023,6 +12039,316 @@ async function deleteCurrentAdjustSpotifyTrack() {
 
     closeModal('adjust-spotify-modal');
     await deleteAudioTrack(trackId);
+}
+
+// -------------------------------------------------------------
+// ATMOSPHERE STUDIO: AUDIO DOWNLOAD & IMPORT (YT / SPOTIFY)
+// -------------------------------------------------------------
+let _activeAudioImportJobId = null;
+let _audioImportPollTimer = null;
+let _audioImportDebounceTimer = null;
+
+function openImportAudioModal() {
+    const urlInput = document.getElementById('import-audio-url');
+    const nameInput = document.getElementById('import-audio-custom-name');
+    const tagsInput = document.getElementById('import-audio-secondary-tags');
+    const previewBox = document.getElementById('import-audio-preview-box');
+    const progressBox = document.getElementById('import-audio-progress-container');
+    const submitBtn = document.getElementById('import-audio-submit-btn');
+
+    if (urlInput) urlInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (tagsInput) tagsInput.value = '';
+    if (previewBox) previewBox.classList.add('hidden');
+    if (progressBox) progressBox.classList.add('hidden');
+
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.className = "px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-950/40 flex items-center gap-1.5 transition";
+        submitBtn.innerHTML = '<span>📥</span> <span>Start Download & Import</span>';
+        submitBtn.onclick = startAudioDownloadAndImport;
+    }
+
+    _activeAudioImportJobId = null;
+    if (_audioImportPollTimer) {
+        clearInterval(_audioImportPollTimer);
+        _audioImportPollTimer = null;
+    }
+
+    selectImportCategory('Ambiance');
+    onImportAudioUrlChange('');
+    openModal('import-audio-modal');
+}
+
+function onImportAudioUrlChange(val) {
+    const badge = document.getElementById('import-audio-platform-badge');
+    const clean = (val || '').trim();
+    if (!badge) return;
+
+    if (!clean) {
+        badge.textContent = 'Paste URL';
+        badge.className = 'text-[9px] font-mono text-purple-400 font-semibold px-2 py-0.5 rounded bg-purple-950/60 border border-purple-800/80';
+    } else if (clean.includes('youtube.com/') || clean.includes('youtu.be/')) {
+        badge.textContent = '🔴 YouTube Detected';
+        badge.className = 'text-[9px] font-mono text-rose-300 font-bold px-2 py-0.5 rounded bg-rose-950/80 border border-rose-700/80';
+    } else if (clean.includes('spotify.com/')) {
+        badge.textContent = '🟢 Spotify Detected';
+        badge.className = 'text-[9px] font-mono text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-700/80';
+    } else {
+        badge.textContent = 'Unsupported URL';
+        badge.className = 'text-[9px] font-mono text-amber-300 font-semibold px-2 py-0.5 rounded bg-amber-950/80 border border-amber-700/80';
+    }
+
+    if (_audioImportDebounceTimer) clearTimeout(_audioImportDebounceTimer);
+    if (clean && (clean.includes('youtube.com') || clean.includes('youtu.be') || clean.includes('spotify.com'))) {
+        _audioImportDebounceTimer = setTimeout(() => {
+            previewAudioImport(true);
+        }, 600);
+    }
+}
+
+function selectImportCategory(cat) {
+    const hidden = document.getElementById('import-audio-category');
+    if (hidden) hidden.value = cat;
+
+    const cats = ['Weather', 'Ambiance', 'Dungeon', 'Combat', 'Music'];
+    cats.forEach(c => {
+        const btn = document.getElementById(`import-tag-${c}`);
+        if (!btn) return;
+        if (c === cat) {
+            btn.className = "import-tag-btn p-2 rounded-xl bg-purple-950/90 border-2 border-purple-400 text-purple-100 font-bold text-[11px] flex flex-col items-center gap-1 shadow-lg shadow-purple-950/50 scale-105 transition-all";
+        } else {
+            btn.className = "import-tag-btn p-2 rounded-xl bg-ledger-950 border border-ledger-750 hover:border-slate-600 text-slate-400 hover:text-slate-200 font-medium text-[11px] flex flex-col items-center gap-1 transition-all";
+        }
+    });
+}
+
+async function previewAudioImport(isAuto = false) {
+    const url = (document.getElementById('import-audio-url')?.value || '').trim();
+    if (!url) {
+        if (!isAuto) showToast("Please paste a YouTube or Spotify URL first.", "error");
+        return;
+    }
+
+    const inspectBtn = document.getElementById('import-audio-inspect-btn');
+    if (inspectBtn) inspectBtn.innerHTML = '<span>⏳</span> <span>Inspecting...</span>';
+
+    try {
+        const res = await fetch('/api/audio/import/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const previewBox = document.getElementById('import-audio-preview-box');
+            const previewTitle = document.getElementById('import-preview-title');
+            const previewMeta = document.getElementById('import-preview-meta');
+            const previewIcon = document.getElementById('import-preview-icon');
+            const previewSuggested = document.getElementById('import-preview-suggested');
+            const nameInput = document.getElementById('import-audio-custom-name');
+
+            if (previewBox) previewBox.classList.remove('hidden');
+            if (previewTitle) previewTitle.textContent = data.title || 'Untitled';
+            if (previewMeta) {
+                const countText = data.count === 1 ? 'Single Track' : `${data.count} Tracks in Playlist`;
+                previewMeta.textContent = `${countText} • ${data.platform ? data.platform.toUpperCase() : ''}`;
+            }
+            if (previewIcon) {
+                previewIcon.textContent = data.platform === 'spotify' ? '🟢' : '🔴';
+            }
+            if (previewSuggested && data.suggested_category) {
+                previewSuggested.textContent = `Suggested: ${data.suggested_category}`;
+                selectImportCategory(data.suggested_category);
+            }
+            if (nameInput && !nameInput.value && data.title) {
+                nameInput.value = data.title;
+            }
+        } else {
+            const err = await res.json();
+            if (!isAuto) showToast(err.detail || "Could not read media link.", "error");
+        }
+    } catch (e) {
+        if (!isAuto) showToast("Network error checking audio link.", "error");
+    } finally {
+        if (inspectBtn) inspectBtn.innerHTML = '<span>🔍</span> <span>Inspect</span>';
+    }
+}
+
+async function startAudioDownloadAndImport() {
+    const url = (document.getElementById('import-audio-url')?.value || '').trim();
+    const category = document.getElementById('import-audio-category')?.value || 'Ambiance';
+    const rawTags = (document.getElementById('import-audio-secondary-tags')?.value || '').trim();
+    const tags = rawTags ? rawTags.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const maxLimit = parseInt(document.getElementById('import-audio-max-limit')?.value || '25') || 25;
+    const customName = (document.getElementById('import-audio-custom-name')?.value || '').trim();
+
+    if (!url) {
+        showToast("Please enter a YouTube or Spotify URL.", "error");
+        return;
+    }
+
+    const submitBtn = document.getElementById('import-audio-submit-btn');
+    const progressContainer = document.getElementById('import-audio-progress-container');
+    const progressBar = document.getElementById('import-audio-progress-bar');
+    const progressPct = document.getElementById('import-audio-progress-pct');
+    const progressMsg = document.getElementById('import-audio-progress-msg');
+    const progressStatus = document.getElementById('import-audio-progress-status');
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>⏳</span> <span>Downloading...</span>';
+    }
+    if (progressContainer) progressContainer.classList.remove('hidden');
+    if (progressBar) progressBar.style.width = '5%';
+    if (progressPct) progressPct.textContent = '5%';
+    if (progressMsg) progressMsg.textContent = 'Connecting to download engine...';
+    if (progressStatus) progressStatus.innerHTML = '<span class="animate-spin inline-block">⏳</span> <span>Downloading & Transcoding...</span>';
+
+    try {
+        const res = await fetch('/api/audio/import/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: url,
+                category: category,
+                tags: tags,
+                max_tracks: maxLimit,
+                custom_name: customName
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            _activeAudioImportJobId = data.job_id;
+            _pollAudioImportStatus(data.job_id);
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Failed to start download job.", "error");
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>📥</span> <span>Start Download & Import</span>';
+            }
+            if (progressContainer) progressContainer.classList.add('hidden');
+        }
+    } catch (e) {
+        console.error("Audio import error:", e);
+        showToast("Network error starting download.", "error");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>📥</span> <span>Start Download & Import</span>';
+        }
+        if (progressContainer) progressContainer.classList.add('hidden');
+    }
+}
+
+function _pollAudioImportStatus(jobId) {
+    if (_audioImportPollTimer) clearInterval(_audioImportPollTimer);
+
+    _audioImportPollTimer = setInterval(async () => {
+        try {
+            const res = await fetch(`/api/audio/import/status/${jobId}`);
+            if (!res.ok) return;
+            const job = await res.json();
+
+            const progressBar = document.getElementById('import-audio-progress-bar');
+            const progressPct = document.getElementById('import-audio-progress-pct');
+            const progressMsg = document.getElementById('import-audio-progress-msg');
+            const progressStatus = document.getElementById('import-audio-progress-status');
+            const submitBtn = document.getElementById('import-audio-submit-btn');
+
+            const pct = Math.max(5, Math.min(100, Math.round(job.percent || 0)));
+            if (progressBar) progressBar.style.width = `${pct}%`;
+            if (progressPct) progressPct.textContent = `${pct}%`;
+            if (progressMsg && job.message) progressMsg.textContent = job.message;
+
+            if (job.status === 'completed') {
+                clearInterval(_audioImportPollTimer);
+                _audioImportPollTimer = null;
+                if (progressBar) progressBar.style.width = '100%';
+                if (progressPct) progressPct.textContent = '100%';
+                if (progressStatus) progressStatus.innerHTML = '<span>✅</span> <span class="text-emerald-300">Download Complete!</span>';
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.className = "px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-950/40 flex items-center gap-1.5 transition";
+                    submitBtn.innerHTML = '<span>✨</span> <span>Done (Close)</span>';
+                    submitBtn.onclick = () => closeModal('import-audio-modal');
+                }
+
+                // Refresh library & atmosphere mixer
+                const libRes = await fetch('/api/audio/library');
+                if (libRes.ok) {
+                    appState.audioLibrary = await libRes.json();
+                    renderAudioTracks();
+                    if (typeof updateActiveLayersSummary === 'function') {
+                        updateActiveLayersSummary();
+                    }
+                }
+                showToast(job.message || "Audio successfully added to library!", "success");
+            } else if (job.status === 'error') {
+                clearInterval(_audioImportPollTimer);
+                _audioImportPollTimer = null;
+                if (progressStatus) progressStatus.innerHTML = '<span>❌</span> <span class="text-rose-400">Download Failed</span>';
+                if (progressMsg) progressMsg.textContent = job.error || "An error occurred during download.";
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>🔄</span> <span>Retry Download</span>';
+                }
+                showToast(job.error || "Download error.", "error");
+            } else if (job.status === 'cancelled') {
+                clearInterval(_audioImportPollTimer);
+                _audioImportPollTimer = null;
+                if (progressStatus) progressStatus.innerHTML = '<span>⏹️</span> <span class="text-amber-400">Download Cancelled</span>';
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span>📥</span> <span>Start Download & Import</span>';
+                }
+            }
+        } catch (e) {
+            console.error("Error polling import job:", e);
+        }
+    }, 800);
+}
+
+async function cancelAudioImport() {
+    if (!_activeAudioImportJobId) return;
+    try {
+        await fetch(`/api/audio/import/cancel/${_activeAudioImportJobId}`, { method: 'POST' });
+        showToast("Download cancelled.", "info");
+    } catch (e) {
+        console.error("Error cancelling import:", e);
+    }
+}
+
+async function quickSetTrackTag(trackId, newCategory) {
+    if (!newCategory) return;
+    try {
+        const res = await fetch(`/api/audio/track/${trackId}/tag`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: newCategory })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const track = (appState.audioLibrary || []).find(t => t.id === trackId);
+            if (track) {
+                track.category = newCategory;
+                if (data.track && data.track.icon) track.icon = data.track.icon;
+            }
+            showToast(`Track tagged as "${newCategory}"`, "info");
+            renderAudioTracks();
+            if (typeof updateActiveLayersSummary === 'function') {
+                updateActiveLayersSummary();
+            }
+        } else {
+            showToast("Failed to update track tag.", "error");
+        }
+    } catch (e) {
+        console.error("Error updating track tag:", e);
+        showToast("Network error updating track tag.", "error");
+    }
 }
 
 async function restoreSrdCompendiums() {

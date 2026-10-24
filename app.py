@@ -27,6 +27,7 @@ from map_generator import ProceduralMapGenerator, get_random_title
 import updater
 import ddb_importer
 import cos_module_pack
+import audio_importer
 
 # Resource & Data Directory Resolution (Handles Live Dev & PyInstaller Frozen App)
 if getattr(sys, "frozen", False):
@@ -775,6 +776,9 @@ def write_json(filename: str, data: Any) -> bool:
         if temp_path.exists():
             temp_path.unlink()
         return False
+
+# Audio Importer & Downloader Engine
+audio_worker = audio_importer.AudioDownloadWorker(DATA_DIR, UPLOADS_DIR, read_json, write_json)
 
 # Pydantic models for validation
 class DeathSaves(BaseModel):
@@ -7474,6 +7478,74 @@ async def upload_audio_file(file: UploadFile = File(...)):
     library.append(track)
     write_json("audio_library.json", library)
     return {"status": "success", "url": url, "track": track, "library": library}
+
+# -------------------------------------------------------------
+# AUDIO DOWNLOADER & IMPORTER ENDPOINTS (YouTube / Spotify)
+# -------------------------------------------------------------
+class AudioImportPreviewRequest(BaseModel):
+    url: str
+
+class AudioImportStartRequest(BaseModel):
+    url: str
+    category: Optional[str] = "Ambiance"
+    tags: Optional[List[str]] = []
+    max_tracks: Optional[int] = 50
+    custom_name: Optional[str] = ""
+
+class AudioTrackTagRequest(BaseModel):
+    category: str
+    tags: Optional[List[str]] = None
+
+@app.post("/api/audio/import/preview")
+async def preview_audio_import(req: AudioImportPreviewRequest):
+    result = audio_importer.preview_audio_source(req.url)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+@app.post("/api/audio/import/start")
+async def start_audio_import(req: AudioImportStartRequest):
+    result = audio_worker.start_download_job(
+        url=req.url,
+        category=req.category or "Ambiance",
+        tags=req.tags or [],
+        max_tracks=req.max_tracks or 50,
+        custom_name=req.custom_name or ""
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+@app.get("/api/audio/import/status/{job_id}")
+async def get_audio_import_status(job_id: str):
+    job = audio_worker.get_job_status(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Download job not found.")
+    return job
+
+@app.post("/api/audio/import/cancel/{job_id}")
+async def cancel_audio_import(job_id: str):
+    cancelled = audio_worker.cancel_job(job_id)
+    return {"status": "success" if cancelled else "not_found", "cancelled": cancelled}
+
+@app.post("/api/audio/track/{track_id}/tag")
+async def quick_tag_audio_track(track_id: str, req: AudioTrackTagRequest):
+    library = read_json("audio_library.json", [])
+    track = next((t for t in library if t.get("id") == track_id), None)
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found.")
+    
+    track["category"] = req.category
+    if req.tags is not None:
+        track["tags"] = req.tags
+    
+    # Auto-adjust icon if still using default
+    cat_icons = audio_importer.DEFAULT_CATEGORY_ICONS
+    if track.get("category") in cat_icons:
+        track["icon"] = cat_icons[track["category"]]
+
+    write_json("audio_library.json", library)
+    return {"status": "success", "track": track, "library": library}
 
 @app.post("/api/upload")
 @app.post("/api/overworld/upload-map")
