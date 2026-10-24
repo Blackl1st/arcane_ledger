@@ -103,6 +103,9 @@ let appState = {
     audioLibrary: [],
     audioPresets: [],
     audioActiveCategory: 'all',
+    audioViewMode: (function() { try { return localStorage.getItem('arcane_audio_view_mode') || 'compact'; } catch(e) { return 'compact'; } })(),
+    audioSearchQuery: '',
+    audioActiveOnly: false,
     activeAudioPresetId: null,
     // Phase 5 state: 2024 Spells, Encounters, and amaran Lighting
     spells: [],
@@ -10301,6 +10304,7 @@ function saveMonsterArtCustom() {
 // MULTI-TRACK AUDIO MIXER & SCENE PRESETS CONTROLLER
 // -----------------------------------------------------------------------------
 function renderAudioMixer() {
+    updateAudioViewModeButtons();
     renderAudioPresets();
     renderAudioTracks();
     updateActiveLayersSummary();
@@ -10596,6 +10600,7 @@ window.SpotifyEmbedManager = {
     updateCardUI(trackId) {
         const card = document.getElementById(`track-card-${trackId}`);
         const isPlaying = this.isPlaying(trackId);
+        const isCompact = card && card.dataset.viewMode === 'compact';
         if (card) {
             if (isPlaying) {
                 card.classList.add('border-emerald-400', 'shadow-emerald-950/40');
@@ -10608,15 +10613,25 @@ window.SpotifyEmbedManager = {
         const btnIcon = document.getElementById(`spotify-btn-icon-${trackId}`);
         const btnText = document.getElementById(`spotify-btn-text-${trackId}`);
         const btn = document.getElementById(`spotify-btn-${trackId}`);
-        if (btnIcon && btnText) {
+        if (btnIcon) {
             btnIcon.textContent = isPlaying ? '⏸️' : '▶️';
+        }
+        if (btnText) {
             btnText.textContent = isPlaying ? 'Pause' : 'Play';
         }
         if (btn) {
-            if (isPlaying) {
-                btn.className = "px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm transition ring-2 ring-emerald-400/50";
+            if (isCompact) {
+                if (isPlaying) {
+                    btn.className = "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50 ring-2 ring-emerald-400/50";
+                } else {
+                    btn.className = "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm bg-emerald-700/80 hover:bg-emerald-600 text-white";
+                }
             } else {
-                btn.className = "px-2.5 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-slate-200 text-[10px] font-bold flex items-center gap-1 shadow-sm transition";
+                if (isPlaying) {
+                    btn.className = "px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm transition ring-2 ring-emerald-400/50";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-slate-200 text-[10px] font-bold flex items-center gap-1 shadow-sm transition";
+                }
             }
         }
     }
@@ -10631,9 +10646,63 @@ function toggleSpotifyTrack(trackId) {
     window.SpotifyEmbedManager.toggle(trackId);
 }
 
+function createCompactSpotifyCardElement(t) {
+    const card = document.createElement('div');
+    card.id = `track-card-${t.id}`;
+    card.dataset.viewMode = 'compact';
+    card.className = "col-span-1 lg:col-span-2 bg-ledger-900/90 border border-emerald-500/50 hover:border-emerald-400 rounded-xl p-2.5 flex flex-col gap-2 shadow-md shadow-emerald-950/20 transition";
+    
+    const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
+    const height = parseInt(t.height) || 80;
+
+    card.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+            <!-- Left: Play Button, Icon, Title & Category Select -->
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+                <button id="spotify-btn-${t.id}" type="button" onclick="toggleSpotifyTrack('${t.id}')" title="Play or Pause Spotify Track" class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm bg-emerald-700/80 hover:bg-emerald-600 text-white">
+                    <span id="spotify-btn-icon-${t.id}" class="text-xs">▶️</span>
+                </button>
+                <span id="spotify-icon-${t.id}" class="text-xl shrink-0">${escapeHTML(t.icon || '🟢')}</span>
+                <div class="min-w-0 flex-1 flex items-center gap-2">
+                    <h4 id="spotify-title-${t.id}" class="font-bold text-xs text-emerald-300 truncate" title="${escapeHTML(t.name)}">${escapeHTML(t.name)}</h4>
+                    <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-emerald-950/80 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400 rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition shrink-0">
+                        <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
+                        <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
+                        <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
+                        <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
+                        <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Right: Action Buttons -->
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" onclick="openAdjustSpotifyModal('${t.id}')" title="Adjust Channel (Change Playlist, Name, Icon, Player Size)" class="px-2 py-1 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 border border-ledger-700 text-[10px] font-semibold flex items-center gap-1 transition shadow-sm">
+                    <span>⚙️</span>
+                    <span class="hidden sm:inline">Adjust</span>
+                </button>
+                <button type="button" onclick="toggleSpotifyCardHeight('${t.id}')" title="Toggle Player Size" class="p-1 px-1.5 rounded-lg bg-ledger-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-ledger-700 text-[10px] font-mono transition">
+                    <span id="spotify-height-badge-${t.id}">↕️ ${height}px</span>
+                </button>
+                <a id="spotify-link-${t.id}" href="${escapeHTML(t.url)}" target="_blank" rel="noopener noreferrer" title="Open in Spotify Web/App" class="px-2 py-1 rounded-lg bg-emerald-950 text-emerald-400 hover:text-white border border-emerald-800 text-[10px] font-semibold flex items-center gap-1 transition">
+                    <span>↗</span>
+                </a>
+                ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs transition">✕</button>` : ''}
+            </div>
+        </div>
+
+        <!-- Embedded Player Placeholder -->
+        <div id="spotify-slot-${t.id}" class="rounded-xl overflow-hidden border border-emerald-900/60 shadow-inner bg-black/80" style="min-height:${height}px;">
+            <div id="spotify-embed-${t.id}"></div>
+        </div>
+    `;
+    return card;
+}
+
 function createSpotifyCardElement(t) {
     const card = document.createElement('div');
     card.id = `track-card-${t.id}`;
+    card.dataset.viewMode = 'grid';
     card.className = "col-span-1 md:col-span-2 bg-ledger-900 border border-emerald-500/50 hover:border-emerald-400 rounded-2xl p-4 flex flex-col justify-between shadow-xl shadow-emerald-950/20 transition";
     
     const isCustom = t.category === 'Custom' || t.id.startsWith('track-') || t.id.startsWith('spotify-');
@@ -10702,9 +10771,63 @@ function updateSpotifyCardUI(t, card) {
     if (badgeEl && t.height) badgeEl.textContent = `↕️ ${t.height}px`;
 }
 
+function createCompactAudioCardElement(t) {
+    const card = document.createElement('div');
+    card.id = `track-card-${t.id}`;
+    card.dataset.viewMode = 'compact';
+    
+    const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
+    const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
+    const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
+    const volPercent = Math.round(volume * 100);
+    const isCustom = t.category === 'Custom' || t.id.startsWith('track-');
+
+    card.className = `flex items-center justify-between gap-2.5 p-2 px-3 rounded-xl border ${isPlaying ? 'bg-emerald-950/30 border-emerald-500/70 shadow-sm' : 'bg-ledger-900/90 border-ledger-800 hover:border-ledger-700'} transition group`;
+
+    card.innerHTML = `
+        <!-- Left: Play/Pause, Icon, Title, and Category Tag -->
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+            <button id="track-btn-${t.id}" onclick="toggleAudioTrack('${t.id}')" title="${isPlaying ? 'Pause Layer' : 'Play Layer'}" class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm ${isPlaying ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50' : 'bg-ledger-800 hover:bg-ledger-700 text-slate-300 border border-ledger-700 hover:border-slate-500'}">
+                <span class="text-xs">${isPlaying ? '⏸️' : '▶️'}</span>
+            </button>
+            <span class="text-lg shrink-0 select-none">${escapeHTML(t.icon || '🎵')}</span>
+            <div class="min-w-0 flex-1 flex items-center gap-2">
+                <h4 class="font-bold text-xs text-slate-200 truncate" title="${escapeHTML(t.name)}">${escapeHTML(t.name)}</h4>
+                <select onchange="quickSetTrackTag('${t.id}', this.value)" title="Change Atmosphere tag" class="bg-ledger-950 text-amber-300 hover:text-amber-200 border border-ledger-750 hover:border-amber-500/50 rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider cursor-pointer focus:outline-none transition shrink-0">
+                    <option value="Ambiance" ${t.category === 'Ambiance' ? 'selected' : ''}>🌲 Ambiance</option>
+                    <option value="Weather" ${t.category === 'Weather' ? 'selected' : ''}>🌧️ Weather</option>
+                    <option value="Dungeon" ${t.category === 'Dungeon' ? 'selected' : ''}>💀 Dungeon</option>
+                    <option value="Combat" ${t.category === 'Combat' ? 'selected' : ''}>⚔️ Combat</option>
+                    <option value="Music" ${t.category === 'Music' ? 'selected' : ''}>🎵 Music</option>
+                    ${t.category && !['Weather', 'Ambiance', 'Dungeon', 'Combat', 'Music'].includes(t.category) ? `<option value="${escapeHTML(t.category)}" selected>${escapeHTML(t.category)}</option>` : ''}
+                </select>
+                ${t.tags && Array.isArray(t.tags) && t.tags.length > 1 ? `<span class="text-[8px] text-slate-500 font-mono truncate max-w-[90px] hidden md:inline" title="${escapeHTML(t.tags.join(', '))}">${escapeHTML(t.tags.slice(1, 3).join(', '))}</span>` : ''}
+            </div>
+        </div>
+
+        <!-- Right: Active Ping, Volume Slider & Delete -->
+        <div class="flex items-center gap-2.5 shrink-0">
+            <span id="track-ping-${t.id}" class="${isPlaying ? 'flex' : 'hidden'} h-2 w-2 relative shrink-0">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+
+            <!-- Compact Volume Slider -->
+            <div class="flex items-center gap-1.5 w-24 sm:w-28 md:w-32">
+                <span id="track-vol-text-${t.id}" class="text-[10px] font-mono font-bold text-slate-300 w-7 text-right">${volPercent}%</span>
+                <input id="track-vol-slider-${t.id}" type="range" min="0" max="100" value="${volPercent}" oninput="setAudioTrackVolume('${t.id}', this.value)" class="w-full h-1.5 bg-ledger-950 rounded-lg accent-amber-500 cursor-pointer">
+            </div>
+
+            ${isCustom ? `<button onclick="deleteAudioTrack('${t.id}')" title="Delete Track" class="text-slate-500 hover:text-rose-400 p-1 text-xs shrink-0 transition">✕</button>` : ''}
+        </div>
+    `;
+    return card;
+}
+
 function createAudioCardElement(t) {
     const card = document.createElement('div');
     card.id = `track-card-${t.id}`;
+    card.dataset.viewMode = 'grid';
     
     const engineTrack = window.AudioEngine ? (Array.isArray(window.AudioEngine.tracks) ? window.AudioEngine.tracks.find(tr => tr.id === t.id) : window.AudioEngine.tracks[t.id]) : null;
     const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
@@ -10770,13 +10893,22 @@ function updateAudioCardUI(t, card) {
     const isPlaying = !!(engineTrack && (engineTrack.active || engineTrack.isPlaying));
     const volume = engineTrack && engineTrack.volume !== undefined ? engineTrack.volume : (t.defaultVolume || 0.5);
     const volPercent = Math.round(volume * 100);
+    const isCompact = card && card.dataset.viewMode === 'compact';
 
-    if (isPlaying) {
-        card.classList.add('border-emerald-500/70', 'shadow-lg', 'shadow-emerald-950/40');
-        card.classList.remove('border-ledger-800', 'hover:border-ledger-700');
+    if (isCompact) {
+        if (isPlaying) {
+            card.className = "flex items-center justify-between gap-2.5 p-2 px-3 rounded-xl border bg-emerald-950/30 border-emerald-500/70 shadow-sm transition group";
+        } else {
+            card.className = "flex items-center justify-between gap-2.5 p-2 px-3 rounded-xl border bg-ledger-900/90 border-ledger-800 hover:border-ledger-700 transition group";
+        }
     } else {
-        card.classList.remove('border-emerald-500/70', 'shadow-lg', 'shadow-emerald-950/40');
-        card.classList.add('border-ledger-800', 'hover:border-ledger-700');
+        if (isPlaying) {
+            card.classList.add('border-emerald-500/70', 'shadow-lg', 'shadow-emerald-950/40');
+            card.classList.remove('border-ledger-800', 'hover:border-ledger-700');
+        } else {
+            card.classList.remove('border-emerald-500/70', 'shadow-lg', 'shadow-emerald-950/40');
+            card.classList.add('border-ledger-800', 'hover:border-ledger-700');
+        }
     }
 
     const ping = document.getElementById(`track-ping-${t.id}`);
@@ -10795,35 +10927,132 @@ function updateAudioCardUI(t, card) {
 
     const btn = document.getElementById(`track-btn-${t.id}`);
     if (btn) {
-        if (isPlaying) {
-            btn.className = "w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white";
-            btn.innerHTML = "<span>⏸️ Pause Layer</span>";
+        if (isCompact) {
+            if (isPlaying) {
+                btn.className = "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50";
+                btn.innerHTML = '<span class="text-xs">⏸️</span>';
+                btn.title = "Pause Layer";
+            } else {
+                btn.className = "w-8 h-8 rounded-lg shrink-0 flex items-center justify-center transition shadow-sm bg-ledger-800 hover:bg-ledger-700 text-slate-300 border border-ledger-700 hover:border-slate-500";
+                btn.innerHTML = '<span class="text-xs">▶️</span>';
+                btn.title = "Play Layer";
+            }
         } else {
-            btn.className = "w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700";
-            btn.innerHTML = "<span>▶️ Play Layer</span>";
+            if (isPlaying) {
+                btn.className = "w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white";
+                btn.innerHTML = "<span>⏸️ Pause Layer</span>";
+                btn.title = "Pause Layer";
+            } else {
+                btn.className = "w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm bg-ledger-800 hover:bg-ledger-700 text-slate-200 border border-ledger-700";
+                btn.innerHTML = "<span>▶️ Play Layer</span>";
+                btn.title = "Play Layer";
+            }
         }
     }
+}
+
+function isTrackPlaying(t) {
+    if (!t) return false;
+    if (isSpotifyUrl(t.url)) {
+        return !!(window.SpotifyEmbedManager && window.SpotifyEmbedManager.isPlaying(t.id));
+    }
+    if (!window.AudioEngine) return false;
+    const tr = Array.isArray(window.AudioEngine.tracks)
+        ? window.AudioEngine.tracks.find(x => x.id === t.id)
+        : (window.AudioEngine.tracks ? window.AudioEngine.tracks[t.id] : null);
+    return !!(tr && (tr.active || tr.isPlaying));
 }
 
 function renderAudioTracks() {
     const grid = document.getElementById('audio-mixer-grid');
     if (!grid) return;
+
     const cat = appState.audioActiveCategory || 'all';
+    const query = (appState.audioSearchQuery || '').trim().toLowerCase();
+    const activeOnly = !!appState.audioActiveOnly;
+    const targetMode = appState.audioViewMode || 'compact';
+    const isCompact = targetMode === 'compact';
     const allLibraryTracks = appState.audioLibrary || [];
-    const filteredTracks = allLibraryTracks.filter(t => cat === 'all' || t.category === cat);
 
-    // Empty state container
+    // Ensure grid container layout matches active view mode
+    if (isCompact) {
+        grid.className = "grid grid-cols-1 lg:grid-cols-2 gap-2.5 transition-all";
+    } else {
+        grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 transition-all";
+    }
+
+    // Update Category Pills track counts
+    updateCategoryCounts(allLibraryTracks);
+
+    // Filter tracks by category, search query, and active-only toggle
+    const filteredTracks = allLibraryTracks.filter(t => {
+        // Category filter
+        if (cat !== 'all' && t.category !== cat) return false;
+
+        // Search query filter (matches name, category, or secondary tags)
+        if (query) {
+            const inName = (t.name || '').toLowerCase().includes(query);
+            const inCat = (t.category || '').toLowerCase().includes(query);
+            const inTags = Array.isArray(t.tags) && t.tags.some(tag => (tag || '').toLowerCase().includes(query));
+            if (!inName && !inCat && !inTags) return false;
+        }
+
+        // Active-only filter (shows only actively playing layers)
+        if (activeOnly && !isTrackPlaying(t)) {
+            return false;
+        }
+
+        return true;
+    });
+
+    // Update Showing sounds count label
+    const countLabel = document.getElementById('audio-tracks-count-label');
+    if (countLabel) {
+        if (filteredTracks.length === allLibraryTracks.length) {
+            countLabel.textContent = `Showing all ${allLibraryTracks.length} sounds`;
+        } else {
+            countLabel.textContent = `Showing ${filteredTracks.length} of ${allLibraryTracks.length} sounds`;
+        }
+    }
+
+    // Clean up any cards in grid that are no longer in allLibraryTracks at all
+    const allTrackIds = new Set(allLibraryTracks.map(t => t.id));
+    Array.from(grid.children).forEach(child => {
+        if (child.id && child.id.startsWith('track-card-')) {
+            const tid = child.id.replace('track-card-', '');
+            if (!allTrackIds.has(tid)) {
+                if (window.SpotifyEmbedManager) window.SpotifyEmbedManager.destroy(tid);
+                child.remove();
+            }
+        }
+    });
+
+    // Handle Empty State
     let emptyEl = document.getElementById('audio-mixer-empty-msg');
-
     if (filteredTracks.length === 0) {
         if (!emptyEl) {
             emptyEl = document.createElement('div');
             emptyEl.id = 'audio-mixer-empty-msg';
-            emptyEl.className = 'col-span-full text-center py-8 text-slate-500 text-xs italic';
+            emptyEl.className = 'col-span-full text-center py-12 px-4 rounded-2xl border border-dashed border-ledger-800 bg-ledger-900/30 flex flex-col items-center justify-center gap-2';
             grid.appendChild(emptyEl);
         }
-        emptyEl.textContent = `No tracks found in category "${cat}".`;
+        let emptyMsg = `No sounds found in "${cat}".`;
+        if (query) {
+            emptyMsg = `No sounds matching "${query}".`;
+        } else if (activeOnly) {
+            emptyMsg = `No sounds currently playing.`;
+        }
+        emptyEl.innerHTML = `
+            <span class="text-2xl">🔇</span>
+            <p class="text-sm font-semibold text-slate-300">${escapeHTML(emptyMsg)}</p>
+            ${query || activeOnly || cat !== 'all' ? `
+                <button onclick="clearAudioFilters()" class="mt-2 px-3 py-1.5 rounded-xl bg-ledger-800 hover:bg-ledger-700 text-amber-400 hover:text-amber-300 text-xs font-semibold border border-ledger-700 transition shadow-sm">
+                    Reset Filters
+                </button>
+            ` : ''}
+        `;
         emptyEl.style.display = '';
+
         Array.from(grid.children).forEach(child => {
             if (child.id && child.id.startsWith('track-card-')) {
                 child.style.display = 'none';
@@ -10836,27 +11065,31 @@ function renderAudioTracks() {
 
     const filteredTrackIds = new Set(filteredTracks.map(t => t.id));
 
-    // Hide any cards currently in grid that do not match the current category filter
+    // Hide cards that don't match current filter, or remove if viewMode mismatch
     Array.from(grid.children).forEach(child => {
         if (child.id && child.id.startsWith('track-card-')) {
             const tid = child.id.replace('track-card-', '');
             if (!filteredTrackIds.has(tid)) {
                 child.style.display = 'none';
+            } else if (child.dataset.viewMode !== targetMode) {
+                if (window.SpotifyEmbedManager) window.SpotifyEmbedManager.destroy(tid);
+                child.remove();
             }
         }
     });
 
-    // Render new cards or update existing cards in-place without destroying DOM / iframes
+    // Render or update each track card
     filteredTracks.forEach(t => {
         const cardId = `track-card-${t.id}`;
         let card = document.getElementById(cardId);
 
         if (isSpotifyUrl(t.url)) {
             if (!card) {
-                card = createSpotifyCardElement(t);
+                card = isCompact ? createCompactSpotifyCardElement(t) : createSpotifyCardElement(t);
                 grid.appendChild(card);
                 if (window.SpotifyEmbedManager) {
-                    window.SpotifyEmbedManager.mount(t.id, `spotify-embed-${t.id}`, t.url, t.height || 152);
+                    const h = isCompact ? (parseInt(t.height) || 80) : (t.height || 152);
+                    window.SpotifyEmbedManager.mount(t.id, `spotify-embed-${t.id}`, t.url, h);
                 }
             } else {
                 card.style.display = '';
@@ -10864,7 +11097,7 @@ function renderAudioTracks() {
             }
         } else {
             if (!card) {
-                card = createAudioCardElement(t);
+                card = isCompact ? createCompactAudioCardElement(t) : createAudioCardElement(t);
                 grid.appendChild(card);
             } else {
                 card.style.display = '';
@@ -10872,6 +11105,96 @@ function renderAudioTracks() {
             }
         }
     });
+}
+
+function onAudioSearchInput(val) {
+    appState.audioSearchQuery = val || '';
+    const clearBtn = document.getElementById('audio-search-clear-btn');
+    if (clearBtn) {
+        if (appState.audioSearchQuery.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+    }
+    renderAudioTracks();
+}
+
+function clearAudioSearch() {
+    const input = document.getElementById('audio-search-input');
+    if (input) input.value = '';
+    appState.audioSearchQuery = '';
+    const clearBtn = document.getElementById('audio-search-clear-btn');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    renderAudioTracks();
+}
+
+function toggleActiveOnlyAudioFilter() {
+    appState.audioActiveOnly = !appState.audioActiveOnly;
+    const btn = document.getElementById('audio-active-only-btn');
+    if (btn) {
+        if (appState.audioActiveOnly) {
+            btn.className = "px-2.5 py-1.5 rounded-xl bg-emerald-600/30 text-emerald-300 border border-emerald-500/60 text-[11px] font-bold transition flex items-center gap-1.5 shrink-0 shadow-sm";
+        } else {
+            btn.className = "px-2.5 py-1.5 rounded-xl bg-ledger-900 hover:bg-ledger-850 text-slate-400 hover:text-emerald-300 border border-ledger-800 text-[11px] font-semibold transition flex items-center gap-1.5 shrink-0";
+        }
+    }
+    renderAudioTracks();
+}
+
+function setAudioViewMode(mode) {
+    if (mode !== 'compact' && mode !== 'grid') mode = 'compact';
+    appState.audioViewMode = mode;
+    try {
+        localStorage.setItem('arcane_audio_view_mode', mode);
+    } catch (e) {}
+    updateAudioViewModeButtons();
+    renderAudioTracks();
+}
+
+function updateAudioViewModeButtons() {
+    const mode = appState.audioViewMode || 'compact';
+    const compactBtn = document.getElementById('view-mode-compact');
+    const gridBtn = document.getElementById('view-mode-grid');
+    if (compactBtn && gridBtn) {
+        if (mode === 'compact') {
+            compactBtn.className = "px-2.5 py-1 rounded-lg text-[11px] font-bold transition bg-amber-500 text-ledger-950 shadow-sm flex items-center gap-1";
+            gridBtn.className = "px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white transition flex items-center gap-1";
+        } else {
+            gridBtn.className = "px-2.5 py-1 rounded-lg text-[11px] font-bold transition bg-amber-500 text-ledger-950 shadow-sm flex items-center gap-1";
+            compactBtn.className = "px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white transition flex items-center gap-1";
+        }
+    }
+}
+
+function updateCategoryCounts(allTracks) {
+    if (!Array.isArray(allTracks)) return;
+    const counts = { all: allTracks.length, Weather: 0, Ambiance: 0, Dungeon: 0, Combat: 0, Music: 0 };
+    allTracks.forEach(t => {
+        if (t.category && counts[t.category] !== undefined) {
+            counts[t.category]++;
+        }
+    });
+    for (const [cat, count] of Object.entries(counts)) {
+        const el = document.getElementById(`cat-count-${cat}`);
+        if (el) el.textContent = `(${count})`;
+    }
+}
+
+function clearAudioFilters() {
+    const searchInput = document.getElementById('audio-search-input');
+    if (searchInput) searchInput.value = '';
+    appState.audioSearchQuery = '';
+    const clearBtn = document.getElementById('audio-search-clear-btn');
+    if (clearBtn) clearBtn.classList.add('hidden');
+
+    appState.audioActiveOnly = false;
+    const activeBtn = document.getElementById('audio-active-only-btn');
+    if (activeBtn) {
+        activeBtn.className = "px-2.5 py-1.5 rounded-xl bg-ledger-900 hover:bg-ledger-850 text-slate-400 hover:text-emerald-300 border border-ledger-800 text-[11px] font-semibold transition flex items-center gap-1.5 shrink-0";
+    }
+
+    filterAudioCategory('all');
 }
 
 function updateActiveLayersSummary() {
@@ -10906,11 +11229,11 @@ function filterAudioCategory(cat) {
     appState.audioActiveCategory = cat;
     document.querySelectorAll('.cat-pill').forEach(btn => {
         if (btn.id === `cat-filter-${cat}`) {
-            btn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold');
-            btn.classList.remove('bg-ledger-900', 'text-slate-400', 'border');
+            btn.classList.add('bg-amber-500', 'text-ledger-950', 'font-bold', 'shadow-sm');
+            btn.classList.remove('bg-ledger-950', 'bg-ledger-900', 'text-slate-400', 'border');
         } else {
-            btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold');
-            btn.classList.add('bg-ledger-900', 'text-slate-400', 'border');
+            btn.classList.remove('bg-amber-500', 'text-ledger-950', 'font-bold', 'shadow-sm');
+            btn.classList.add('bg-ledger-950', 'text-slate-400', 'border');
         }
     });
     renderAudioTracks();
@@ -12371,6 +12694,12 @@ window.selectImportCategory = selectImportCategory;
 window.startAudioDownloadAndImport = startAudioDownloadAndImport;
 window.cancelAudioImport = cancelAudioImport;
 window.quickSetTrackTag = quickSetTrackTag;
+window.onAudioSearchInput = onAudioSearchInput;
+window.clearAudioSearch = clearAudioSearch;
+window.toggleActiveOnlyAudioFilter = toggleActiveOnlyAudioFilter;
+window.setAudioViewMode = setAudioViewMode;
+window.clearAudioFilters = clearAudioFilters;
+window.filterAudioCategory = filterAudioCategory;
 
 async function restoreSrdCompendiums() {
     if (!confirm("This will restore all default 5.5e SRD Bestiary monsters (330+), Spells (340+), Items (128+), and 2024 Core Rules from the app installation bundle. Continue?")) {

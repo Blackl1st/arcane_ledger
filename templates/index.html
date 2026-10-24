@@ -3689,26 +3689,72 @@
                 </div>
             </div>
 
-            <!-- Active Layers Summary & Category Filters -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-ledger-950 p-3.5 rounded-xl border border-ledger-800 text-xs">
-                <div class="flex items-center gap-2.5">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="font-bold text-slate-200">Active Layers:</span>
-                    <span id="active-layers-summary" class="text-amber-400 font-mono font-medium">None (Silence)</span>
+            <!-- Atmosphere Sound Library Controls: Search, View Mode & Filters -->
+            <div class="space-y-2.5">
+                <!-- Top Toolbar: Search + Playing Count + View Mode Switcher -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-ledger-950 p-3 rounded-2xl border border-ledger-800 text-xs shadow-md">
+                    
+                    <!-- Search Input Box -->
+                    <div class="relative flex-1 max-w-md">
+                        <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+                        <input id="audio-search-input" type="text" oninput="onAudioSearchInput(this.value)" placeholder="Search sounds, tags, or artists..." class="w-full bg-ledger-900 border border-ledger-750 focus:border-amber-500/80 rounded-xl pl-8 pr-8 py-2 text-slate-200 placeholder-slate-500 text-xs focus:outline-none transition">
+                        <button id="audio-search-clear-btn" type="button" onclick="clearAudioSearch()" class="hidden absolute right-2.5 top-2 text-slate-500 hover:text-white p-0.5 text-xs" title="Clear Search">✕</button>
+                    </div>
+
+                    <!-- Middle: Active Layers Summary Badge & Playing Only Filter -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex items-center gap-2 bg-ledger-900 px-3 py-1.5 rounded-xl border border-ledger-800 min-w-0 max-w-xs sm:max-w-md">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                            <span class="font-bold text-slate-300 text-[11px] shrink-0">Active:</span>
+                            <span id="active-layers-summary" class="text-amber-400 font-mono font-semibold text-[11px] truncate">None (Silence)</span>
+                        </div>
+                        <button id="audio-active-only-btn" type="button" onclick="toggleActiveOnlyAudioFilter()" class="px-2.5 py-1.5 rounded-xl bg-ledger-900 hover:bg-ledger-850 text-slate-400 hover:text-emerald-300 border border-ledger-800 text-[11px] font-semibold transition flex items-center gap-1.5 shrink-0" title="Filter to show only currently playing sounds">
+                            <span>🟢</span> <span>Playing Only</span>
+                        </button>
+                    </div>
+
+                    <!-- Right: Layout Switcher (Compact List vs Grid) -->
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-[10px] text-slate-400 font-medium">Layout:</span>
+                        <div class="flex items-center bg-ledger-900 p-0.5 rounded-xl border border-ledger-800">
+                            <button id="view-mode-compact" type="button" onclick="setAudioViewMode('compact')" title="Compact Channel Strip List View" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition bg-amber-500 text-ledger-950 shadow-sm flex items-center gap-1">
+                                <span>📋</span> <span>List</span>
+                            </button>
+                            <button id="view-mode-grid" type="button" onclick="setAudioViewMode('grid')" title="Traditional Card Grid View" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white transition flex items-center gap-1">
+                                <span>🔲</span> <span>Grid</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <!-- Category Filter Pills -->
-                <div id="audio-category-filters" class="flex items-center gap-1.5 flex-wrap">
-                    <button onclick="filterAudioCategory('all')" id="cat-filter-all" class="cat-pill px-2.5 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold text-[11px] transition">All</button>
-                    <button onclick="filterAudioCategory('Weather')" id="cat-filter-Weather" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">Weather</button>
-                    <button onclick="filterAudioCategory('Ambiance')" id="cat-filter-Ambiance" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">Ambiance</button>
-                    <button onclick="filterAudioCategory('Dungeon')" id="cat-filter-Dungeon" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">Dungeon</button>
-                    <button onclick="filterAudioCategory('Combat')" id="cat-filter-Combat" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">Combat</button>
-                    <button onclick="filterAudioCategory('Music')" id="cat-filter-Music" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-900 text-slate-400 hover:text-white border border-ledger-700 text-[11px] transition">Music</button>
+
+                <!-- Bottom Filter Bar: Category Filter Pills with Live Track Counts -->
+                <div class="flex items-center justify-between gap-2 px-1">
+                    <div id="audio-category-filters" class="flex items-center gap-1.5 flex-wrap text-xs">
+                        <button onclick="filterAudioCategory('all')" id="cat-filter-all" class="cat-pill px-3 py-1 rounded-lg bg-amber-500 text-ledger-950 font-bold text-[11px] transition shadow-sm">
+                            All <span id="cat-count-all" class="ml-1 text-[10px] opacity-80">(0)</span>
+                        </button>
+                        <button onclick="filterAudioCategory('Weather')" id="cat-filter-Weather" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
+                            🌧️ Weather <span id="cat-count-Weather" class="ml-1 text-[10px] opacity-75">(0)</span>
+                        </button>
+                        <button onclick="filterAudioCategory('Ambiance')" id="cat-filter-Ambiance" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
+                            🌲 Ambiance <span id="cat-count-Ambiance" class="ml-1 text-[10px] opacity-75">(0)</span>
+                        </button>
+                        <button onclick="filterAudioCategory('Dungeon')" id="cat-filter-Dungeon" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
+                            💀 Dungeon <span id="cat-count-Dungeon" class="ml-1 text-[10px] opacity-75">(0)</span>
+                        </button>
+                        <button onclick="filterAudioCategory('Combat')" id="cat-filter-Combat" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
+                            ⚔️ Combat <span id="cat-count-Combat" class="ml-1 text-[10px] opacity-75">(0)</span>
+                        </button>
+                        <button onclick="filterAudioCategory('Music')" id="cat-filter-Music" class="cat-pill px-2.5 py-1 rounded-lg bg-ledger-950 text-slate-400 hover:text-white border border-ledger-800 text-[11px] transition">
+                            🎵 Music <span id="cat-count-Music" class="ml-1 text-[10px] opacity-75">(0)</span>
+                        </button>
+                    </div>
+                    <span id="audio-tracks-count-label" class="text-[11px] font-mono text-slate-500 hidden sm:inline-block">Showing sounds</span>
                 </div>
             </div>
 
-            <!-- Multi-Track Mixer Grid -->
-            <div id="audio-mixer-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <!-- Multi-Track Mixer Grid / List Container -->
+            <div id="audio-mixer-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-2.5 transition-all">
                 <!-- Populated dynamically via renderAudioTracks() -->
             </div>
 
@@ -9108,7 +9154,7 @@
     <script src="/static/js/lighting_engine.js?v=2.5"></script>
     <script src="/static/js/npc_data.js?v=2.5"></script>
     <script src="/static/js/loot_data.js?v=2.5"></script>
-    <script src="/static/js/dashboard.js?v=3.9"></script>
+    <script src="/static/js/dashboard.js?v=4.0"></script>
     <script src="/static/js/battlemap_controller.js?v=2.7"></script>
     <script src="/static/js/dungeon_controller.js?v=1.1"></script>
 </body>
